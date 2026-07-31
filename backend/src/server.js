@@ -49,7 +49,7 @@ async function start() {
   app.get('/', (req, res) => {
     res.json({
       ok: true,
-      service: 'Adinn Design Work Allocation API',
+      service: 'Adinn Design Work Allocation API is running',
       version: env.appVersion,
       storage_driver: storageInfo().driver,
       docs: 'Use /api/health to verify the service.'
