@@ -1,3 +1,6 @@
+const ws = require('ws');
+global.WebSocket = ws;
+
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -393,6 +396,13 @@ function usingRelationalSupabase() {
   return getStorageDriver() === RELATIONAL_DRIVER;
 }
 
+function usingSupabase() {
+  return ['supabase', RELATIONAL_DRIVER].includes(getStorageDriver());
+}
+
+function usingRelationalSupabase() {
+  return getStorageDriver() === RELATIONAL_DRIVER;
+}
 function getSupabaseClient() {
   if (!usingSupabase()) return null;
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
