@@ -3,3 +3,5 @@ node_modules
 data/db.json
 uploads/*
 !uploads/.gitkeep
+.env.example
+.env.production.example
