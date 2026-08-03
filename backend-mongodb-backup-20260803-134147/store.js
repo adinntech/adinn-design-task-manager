@@ -6,7 +6,6 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const { MongoClient } = require('mongodb');
 
 const VERTICALS = [
   'RoadShow',
@@ -40,8 +39,6 @@ const RELATIONAL_DRIVER = 'supabase_relational';
 const dataFile = path.resolve(process.cwd(), process.env.DATA_FILE || './data/db.json');
 
 let supabaseClient = null;
-let mongoClient = null;
-let mongoDatabase = null;
 let mutationQueue = Promise.resolve();
 let dbCache = null;
 let dbCacheAt = 0;
@@ -68,18 +65,14 @@ function clearDbCache() {
   dbReadInFlight = null;
 }
 
-function usingRemoteDb() {
-  return usingSupabase() || usingMongoDb();
-}
-
 function getCachedDb() {
-  if (!usingRemoteDb() || !dbCache) return null;
+  if (!usingSupabase() || !dbCache) return null;
   if ((Date.now() - dbCacheAt) > DB_CACHE_TTL_MS) return null;
   return deepClone(dbCache);
 }
 
 function setCachedDb(db) {
-  if (!usingRemoteDb()) return;
+  if (!usingSupabase()) return;
   dbCache = deepClone(db);
   dbCacheAt = Date.now();
 }
@@ -403,136 +396,12 @@ function usingRelationalSupabase() {
   return getStorageDriver() === RELATIONAL_DRIVER;
 }
 
-function usingMongoDb() {
-  return getStorageDriver() === 'mongodb';
+function usingSupabase() {
+  return ['supabase', RELATIONAL_DRIVER].includes(getStorageDriver());
 }
 
-async function getMongoDatabase() {
-  if (!usingMongoDb()) return null;
-  if (mongoDatabase) return mongoDatabase;
-  const uri = process.env.MONGODB_URI;
-  const databaseName = process.env.MONGODB_DATABASE;
-  if (!uri || !databaseName) {
-    throw new Error('DATA_DRIVER=mongodb requires MONGODB_URI and MONGODB_DATABASE.');
-  }
-  mongoClient = new MongoClient(uri, {
-    serverSelectionTimeoutMS: Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 5000)
-  });
-  await mongoClient.connect();
-  mongoDatabase = mongoClient.db(databaseName);
-  await mongoDatabase.command({ ping: 1 });
-  return mongoDatabase;
-}
-
-const MONGO_COLLECTIONS = {
-  users: 'users',
-  tasks: 'tasks',
-  task_files: 'task_files',
-  task_comments: 'task_comments',
-  task_history: 'task_history',
-  notifications: 'notifications'
-};
-
-async function ensureMongoIndexes(db) {
-  await Promise.all([
-    db.collection('users').createIndex(
-      { email: 1 },
-      {
-        unique: true,
-        sparse: true,
-        name: 'email_1'
-      }
-    ),
-
-    db.collection('tasks').createIndex(
-      { id: 1 },
-      {
-        unique: true,
-        sparse: true,
-        name: 'id_1'
-      }
-    ),
-
-    db.collection('tasks').createIndex(
-      { assigned_by: 1 },
-      { name: 'assigned_by_1' }
-    ),
-
-    db.collection('tasks').createIndex(
-      { assigned_to: 1 },
-      { name: 'assigned_to_1' }
-    ),
-
-    db.collection('tasks').createIndex(
-      { status: 1 },
-      { name: 'status_1' }
-    ),
-
-    db.collection('tasks').createIndex(
-      { vertical: 1 },
-      { name: 'vertical_1' }
-    ),
-
-    db.collection('tasks').createIndex(
-      { deadline_date: 1, deadline_time: 1 },
-      { name: 'deadline_date_1_deadline_time_1' }
-    ),
-
-    db.collection('task_files').createIndex(
-      { task_id: 1 },
-      { name: 'task_id_1' }
-    ),
-
-    db.collection('task_comments').createIndex(
-      { task_id: 1 },
-      { name: 'task_id_1' }
-    ),
-
-    db.collection('task_history').createIndex(
-      { task_id: 1, created_at: -1 },
-      { name: 'task_id_1_created_at_-1' }
-    ),
-
-    db.collection('notifications').createIndex(
-      { user_id: 1, is_read: 1, created_at: -1 },
-      { name: 'user_id_1_is_read_1_created_at_-1' }
-    )
-  ]);
-}
-
-async function readMongoState() {
-  const db = await getMongoDatabase();
-  const [users, tasks, task_files, task_comments, task_history, notifications, settingsDoc] = await Promise.all([
-    db.collection('users').find({}, { projection: { _id: 0 } }).toArray(),
-    db.collection('tasks').find({}, { projection: { _id: 0 } }).toArray(),
-    db.collection('task_files').find({}, { projection: { _id: 0 } }).toArray(),
-    db.collection('task_comments').find({}, { projection: { _id: 0 } }).toArray(),
-    db.collection('task_history').find({}, { projection: { _id: 0 } }).toArray(),
-    db.collection('notifications').find({}, { projection: { _id: 0 } }).toArray(),
-    db.collection('app_settings').findOne({ key: 'default' }, { projection: { _id: 0, key: 0 } })
-  ]);
-  return { users, tasks, task_files, task_comments, task_history, notifications, settings: settingsDoc || {} };
-}
-
-async function writeMongoState(state) {
-  const db = await getMongoDatabase();
-  for (const [field, collectionName] of Object.entries(MONGO_COLLECTIONS)) {
-    const docs = Array.isArray(state[field]) ? state[field].map((item) => deepClone(item)) : [];
-    const collection = db.collection(collectionName);
-    await collection.deleteMany({});
-    if (docs.length) await collection.insertMany(docs, { ordered: true });
-  }
-  await db.collection('app_settings').replaceOne(
-    { key: 'default' },
-    { key: 'default', ...(state.settings || {}), updated_at: now() },
-    { upsert: true }
-  );
-}
-
-async function closeDb() {
-  if (mongoClient) await mongoClient.close();
-  mongoClient = null;
-  mongoDatabase = null;
+function usingRelationalSupabase() {
+  return getStorageDriver() === RELATIONAL_DRIVER;
 }
 function getSupabaseClient() {
   if (!usingSupabase()) return null;
@@ -562,50 +431,6 @@ async function ensureFileDb() {
     writeJsonAtomic(dataFile, seedDb());
     return;
   }
-
-  if (usingMongoDb()) {
-    const cached = getCachedDb();
-    if (cached) return cached;
-    if (dbReadInFlight) return deepClone(await dbReadInFlight);
-    dbReadInFlight = (async () => {
-      const raw = await readMongoState();
-      const { db, changed } = migrateDb(deepClone(raw));
-      if (changed) await writeMongoState(db);
-      setCachedDb(db);
-      return db;
-    })();
-    try {
-      return deepClone(await dbReadInFlight);
-    } finally {
-      dbReadInFlight = null;
-    }
-  }
-  if (usingMongoDb()) {
-  const cached = getCachedDb();
-  if (cached) return cached;
-
-  if (dbReadInFlight) {
-    return deepClone(await dbReadInFlight);
-  }
-
-  dbReadInFlight = (async () => {
-    const raw = await readMongoState();
-    const { db, changed } = migrateDb(deepClone(raw));
-
-    if (changed) {
-      await writeMongoState(db);
-    }
-
-    setCachedDb(db);
-    return db;
-  })();
-
-  try {
-    return deepClone(await dbReadInFlight);
-  } finally {
-    dbReadInFlight = null;
-  }
-}
 
   const current = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
   const { db, changed } = migrateDb(current);
@@ -666,22 +491,6 @@ async function ensureSupabaseDb() {
   if (changed) await writeDb(db);
 }
 
-async function ensureMongoDb() {
-  const db = await getMongoDatabase();
-  await ensureMongoIndexes(db);
-  const userCount = await db.collection('users').countDocuments();
-  if (userCount === 0) {
-    const initial = seedDb();
-    await writeMongoState(initial);
-    setCachedDb(initial);
-    return;
-  }
-  const current = await readMongoState();
-  const { db: migrated, changed } = migrateDb(current);
-  if (changed) await writeMongoState(migrated);
-  setCachedDb(migrated);
-}
-
 async function ensureDb() {
   if (dbEnsured) return;
   if (dbEnsureInFlight) return dbEnsureInFlight;
@@ -689,8 +498,6 @@ async function ensureDb() {
   dbEnsureInFlight = (async () => {
     if (usingSupabase()) {
       await ensureSupabaseDb();
-    } else if (usingMongoDb()) {
-      await ensureMongoDb();
     } else {
       await ensureFileDb();
     }
@@ -744,32 +551,7 @@ async function readDb() {
     }
   }
 
-  if (usingMongoDb()) {
-  const cached = getCachedDb();
-  if (cached) return cached;
-
-  if (dbReadInFlight) {
-    return deepClone(await dbReadInFlight);
-  }
-
-  dbReadInFlight = (async () => {
-    const raw = await readMongoState();
-    const { db, changed } = migrateDb(deepClone(raw));
-
-    if (changed) {
-      await writeMongoState(db);
-    }
-
-    setCachedDb(db);
-    return db;
-  })();
-
-  try {
-    return deepClone(await dbReadInFlight);
-  } finally {
-    dbReadInFlight = null;
-  }
-}
+  const current = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
   const { db, changed } = migrateDb(current);
   if (changed) writeJsonAtomic(dataFile, db);
   return db;
@@ -792,12 +574,6 @@ async function writeDb(db) {
       if (error) throw new Error(formatSupabaseError(error));
     }
 
-    setCachedDb(migrated);
-    return migrated;
-  }
-
-  if (usingMongoDb()) {
-    await writeMongoState(migrated);
     setCachedDb(migrated);
     return migrated;
   }
@@ -831,13 +607,12 @@ function publicUser(user) {
 function storageInfo() {
   return {
     driver: getStorageDriver(),
-    table: usingMongoDb() ? 'MongoDB collections' : (usingRelationalSupabase() ? 'relational tables' : (usingSupabase() ? STATE_TABLE : '')),
-    state_key: usingRelationalSupabase() || usingMongoDb() ? '' : (usingSupabase() ? STATE_KEY : ''),
-    data_file: usingRemoteDb() ? '' : dataFile,
-    database: usingMongoDb() ? (process.env.MONGODB_DATABASE || '') : '',
-    cache_ttl_ms: usingRemoteDb() ? DB_CACHE_TTL_MS : 0,
-    cache_active: usingRemoteDb() ? Boolean(dbCache) : false,
-    cache_age_ms: usingRemoteDb() && dbCacheAt ? Date.now() - dbCacheAt : 0
+    table: usingRelationalSupabase() ? 'relational tables' : (usingSupabase() ? STATE_TABLE : ''),
+    state_key: usingRelationalSupabase() ? '' : (usingSupabase() ? STATE_KEY : ''),
+    data_file: usingSupabase() ? '' : dataFile,
+    cache_ttl_ms: usingSupabase() ? DB_CACHE_TTL_MS : 0,
+    cache_active: usingSupabase() ? Boolean(dbCache) : false,
+    cache_age_ms: usingSupabase() && dbCacheAt ? Date.now() - dbCacheAt : 0
   };
 }
 
@@ -859,7 +634,5 @@ module.exports = {
   storageInfo,
   usingSupabase,
   usingRelationalSupabase,
-  usingMongoDb,
-  closeDb,
   clearDbCache
 };

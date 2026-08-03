@@ -42,13 +42,8 @@ const env = {
 function validateEnv() {
   const warnings = [];
 
-  if (!['file', 'supabase', 'supabase_relational', 'mongodb'].includes(env.dataDriver)) {
-    throw new Error('DATA_DRIVER must be file, supabase, supabase_relational, or mongodb.');
-  }
-
-  if (env.dataDriver === 'mongodb') {
-    if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is required when DATA_DRIVER=mongodb.');
-    if (!process.env.MONGODB_DATABASE) throw new Error('MONGODB_DATABASE is required when DATA_DRIVER=mongodb.');
+  if (!['file', 'supabase', 'supabase_relational'].includes(env.dataDriver)) {
+    throw new Error('DATA_DRIVER must be file, supabase, or supabase_relational.');
   }
 
   if (['supabase', 'supabase_relational'].includes(env.dataDriver)) {
