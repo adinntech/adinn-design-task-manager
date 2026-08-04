@@ -518,6 +518,7 @@ td span { display: block; color: var(--muted); font-size: 13px; margin-top: 4px;
   background: #111111;
   color: white;
   font-size: 18px;
+  text-align: center;
 }
 .workloadStats {
   display: grid;
