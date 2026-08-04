@@ -4,7 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
-const { ensureDb, storageInfo, closeDb } = require('./lib/store');
+const { ensureDb, storageInfo } = require('./lib/store');
 const { uploadDir } = require('./utils/upload');
 const { env, validateEnv } = require('./config/env');
 const { generalLimiter } = require('./middleware/rateLimit');
@@ -63,7 +63,6 @@ async function start() {
       version: env.appVersion,
       environment: env.nodeEnv,
       storage_driver: storageInfo().driver,
-      database: storageInfo().database || undefined,
       uptime_seconds: Math.round(process.uptime()),
       time: new Date().toISOString()
     });
@@ -88,10 +87,7 @@ async function start() {
 
   function shutdown(signal) {
     console.log(`${signal} received. Closing server...`);
-    server.close(async () => {
-      try { await closeDb(); } catch (error) { console.warn(`Database close warning: ${error.message}`); }
-      process.exit(0);
-    });
+    server.close(() => process.exit(0));
   }
 
   process.on('SIGINT', () => shutdown('SIGINT'));

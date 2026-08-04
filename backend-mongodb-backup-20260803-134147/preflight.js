@@ -2,7 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { env, validateEnv } = require('../config/env');
-const { ensureDb, readDb, dataFile, storageInfo, usingSupabase, usingMongoDb } = require('../lib/store');
+const { ensureDb, readDb, dataFile, storageInfo, usingSupabase } = require('../lib/store');
 const { uploadDir, usingSupabaseFiles, ensureBucket, storageInfo: fileStorageInfo } = require('../utils/upload');
 
 function pass(label) { console.log(`PASS ${label}`); }
@@ -27,15 +27,13 @@ async function main() {
     fail(`database read failed: ${error.message}`);
   }
 
-  if (!usingSupabase() && !usingMongoDb()) {
+  if (!usingSupabase()) {
     try {
       fs.accessSync(path.dirname(dataFile), fs.constants.R_OK | fs.constants.W_OK);
       pass(`data directory is writable: ${path.dirname(dataFile)}`);
     } catch (error) {
       fail(`data directory is not writable: ${path.dirname(dataFile)}`);
     }
-  } else if (usingMongoDb()) {
-    pass(`MongoDB ready: ${storageInfo().database}`);
   } else {
     pass(`Supabase state table ready: ${storageInfo().table}`);
   }
@@ -60,7 +58,7 @@ async function main() {
   if (env.nodeEnv === 'production') {
     if (!process.env.FRONTEND_ORIGIN) warn('FRONTEND_ORIGIN is not set. CORS may block deployed frontend.');
     if ((process.env.JWT_SECRET || '').length < 32) warn('JWT_SECRET should be at least 32 characters.');
-    if (!usingSupabase() && !usingMongoDb()) warn('Production is using file storage. Use MongoDB or Supabase for persistent users/tasks.');
+    if (!usingSupabase()) warn('Production is using file storage. Set DATA_DRIVER=supabase with Supabase env vars to avoid losing users/tasks on Render Free.');
     if (!usingSupabaseFiles()) warn('Production file uploads are local. Set FILE_STORAGE_DRIVER=supabase and SUPABASE_STORAGE_BUCKET to store design files permanently.');
   }
 
