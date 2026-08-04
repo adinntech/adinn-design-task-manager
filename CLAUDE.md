@@ -72,6 +72,27 @@ Task visibility is role-scoped via `canSeeTask()` in `backend/src/utils/tasks.js
 
 Designers carry a `verticals` array (e.g. `RoadShow`, `Outdoor`, `Digital Marketing` — full list is `VERTICALS` in `store.js`) used to filter/assign tasks by category of work; tasks also carry a single `vertical`, defaulted from the assigned designer's first vertical when absent (`taskVertical`/`taskVerticalFast` in `routes/tasks.js`).
 
+### Roles: two legacy aliases are still live
+
+`migrateDb()` rewrites the stored role `manager` → `bd`, but `manager` and `superadmin` are still accepted throughout route guards and `canSeeTask()` (`permit('admin', 'superadmin', 'bd', 'manager')`). Treat `superadmin` as an alias of `admin` and `manager` as an alias of `bd`; when adding a role check, include the aliases the surrounding code does, or the check will silently diverge from its neighbours.
+
+### Task domain model
+
+Two independent progress tracks live on every task, and both must be kept in mind when touching task routes:
+
+1. **`status`** — one of `pending_acceptance`, `accepted`, `declined`, `in_progress`, `on_hold`, `submitted_for_review`, `changes_requested`, `completed` (`STATUS_LABELS` in `utils/tasks.js`). Mutated by `PATCH /api/tasks/:id/{accept,decline,status}`.
+2. **`action_field`** — a free-standing designer workflow step from `TASK_ACTION_OPTIONS` in `store.js` (`1st Modification Started` … `Project Completed`), mutated by `PATCH /api/tasks/:id/action`. The two tracks are coupled at exactly one point: setting `action_field = 'Project Completed'` also forces `status = 'completed'`.
+
+`overdue` is a **computed** status, never stored. `applyComputedStatus()` derives `computed_status`/`computed_status_label` on read from `deadline_date`/`deadline_time`, skipping tasks already `completed`/`declined`/`submitted_for_review`/`changes_requested`. List filtering matches against both `status` and `computed_status`, so a query for `status=overdue` works even though no row holds that value. Any new read path that exposes status must map through `applyComputedStatus` or overdue tasks will appear as their raw status.
+
+Per-transition authorization is enforced inside the `updateDb` mutator (not by `permit`), because it depends on the task row: only the assigner/admin may `changes_requested` or set `Project Completed`; only the assigned designer or the assigner may move through `in_progress`/`on_hold`/`submitted_for_review`. Throw an `Error` with a `.status` property from inside the mutator to return a specific HTTP code.
+
+### Every task mutation writes an audit + notification
+
+Task-mutating handlers follow a fixed three-step shape inside `updateDb`: mutate the record, then `createHistory(db, id, action, oldValue, newValue, userId, remarks)` (local helper in `routes/tasks.js`, appends to `db.task_history`), then `notifyTaskStakeholders(db, task, actor, payload)` (`utils/notifications.js`, fans out to assigner + assignee + all active admins/BDs, self-excluded). Both write into the same state object inside the same mutator, so they persist atomically with the change. New task mutations should keep this shape — the frontend timeline and notification bell read directly from these two collections.
+
+`GET /api/tasks` is paginated (`page`, `limit`, default 50, hard cap 200) and returns a *list-shaped* item via `enrichTaskListItem` (a `file_count` only) rather than the full `enrichTask` payload (embedded `files`/`comments`/`history`), which is what `GET /api/tasks/:id` returns. `parseTaskFilters()` is shared by the list and `GET /api/tasks/export.csv` so both stay in sync — add new filters there, not in either handler.
+
 ### Frontend
 
 `frontend/src/App.jsx` is a single ~1800-line file containing the whole SPA — router-less page switching via local `page` state in the top-level `App()` component, plus every page component (`Dashboard`, `TasksPage`, `CreateTaskPage`, `TaskDetail`, `UsersPage`, etc.) and small shared UI helpers (`StarRatingInput`, `Toast`, `NotificationBell`, date formatters). There is no client-side router and no component-per-file split — when adding a page or feature, follow the existing pattern of adding another function in this file rather than introducing a new structure unilaterally.
@@ -83,6 +104,14 @@ Designers carry a `verticals` array (e.g. `RoadShow`, `Outdoor`, `Digital Market
 Copy `.env.example` at the repo root (covers both backend and frontend vars) or `backend/.env.example` / `frontend/.env.example` per-package. Key backend vars: `DATA_DRIVER`, `FILE_STORAGE_DRIVER`, `JWT_SECRET`/`JWT_EXPIRES_IN`, `FRONTEND_ORIGIN` (CORS allow-list), `SUPABASE_*`, `MONGODB_URI`/`MONGODB_DATABASE`. `backend/src/config/env.js` (`validateEnv()`) throws on invalid/missing combinations — run `npm run preflight` after changing env vars to catch mistakes before starting the server.
 
 Production requires a real `JWT_SECRET` (32+ chars) — `validateEnv()` hard-fails startup in `NODE_ENV=production` if left at the dev default.
+
+`seedDb()` in `store.js` creates the demo accounts used for local dev and documented in `README.md` (`admin@adinn.com`, `bd@adinn.com`, `designer@adinn.com` … with trivial passwords). `npm run reset:data` restores exactly these. Never point a reset/seed at a deployed database.
+
+## Gotchas
+
+- `store.js` starts with `require('ws')` + `global.WebSocket = ws` — a polyfill the Supabase realtime client needs on Node. It looks like a stray unused import; removing it breaks the Supabase drivers.
+- `mongoose` is in `backend/package.json` but nothing imports it — the MongoDB driver is used directly via `MongoClient`. Don't reach for mongoose models; there are none.
+- Uploaded files are served as static assets from `/uploads` (not `/api/uploads`), outside the auth middleware — anything written there is publicly readable by URL.
 
 ## Deployment
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   BarChart3,
@@ -315,6 +315,7 @@ function Shell({ user, page, setPage, logout, children, toast, notify }) {
 
 function NotificationBell({ notify }) {
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const [permission, setPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
@@ -366,6 +367,22 @@ function NotificationBell({ notify }) {
     return () => window.clearInterval(timer);
   }, [loadNotifications]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    function handleOutside(event) {
+      if (wrapRef.current && !wrapRef.current.contains(event.target)) setOpen(false);
+    }
+    function handleEscape(event) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open]);
+
   async function requestDesktopPermission() {
     if (typeof Notification === 'undefined') {
       notify('Browser desktop notifications are not supported in this browser.', 'error');
@@ -400,7 +417,7 @@ function NotificationBell({ notify }) {
   }
 
   return (
-    <div className="notificationWrap">
+    <div className="notificationWrap" ref={wrapRef}>
       <button className={`notificationButton ${open ? 'active' : 'inactive'}`} onClick={() => setOpen((value) => !value)} title="Notifications">
         <Bell size={18} />
         {unread > 0 && <span>{unread > 99 ? '99+' : unread}</span>}
