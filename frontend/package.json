@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0",
+    "build": "vite build --mode production",
+    "preview": "vite preview --host 0.0.0.0 --mode production",
     "lint:check": "node -e \"console.log('No lint config required for this deployment package.')\"",
     "preview:production": "vite preview --host 0.0.0.0"
   },

@@ -1,18 +1,16 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 5173,
-    host: '0.0.0.0'
-  },
-  preview: {
-    port: 4173,
-    host: '0.0.0.0'
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: false
+export default defineConfig(({ mode }) => {
+  // For production build, use subfolder
+  // For development (local), use root
+  const base = mode === 'production' ? '/Adinn_design_task/' : '/'
+  
+  return {
+    plugins: [react()],
+    base: base,
+    server: {
+      port: 5173,
+    }
   }
-});
+})
