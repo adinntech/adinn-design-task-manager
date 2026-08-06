@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => {
   // For production build, use subfolder
   // For development (local), use root
-  const base = mode === 'production' ? '/Adinn_design_task/' : '/'
+  const base = mode === 'production' ? '/design-task/' : '/'
   
   return {
     plugins: [react()],
