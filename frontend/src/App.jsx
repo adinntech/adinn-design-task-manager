@@ -361,10 +361,14 @@ function NotificationBell({ notify }) {
     }
   }, [seenIds]);
 
+  // useEffect(() => {
+  //   loadNotifications();
+  //   const timer = window.setInterval(loadNotifications, 30000);
+  //   return () => window.clearInterval(timer);
+  // }, [loadNotifications]);
+
   useEffect(() => {
     loadNotifications();
-    const timer = window.setInterval(loadNotifications, 30000);
-    return () => window.clearInterval(timer);
   }, [loadNotifications]);
 
   useEffect(() => {
