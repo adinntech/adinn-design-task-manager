@@ -117,20 +117,98 @@ class TaskDetail extends Component
     {
         $this->task->refresh()->load(['designer:id,name', 'assigner:id,name']);
 
+        $comments = DesignTaskComment::query()
+            ->with(['user:id,name', 'attachments'])
+            ->where('design_task_id', $this->task->id)
+            ->latest()
+            ->get();
+
+        $requirementAttachmentGroups = $this->collectRequirementAttachments(
+            $this->task->requirements ?? []
+        );
+
+        $requirementAttachmentCount = collect($requirementAttachmentGroups)
+            ->sum(fn (array $group) => count($group['files']));
+
+        $commentAttachmentCount = $comments->sum(
+            fn (DesignTaskComment $comment) => $comment->attachments->count()
+        );
+
         return view('livewire.designer.task-detail', [
             'statuses' => DesignTaskStatusService::STATUSES,
             'nextStatus' => app(DesignTaskStatusService::class)
                 ->nextDesignerStatus($this->task->status),
-            'comments' => DesignTaskComment::query()
-                ->with(['user:id,name', 'attachments'])
-                ->where('design_task_id', $this->task->id)
-                ->latest()
-                ->get(),
+            'comments' => $comments,
             'history' => DesignTaskStatusHistory::query()
                 ->with('changedBy:id,name')
                 ->where('design_task_id', $this->task->id)
                 ->latest()
                 ->get(),
+            'requirementAttachmentGroups' => $requirementAttachmentGroups,
+            'requirementAttachmentCount' => $requirementAttachmentCount,
+            'commentAttachmentCount' => $commentAttachmentCount,
+            'attachmentCount' => $requirementAttachmentCount + $commentAttachmentCount,
         ]);
+    }
+
+    private function collectRequirementAttachments(array $requirements): array
+    {
+        $groups = [];
+
+        foreach ($requirements as $key => $value) {
+            $files = [];
+            $this->extractStoredFiles($value, $files);
+
+            if ($files === []) {
+                continue;
+            }
+
+            $groups[] = [
+                'key' => (string) $key,
+                'label' => Str::headline((string) $key),
+                'files' => $files,
+            ];
+        }
+
+        return $groups;
+    }
+
+    private function extractStoredFiles(mixed $value, array &$files): void
+    {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                $this->extractStoredFiles($item, $files);
+            }
+
+            return;
+        }
+
+        if (! is_string($value) || ! $this->looksLikeStoredFilePath($value)) {
+            return;
+        }
+
+        $extension = strtolower(pathinfo($value, PATHINFO_EXTENSION));
+
+        $files[] = [
+            'path' => $value,
+            'name' => basename($value),
+            'extension' => $extension !== '' ? strtoupper($extension) : 'FILE',
+            'url' => Storage::disk('spaces')->url($value),
+        ];
+    }
+
+    private function looksLikeStoredFilePath(string $value): bool
+    {
+        $value = trim($value);
+
+        if ($value === '' || filter_var($value, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+
+        if (! str_contains($value, '/')) {
+            return false;
+        }
+
+        return pathinfo($value, PATHINFO_EXTENSION) !== '';
     }
 }

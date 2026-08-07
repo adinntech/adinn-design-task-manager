@@ -1,69 +1,13 @@
 @extends('layouts.app')
-
 @section('title','Assigned Tasks')
-
+@section('workspace-title','BD Workspace')
+@section('workspace-subtitle','Create client design requirements and track every assigned task')
 @section('content')
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Assigned Tasks</h1>
-        <p class="page-subtitle">Track every design task assigned by you and its current production stage.</p>
-    </div>
+<div class="page-head"><div><h1>Assigned Tasks</h1><p>Track the tasks created by you and their current production stage.</p></div><a class="btn btn-primary" href="{{ route('bd.tasks.create') }}">＋ Create New Task</a></div>
 
-    <a class="btn btn-primary" href="{{ route('bd.tasks.create') }}">Create New Task</a>
-</div>
+<div class="metric-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:14px"><div class="metric-card"><div class="metric-label">My Total Tasks</div><div class="metric-value">{{ $stats['total'] }}</div></div><div class="metric-card"><div class="metric-label">Active</div><div class="metric-value">{{ $stats['active'] }}</div></div><div class="metric-card"><div class="metric-label">Waiting Confirmation</div><div class="metric-value">{{ $stats['waiting'] }}</div></div><div class="metric-card"><div class="metric-label">Completed</div><div class="metric-value">{{ $stats['completed'] }}</div></div></div>
 
-<div class="panel">
-    <div class="panel-body">
-        <form method="GET" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
-            <input class="premium-input"
-                   style="max-width:420px;"
-                   type="search"
-                   name="search"
-                   value="{{ request('search') }}"
-                   placeholder="Search Task ID, task name or client">
-            <button class="btn btn-dark" type="submit">Search</button>
-            @if(request('search'))
-                <a class="btn btn-secondary" href="{{ route('bd.tasks.index') }}">Clear</a>
-            @endif
-        </form>
-
-        <div class="table-wrap">
-            <table class="premium-table">
-                <thead>
-                    <tr>
-                        <th>Task</th>
-                        <th>Client</th>
-                        <th>Designer</th>
-                        <th>Vertical</th>
-                        <th>Priority</th>
-                        <th>Status</th>
-                        <th>Due Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @forelse($tasks as $task)
-                    <tr>
-                        <td>
-                            <a href="{{ route('bd.tasks.show',$task) }}" style="text-decoration:none;">
-                                <strong>{{ $task->task_name }}</strong>
-                                <div style="color:#667085;font-size:12px;margin-top:3px;">{{ $task->task_id }}</div>
-                            </a>
-                        </td>
-                        <td>{{ $task->party_name }}</td>
-                        <td>{{ $task->designer?->name ?? 'Not assigned' }}</td>
-                        <td>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</td>
-                        <td><span class="badge badge-warning">{{ $task->priority }}</span></td>
-                        <td><span class="badge badge-red">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td>
-                        <td>{{ \Illuminate\Support\Carbon::parse($task->due_at)->format('d M Y, h:i A') }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="7"><div class="empty-state">No assigned tasks found.</div></td></tr>
-                @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div style="margin-top:18px;">{{ $tasks->links() }}</div>
-    </div>
-</div>
+<div class="panel"><div class="panel-body">
+<form method="GET" class="filter-bar compact" style="margin-bottom:14px"><input class="premium-input" name="search" value="{{ request('search') }}" placeholder="Search Task ID, task name or client"><select class="premium-select" name="vertical"><option value="">All Verticals</option>@foreach(['outdoor'=>'Outdoor','roadshow'=>'RoadShow','fixtures'=>'Fixtures','signage'=>'Signage','pop_offsets'=>'POP and Offsets','digital_marketing'=>'Digital Marketing','events_activations'=>'Events and Activations'] as $k=>$v)<option value="{{ $k }}" @selected(request('vertical')===$k)>{{ $v }}</option>@endforeach</select><select class="premium-select" name="status"><option value="">All Statuses</option>@foreach($statuses as $k=>$v)<option value="{{ $k }}" @selected(request('status')===$k)>{{ $v }}</option>@endforeach</select><select class="premium-select" name="priority"><option value="">All Priorities</option>@foreach(['urgent'=>'Urgent','high'=>'High','medium'=>'Medium','low'=>'Low'] as $k=>$v)<option value="{{ $k }}" @selected(request('priority')===$k)>{{ $v }}</option>@endforeach</select><button class="btn btn-dark">Filter</button></form>
+<div class="table-wrap"><table class="premium-table"><thead><tr><th>Task</th><th>Client</th><th>Designer</th><th>Vertical</th><th>Priority</th><th>Status</th><th>Due Date</th><th></th></tr></thead><tbody>@forelse($tasks as $task)<tr><td><strong>{{ $task->task_id }}</strong><div style="margin-top:3px">{{ $task->task_name }}</div></td><td>{{ $task->party_name }}</td><td>{{ $task->designer?->name ?? '—' }}</td><td>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</td><td><span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span></td><td><span class="badge badge-dark">{{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M Y, h:i A') }}</td><td><a class="btn btn-secondary" href="{{ route('bd.tasks.show',$task) }}">View</a></td></tr>@empty<tr><td colspan="8" class="empty-state">No tasks found.</td></tr>@endforelse</tbody></table></div><div class="pagination-wrap">{{ $tasks->links() }}</div></div></div>
 @endsection

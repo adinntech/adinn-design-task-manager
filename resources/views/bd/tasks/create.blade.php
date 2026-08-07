@@ -1,9 +1,14 @@
 @extends('layouts.app')
 @section('title','Create Design Task')
+@section('workspace-title','Create Design Task')
+@section('workspace-subtitle','Capture client requirements and assign the task to a Designer')
 @section('content')
-<div class="mb-6">
-    <h1 class="text-3xl font-bold">Create Design Task</h1>
-    <p class="text-slate-500 mt-1">Select a vertical and task nature to load the relevant requirement form.</p>
+<div class="page-head">
+    <div>
+        <h1>Create Design Task</h1>
+        <p>Select a vertical and task nature to load the relevant requirement form.</p>
+    </div>
+    <a href="{{ route('bd.tasks.index') }}" class="btn btn-secondary">Back to Assigned Tasks</a>
 </div>
 
 @if($errors->any())
@@ -17,7 +22,7 @@
 
 <form method="POST" action="{{ route('bd.tasks.store') }}" enctype="multipart/form-data" id="taskForm" class="space-y-6">
 @csrf
-<section class="bg-white border rounded-2xl shadow-sm p-6">
+<section class="panel panel-body">
     <h2 class="text-lg font-bold mb-5">Common Task Details</h2>
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
         <div><label class="label">Task ID</label><input class="field bg-slate-100" value="Auto-generated after submission" disabled></div>
@@ -76,7 +81,7 @@
     </div>
 </section>
 
-<section id="dynamicSection" class="bg-white border rounded-2xl shadow-sm p-6 hidden">
+<section id="dynamicSection" class="panel panel-body hidden">
     <div class="mb-5">
         <h2 id="dynamicTitle" class="text-lg font-bold">Requirements</h2>
         <p class="text-sm text-slate-500">Fields are loaded based on the selected vertical and task nature.</p>
@@ -85,8 +90,8 @@
 </section>
 
 <div class="flex justify-end gap-3">
-    <button type="reset" class="px-5 py-3 rounded-xl border bg-white">Clear</button>
-    <button id="submitBtn" disabled class="px-6 py-3 rounded-xl bg-slate-950 text-white font-semibold disabled:opacity-40">Create Task</button>
+    <button type="reset" class="btn btn-secondary">Clear</button>
+    <button id="submitBtn" disabled class="btn btn-primary disabled:opacity-40">Create Task</button>
 </div>
 </form>
 

@@ -5,92 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Adinn Design Task Manager')</title>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('css/adinn-premium.css') }}">
     @livewireStyles
     @stack('styles')
 </head>
 <body>
-<div class="app-shell">
-    <header class="app-topbar">
-        <div class="app-topbar-inner">
-            <div class="brand-block">
-                <div class="brand-title">Adinn Design Task Manager</div>
-                <div class="brand-subtitle">
-                    @auth
-                        {{ match(auth()->user()->role) {
-                            'bd' => 'Business Development Workspace',
-                            'designer' => 'Designer Task Section',
-                            'designer_head' => 'Designer Head Workspace',
-                            'admin' => 'Administration Workspace',
-                            default => 'Task Management Workspace',
-                        } }}
-                    @else
-                        Premium Design Operations
-                    @endauth
+@php
+    $role = auth()->user()->role ?? null;
+    $workspace = match($role) {
+        'admin' => 'Administration',
+        'bd' => 'Business Development',
+        'designer' => 'Designer Workspace',
+        'designer_head' => 'Designer Head',
+        default => 'Design Operations',
+    };
+@endphp
+
+<div class="workspace-shell" x-data="{ mobileNav: false }">
+    <aside class="workspace-sidebar" :class="{ 'is-open': mobileNav }">
+        <div class="sidebar-brand">
+            <div class="sidebar-logo-card">
+                <img src="{{ asset('images/adinn-logo.png') }}" alt="Adinn Advertising Services Ltd." class="sidebar-logo">
+            </div>
+            <div class="brand-system">Design Task Manager</div>
+        </div>
+
+        <div class="sidebar-workspace">
+            <span class="sidebar-eyebrow">Workspace</span>
+            <strong>{{ $workspace }}</strong>
+        </div>
+
+        <nav class="sidebar-nav">
+            @if($role === 'admin')
+                <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
+                <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><span>◉</span>User Management</a>
+                <a href="{{ route('admin.tasks.index') }}" class="{{ request()->routeIs('admin.tasks.*') ? 'active' : '' }}"><span>▤</span>Task Monitoring</a>
+                <a href="{{ route('admin.master.index') }}" class="{{ request()->routeIs('admin.master.*') ? 'active' : '' }}"><span>⌘</span>Master Controls</a>
+                <a href="{{ route('admin.activity.index') }}" class="{{ request()->routeIs('admin.activity.*') ? 'active' : '' }}"><span>↻</span>System Activity</a>
+            @elseif($role === 'bd')
+                <a href="{{ route('bd.tasks.index') }}" class="{{ request()->routeIs('bd.tasks.index','bd.tasks.show') ? 'active' : '' }}"><span>▤</span>Assigned Tasks</a>
+                <a href="{{ route('bd.tasks.create') }}" class="{{ request()->routeIs('bd.tasks.create') ? 'active' : '' }}"><span>＋</span>Create Task</a>
+            @elseif($role === 'designer')
+                <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.*') ? 'active' : '' }}"><span>▦</span>My Tasks</a>
+            @endif
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+                <div class="sidebar-user-copy">
+                    <strong>{{ auth()->user()->name }}</strong>
+                    <span>{{ ucwords(str_replace('_', ' ', $role)) }}</span>
+                </div>
+            </div>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="sidebar-logout">Logout</button>
+            </form>
+        </div>
+    </aside>
+
+    <div class="workspace-main">
+        <header class="workspace-topbar">
+            <div class="topbar-left">
+                <button class="mobile-menu-btn" type="button" @click="mobileNav = !mobileNav">☰</button>
+                <div>
+                    <div class="topbar-title">@yield('workspace-title', $workspace)</div>
+                    <div class="topbar-subtitle">@yield('workspace-subtitle', 'Adinn Design Task Manager')</div>
                 </div>
             </div>
 
-            @auth
-                <nav class="app-nav">
-                    @if(auth()->user()->role === 'admin' && Route::has('admin.dashboard'))
-                        <a href="{{ route('admin.dashboard') }}"
-                           class="{{ request()->routeIs('admin.*') ? 'active' : '' }}">
-                            Admin Dashboard
-                        </a>
-                    @endif
+            <div class="topbar-right">
+                <div class="topbar-role-pill">{{ ucwords(str_replace('_', ' ', $role)) }}</div>
+                <div class="topbar-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+            </div>
+        </header>
 
-                    @if(auth()->user()->role === 'bd')
-                        @if(Route::has('bd.tasks.create'))
-                            <a href="{{ route('bd.tasks.create') }}"
-                               class="{{ request()->routeIs('bd.tasks.create') ? 'active' : '' }}">
-                                Create Task
-                            </a>
-                        @endif
-
-                        @if(Route::has('bd.tasks.index'))
-                            <a href="{{ route('bd.tasks.index') }}"
-                               class="{{ request()->routeIs('bd.tasks.index', 'bd.tasks.show') ? 'active' : '' }}">
-                                Assigned Tasks
-                            </a>
-                        @endif
-                    @endif
-
-                    @if(auth()->user()->role === 'designer' && Route::has('designer.tasks.index'))
-                        <a href="{{ route('designer.tasks.index') }}"
-                           class="{{ request()->routeIs('designer.tasks.*') ? 'active' : '' }}">
-                            My Tasks
-                        </a>
-                    @endif
-                </nav>
-
-                <div class="user-menu">
-                    <div class="user-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
-                    <div class="user-meta">
-                        <div class="user-name">{{ auth()->user()->name }}</div>
-                        <div class="user-role">{{ ucwords(str_replace('_', ' ', auth()->user()->role)) }}</div>
-                    </div>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button class="logout-btn" type="submit">Logout</button>
-                    </form>
-                </div>
-            @endauth
-        </div>
-    </header>
-
-    <main class="app-main">
-        @if(session('success'))
-            <div class="flash flash-success">{{ session('success') }}</div>
-        @endif
-
-        @if(session('error'))
-            <div class="flash flash-error">{{ session('error') }}</div>
-        @endif
-
-        @yield('content')
-    </main>
+        <main class="workspace-content">
+            @if(session('success'))
+                <div class="flash flash-success">{{ session('success') }}</div>
+            @endif
+            @if(session('error'))
+                <div class="flash flash-error">{{ session('error') }}</div>
+            @endif
+            @yield('content')
+        </main>
+    </div>
 </div>
 
 @livewireScripts

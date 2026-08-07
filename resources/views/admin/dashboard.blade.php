@@ -1,103 +1,47 @@
 @extends('layouts.app')
-
-@section('title', 'Admin Workspace | Adinn Design Task Manager')
-
+@section('title','Admin Dashboard')
+@section('workspace-title','Manager Dashboard')
+@section('workspace-subtitle','Monitor users, tasks, designers and the complete design process')
 @section('content')
-<div class="max-w-[1600px] mx-auto">
-    <div class="mb-8">
-        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-[#E30613]">
-                        Administration
-                    </span>
-                </div>
+<div class="page-head">
+    <div><h1>Manager Dashboard</h1><p>A compact operational view of the Design Task Manager.</p></div>
+    <div class="page-actions"><a href="{{ route('admin.users.create') }}" class="btn btn-secondary">Add User</a><a href="{{ route('admin.tasks.index') }}" class="btn btn-primary">View All Tasks</a></div>
+</div>
 
-                <h1 class="text-3xl font-bold tracking-tight text-gray-950">Admin Workspace</h1>
-                <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-                    Monitor users, design tasks and overall system activity from one central workspace.
-                </p>
-            </div>
+<div class="metric-grid">
+    <div class="metric-card"><div class="metric-label">Total Tasks</div><div class="metric-value">{{ $stats['total_tasks'] }}</div><div class="metric-note">Across all verticals</div></div>
+    <div class="metric-card"><div class="metric-label">Active Tasks</div><div class="metric-value">{{ $stats['active_tasks'] }}</div><div class="metric-note">Not yet completed</div></div>
+    <div class="metric-card"><div class="metric-label">Waiting Confirmation</div><div class="metric-value">{{ $stats['waiting_confirmation'] }}</div><div class="metric-note">Awaiting BD/client action</div></div>
+    <div class="metric-card"><div class="metric-label">Rework</div><div class="metric-value">{{ $stats['rework'] }}</div><div class="metric-note">Returned for correction</div></div>
+    <div class="metric-card"><div class="metric-label">Overdue</div><div class="metric-value">{{ $stats['overdue'] }}</div><div class="metric-note">Open tasks past due date</div></div>
+    <div class="metric-card"><div class="metric-label">Completed</div><div class="metric-value">{{ $stats['completed'] }}</div><div class="metric-note">Closed design tasks</div></div>
+</div>
 
-            <div class="rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
-                <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Signed in as</p>
-                <p class="mt-1 font-semibold text-gray-900">{{ auth()->user()->name }}</p>
-                <p class="mt-0.5 text-sm text-gray-500">Administrator</p>
-            </div>
-        </div>
-    </div>
+<div class="dashboard-grid">
+    <section class="panel">
+        <div class="panel-header"><div><div class="panel-title">Project Pipeline</div><div class="metric-note">Live task count by workflow stage</div></div><a class="btn btn-secondary" href="{{ route('admin.tasks.index') }}">Open Monitoring</a></div>
+        <div class="panel-body"><div class="pipeline-mini">@foreach($pipeline as $key=>$item)<div class="pipeline-mini-card"><span>{{ $item['label'] }}</span><strong>{{ $item['count'] }}</strong></div>@endforeach</div></div>
+    </section>
+    <section class="panel">
+        <div class="panel-header"><div><div class="panel-title">Team Snapshot</div><div class="metric-note">Current active users</div></div></div>
+        <div class="panel-body"><div class="info-grid"><div class="info-item"><span>Active Designers</span><strong>{{ $stats['active_designers'] }}</strong></div><div class="info-item"><span>Active BD</span><strong>{{ $stats['active_bd'] }}</strong></div></div><div style="margin-top:12px"><a href="{{ route('admin.users.index') }}" class="btn btn-secondary" style="width:100%">Manage Users</a></div></div>
+    </section>
+</div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-gray-500">Total Users</p>
-            <p class="mt-3 text-3xl font-bold tracking-tight text-gray-950">{{ number_format($stats['total_users']) }}</p>
-        </div>
+<div class="content-grid-3">
+    <section class="panel">
+        <div class="panel-header"><div class="panel-title">Recent Tasks</div></div>
+        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody>@forelse($recentTasks as $task)<tr><td><a class="file-link" href="{{ route('admin.tasks.show',$task) }}">{{ $task->task_id }}</a><div style="margin-top:3px;font-weight:700">{{ $task->task_name }}</div></td><td>{{ $task->designer?->name ?? '—' }}</td><td><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M, h:i A') }}</td></tr>@empty<tr><td colspan="4" class="empty-state">No tasks available.</td></tr>@endforelse</tbody></table></div></div>
+    </section>
 
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-gray-500">Active BD</p>
-            <p class="mt-3 text-3xl font-bold tracking-tight text-gray-950">{{ number_format($stats['bd_users']) }}</p>
-        </div>
+    <section class="panel">
+        <div class="panel-header"><div class="panel-title">Designer Workload</div></div>
+        <div class="panel-body"><div class="activity-list">@forelse($designerWorkload as $designer)<div class="activity-item"><div style="display:flex;justify-content:space-between;gap:10px"><strong>{{ $designer->name }}</strong><span class="badge {{ $designer->active_tasks_count > 10 ? 'badge-danger' : 'badge-success' }}">{{ $designer->active_tasks_count }} active</span></div><p>{{ $designer->completed_tasks_count }} completed tasks</p></div>@empty<div class="empty-state">No active designers.</div>@endforelse</div></div>
+    </section>
 
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-gray-500">Active Designers</p>
-            <p class="mt-3 text-3xl font-bold tracking-tight text-gray-950">{{ number_format($stats['designer_users']) }}</p>
-        </div>
-
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-gray-500">Total Tasks</p>
-            <p class="mt-3 text-3xl font-bold tracking-tight text-gray-950">{{ number_format($stats['total_tasks']) }}</p>
-        </div>
-
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-gray-500">Active Tasks</p>
-            <p class="mt-3 text-3xl font-bold tracking-tight text-gray-950">{{ number_format($stats['active_tasks']) }}</p>
-        </div>
-
-        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-gray-500">Completed</p>
-            <p class="mt-3 text-3xl font-bold tracking-tight text-gray-950">{{ number_format($stats['completed_tasks']) }}</p>
-        </div>
-    </div>
-
-    <div class="mt-8">
-        <div class="mb-4">
-            <h2 class="text-lg font-bold text-gray-950">Administration</h2>
-            <p class="mt-1 text-sm text-gray-500">Central controls for the Design Task Manager.</p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h3 class="font-semibold text-gray-950">User Management</h3>
-                <p class="mt-2 text-sm leading-6 text-gray-500">
-                    Create and manage Admin, BD, Designer and Designer Head accounts.
-                </p>
-                <div class="mt-5 text-xs font-semibold text-gray-400">Coming next</div>
-            </div>
-
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h3 class="font-semibold text-gray-950">Task Monitoring</h3>
-                <p class="mt-2 text-sm leading-6 text-gray-500">
-                    Monitor tasks across BD employees, Designers and verticals.
-                </p>
-                <div class="mt-5 text-xs font-semibold text-gray-400">Coming next</div>
-            </div>
-
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h3 class="font-semibold text-gray-950">Master Controls</h3>
-                <p class="mt-2 text-sm leading-6 text-gray-500">
-                    Manage verticals, task natures, design types and future configuration.
-                </p>
-                <div class="mt-5 text-xs font-semibold text-gray-400">Coming next</div>
-            </div>
-
-            <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h3 class="font-semibold text-gray-950">System Activity</h3>
-                <p class="mt-2 text-sm leading-6 text-gray-500">
-                    Review application activity, task movement and operational statistics.
-                </p>
-                <div class="mt-5 text-xs font-semibold text-gray-400">Coming next</div>
-            </div>
-        </div>
-    </div>
+    <section class="panel">
+        <div class="panel-header"><div class="panel-title">Recent Activity</div><a href="{{ route('admin.activity.index') }}" class="file-link" style="font-size:10px">View all</a></div>
+        <div class="panel-body"><div class="activity-list">@forelse($recentActivity as $event)<div class="activity-item"><strong>{{ $event->task?->task_id }} · {{ $event->task?->task_name }}</strong><p>{{ $event->changedBy?->name ?? 'User' }} moved task to {{ ucwords(str_replace('_',' ',$event->to_status)) }} · {{ $event->created_at->diffForHumans() }}</p></div>@empty<div class="empty-state">No activity recorded.</div>@endforelse</div></div>
+    </section>
 </div>
 @endsection

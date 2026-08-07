@@ -1,229 +1,358 @@
-<div class="designer-task-detail"
-     x-data="{ tab: 'overview', toast: '' }"
-     x-on:task-status-changed.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
-     x-on:comment-added.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)">
-
+<div
+    x-data="{ tab: 'overview', toast: '' }"
+    x-on:task-status-changed.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
+    x-on:comment-added.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
+>
     <style>
-        :root {
-            --adinn-red: #e30613;
-            --adinn-black: #111111;
-            --adinn-bg: #f5f7fb;
-            --adinn-border: #e2e7ef;
-            --adinn-muted: #667085;
-        }
-        .detail-shell { background:#fff; border:1px solid var(--adinn-border); border-radius:18px; overflow:hidden; }
-        .detail-header { padding:20px 22px; display:flex; justify-content:space-between; gap:18px; align-items:center; border-bottom:1px solid var(--adinn-border); }
-        .detail-title { font-size:23px; font-weight:900; color:var(--adinn-black); }
-        .detail-id { margin-top:4px; color:var(--adinn-muted); font-size:13px; }
-        .status-pill { display:inline-flex; padding:7px 11px; border-radius:999px; background:#fff1f2; color:var(--adinn-red); font-size:12px; font-weight:800; }
-        .primary-action { border:0; border-radius:11px; background:var(--adinn-red); color:#fff; padding:12px 18px; font-weight:800; cursor:pointer; }
-        .primary-action:disabled { opacity:.45; cursor:not-allowed; }
-        .detail-tabs { display:flex; gap:28px; padding:0 22px; border-bottom:1px solid var(--adinn-border); overflow:auto; }
-        .detail-tab { padding:16px 2px 13px; border:0; background:transparent; font-weight:800; color:#7b8494; cursor:pointer; white-space:nowrap; border-bottom:3px solid transparent; }
-        .detail-tab.active { color:var(--adinn-red); border-color:var(--adinn-red); }
-        .detail-content { padding:22px; }
-        .overview-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:18px; }
-        .detail-card { border:1px solid var(--adinn-border); border-radius:14px; background:#fff; padding:18px; margin-bottom:16px; }
-        .detail-card-title { font-size:14px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; margin-bottom:15px; color:#475467; }
-        .data-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
-        .data-item label { display:block; color:#98a2b3; font-size:11px; font-weight:800; text-transform:uppercase; margin-bottom:4px; }
-        .data-item div { color:#172033; font-weight:700; overflow-wrap:anywhere; }
-        .requirement-list { display:grid; gap:10px; }
-        .requirement-row { display:grid; grid-template-columns:210px 1fr; gap:12px; padding:11px 0; border-bottom:1px solid #eff1f5; }
-        .requirement-key { font-weight:800; color:#667085; }
-        .file-link { color:var(--adinn-red); font-weight:800; text-decoration:none; }
-        .comment-box { border:1px solid var(--adinn-border); border-radius:14px; padding:16px; }
-        .comment-textarea { width:100%; min-height:120px; resize:vertical; border:1px solid var(--adinn-border); border-radius:12px; padding:13px; outline:none; }
-        .comment-textarea:focus { border-color:var(--adinn-red); box-shadow:0 0 0 3px rgba(227,6,19,.1); }
-        .comment-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; }
-        .comment-item, .history-item { border:1px solid var(--adinn-border); border-radius:13px; padding:15px; margin-top:12px; }
-        .history-line { border-left:3px solid var(--adinn-red); padding-left:14px; }
-        .muted { color:var(--adinn-muted); font-size:12px; }
-        .toast { position:fixed; right:22px; bottom:22px; z-index:9999; background:var(--adinn-black); color:#fff; border-left:4px solid var(--adinn-red); padding:13px 16px; border-radius:12px; }
-        .error-box { margin-bottom:15px; padding:12px 14px; border-radius:11px; color:#b42318; background:#fee4e2; }
-        @media(max-width:950px){ .overview-layout{grid-template-columns:1fr}.data-grid{grid-template-columns:1fr}.requirement-row{grid-template-columns:1fr}.detail-header{align-items:flex-start;flex-direction:column} }
+        .detail-tabs{display:flex;gap:5px;padding:5px;background:#f5f6f8;border-radius:11px;width:max-content;margin-bottom:14px;max-width:100%;overflow:auto}
+        .detail-tab{border:0;background:transparent;border-radius:8px;padding:8px 12px;font-size:10px;font-weight:850;color:#697386;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center}
+        .detail-tab.active{background:#fff;color:#e30613;box-shadow:0 3px 10px rgba(16,24,40,.06)}
+        .comment-box{border:1px solid #e7e9ef;border-radius:13px;padding:14px;background:#fff}
+        .comment-textarea{width:100%;min-height:115px;border:1px solid #dfe2e8;border-radius:10px;padding:11px;font:inherit;font-size:11px;resize:vertical;outline:none}
+        .comment-textarea:focus{border-color:#e30613;box-shadow:0 0 0 3px rgba(227,6,19,.08)}
+        .comment-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+        .comment-item{padding:12px;border:1px solid #e7e9ef;border-radius:11px;background:#fff;margin-top:8px}
+        .muted{color:#7c8492;font-size:10px}
+        .toast{position:fixed;right:22px;bottom:22px;z-index:9999;background:#15171c;color:#fff;border-left:4px solid #e30613;padding:12px 15px;border-radius:10px;font-size:11px;box-shadow:0 15px 40px rgba(0,0,0,.2)}
+        @media(max-width:900px){.comment-actions{align-items:flex-start;flex-direction:column}}
     </style>
 
-    @if($errors->any())
-        <div class="error-box">
-            @foreach($errors->all() as $error)
-                <div>{{ $error }}</div>
-            @endforeach
+    <div class="page-head">
+        <div>
+            <h1>{{ $task->task_name }}</h1>
+            <p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? $task->status }}</p>
         </div>
-    @endif
 
-    <div class="detail-shell">
-        <header class="detail-header">
+        <div class="page-actions">
+            <a class="btn btn-secondary" href="{{ route('designer.tasks.index') }}">Back to My Tasks</a>
+
+            @if($nextStatus)
+                <button
+                    class="btn btn-primary"
+                    wire:click="moveToNextStatus"
+                    wire:loading.attr="disabled"
+                >
+                    Move to {{ $statuses[$nextStatus] ?? ucwords(str_replace('_', ' ', $nextStatus)) }}
+                </button>
+            @endif
+        </div>
+    </div>
+
+    <div class="detail-tabs">
+        <button class="detail-tab" :class="{ active: tab === 'overview' }" @click="tab = 'overview'">Overview</button>
+        <button class="detail-tab" :class="{ active: tab === 'attachments' }" @click="tab = 'attachments'">
+            Attachments
+            <span class="tab-count">{{ $attachmentCount }}</span>
+        </button>
+        <button class="detail-tab" :class="{ active: tab === 'comments' }" @click="tab = 'comments'">Comments</button>
+        <button class="detail-tab" :class="{ active: tab === 'history' }" @click="tab = 'history'">Pipeline History</button>
+    </div>
+
+    <section x-show="tab === 'overview'">
+        <div class="detail-grid">
             <div>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                    <h1 class="detail-title">{{ $task->task_name }}</h1>
-                    <span class="status-pill">{{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</span>
-                </div>
-                <div class="detail-id">{{ $task->task_id }} · {{ ucwords(str_replace('_',' ',$task->vertical)) }}</div>
-            </div>
-
-            <div>
-                @if($nextStatus)
-                    <button class="primary-action" wire:click="moveToNextStatus" wire:loading.attr="disabled">
-                        Move to {{ $statuses[$nextStatus] }}
-                    </button>
-                @else
-                    <button class="primary-action" disabled>
-                        Awaiting BD Action
-                    </button>
-                @endif
-            </div>
-        </header>
-
-        <nav class="detail-tabs">
-            <button class="detail-tab" :class="{ active: tab === 'overview' }" @click="tab='overview'">Overview</button>
-            <button class="detail-tab" :class="{ active: tab === 'comments' }" @click="tab='comments'">Comments</button>
-            <button class="detail-tab" :class="{ active: tab === 'history' }" @click="tab='history'">Pipeline History</button>
-        </nav>
-
-        <main class="detail-content">
-            <section x-show="tab === 'overview'">
-                <div class="overview-layout">
-                    <div>
-                        <div class="detail-card">
-                            <div class="detail-card-title">Task Details</div>
-                            <div class="data-grid">
-                                <div class="data-item"><label>Client / Agency</label><div>{{ ucfirst($task->party_type) }} — {{ $task->party_name }}</div></div>
-                                <div class="data-item"><label>Contact Person Name</label><div>{{ $task->contact_person }}</div></div>
-                                <div class="data-item"><label>Mobile Number</label><div>{{ $task->mobile_number }}</div></div>
-                                <div class="data-item"><label>Task Nature</label><div>{{ ucwords(str_replace('_',' ',$task->task_nature)) }}</div></div>
-                                <div class="data-item"><label>Priority</label><div>{{ ucfirst($task->priority) }}</div></div>
-                                <div class="data-item"><label>Due Date</label><div>{{ \Illuminate\Support\Carbon::parse($task->due_at)->format('d M Y, h:i A') }}</div></div>
-                                <div class="data-item"><label>Assigned By</label><div>{{ $task->assigner?->name ?? 'BD' }}</div></div>
-                                <div class="data-item"><label>Assigned At</label><div>{{ \Illuminate\Support\Carbon::parse($task->assigned_at)->format('d M Y, h:i A') }}</div></div>
-                            </div>
-                        </div>
-
-                        <div class="detail-card">
-                            <div class="detail-card-title">Requirement Details</div>
-                            <div class="requirement-list">
-                                @forelse(($task->requirements ?? []) as $key => $value)
-                                    <div class="requirement-row">
-                                        <div class="requirement-key">{{ ucwords(str_replace('_',' ',$key)) }}</div>
-                                        <div>
-                                            @if(is_array($value))
-                                                @if(isset($value['square_feet']))
-                                                    {{ $value['width'] }} × {{ $value['height'] }} feet = {{ $value['square_feet'] }} sq.ft
-                                                @else
-                                                    @foreach($value as $item)
-                                                        @if(is_string($item) && str_contains($item, '/'))
-                                                            <div><a class="file-link" href="{{ Storage::disk('spaces')->url($item) }}" target="_blank" rel="noopener">View {{ basename($item) }}</a></div>
-                                                        @else
-                                                            <div>{{ is_scalar($item) ? $item : json_encode($item) }}</div>
-                                                        @endif
-                                                    @endforeach
-                                                @endif
-                                            @elseif(is_string($value) && str_contains($value, '/'))
-                                                <a class="file-link" href="{{ Storage::disk('spaces')->url($value) }}" target="_blank" rel="noopener">View {{ basename($value) }}</a>
-                                            @else
-                                                {{ $value }}
-                                            @endif
-                                        </div>
-                                    </div>
-                                @empty
-                                    <div class="muted">No requirement data is available.</div>
-                                @endforelse
-                            </div>
-                        </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Task Information</div>
                     </div>
 
-                    <aside>
-                        <div class="detail-card">
-                            <div class="detail-card-title">Current Stage</div>
-                            <span class="status-pill">{{ $statuses[$task->status] ?? $task->status }}</span>
-                            <div class="muted" style="margin-top:12px;">Updated {{ $task->updated_at->diffForHumans() }}</div>
+                    <div class="panel-body">
+                        <div class="info-grid">
+                            @foreach([
+                                'Client / Agency' => ucfirst($task->party_type).' · '.$task->party_name,
+                                'Contact Person' => $task->contact_person,
+                                'Mobile Number' => $task->mobile_number,
+                                'Vertical' => ucwords(str_replace('_', ' ', $task->vertical)),
+                                'Task Nature' => ucwords(str_replace('_', ' ', $task->task_nature)),
+                                'Priority' => ucfirst($task->priority),
+                                'Due Date' => \Illuminate\Support\Carbon::parse($task->due_at)->format('d M Y, h:i A'),
+                                'Assigned By' => $task->assigner?->name ?? 'BD',
+                                'Assigned At' => \Illuminate\Support\Carbon::parse($task->assigned_at)->format('d M Y, h:i A'),
+                                'Total Creatives' => $task->total_creatives,
+                            ] as $key => $value)
+                                <div class="info-item">
+                                    <span>{{ $key }}</span>
+                                    <strong>{{ $value }}</strong>
+                                </div>
+                            @endforeach
                         </div>
-
-                        <div class="detail-card">
-                            <div class="detail-card-title">Quick Actions</div>
-                            @if($nextStatus)
-                                <button class="primary-action" style="width:100%;" wire:click="moveToNextStatus" wire:loading.attr="disabled">
-                                    Move to Next Stage
-                                </button>
-                            @endif
-                            <button style="width:100%;margin-top:10px;border:1px solid var(--adinn-border);border-radius:11px;background:#fff;padding:11px;font-weight:800;cursor:pointer;"
-                                    @click="tab='comments'">
-                                Add Comment
-                            </button>
-                        </div>
-
-                        <div class="detail-card">
-                            <div class="detail-card-title">Summary</div>
-                            <div class="data-item"><label>Total Creatives</label><div>{{ $task->total_creatives }}</div></div>
-                            <div class="data-item" style="margin-top:14px;"><label>Allocated to Me</label><div>{{ $task->total_creatives }}</div></div>
-                            <div class="data-item" style="margin-top:14px;"><label>Last Updated</label><div>{{ $task->updated_at->diffForHumans() }}</div></div>
-                        </div>
-                    </aside>
+                    </div>
                 </div>
-            </section>
 
-            <section x-show="tab === 'comments'" style="display:none;">
+                <div class="panel" style="margin-top:14px">
+                    <div class="panel-header">
+                        <div class="panel-title">Requirement Details</div>
+                    </div>
+
+                    <div class="panel-body">
+                        <div class="requirement-list">
+                            @forelse(($task->requirements ?? []) as $key => $value)
+                                <div class="requirement-row">
+                                    <div class="requirement-key">{{ ucwords(str_replace('_', ' ', $key)) }}</div>
+
+                                    <div>
+                                        @if(is_array($value))
+                                            @if(isset($value['square_feet']))
+                                                {{ $value['width'] ?? '' }} × {{ $value['height'] ?? '' }} feet = {{ $value['square_feet'] }} sq.ft
+                                            @else
+                                                @foreach($value as $item)
+                                                    @if(is_string($item) && str_contains($item, '/') && !filter_var($item, FILTER_VALIDATE_URL))
+                                                        <div><a class="file-link" href="{{ Storage::disk('spaces')->url($item) }}" target="_blank" rel="noopener">{{ basename($item) }}</a></div>
+                                                    @else
+                                                        <div>{{ is_scalar($item) ? $item : json_encode($item) }}</div>
+                                                    @endif
+                                                @endforeach
+                                            @endif
+                                        @elseif(is_string($value) && str_contains($value, '/') && !filter_var($value, FILTER_VALIDATE_URL))
+                                            <a class="file-link" href="{{ Storage::disk('spaces')->url($value) }}" target="_blank" rel="noopener">{{ basename($value) }}</a>
+                                        @elseif(is_string($value) && filter_var($value, FILTER_VALIDATE_URL))
+                                            <a class="file-link" href="{{ $value }}" target="_blank" rel="noopener">{{ $value }}</a>
+                                        @else
+                                            {{ $value }}
+                                        @endif
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="empty-state">No requirement data available.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <aside>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Current Stage</div>
+                    </div>
+
+                    <div class="panel-body">
+                        <span class="badge badge-red">{{ $statuses[$task->status] ?? $task->status }}</span>
+
+                        <div class="activity-item" style="margin-top:12px">
+                            <strong>Last Updated</strong>
+                            <p>{{ $task->updated_at->diffForHumans() }}</p>
+                        </div>
+
+                        <div class="activity-item" style="margin-top:8px">
+                            <strong>Attachments</strong>
+                            <p>{{ $attachmentCount }} file{{ $attachmentCount === 1 ? '' : 's' }} available across requirements and comments.</p>
+                        </div>
+
+                        @if($nextStatus)
+                            <button
+                                class="btn btn-primary"
+                                style="width:100%;margin-top:10px"
+                                wire:click="moveToNextStatus"
+                                wire:loading.attr="disabled"
+                            >
+                                Move to Next Stage
+                            </button>
+                        @endif
+
+                        <button class="btn btn-secondary" style="width:100%;margin-top:8px" @click="tab = 'attachments'">View Attachments</button>
+                        <button class="btn btn-secondary" style="width:100%;margin-top:8px" @click="tab = 'comments'">Add Comment</button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </section>
+
+    <section x-show="tab === 'attachments'" style="display:none">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Attachment Library</div>
+                    <div class="muted" style="margin-top:3px">All files connected to this task, organized by where they came from.</div>
+                </div>
+                <span class="badge badge-red">{{ $attachmentCount }} Files</span>
+            </div>
+
+            <div class="panel-body">
+                <div class="attachment-summary">
+                    <div class="attachment-stat">
+                        <span>Total Files</span>
+                        <strong>{{ $attachmentCount }}</strong>
+                    </div>
+                    <div class="attachment-stat">
+                        <span>Requirement Files</span>
+                        <strong>{{ $requirementAttachmentCount }}</strong>
+                    </div>
+                    <div class="attachment-stat">
+                        <span>Comment Files</span>
+                        <strong>{{ $commentAttachmentCount }}</strong>
+                    </div>
+                </div>
+
+                <div class="attachment-section">
+                    <div class="attachment-section-head">
+                        <div>
+                            <h3>Requirement Attachments</h3>
+                            <p>Files originally provided with the BD task requirement.</p>
+                        </div>
+                        <span class="badge badge-dark">{{ $requirementAttachmentCount }}</span>
+                    </div>
+
+                    @forelse($requirementAttachmentGroups as $group)
+                        <div class="attachment-group">
+                            <div class="attachment-group-title">
+                                <span>{{ $group['label'] }}</span>
+                                <span class="attachment-group-meta">{{ count($group['files']) }} file{{ count($group['files']) === 1 ? '' : 's' }}</span>
+                            </div>
+
+                            <div class="attachment-files">
+                                @foreach($group['files'] as $file)
+                                    <div class="attachment-card">
+                                        <div class="attachment-type">{{ $file['extension'] }}</div>
+                                        <div class="attachment-copy">
+                                            <span class="attachment-name" title="{{ $file['name'] }}">{{ $file['name'] }}</span>
+                                            <span class="attachment-meta">BD requirement · {{ $group['label'] }}</span>
+                                        </div>
+                                        <a class="attachment-open" href="{{ $file['url'] }}" target="_blank" rel="noopener">Open</a>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @empty
+                        <div class="empty-state" style="padding:28px 20px">No requirement attachments were uploaded for this task.</div>
+                    @endforelse
+                </div>
+
+                <div class="attachment-section" style="margin-top:22px">
+                    <div class="attachment-section-head">
+                        <div>
+                            <h3>Comment Attachments</h3>
+                            <p>Files added during Designer comments and task discussions.</p>
+                        </div>
+                        <span class="badge badge-dark">{{ $commentAttachmentCount }}</span>
+                    </div>
+
+                    @php $commentsWithAttachments = $comments->filter(fn($comment) => $comment->attachments->isNotEmpty()); @endphp
+
+                    @forelse($commentsWithAttachments as $item)
+                        <div class="attachment-group">
+                            <div class="attachment-group-title">
+                                <div>
+                                    <span>{{ $item->user?->name ?? 'User' }}</span>
+                                    <div class="attachment-group-meta" style="margin-top:3px">
+                                        {{ $statuses[$item->status_at_comment] ?? $item->status_at_comment }} · {{ $item->created_at->format('d M Y, h:i A') }}
+                                    </div>
+                                </div>
+                                <span class="attachment-group-meta">{{ $item->attachments->count() }} file{{ $item->attachments->count() === 1 ? '' : 's' }}</span>
+                            </div>
+
+                            <div class="attachment-files">
+                                @foreach($item->attachments as $attachment)
+                                    @php
+                                        $extension = strtoupper(pathinfo($attachment->original_name, PATHINFO_EXTENSION) ?: 'FILE');
+                                        $size = $attachment->size >= 1048576
+                                            ? number_format($attachment->size / 1048576, 1).' MB'
+                                            : number_format(max($attachment->size, 1) / 1024, 1).' KB';
+                                    @endphp
+
+                                    <div class="attachment-card">
+                                        <div class="attachment-type">{{ $extension }}</div>
+                                        <div class="attachment-copy">
+                                            <span class="attachment-name" title="{{ $attachment->original_name }}">{{ $attachment->original_name }}</span>
+                                            <span class="attachment-meta">{{ $size }} · {{ $attachment->mime_type ?: 'Attachment' }}</span>
+                                        </div>
+                                        <a class="attachment-open" href="{{ $attachment->url }}" target="_blank" rel="noopener">Open</a>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @empty
+                        <div class="empty-state" style="padding:28px 20px">No files have been added through comments yet.</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section x-show="tab === 'comments'" style="display:none">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Comments & Attachments</div>
+            </div>
+
+            <div class="panel-body">
                 <div class="comment-box">
-                    <div class="detail-card-title">Add a Comment · {{ $statuses[$task->status] ?? $task->status }}</div>
-                    <textarea class="comment-textarea" wire:model="comment" placeholder="Type your comment here..."></textarea>
+                    <label class="label">Add comment at {{ $statuses[$task->status] ?? $task->status }}</label>
+                    <textarea class="comment-textarea" wire:model="comment" placeholder="Type your update, clarification or design note..."></textarea>
+
+                    @error('comment')
+                        <div class="muted" style="color:#b4232f;margin-top:6px">{{ $message }}</div>
+                    @enderror
 
                     <div class="comment-actions">
-                        <input type="file" wire:model="attachments" multiple>
-                        <button class="primary-action" wire:click="addComment" wire:loading.attr="disabled">Add Comment</button>
-                    </div>
+                        <div>
+                            <input type="file" wire:model="attachments" multiple>
+                            <div class="muted" style="margin-top:4px">Up to 10 files, maximum 100 MB each.</div>
+                            <div class="muted" wire:loading wire:target="attachments">Preparing attachment...</div>
+                            @error('attachments.*')
+                                <div class="muted" style="color:#b4232f">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-                    <div class="muted" wire:loading wire:target="attachments">Preparing attachment...</div>
+                        <button class="btn btn-primary" wire:click="addComment" wire:loading.attr="disabled">Add Comment</button>
+                    </div>
                 </div>
 
-                <div style="margin-top:20px;">
-                    <div class="detail-card-title">Comments History</div>
+                <div style="margin-top:14px">
                     @forelse($comments as $item)
                         <article class="comment-item">
-                            <div style="display:flex;justify-content:space-between;gap:12px;">
-                                <strong>{{ $item->user?->name ?? 'User' }}</strong>
-                                <span class="status-pill">{{ $statuses[$item->status_at_comment] ?? $item->status_at_comment }}</span>
+                            <div style="display:flex;justify-content:space-between;gap:10px">
+                                <strong style="font-size:11px">{{ $item->user?->name ?? 'User' }}</strong>
+                                <span class="badge badge-dark">{{ $statuses[$item->status_at_comment] ?? $item->status_at_comment }}</span>
                             </div>
-                            <p style="margin:12px 0 0;white-space:pre-wrap;">{{ $item->comment }}</p>
+
+                            <p style="font-size:11px;white-space:pre-wrap">{{ $item->comment }}</p>
 
                             @if($item->attachments->isNotEmpty())
-                                <div style="display:grid;gap:7px;margin-top:12px;">
+                                <div style="display:grid;gap:5px">
                                     @foreach($item->attachments as $attachment)
-                                        <a class="file-link" href="{{ $attachment->url }}" target="_blank" rel="noopener">
-                                            {{ $attachment->original_name }}
-                                        </a>
+                                        <a class="file-link" href="{{ $attachment->url }}" target="_blank" rel="noopener">{{ $attachment->original_name }}</a>
                                     @endforeach
                                 </div>
                             @endif
 
-                            <div class="muted" style="margin-top:12px;">{{ $item->created_at->format('d M Y, h:i A') }}</div>
+                            <div class="muted" style="margin-top:8px">{{ $item->created_at->format('d M Y, h:i A') }}</div>
                         </article>
                     @empty
-                        <div class="comment-item muted">No comments have been added yet.</div>
+                        <div class="empty-state">No comments have been added yet.</div>
                     @endforelse
                 </div>
-            </section>
+            </div>
+        </div>
+    </section>
 
-            <section x-show="tab === 'history'" style="display:none;">
-                <div class="detail-card-title">Pipeline History · {{ $history->count() }} events</div>
+    <section x-show="tab === 'history'" style="display:none">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Pipeline History · {{ $history->count() }} Events</div>
+            </div>
 
-                @forelse($history as $event)
-                    <article class="history-item history-line">
-                        <strong>
-                            {{ $event->from_status ? ($statuses[$event->from_status] ?? $event->from_status).' → ' : '' }}
-                            {{ $statuses[$event->to_status] ?? $event->to_status }}
-                        </strong>
-                        <div class="muted" style="margin-top:7px;">
-                            By {{ $event->changedBy?->name ?? 'User' }}
-                            · {{ $event->created_at->format('d M Y, h:i A') }}
-                            · {{ ucwords(str_replace('_',' ',$event->change_source)) }}
+            <div class="panel-body">
+                <div class="activity-list">
+                    @forelse($history as $event)
+                        <div class="activity-item">
+                            <strong>
+                                {{ $event->from_status ? ($statuses[$event->from_status] ?? $event->from_status).' → ' : '' }}
+                                {{ $statuses[$event->to_status] ?? $event->to_status }}
+                            </strong>
+                            <p>
+                                By {{ $event->changedBy?->name ?? 'User' }} ·
+                                {{ $event->created_at->format('d M Y, h:i A') }} ·
+                                {{ ucwords(str_replace('_', ' ', $event->change_source)) }}
+                            </p>
                         </div>
-                    </article>
-                @empty
-                    <div class="history-item muted">No pipeline activity has been recorded yet.</div>
-                @endforelse
-            </section>
-        </main>
-    </div>
+                    @empty
+                        <div class="empty-state">No pipeline activity has been recorded yet.</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <div class="toast" x-show="toast" x-transition x-text="toast" style="display:none;"></div>
+    <div class="toast" x-show="toast" x-transition x-text="toast" style="display:none"></div>
 </div>
