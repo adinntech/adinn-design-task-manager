@@ -1,1 +1,77 @@
-@extends('layouts.app') @section('title','Login') @section('content')<div class="max-w-md mx-auto mt-12 bg-white border rounded-2xl shadow-sm p-7"><h1 class="text-2xl font-bold">Sign in</h1><p class="text-slate-500 mt-1 mb-6">Use your BD account to create design tasks.</p><form method="POST" action="{{ route('login.attempt') }}" class="space-y-4">@csrf<div><label class="label">Email</label><input class="field" type="email" name="email" value="{{ old('email','bd@adinn.com') }}" required>@error('email')<p class="error">{{ $message }}</p>@enderror</div><div><label class="label">Password</label><input class="field" type="password" name="password" value="Password@123" required></div><label class="flex gap-2 items-center text-sm"><input type="checkbox" name="remember" value="1"> Remember me</label><button class="w-full rounded-xl bg-slate-950 text-white py-3 font-semibold hover:bg-slate-800">Login</button></form><div class="mt-5 p-3 rounded-lg bg-slate-100 text-xs text-slate-600">Demo: bd@adinn.com / Password@123</div></div>@endsection
+@extends('layouts.guest')
+
+@section('title','Sign in - Adinn Design Task Manager')
+
+@section('content')
+<div class="auth-page">
+    <section class="auth-visual">
+        <div class="auth-kicker">Adinn Design Operations</div>
+
+        <div>
+            <h2 class="auth-heading">One premium workspace for every design task.</h2>
+            <p class="auth-copy">
+                Business Development assigns work, Designers manage production,
+                and every status, file and comment remains clearly traceable.
+            </p>
+        </div>
+
+        <div class="auth-features">
+            <div class="auth-feature"><span class="auth-dot"></span>Role-based access for BD and Designers</div>
+            <div class="auth-feature"><span class="auth-dot"></span>Live task pipeline with clear ownership</div>
+            <div class="auth-feature"><span class="auth-dot"></span>Organized cloud files and activity history</div>
+        </div>
+    </section>
+
+    <section class="auth-form-side">
+        <div class="auth-card">
+            <h1>Welcome back</h1>
+            <p>Sign in with your authorized Adinn account.</p>
+
+            @if($errors->any())
+                <div class="flash flash-error">
+                    {{ $errors->first() }}
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('login.store') }}">
+                @csrf
+
+                <div class="auth-group">
+                    <label class="label" for="email">Email address</label>
+                    <input class="premium-input"
+                           id="email"
+                           name="email"
+                           type="email"
+                           value="{{ old('email') }}"
+                           autocomplete="email"
+                           required
+                           autofocus>
+                </div>
+
+                <div class="auth-group">
+                    <label class="label" for="password">Password</label>
+                    <input class="premium-input"
+                           id="password"
+                           name="password"
+                           type="password"
+                           autocomplete="current-password"
+                           required>
+                </div>
+
+                <label style="display:flex;align-items:center;gap:9px;color:#475467;font-size:13px;">
+                    <input type="checkbox" name="remember" value="1">
+                    Keep me signed in
+                </label>
+
+                <button class="btn btn-primary auth-submit" type="submit">
+                    Sign in securely
+                </button>
+            </form>
+
+            <div class="auth-help">
+                Your account will automatically open the correct BD or Designer workspace.
+            </div>
+        </div>
+    </section>
+</div>
+@endsection

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -64,7 +65,7 @@ class TaskController extends Controller
             'party_type' => ['required', Rule::in(['client', 'agency'])],
             'party_name' => ['required', 'string', 'max:180'],
             'contact_person' => ['required', 'string', 'max:120'],
-            'mobile_number' => ['required', 'regex:/^[0-9+()\-\s]{7,20}$/'],
+            'mobile_number' => ['required', 'digits:10'],
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'due_at' => ['required', 'date', 'after:now'],
             'designer_id' => [
@@ -84,19 +85,13 @@ class TaskController extends Controller
 
         $requirements = collect($data)
             ->except($baseKeys)
-            ->map(function (mixed $value, string $key): mixed {
+            ->reject(function (mixed $value): bool {
                 if ($value instanceof UploadedFile) {
-                    return $value->store("tasks/{$key}", 'public');
+                    return true;
                 }
 
-                if (is_array($value) && collect($value)->every(fn ($item) => $item instanceof UploadedFile)) {
-                    return collect($value)
-                        ->map(fn (UploadedFile $file) => $file->store("tasks/{$key}", 'public'))
-                        ->values()
-                        ->all();
-                }
-
-                return $value;
+                return is_array($value)
+                    && collect($value)->contains(fn ($item) => $item instanceof UploadedFile);
             })
             ->all();
 
@@ -112,7 +107,7 @@ class TaskController extends Controller
             ];
         }
 
-        $task = DB::transaction(function () use ($data, $requirements): DesignTask {
+        $task = DB::transaction(function () use ($data): DesignTask {
             $task = DesignTask::create([
                 'task_id' => 'PENDING-'.Str::uuid(),
                 'assigned_at' => now(),
@@ -129,13 +124,65 @@ class TaskController extends Controller
                 'designer_id' => $data['designer_id'],
                 'total_creatives' => $data['total_creatives'],
                 'status' => 'assigned_tasks',
-                'requirements' => $requirements,
+                'requirements' => [],
             ]);
 
-            $task->update(['task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $task->id)]);
+            $task->update([
+                'task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $task->id),
+            ]);
 
-            return $task;
+            return $task->fresh();
         });
+
+        $rootFolder = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
+
+        $taskNameSlug = Str::slug($task->task_name);
+        $taskNatureSlug = Str::slug(str_replace('_', '-', $task->task_nature));
+        $verticalSlug = Str::slug(str_replace('_', '-', $task->vertical));
+
+        $taskFolder = implode('/', [
+            $rootFolder,
+            now()->format('Y'),
+            $verticalSlug,
+            "{$task->task_id}_{$taskNameSlug}",
+            $taskNatureSlug,
+        ]);
+
+        try {
+            foreach (self::SINGLE_FILES as $field) {
+                if ($request->hasFile($field)) {
+                    $requirements[$field] = $this->storeSingleFile(
+                        file: $request->file($field),
+                        directory: "{$taskFolder}/{$field}",
+                        taskId: $task->task_id,
+                        fieldName: $field
+                    );
+                }
+            }
+
+            foreach (self::ARRAY_FILES as $field) {
+                if ($request->hasFile($field)) {
+                    $requirements[$field] = $this->storeMultipleFiles(
+                        files: $request->file($field),
+                        directory: "{$taskFolder}/{$field}",
+                        taskId: $task->task_id,
+                        fieldName: $field
+                    );
+                }
+            }
+
+            $task->update(['requirements' => $requirements]);
+        } catch (\Throwable $exception) {
+            Storage::disk('spaces')->deleteDirectory($taskFolder);
+            $task->delete();
+            report($exception);
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'upload' => 'The task could not be created because one or more files could not be saved. Please try again.',
+                ]);
+        }
 
         return redirect()
             ->route('bd.tasks.show', $task)
@@ -149,6 +196,99 @@ class TaskController extends Controller
         return view('bd.tasks.show', compact('task'));
     }
 
+
+    private function storeSingleFile(
+        UploadedFile $file,
+        string $directory,
+        string $taskId,
+        string $fieldName,
+        int $sequence = 1
+    ): string {
+        if (! $file->isValid()) {
+            throw new \RuntimeException(
+                "The upload {$file->getClientOriginalName()} is not valid."
+            );
+        }
+
+        $originalBaseName = pathinfo(
+            $file->getClientOriginalName(),
+            PATHINFO_FILENAME
+        );
+
+        $cleanOriginalName = Str::slug($originalBaseName);
+
+        if ($cleanOriginalName === '') {
+            $cleanOriginalName = 'uploaded-file';
+        }
+
+        $cleanFieldName = Str::slug(
+            str_replace('_', '-', $fieldName)
+        );
+
+        $extension = strtolower(
+            $file->getClientOriginalExtension()
+        );
+
+        if ($extension === '') {
+            $extension = $file->extension() ?: 'bin';
+        }
+
+        $timestamp = now()->format('Ymd-His-v');
+
+        $fileName = sprintf(
+            '%s__%s__%s__%s__%02d.%s',
+            $taskId,
+            $cleanFieldName,
+            $cleanOriginalName,
+            $timestamp,
+            $sequence,
+            $extension
+        );
+
+        $path = $file->storePubliclyAs(
+            $directory,
+            $fileName,
+            'spaces'
+        );
+
+        if ($path === false) {
+            throw new \RuntimeException(
+                "The upload {$file->getClientOriginalName()} could not be saved."
+            );
+        }
+
+        return $path;
+    }
+
+    private function storeMultipleFiles(
+        array|UploadedFile|null $files,
+        string $directory,
+        string $taskId,
+        string $fieldName
+    ): array {
+        if ($files instanceof UploadedFile) {
+            $files = [$files];
+        }
+
+        $paths = [];
+
+        foreach ($files ?? [] as $index => $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $paths[] = $this->storeSingleFile(
+                file: $file,
+                directory: $directory,
+                taskId: $taskId,
+                fieldName: $fieldName,
+                sequence: $index + 1
+            );
+        }
+
+        return $paths;
+    }
+
     private function requirementRules(Request $request): array
     {
         $vertical = $request->input('vertical');
@@ -158,7 +298,7 @@ class TaskController extends Controller
             'description' => ['nullable', 'string', 'max:10000'],
             'brand_name' => ['nullable', 'string', 'max:180'],
             'creative_contact_person' => ['nullable', 'string', 'max:120'],
-            'creative_mobile_number' => ['nullable', 'regex:/^[0-9+()\-\s]{7,20}$/'],
+            'creative_mobile_number' => ['nullable', 'digits:10'],
             'address' => ['nullable', 'string', 'max:3000'],
             'company_details_other' => ['nullable', 'string', 'max:5000'],
             'brand_details' => ['nullable', 'string', 'max:5000'],
