@@ -16,4 +16,5 @@ Route::middleware(['auth', 'role:bd'])
 require __DIR__.'/auth.php';
 require __DIR__.'/admin.php';
 require __DIR__.'/designer.php';
+require __DIR__.'/designer-head.php';
 require __DIR__.'/premium-ui.php';

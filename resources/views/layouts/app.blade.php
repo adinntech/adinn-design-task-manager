@@ -48,6 +48,8 @@
                 <a href="{{ route('bd.tasks.create') }}" class="{{ request()->routeIs('bd.tasks.create') ? 'active' : '' }}"><span>＋</span>Create Task</a>
             @elseif($role === 'designer')
                 <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.*') ? 'active' : '' }}"><span>▦</span>My Tasks</a>
+            @elseif($role === 'designer_head')
+                <a href="{{ route('designer-head.dashboard') }}" class="{{ request()->routeIs('designer-head.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
             @endif
         </nav>
 

@@ -68,6 +68,7 @@ class AuthenticatedSessionController extends Controller
             'admin' => redirect()->route('admin.dashboard'),
             'bd' => redirect()->route('bd.tasks.index'),
             'designer' => redirect()->route('designer.tasks.index'),
+            'designer_head' => redirect()->route('designer-head.dashboard'),
             default => abort(403, 'No workspace is configured for this role.'),
         };
     }

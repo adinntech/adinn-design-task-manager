@@ -2,6 +2,7 @@
     x-data="{ tab: 'overview', toast: '' }"
     x-on:task-status-changed.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
     x-on:comment-added.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
+    x-on:request-created.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600); tab = 'requests'"
 >
     <style>
         .detail-tabs{display:flex;gap:5px;padding:5px;background:#f5f6f8;border-radius:11px;width:max-content;margin-bottom:14px;max-width:100%;overflow:auto}
@@ -26,6 +27,18 @@
         <div class="page-actions">
             <a class="btn btn-secondary" href="{{ route('designer.tasks.index') }}">Back to My Tasks</a>
 
+            @if(in_array('decline', $allowedRequestTypes, true))
+                <button class="btn btn-danger" wire:click="$dispatch('open-request-modal', { type: 'decline' })">Decline</button>
+            @endif
+
+            @if(in_array('split', $allowedRequestTypes, true))
+                <button class="btn btn-secondary" wire:click="$dispatch('open-request-modal', { type: 'split' })">Request Split</button>
+            @endif
+
+            @if(in_array('swap', $allowedRequestTypes, true))
+                <button class="btn btn-secondary" wire:click="$dispatch('open-request-modal', { type: 'swap' })">Request Swap</button>
+            @endif
+
             @if($nextStatus)
                 <button
                     class="btn btn-primary"
@@ -45,6 +58,10 @@
             <span class="tab-count">{{ $attachmentCount }}</span>
         </button>
         <button class="detail-tab" :class="{ active: tab === 'comments' }" @click="tab = 'comments'">Comments</button>
+        <button class="detail-tab" :class="{ active: tab === 'requests' }" @click="tab = 'requests'">
+            Requests
+            <span class="tab-count">{{ $requests->count() }}</span>
+        </button>
         <button class="detail-tab" :class="{ active: tab === 'history' }" @click="tab = 'history'">Pipeline History</button>
     </div>
 
@@ -326,6 +343,41 @@
         </div>
     </section>
 
+    <section x-show="tab === 'requests'" style="display:none">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Requests · {{ $requests->count() }}</div>
+            </div>
+
+            <div class="panel-body">
+                <div class="activity-list">
+                    @forelse($requests as $item)
+                        @php
+                            $statusBadge = match($item->overall_status) {
+                                'approved' => 'badge-success',
+                                'rejected' => 'badge-danger',
+                                default => 'badge-warning',
+                            };
+                        @endphp
+                        <div class="activity-item">
+                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                                <strong>{{ ucfirst($item->request_type) }} Request</strong>
+                                <span class="badge {{ $statusBadge }}">{{ ucwords(str_replace('_', ' ', $item->overall_status)) }}</span>
+                            </div>
+                            <p>
+                                By {{ $item->requester?->name ?? 'Designer' }} ·
+                                {{ $item->created_at->format('d M Y, h:i A') }}
+                            </p>
+                            <p style="margin-top:6px;white-space:pre-wrap">{{ $item->reason }}</p>
+                        </div>
+                    @empty
+                        <div class="empty-state">No requests have been raised for this task yet.</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section x-show="tab === 'history'" style="display:none">
         <div class="panel">
             <div class="panel-header">
@@ -355,4 +407,6 @@
     </section>
 
     <div class="toast" x-show="toast" x-transition x-text="toast" style="display:none"></div>
+
+    <livewire:designer.task-request-modal :task="$task" :key="'task-request-modal-'.$task->id" />
 </div>

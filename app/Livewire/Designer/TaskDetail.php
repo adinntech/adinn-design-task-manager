@@ -5,7 +5,9 @@ namespace App\Livewire\Designer;
 use App\Models\DesignTask;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskCommentAttachment;
+use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use App\Services\DesignTaskRequestService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +24,8 @@ class TaskDetail extends Component
     public DesignTask $task;
     public string $comment = '';
     public array $attachments = [];
+
+    protected $listeners = ['request-created' => '$refresh'];
 
     public function mount(DesignTask $task): void
     {
@@ -144,6 +148,13 @@ class TaskDetail extends Component
                 ->where('design_task_id', $this->task->id)
                 ->latest()
                 ->get(),
+            'requests' => DesignTaskRequest::query()
+                ->with('requester:id,name')
+                ->where('design_task_id', $this->task->id)
+                ->latest()
+                ->get(),
+            'allowedRequestTypes' => app(DesignTaskRequestService::class)
+                ->allowedTypes($this->task->status),
             'requirementAttachmentGroups' => $requirementAttachmentGroups,
             'requirementAttachmentCount' => $requirementAttachmentCount,
             'commentAttachmentCount' => $commentAttachmentCount,
