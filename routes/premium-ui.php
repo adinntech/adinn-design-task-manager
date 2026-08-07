@@ -9,3 +9,5 @@ Route::middleware(['auth', 'role:bd'])
     ->group(function () {
         Route::get('/tasks', [AssignedTaskController::class, 'index'])->name('tasks.index');
     });
+
+    

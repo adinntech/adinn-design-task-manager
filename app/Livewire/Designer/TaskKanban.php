@@ -51,7 +51,7 @@ class TaskKanban extends Component
             })
             ->when($this->vertical !== '', fn ($query) => $query->where('vertical', $this->vertical))
             ->when($this->priority !== '', fn ($query) => $query->where('priority', $this->priority))
-            ->orderByRaw("FIELD(priority, 'urgent', 'high', 'medium', 'low')")
+            ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
             ->orderBy('due_at')
             ->get();
     }
