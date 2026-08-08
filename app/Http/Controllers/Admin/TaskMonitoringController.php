@@ -8,6 +8,7 @@ use App\Models\DesignTaskComment;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use App\Services\DesignTaskStatusService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -59,4 +60,16 @@ class TaskMonitoringController extends Controller
 
         return view('admin.tasks.show', compact('task', 'history', 'comments', 'statuses'));
     }
+    public function destroy(DesignTask $task): RedirectResponse
+    {
+        $taskId = $task->task_id;
+        $taskName = $task->task_name;
+
+        $task->delete();
+
+        return redirect()
+            ->route('admin.tasks.index')
+            ->with('success', "Task {$taskId} - {$taskName} deleted successfully.");
+    }
+
 }

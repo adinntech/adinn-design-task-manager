@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use App\Services\DesignTaskStatusService;
-use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -57,12 +57,40 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
+        $pendingRequests = DesignTaskRequest::query()
+            ->pending()
+            ->with([
+                'task:id,task_id,task_name,vertical,status,total_creatives,designer_id',
+                'requester:id,name',
+                'targetDesigner:id,name',
+                'approvedDesigner:id,name',
+            ])
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        $approvalDesigners = User::query()
+            ->where('role', 'designer')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $requestStats = [
+            'pending' => DesignTaskRequest::query()->pending()->count(),
+            'decline' => DesignTaskRequest::query()->pending()->where('request_type', 'decline')->count(),
+            'split' => DesignTaskRequest::query()->pending()->where('request_type', 'split')->count(),
+            'swap' => DesignTaskRequest::query()->pending()->where('request_type', 'swap')->count(),
+        ];
+
         return view('admin.dashboard', compact(
             'stats',
             'pipeline',
             'recentTasks',
             'designerWorkload',
-            'recentActivity'
+            'recentActivity',
+            'pendingRequests',
+            'requestStats',
+            'approvalDesigners'
         ));
     }
 }

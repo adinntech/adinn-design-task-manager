@@ -5,6 +5,7 @@
     x-on:request-created.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600); tab = 'requests'"
 >
     <style>
+        .task-operation-pill{display:inline-flex;align-items:center;min-height:24px;padding:4px 10px;border-radius:999px;font-size:9px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;vertical-align:middle;white-space:nowrap}.task-operation-pill-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-operation-pill-swap{color:#175cd3;background:linear-gradient(135deg,#eff8ff,#e6f1ff);border-color:#b2ddff}
         .detail-tabs{display:flex;gap:5px;padding:5px;background:#f5f6f8;border-radius:11px;width:max-content;margin-bottom:14px;max-width:100%;overflow:auto}
         .detail-tab{border:0;background:transparent;border-radius:8px;padding:8px 12px;font-size:10px;font-weight:850;color:#697386;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center}
         .detail-tab.active{background:#fff;color:#e30613;box-shadow:0 3px 10px rgba(16,24,40,.06)}
@@ -12,15 +13,25 @@
         .comment-textarea{width:100%;min-height:115px;border:1px solid #dfe2e8;border-radius:10px;padding:11px;font:inherit;font-size:11px;resize:vertical;outline:none}
         .comment-textarea:focus{border-color:#e30613;box-shadow:0 0 0 3px rgba(227,6,19,.08)}
         .comment-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
-        .comment-item{padding:12px;border:1px solid #e7e9ef;border-radius:11px;background:#fff;margin-top:8px}
+        .comment-item{padding:12px;border:1px solid #e7e9ef;border-left:4px solid #d0d5dd;border-radius:11px;background:#fff;margin-top:8px}
+        .comment-item.role-designer{border-left-color:#2563eb}.comment-item.role-bd{border-left-color:#16a34a}.comment-item.role-designer_head{border-left-color:#7c3aed}.comment-item.role-admin{border-left-color:#e30613}
+        .role-pill{display:inline-flex;align-items:center;border-radius:999px;padding:3px 7px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+        .role-pill.role-designer{background:#eff6ff;color:#1d4ed8}.role-pill.role-bd{background:#ecfdf3;color:#15803d}.role-pill.role-designer_head{background:#f5f3ff;color:#6d28d9}.role-pill.role-admin{background:#fff1f2;color:#e30613}.role-pill.role-default{background:#f2f4f7;color:#667085}
+        .history-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid #ebe7ff;background:linear-gradient(180deg,#fbfaff 0%,#f7f5ff 100%);border-radius:12px;margin-bottom:12px}.history-header-title{font-size:13px;font-weight:900;color:#4f2db8;letter-spacing:-.01em}.history-count{display:inline-flex;align-items:center;justify-content:center;min-width:62px;padding:5px 9px;border-radius:999px;background:#efe9ff;color:#6d28d9;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.history-list{display:flex;flex-direction:column;gap:9px}.history-item{border:1px solid #e7e9ef;border-left:4px solid #d0d5dd;border-radius:12px;padding:12px 14px;background:#fff;box-shadow:0 2px 8px rgba(16,24,40,.025)}.history-item.role-designer{border-left-color:#2563eb}.history-item.role-bd{border-left-color:#e30613}.history-item.role-designer_head{border-left-color:#7c3aed}.history-item.role-admin{border-left-color:#111827}.history-event-title{font-size:12px;font-weight:900;color:#17191f;line-height:1.35}.history-meta{margin-top:5px;font-size:10px;color:#7a8494;line-height:1.55}.history-description{color:#4f5b6b;font-weight:600}.history-time{color:#98a2b3}.history-item:hover{border-color:#dfe3ea;box-shadow:0 5px 16px rgba(16,24,40,.045)}
+        .special-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.special-detail-card{border:1px solid #e7e9ef;border-radius:12px;padding:12px;background:#fff}.special-detail-card span{display:block;font-size:9px;text-transform:uppercase;color:#7c8492;font-weight:800;letter-spacing:.05em}.special-detail-card strong{display:block;margin-top:5px;font-size:12px;color:#16181d}
         .muted{color:#7c8492;font-size:10px}
         .toast{position:fixed;right:22px;bottom:22px;z-index:9999;background:#15171c;color:#fff;border-left:4px solid #e30613;padding:12px 15px;border-radius:10px;font-size:11px;box-shadow:0 15px 40px rgba(0,0,0,.2)}
-        @media(max-width:900px){.comment-actions{align-items:flex-start;flex-direction:column}}
+        @media(max-width:900px){.comment-actions{align-items:flex-start;flex-direction:column}.special-detail-grid{grid-template-columns:1fr}}
     </style>
 
     <div class="page-head">
         <div>
-            <h1>{{ $task->task_name }}</h1>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <h1 style="margin:0">{{ $task->display_task_name }}</h1>
+                @foreach($task->operation_pills as $pill)
+                    <span class="{{ $pill['class'] }}">{{ $pill['label'] }}</span>
+                @endforeach
+            </div>
             <p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? $task->status }}</p>
         </div>
 
@@ -28,15 +39,27 @@
             <a class="btn btn-secondary" href="{{ route('designer.tasks.index') }}">Back to My Tasks</a>
 
             @if(in_array('decline', $allowedRequestTypes, true))
-                <button class="btn btn-danger" wire:click="$dispatch('open-request-modal', { type: 'decline' })">Decline</button>
+                @if(in_array('decline', $pendingRequestTypes, true))
+                    <span class="badge badge-warning">Decline Pending</span>
+                @else
+                    <button class="btn btn-danger" wire:click="$dispatch('open-request-modal', { type: 'decline' })">Decline</button>
+                @endif
             @endif
 
             @if(in_array('split', $allowedRequestTypes, true))
-                <button class="btn btn-secondary" wire:click="$dispatch('open-request-modal', { type: 'split' })">Request Split</button>
+                @if(in_array('split', $pendingRequestTypes, true))
+                    <span class="badge badge-warning">Split Pending</span>
+                @else
+                    <button class="btn btn-secondary" wire:click="$dispatch('open-request-modal', { type: 'split' })">Request Split</button>
+                @endif
             @endif
 
             @if(in_array('swap', $allowedRequestTypes, true))
-                <button class="btn btn-secondary" wire:click="$dispatch('open-request-modal', { type: 'swap' })">Request Swap</button>
+                @if(in_array('swap', $pendingRequestTypes, true))
+                    <span class="badge badge-warning">Swap Pending</span>
+                @else
+                    <button class="btn btn-secondary" wire:click="$dispatch('open-request-modal', { type: 'swap' })">Request Swap</button>
+                @endif
             @endif
 
             @if($nextStatus)
@@ -62,6 +85,12 @@
             Requests
             <span class="tab-count">{{ $requests->count() }}</span>
         </button>
+        @if($splitRequests->isNotEmpty())
+            <button class="detail-tab" :class="{ active: tab === 'split-details' }" @click="tab = 'split-details'">Split Details</button>
+        @endif
+        @if($swapRequests->isNotEmpty())
+            <button class="detail-tab" :class="{ active: tab === 'swap-details' }" @click="tab = 'swap-details'">Swap Details</button>
+        @endif
         <button class="detail-tab" :class="{ active: tab === 'history' }" @click="tab = 'history'">Pipeline History</button>
     </div>
 
@@ -317,23 +346,39 @@
 
                 <div style="margin-top:14px">
                     @forelse($comments as $item)
-                        <article class="comment-item">
-                            <div style="display:flex;justify-content:space-between;gap:10px">
-                                <strong style="font-size:11px">{{ $item->user?->name ?? 'User' }}</strong>
+                        @php $commentRole = $item->user?->role ?? 'default'; @endphp
+                        <article class="comment-item role-{{ $commentRole }}">
+                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                                <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+                                    <strong style="font-size:11px">{{ $item->user?->name ?? 'User' }}</strong>
+                                    <span class="role-pill role-{{ $commentRole }}">{{ ucwords(str_replace('_', ' ', $commentRole)) }}</span>
+                                </div>
                                 <span class="badge badge-dark">{{ $statuses[$item->status_at_comment] ?? $item->status_at_comment }}</span>
                             </div>
 
-                            <p style="font-size:11px;white-space:pre-wrap">{{ $item->comment }}</p>
+                            <div style="margin-top:12px;padding:12px 14px;border-radius:12px;background:#f8fafc;border:1px solid #eef1f5">
+                                <p style="margin:0;font-size:18px;line-height:1.6;font-weight:700;color:#111827;white-space:pre-wrap;letter-spacing:-.01em">{{ $item->comment }}</p>
+                            </div>
 
                             @if($item->attachments->isNotEmpty())
-                                <div style="display:grid;gap:5px">
+                                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
                                     @foreach($item->attachments as $attachment)
-                                        <a class="file-link" href="{{ $attachment->url }}" target="_blank" rel="noopener">{{ $attachment->original_name }}</a>
+                                        <a
+                                            class="file-link"
+                                            href="{{ $attachment->url }}"
+                                            target="_blank"
+                                            rel="noopener"
+                                            style="display:inline-flex;align-items:center;gap:5px;max-width:280px;padding:5px 8px;border:1px solid #e5e7eb;border-radius:8px;background:#fff7f7;font-size:10px;line-height:1.2;font-weight:750;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                                            title="{{ $attachment->original_name }}"
+                                        >
+                                            <span style="font-size:10px">📎</span>
+                                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $attachment->original_name }}</span>
+                                        </a>
                                     @endforeach
                                 </div>
                             @endif
 
-                            <div class="muted" style="margin-top:8px">{{ $item->created_at->format('d M Y, h:i A') }}</div>
+                            <div class="muted" style="margin-top:10px;font-size:10px">{{ $item->created_at->format('d M Y, h:i A') }}</div>
                         </article>
                     @empty
                         <div class="empty-state">No comments have been added yet.</div>
@@ -358,17 +403,48 @@
                                 'rejected' => 'badge-danger',
                                 default => 'badge-warning',
                             };
+                            $decider = $item->adminActor ?: $item->designerHeadActor;
                         @endphp
                         <div class="activity-item">
                             <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
                                 <strong>{{ ucfirst($item->request_type) }} Request</strong>
-                                <span class="badge {{ $statusBadge }}">{{ ucwords(str_replace('_', ' ', $item->overall_status)) }}</span>
+                                <span class="badge {{ $statusBadge }}">{{ $item->status_label }}</span>
                             </div>
                             <p>
                                 By {{ $item->requester?->name ?? 'Designer' }} ·
                                 {{ $item->created_at->format('d M Y, h:i A') }}
                             </p>
                             <p style="margin-top:6px;white-space:pre-wrap">{{ $item->reason }}</p>
+
+                            @if($item->request_type === 'split' && !empty($item->split_details['creative_count']))
+                                <p style="margin-top:6px"><strong>Split creatives:</strong> {{ $item->split_details['creative_count'] }}</p>
+                                @if(!empty($item->split_details['details']))<p class="muted" style="margin-top:3px">{{ $item->split_details['details'] }}</p>@endif
+                            @endif
+
+                            @if($item->targetDesigner)
+                                <p style="margin-top:6px"><strong>Preferred Designer:</strong> {{ $item->targetDesigner->name }}</p>
+                            @endif
+
+                            @if($item->approvedDesigner)
+                                <p style="margin-top:6px"><strong>Approved Designer:</strong> {{ $item->approvedDesigner->name }}</p>
+                            @endif
+
+                            @if(!empty($item->attachments))
+                                <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
+                                    @foreach($item->attachments as $path)
+                                        <a class="file-link" href="{{ Storage::disk('spaces')->url($path) }}" target="_blank" rel="noopener">{{ basename($path) }}</a>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            @if(in_array($item->overall_status, ['approved','rejected'], true))
+                                <p class="muted" style="margin-top:8px">
+                                    {{ ucfirst($item->overall_status) }} by {{ $decider?->name ?? 'Approver' }}
+                                    · {{ $item->admin_action_at?->format('d M Y, h:i A') ?? $item->designer_head_action_at?->format('d M Y, h:i A') ?? '' }}
+                                </p>
+                            @else
+                                <p class="muted" style="margin-top:8px">Waiting for either Designer Head or Admin.</p>
+                            @endif
                         </div>
                     @empty
                         <div class="empty-state">No requests have been raised for this task yet.</div>
@@ -378,25 +454,97 @@
         </div>
     </section>
 
+    @if($splitRequests->isNotEmpty())
+        <section x-show="tab === 'split-details'" style="display:none">
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title">Split Details</div></div>
+                <div class="panel-body">
+                    @if($splitOriginTask)
+                        <div class="activity-item" style="margin-bottom:12px">
+                            <strong>This is a split task</strong>
+                            <p>Original task: {{ $splitOriginTask->task_id }} · {{ $splitOriginTask->task_name }}</p>
+                        </div>
+                    @endif
+                    @foreach($splitRequests as $splitRequest)
+                        @php
+                            $splitChild = $splitChildren->get($splitRequest->split_details['created_task_id'] ?? null);
+                            $splitDecider = $splitRequest->adminActor ?: $splitRequest->designerHeadActor;
+                        @endphp
+                        <div class="activity-item" style="margin-bottom:12px">
+                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                                <strong>Approved Split Request</strong>
+                                <span class="badge badge-success">Approved</span>
+                            </div>
+                            <div class="special-detail-grid" style="margin-top:10px">
+                                <div class="special-detail-card"><span>Requested By</span><strong>{{ $splitRequest->requester?->name ?? 'Designer' }}</strong></div>
+                                <div class="special-detail-card"><span>Requested Split</span><strong>{{ $splitRequest->split_details['creative_count'] ?? '—' }} creatives</strong></div>
+                                <div class="special-detail-card"><span>Preferred Designer</span><strong>{{ $splitRequest->targetDesigner?->name ?? 'No preference' }}</strong></div>
+                                <div class="special-detail-card"><span>Approved Designer</span><strong>{{ $splitRequest->approvedDesigner?->name ?? '—' }}</strong></div>
+                                <div class="special-detail-card"><span>Original Remaining</span><strong>{{ $splitRequest->split_details['original_remaining_creatives'] ?? '—' }}</strong></div>
+                                <div class="special-detail-card"><span>Created Split Task</span><strong>{{ $splitChild?->task_id ?? ($splitRequest->split_details['created_task_code'] ?? '—') }}</strong></div>
+                                <div class="special-detail-card"><span>Approved By</span><strong>{{ $splitDecider?->name ?? '—' }}</strong></div>
+                                <div class="special-detail-card"><span>Approved At</span><strong>{{ $splitRequest->admin_action_at?->format('d M Y, h:i A') ?? $splitRequest->designer_head_action_at?->format('d M Y, h:i A') ?? '—' }}</strong></div>
+                            </div>
+                            <div style="margin-top:10px"><strong>Reason</strong><p style="white-space:pre-wrap">{{ $splitRequest->reason }}</p></div>
+                            @if(!empty($splitRequest->split_details['details']))<div style="margin-top:8px"><strong>Split Notes</strong><p style="white-space:pre-wrap">{{ $splitRequest->split_details['details'] }}</p></div>@endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
+    @if($swapRequests->isNotEmpty())
+        <section x-show="tab === 'swap-details'" style="display:none">
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title">Swap Details</div></div>
+                <div class="panel-body">
+                    @foreach($swapRequests as $swapRequest)
+                        @php $swapDecider = $swapRequest->adminActor ?: $swapRequest->designerHeadActor; @endphp
+                        <div class="activity-item" style="margin-bottom:12px">
+                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                                <strong>Approved Swap Request</strong>
+                                <span class="badge badge-success">Approved</span>
+                            </div>
+                            <div class="special-detail-grid" style="margin-top:10px">
+                                <div class="special-detail-card"><span>Previous Designer</span><strong>{{ $swapRequest->requester?->name ?? '—' }}</strong></div>
+                                <div class="special-detail-card"><span>Preferred Designer</span><strong>{{ $swapRequest->targetDesigner?->name ?? '—' }}</strong></div>
+                                <div class="special-detail-card"><span>Approved Designer</span><strong>{{ $swapRequest->approvedDesigner?->name ?? '—' }}</strong></div>
+                                <div class="special-detail-card"><span>Approved By</span><strong>{{ $swapDecider?->name ?? '—' }}</strong></div>
+                                <div class="special-detail-card"><span>Approved At</span><strong>{{ $swapRequest->admin_action_at?->format('d M Y, h:i A') ?? $swapRequest->designer_head_action_at?->format('d M Y, h:i A') ?? '—' }}</strong></div>
+                                <div class="special-detail-card"><span>Current Task Designer</span><strong>{{ $task->designer?->name ?? '—' }}</strong></div>
+                            </div>
+                            <div style="margin-top:10px"><strong>Reason</strong><p style="white-space:pre-wrap">{{ $swapRequest->reason }}</p></div>
+                            @if(!empty($swapRequest->split_details['notes']))<div style="margin-top:8px"><strong>Notes</strong><p style="white-space:pre-wrap">{{ $swapRequest->split_details['notes'] }}</p></div>@endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
     <section x-show="tab === 'history'" style="display:none">
         <div class="panel">
-            <div class="panel-header">
-                <div class="panel-title">Pipeline History · {{ $history->count() }} Events</div>
-            </div>
-
             <div class="panel-body">
-                <div class="activity-list">
-                    @forelse($history as $event)
-                        <div class="activity-item">
-                            <strong>
-                                {{ $event->from_status ? ($statuses[$event->from_status] ?? $event->from_status).' → ' : '' }}
-                                {{ $statuses[$event->to_status] ?? $event->to_status }}
-                            </strong>
-                            <p>
-                                By {{ $event->changedBy?->name ?? 'User' }} ·
-                                {{ $event->created_at->format('d M Y, h:i A') }} ·
-                                {{ ucwords(str_replace('_', ' ', $event->change_source)) }}
-                            </p>
+                <div class="history-header">
+                    <div class="history-header-title">Pipeline History</div>
+                    <div class="history-count">{{ $pipelineEvents->count() }} Events</div>
+                </div>
+
+                <div class="history-list">
+                    @forelse($pipelineEvents as $event)
+                        @php $historyRole = $event['role'] ?? 'default'; @endphp
+                        <div class="history-item role-{{ $historyRole }}">
+                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                                <div class="history-event-title">{{ $event['title'] }}</div>
+                                <span class="role-pill role-{{ $historyRole === 'default' ? 'default' : $historyRole }}">
+                                    {{ $historyRole === 'default' ? 'System' : ucwords(str_replace('_', ' ', $historyRole)) }}
+                                </span>
+                            </div>
+                            <div class="history-meta">
+                                <span class="history-description">{{ $event['description'] }}</span>
+                                <span class="history-time"> · {{ $event['created_at']->format('d M Y, h:i A') }}</span>
+                            </div>
                         </div>
                     @empty
                         <div class="empty-state">No pipeline activity has been recorded yet.</div>

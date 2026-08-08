@@ -3,8 +3,10 @@
 namespace App\Livewire\Designer;
 
 use App\Models\DesignTask;
+use App\Models\DesignTaskRequest;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -56,11 +58,79 @@ class TaskKanban extends Component
             ->get();
     }
 
+    /**
+     * Build compact request/history tags for the visible cards.
+     *
+     * The original task keeps its SPLIT tag after an approved split request,
+     * while any child task created from that request also receives the same tag.
+     */
+    private function buildTaskTags(Collection $tasks): SupportCollection
+    {
+        if ($tasks->isEmpty()) {
+            return collect();
+        }
+
+        $taskIds = $tasks->pluck('id');
+
+        $requests = DesignTaskRequest::query()
+            ->whereIn('design_task_id', $taskIds)
+            ->whereIn('request_type', ['split', 'swap', 'decline'])
+            ->latest('created_at')
+            ->get()
+            ->groupBy('design_task_id');
+
+        return $tasks->mapWithKeys(function (DesignTask $task) use ($requests) {
+            $tags = collect();
+            $taskRequests = $requests->get($task->id, collect());
+
+            // Child tasks produced by an approved split always carry the SPLIT tag.
+            if (! empty(data_get($task->requirements, '_split_request_id')) ||
+                ! empty(data_get($task->requirements, '_split_from_task_id'))) {
+                $tags->push([
+                    'key' => 'split',
+                    'label' => 'Split',
+                    'class' => 'task-tag-split',
+                ]);
+            }
+
+            foreach (['split', 'swap', 'decline'] as $type) {
+                $request = $taskRequests->firstWhere('request_type', $type);
+
+                if (! $request) {
+                    continue;
+                }
+
+                if ($request->overall_status === 'approved') {
+                    $tags->push(match ($type) {
+                        'split' => ['key' => 'split', 'label' => 'Split', 'class' => 'task-tag-split'],
+                        'swap' => ['key' => 'swap', 'label' => 'Swapped', 'class' => 'task-tag-swap'],
+                        default => ['key' => 'decline', 'label' => 'Declined', 'class' => 'task-tag-decline'],
+                    });
+
+                    continue;
+                }
+
+                if (in_array($request->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true)) {
+                    $tags->push(match ($type) {
+                        'split' => ['key' => 'split-pending', 'label' => 'Split Requested', 'class' => 'task-tag-pending'],
+                        'swap' => ['key' => 'swap-pending', 'label' => 'Swap Requested', 'class' => 'task-tag-pending'],
+                        default => ['key' => 'decline-pending', 'label' => 'Decline Requested', 'class' => 'task-tag-pending'],
+                    });
+                }
+            }
+
+            return [$task->id => $tags->unique('key')->values()->all()];
+        });
+    }
+
     public function render()
     {
+        $tasks = $this->tasks;
+
         return view('livewire.designer.task-kanban', [
             'statuses' => DesignTaskStatusService::STATUSES,
-            'tasks' => $this->tasks,
+            'tasks' => $tasks,
+            'taskTags' => $this->buildTaskTags($tasks),
         ]);
     }
 }

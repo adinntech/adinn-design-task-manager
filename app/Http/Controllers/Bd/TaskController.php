@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Bd;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -129,6 +130,29 @@ class TaskController extends Controller
 
             $task->update([
                 'task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $task->id),
+            ]);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => null,
+                'to_status' => 'assigned_tasks',
+                'changed_by' => auth()->id(),
+                'change_source' => 'task_created',
+                'note' => 'Task created by '.auth()->user()->name.'.',
+                'created_at' => $task->created_at,
+                'updated_at' => $task->created_at,
+            ]);
+
+            $designerName = User::query()->whereKey($data['designer_id'])->value('name') ?? 'Designer';
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => 'assigned_tasks',
+                'to_status' => 'assigned_tasks',
+                'changed_by' => auth()->id(),
+                'change_source' => 'task_assigned',
+                'note' => 'Task assigned to '.$designerName.'.',
+                'created_at' => $task->assigned_at,
+                'updated_at' => $task->assigned_at,
             ]);
 
             return $task->fresh();

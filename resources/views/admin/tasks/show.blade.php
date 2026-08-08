@@ -1,9 +1,10 @@
+<style>.task-operation-pill{display:inline-flex;align-items:center;min-height:24px;padding:4px 10px;border-radius:999px;font-size:9px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;vertical-align:middle;white-space:nowrap}.task-operation-pill-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-operation-pill-swap{color:#175cd3;background:linear-gradient(135deg,#eff8ff,#e6f1ff);border-color:#b2ddff}</style>
 @extends('layouts.app')
 @section('title',$task->task_id)
 @section('workspace-title','Task Detail')
 @section('workspace-subtitle','Administrative read-only view of task details, comments and pipeline history')
 @section('content')
-<div class="page-head"><div><h1>{{ $task->task_name }}</h1><p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</p></div><a class="btn btn-secondary" href="{{ route('admin.tasks.index') }}">Back to Tasks</a></div>
+<div class="page-head"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h1 style="margin:0">{{ $task->display_task_name }}</h1>@foreach($task->operation_pills as $pill)<span class="{{ $pill['class'] }}">{{ $pill['label'] }}</span>@endforeach</div><p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</p></div><a class="btn btn-secondary" href="{{ route('admin.tasks.index') }}">Back to Tasks</a></div>
 <div class="detail-grid">
 <div>
 <section class="panel"><div class="panel-header"><div class="panel-title">Task Information</div></div><div class="panel-body"><div class="info-grid">@foreach(['Client / Agency'=>ucfirst($task->party_type).' · '.$task->party_name,'Contact'=>$task->contact_person.' · '.$task->mobile_number,'Vertical'=>ucwords(str_replace('_',' ',$task->vertical)),'Task Nature'=>ucwords(str_replace('_',' ',$task->task_nature)),'Priority'=>ucfirst($task->priority),'Designer'=>$task->designer?->name ?? '—','Assigned By'=>$task->assigner?->name ?? '—','Due Date'=>$task->due_at?->format('d M Y, h:i A'),'Total Creatives'=>$task->total_creatives,'Assigned At'=>$task->assigned_at?->format('d M Y, h:i A')] as $k=>$v)<div class="info-item"><span>{{ $k }}</span><strong>{{ $v }}</strong></div>@endforeach</div></div></section>

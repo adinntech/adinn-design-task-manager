@@ -10,4 +10,3 @@ Route::middleware(['auth', 'role:bd'])
         Route::get('/tasks', [AssignedTaskController::class, 'index'])->name('tasks.index');
     });
 
-    

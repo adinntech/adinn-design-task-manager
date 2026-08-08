@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MasterController;
+use App\Http\Controllers\Admin\RequestActionController;
 use App\Http\Controllers\Admin\TaskMonitoringController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
@@ -22,7 +23,11 @@ Route::middleware(['auth', 'role:admin'])
 
         Route::get('/tasks', [TaskMonitoringController::class, 'index'])->name('tasks.index');
         Route::get('/tasks/{task}', [TaskMonitoringController::class, 'show'])->name('tasks.show');
+        Route::delete('/tasks/{task}', [TaskMonitoringController::class, 'destroy'])->name('tasks.destroy');
 
         Route::get('/master-controls', [MasterController::class, 'index'])->name('master.index');
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
+
+        Route::post('/requests/{taskRequest}/approve', [RequestActionController::class, 'approve'])->name('requests.approve');
+        Route::post('/requests/{taskRequest}/reject', [RequestActionController::class, 'reject'])->name('requests.reject');
     });

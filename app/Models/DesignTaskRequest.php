@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DesignTaskRequest extends Model
 {
@@ -19,6 +21,7 @@ class DesignTaskRequest extends Model
         'overall_status',
         'reason',
         'target_designer_id',
+        'approved_designer_id',
         'split_details',
         'attachments',
     ];
@@ -33,18 +36,50 @@ class DesignTaskRequest extends Model
         ];
     }
 
-    public function task()
+    public function task(): BelongsTo
     {
         return $this->belongsTo(DesignTask::class, 'design_task_id');
     }
 
-    public function requester()
+    public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
     }
 
-    public function targetDesigner()
+    public function targetDesigner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'target_designer_id');
+    }
+
+    public function approvedDesigner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_designer_id');
+    }
+
+    public function designerHeadActor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'designer_head_action_by');
+    }
+
+    public function adminActor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'admin_action_by');
+    }
+
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->whereIn('overall_status', ['pending_approval', 'pending_designer_head', 'pending_admin']);
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return in_array($this->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true)
+            ? 'Pending Approval'
+            : ucwords(str_replace('_', ' ', $this->overall_status));
+    }
+
+    public function getDecidedByAttribute(): ?User
+    {
+        return $this->adminActor ?: $this->designerHeadActor;
     }
 }
