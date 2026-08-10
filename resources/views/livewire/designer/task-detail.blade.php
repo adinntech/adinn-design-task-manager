@@ -20,6 +20,9 @@
         .history-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid #ebe7ff;background:linear-gradient(180deg,#fbfaff 0%,#f7f5ff 100%);border-radius:12px;margin-bottom:12px}.history-header-title{font-size:13px;font-weight:900;color:#4f2db8;letter-spacing:-.01em}.history-count{display:inline-flex;align-items:center;justify-content:center;min-width:62px;padding:5px 9px;border-radius:999px;background:#efe9ff;color:#6d28d9;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.history-list{display:flex;flex-direction:column;gap:9px}.history-item{border:1px solid #e7e9ef;border-left:4px solid #d0d5dd;border-radius:12px;padding:12px 14px;background:#fff;box-shadow:0 2px 8px rgba(16,24,40,.025)}.history-item.role-designer{border-left-color:#2563eb}.history-item.role-bd{border-left-color:#e30613}.history-item.role-designer_head{border-left-color:#7c3aed}.history-item.role-admin{border-left-color:#111827}.history-event-title{font-size:12px;font-weight:900;color:#17191f;line-height:1.35}.history-meta{margin-top:5px;font-size:10px;color:#7a8494;line-height:1.55}.history-description{color:#4f5b6b;font-weight:600}.history-time{color:#98a2b3}.history-item:hover{border-color:#dfe3ea;box-shadow:0 5px 16px rgba(16,24,40,.045)}
         .special-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.special-detail-card{border:1px solid #e7e9ef;border-radius:12px;padding:12px;background:#fff}.special-detail-card span{display:block;font-size:9px;text-transform:uppercase;color:#7c8492;font-weight:800;letter-spacing:.05em}.special-detail-card strong{display:block;margin-top:5px;font-size:12px;color:#16181d}
         .muted{color:#7c8492;font-size:10px}
+        .attachment-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        .attachment-download{display:inline-flex;align-items:center;justify-content:center;padding:6px 9px;border:1px solid #dfe3ea;border-radius:8px;background:#fff;color:#344054;font-size:9px;font-weight:850;text-decoration:none;white-space:nowrap}
+        .attachment-download:hover{background:#f7f8fa;border-color:#cfd4dc;color:#111827}
         .toast{position:fixed;right:22px;bottom:22px;z-index:9999;background:#15171c;color:#fff;border-left:4px solid #e30613;padding:12px 15px;border-radius:10px;font-size:11px;box-shadow:0 15px 40px rgba(0,0,0,.2)}
         @media(max-width:900px){.comment-actions{align-items:flex-start;flex-direction:column}.special-detail-grid{grid-template-columns:1fr}}
     </style>
@@ -143,16 +146,22 @@
                                             @else
                                                 @foreach($value as $item)
                                                     @if(is_string($item) && str_contains($item, '/') && !filter_var($item, FILTER_VALIDATE_URL))
-                                                        <div><a class="file-link" href="{{ Storage::disk('spaces')->url($item) }}" target="_blank" rel="noopener">{{ basename($item) }}</a></div>
+                                                        <div class="attachment-actions" style="margin-bottom:4px">
+                                                            <a class="file-link" href="{{ Storage::disk('spaces')->url($item) }}">{{ basename($item) }}</a>
+                                                            <a class="attachment-download" href="{{ Storage::disk('spaces')->url($item) }}" download="{{ basename($item) }}">Download</a>
+                                                        </div>
                                                     @else
                                                         <div>{{ is_scalar($item) ? $item : json_encode($item) }}</div>
                                                     @endif
                                                 @endforeach
                                             @endif
                                         @elseif(is_string($value) && str_contains($value, '/') && !filter_var($value, FILTER_VALIDATE_URL))
-                                            <a class="file-link" href="{{ Storage::disk('spaces')->url($value) }}" target="_blank" rel="noopener">{{ basename($value) }}</a>
+                                            <span class="attachment-actions">
+                                                <a class="file-link" href="{{ Storage::disk('spaces')->url($value) }}">{{ basename($value) }}</a>
+                                                <a class="attachment-download" href="{{ Storage::disk('spaces')->url($value) }}" download="{{ basename($value) }}">Download</a>
+                                            </span>
                                         @elseif(is_string($value) && filter_var($value, FILTER_VALIDATE_URL))
-                                            <a class="file-link" href="{{ $value }}" target="_blank" rel="noopener">{{ $value }}</a>
+                                            <a class="file-link" href="{{ $value }}">{{ $value }}</a>
                                         @else
                                             {{ $value }}
                                         @endif
@@ -254,7 +263,10 @@
                                             <span class="attachment-name" title="{{ $file['name'] }}">{{ $file['name'] }}</span>
                                             <span class="attachment-meta">BD requirement · {{ $group['label'] }}</span>
                                         </div>
-                                        <a class="attachment-open" href="{{ $file['url'] }}" target="_blank" rel="noopener">Open</a>
+                                        <div class="attachment-actions">
+                                            <a class="attachment-open" href="{{ $file['url'] }}">Open</a>
+                                            <a class="attachment-download" href="{{ $file['url'] }}" download="{{ $file['name'] }}">Download</a>
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
@@ -302,7 +314,10 @@
                                             <span class="attachment-name" title="{{ $attachment->original_name }}">{{ $attachment->original_name }}</span>
                                             <span class="attachment-meta">{{ $size }} · {{ $attachment->mime_type ?: 'Attachment' }}</span>
                                         </div>
-                                        <a class="attachment-open" href="{{ $attachment->url }}" target="_blank" rel="noopener">Open</a>
+                                        <div class="attachment-actions">
+                                            <a class="attachment-open" href="{{ $attachment->url }}">Open</a>
+                                            <a class="attachment-download" href="{{ $attachment->url }}" download="{{ $attachment->original_name }}">Download</a>
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
@@ -356,7 +371,7 @@
                                 <span class="badge badge-dark">{{ $statuses[$item->status_at_comment] ?? $item->status_at_comment }}</span>
                             </div>
 
-                            <div style="margin-top:12px;padding:12px 14px;border-radius:12px;background:#f8fafc;border:1px solid #eef1f5">
+                            <div style="margin-top:12px">
                                 <p style="margin:0;font-size:18px;line-height:1.6;font-weight:700;color:#111827;white-space:pre-wrap;letter-spacing:-.01em">{{ $item->comment }}</p>
                             </div>
 
@@ -366,13 +381,19 @@
                                         <a
                                             class="file-link"
                                             href="{{ $attachment->url }}"
-                                            target="_blank"
-                                            rel="noopener"
                                             style="display:inline-flex;align-items:center;gap:5px;max-width:280px;padding:5px 8px;border:1px solid #e5e7eb;border-radius:8px;background:#fff7f7;font-size:10px;line-height:1.2;font-weight:750;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
                                             title="{{ $attachment->original_name }}"
                                         >
                                             <span style="font-size:10px">📎</span>
                                             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $attachment->original_name }}</span>
+                                        </a>
+                                        <a
+                                            class="attachment-download"
+                                            href="{{ $attachment->url }}"
+                                            download="{{ $attachment->original_name }}"
+                                            title="Download {{ $attachment->original_name }}"
+                                        >
+                                            Download
                                         </a>
                                     @endforeach
                                 </div>
@@ -432,7 +453,10 @@
                             @if(!empty($item->attachments))
                                 <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
                                     @foreach($item->attachments as $path)
-                                        <a class="file-link" href="{{ Storage::disk('spaces')->url($path) }}" target="_blank" rel="noopener">{{ basename($path) }}</a>
+                                        <span class="attachment-actions">
+                                            <a class="file-link" href="{{ Storage::disk('spaces')->url($path) }}">{{ basename($path) }}</a>
+                                            <a class="attachment-download" href="{{ Storage::disk('spaces')->url($path) }}" download="{{ basename($path) }}">Download</a>
+                                        </span>
                                     @endforeach
                                 </div>
                             @endif
