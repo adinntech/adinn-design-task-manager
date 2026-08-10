@@ -1,6 +1,44 @@
 <div x-data="designerKanban()" x-init="init()" x-on:task-status-changed.window="showToast($event.detail.message)">
     <style>
-        .designer-toolbar{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(160px,.65fr) minmax(150px,.55fr);gap:9px;margin-bottom:14px}.kanban-shell{overflow:auto;padding-bottom:8px}.kanban-board{display:grid;grid-template-columns:repeat(8,270px);gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff}.kanban-column-title{font-size:10px;font-weight:900;color:#4b5361;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}.task-card{display:block;border:1px solid #e3e6ec;border-radius:11px;background:#fff;padding:11px;margin-bottom:8px;color:inherit;text-decoration:none;box-shadow:0 4px 12px rgba(16,24,40,.04);cursor:grab;transition:.16s}.task-card:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,24,40,.08);border-color:#d7dbe3}.task-card-id{color:#7c8492;font-size:9px;font-weight:850}.task-card-name{margin-top:6px;font-size:12px;font-weight:900;line-height:1.35}.task-card-client{margin-top:4px;color:#5f6877;font-size:10px}.task-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.task-history-tag{display:inline-flex;align-items:center;min-height:22px;padding:3px 9px;border-radius:999px;font-size:8px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;box-shadow:0 2px 7px rgba(16,24,40,.05)}.task-tag-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-tag-swap{color:#175cd3;background:linear-gradient(135deg,#eff8ff,#e6f1ff);border-color:#b2ddff}.task-tag-decline{color:#b42318;background:linear-gradient(135deg,#fff1f0,#fee4e2);border-color:#fecdca}.task-tag-pending{color:#b54708;background:linear-gradient(135deg,#fffaeb,#fff4d6);border-color:#fedf89}.task-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.task-meta-item{border-radius:8px;background:#f7f8fa;padding:7px;font-size:9px;color:#616a78}.task-meta-item strong{display:block;color:#343b46;font-size:8px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}.sortable-ghost{opacity:.35}.sortable-chosen{box-shadow:0 12px 30px rgba(0,0,0,.14)}.kanban-invalid{animation:invalidDrop .35s ease}@keyframes invalidDrop{50%{background:#fee4e2}}.designer-toast{position:fixed;right:22px;bottom:22px;z-index:9999;background:#15171c;color:#fff;border-left:4px solid #e30613;padding:12px 15px;border-radius:10px;box-shadow:0 15px 40px rgba(0,0,0,.2);font-size:11px}@media(max-width:900px){.designer-toolbar{grid-template-columns:1fr}}
+        .designer-toolbar{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(160px,.65fr) minmax(150px,.55fr);gap:9px;margin-bottom:14px}.kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none}.kanban-shell::-webkit-scrollbar{display:none}.kanban-shell.is-panning{cursor:grabbing}
+.kanban-shell{position:relative}
+body[data-kanban-dragging="1"] .kanban-shell::before,
+body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z-index:50;top:0;width:34px;height:100%;pointer-events:none;opacity:.2}
+.kanban-shell .task-card,.kanban-shell input,.kanban-shell select,.kanban-shell button,.kanban-shell a{user-select:auto}.kanban-board{display:grid;grid-template-columns:repeat(9,270px);gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}.kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}
+
+.kanban-column.status-assigned_tasks .kanban-column-header{border-top-color:#667085;background:#f9fafb}
+.kanban-column.status-review_analysis .kanban-column-header{border-top-color:#2563eb;background:#eff6ff}
+.kanban-column.status-need_clarification .kanban-column-header{border-top-color:#d97706;background:#fffbeb}
+.kanban-column.status-yet_to_start .kanban-column-header{border-top-color:#7c3aed;background:#f5f3ff}
+.kanban-column.status-in_progress .kanban-column-header{border-top-color:#0891b2;background:#ecfeff}
+.kanban-column.status-waiting_confirmation .kanban-column-header{border-top-color:#db2777;background:#fdf2f8}
+.kanban-column.status-rework .kanban-column-header{border-top-color:#ea580c;background:#fff7ed}
+.kanban-column.status-completed .kanban-column-header{border-top-color:#16a34a;background:#f0fdf4}
+.kanban-column.status-swap_tasks .kanban-column-header{border-top-color:#0f766e;background:#f0fdfa}
+
+.kanban-column.status-assigned_tasks .kanban-count{background:#eaecf0;color:#475467}
+.kanban-column.status-review_analysis .kanban-count{background:#dbeafe;color:#1d4ed8}
+.kanban-column.status-need_clarification .kanban-count{background:#fef3c7;color:#b45309}
+.kanban-column.status-yet_to_start .kanban-count{background:#ede9fe;color:#6d28d9}
+.kanban-column.status-in_progress .kanban-count{background:#cffafe;color:#0e7490}
+.kanban-column.status-waiting_confirmation .kanban-count{background:#fce7f3;color:#be185d}
+.kanban-column.status-rework .kanban-count{background:#ffedd5;color:#c2410c}
+.kanban-column.status-completed .kanban-count{background:#dcfce7;color:#15803d}
+.kanban-column.status-swap_tasks .kanban-count{background:#ccfbf1;color:#0f766e}
+
+.task-card{display:block;border:1px solid #e3e6ec;border-left:5px solid #cbd5e1;border-radius:11px;background:#fff;padding:11px;margin-bottom:8px;color:inherit;text-decoration:none;box-shadow:0 4px 12px rgba(16,24,40,.04);cursor:grab;transition:.16s}
+.task-card:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,24,40,.08);border-color:#d7dbe3}
+.task-card.due-overdue{border-left-color:#dc2626;background:linear-gradient(90deg,#fff1f2 0,#fff 22%)}
+.task-card.due-today{border-left-color:#ea580c;background:linear-gradient(90deg,#fff7ed 0,#fff 22%)}
+.task-card.due-soon{border-left-color:#d97706;background:linear-gradient(90deg,#fffbeb 0,#fff 22%)}
+.task-card.due-safe{border-left-color:#16a34a;background:linear-gradient(90deg,#f0fdf4 0,#fff 22%)}
+.task-card.due-completed{border-left-color:#94a3b8;background:#fff}
+.due-pill{display:inline-flex;align-items:center;min-height:20px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.035em}
+.due-pill.due-overdue{background:#fee2e2;color:#b91c1c}
+.due-pill.due-today{background:#ffedd5;color:#c2410c}
+.due-pill.due-soon{background:#fef3c7;color:#b45309}
+.due-pill.due-safe{background:#dcfce7;color:#15803d}
+.due-pill.due-completed{background:#f1f5f9;color:#64748b}.task-card-id{color:#7c8492;font-size:9px;font-weight:850}.task-card-name{margin-top:6px;font-size:12px;font-weight:900;line-height:1.35}.task-card-client{margin-top:4px;color:#5f6877;font-size:10px}.task-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.task-history-tag{display:inline-flex;align-items:center;min-height:22px;padding:3px 9px;border-radius:999px;font-size:8px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;box-shadow:0 2px 7px rgba(16,24,40,.05)}.task-tag-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-tag-swap{color:#067647;background:linear-gradient(135deg,#ecfdf3,#dcfae6);border-color:#abefc6}.task-tag-decline{color:#b42318;background:linear-gradient(135deg,#fff1f0,#fee4e2);border-color:#fecdca}.task-tag-pending{color:#b54708;background:linear-gradient(135deg,#fffaeb,#fff4d6);border-color:#fedf89}.task-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.task-meta-item{border-radius:8px;background:#f7f8fa;padding:7px;font-size:9px;color:#616a78}.task-meta-item strong{display:block;color:#343b46;font-size:8px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}.sortable-ghost{opacity:.35}.sortable-chosen{box-shadow:0 12px 30px rgba(0,0,0,.14)}.kanban-invalid{animation:invalidDrop .35s ease}@keyframes invalidDrop{50%{background:#fee4e2}}.designer-toast{position:fixed;right:22px;bottom:22px;z-index:9999;background:#15171c;color:#fff;border-left:4px solid #e30613;padding:12px 15px;border-radius:10px;box-shadow:0 15px 40px rgba(0,0,0,.2);font-size:11px}@media(max-width:900px){.designer-toolbar{grid-template-columns:1fr}}
     </style>
 
     <div class="page-head">
@@ -16,16 +54,45 @@
         </div>
     </div></div>
 
-    <div class="kanban-shell">
+    <div class="kanban-shell" data-kanban-shell>
         <div class="kanban-board">
             @foreach($statuses as $statusKey => $statusLabel)
-                @php($columnTasks = $tasks->where('status', $statusKey))
-                <section class="kanban-column" wire:key="column-{{ $statusKey }}">
+                @php
+                    $columnTasks = $tasks->where('status', $statusKey);
+                @endphp
+                <section class="kanban-column status-{{ $statusKey }}" wire:key="column-{{ $statusKey }}">
                     <header class="kanban-column-header"><span class="kanban-column-title">{{ $statusLabel }}</span><span class="kanban-count">{{ $columnTasks->count() }}</span></header>
                     <div class="kanban-list" data-kanban-list data-status="{{ $statusKey }}">
                         @forelse($columnTasks as $task)
-                            <a href="{{ route('designer.tasks.show', $task) }}" class="task-card" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="task-{{ $task->id }}">
-                                <div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><span class="task-card-id">{{ $task->task_id }}</span><span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span></div>
+                            @php
+                                $dueAt = \Illuminate\Support\Carbon::parse($task->due_at);
+                                $now = now();
+
+                                if ($task->status === 'completed') {
+                                    $dueClass = 'due-completed';
+                                    $dueLabel = 'Completed';
+                                } elseif ($dueAt->isPast()) {
+                                    $dueClass = 'due-overdue';
+                                    $dueLabel = 'Overdue';
+                                } elseif ($dueAt->isToday()) {
+                                    $dueClass = 'due-today';
+                                    $dueLabel = 'Due Today';
+                                } elseif ($now->diffInHours($dueAt, false) <= 48) {
+                                    $dueClass = 'due-soon';
+                                    $dueLabel = 'Due Soon';
+                                } else {
+                                    $dueClass = 'due-safe';
+                                    $dueLabel = 'On Track';
+                                }
+                            @endphp
+                            <a href="{{ route('designer.tasks.show', $task) }}" class="task-card {{ $dueClass }}" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="task-{{ $task->id }}">
+                                <div style="display:flex;justify-content:space-between;gap:8px;align-items:start">
+                                    <span class="task-card-id">{{ $task->task_id }}</span>
+                                    <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+                                        <span class="due-pill {{ $dueClass }}">{{ $dueLabel }}</span>
+                                        <span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span>
+                                    </div>
+                                </div>
                                 <div class="task-card-name">{{ $task->display_task_name }}</div>
                                 <div class="task-card-client">{{ ucfirst($task->party_type) }} · {{ $task->party_name }}</div>
 
@@ -58,7 +125,252 @@
     @once
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
         <script>
-            function designerKanban(){return{sortables:[],toast:'',toastTimer:null,init(){this.$nextTick(()=>this.refreshSortable());document.addEventListener('livewire:init',()=>{Livewire.hook('morph.updated',()=>this.$nextTick(()=>this.refreshSortable()))})},refreshSortable(){this.sortables.forEach(i=>i.destroy());this.sortables=[];document.querySelectorAll('[data-kanban-list]').forEach(list=>{this.sortables.push(new Sortable(list,{group:'designer-kanban',animation:180,ghostClass:'sortable-ghost',chosenClass:'sortable-chosen',fallbackOnBody:true,onEnd:(event)=>{const card=event.item;const taskId=Number(card.dataset.taskId);const fromStatus=card.dataset.taskStatus;const targetStatus=event.to.dataset.status;if(!taskId||fromStatus===targetStatus)return;event.to.removeChild(card);event.from.insertBefore(card,event.from.children[event.oldIndex]??null);this.$wire.moveTask(taskId,targetStatus).catch(()=>{event.to.classList.add('kanban-invalid');setTimeout(()=>event.to.classList.remove('kanban-invalid'),400)})}}))})},showToast(message){this.toast=message||'Updated successfully.';clearTimeout(this.toastTimer);this.toastTimer=setTimeout(()=>this.toast='',2600)}}}
+            function designerKanban(){
+                return {
+                    sortables: [],
+                    toast: '',
+                    toastTimer: null,
+                    panCleanup: null,
+                    edgeScrollFrame: null,
+                    edgeScrollPointerX: null,
+                    boardPointerMoveHandler: null,
+
+                    init(){
+                        this.$nextTick(() => {
+                            this.refreshSortable();
+                            this.enableBoardPan();
+                        });
+
+                        document.addEventListener('livewire:init', () => {
+                            Livewire.hook('morph.updated', () => {
+                                this.$nextTick(() => {
+                                    this.refreshSortable();
+                                    this.enableBoardPan();
+                                });
+                            });
+                        });
+                    },
+
+                    refreshSortable(){
+                        this.sortables.forEach(item => item.destroy());
+                        this.sortables = [];
+
+                        document.querySelectorAll('[data-kanban-list]').forEach(list => {
+                            this.sortables.push(new Sortable(list, {
+                                group: 'designer-kanban',
+                                animation: 180,
+                                ghostClass: 'sortable-ghost',
+                                chosenClass: 'sortable-chosen',
+                                fallbackOnBody: true,
+                                scroll: true,
+                                scrollSensitivity: 110,
+                                scrollSpeed: 18,
+                                bubbleScroll: true,
+
+                                onStart: event => {
+                                    document.body.dataset.kanbanDragging = '1';
+                                    this.edgeScrollPointerX = event.originalEvent?.clientX ?? this.edgeScrollPointerX;
+                                    this.startEdgeScroll();
+                                },
+
+                                onMove: event => {
+                                    this.edgeScrollPointerX = event.originalEvent?.clientX ?? null;
+                                    this.startEdgeScroll();
+                                    return true;
+                                },
+
+                                onEnd: event => {
+                                    delete document.body.dataset.kanbanDragging;
+                                    this.stopEdgeScroll();
+
+                                    const card = event.item;
+                                    const taskId = Number(card.dataset.taskId);
+                                    const fromStatus = card.dataset.taskStatus;
+                                    const targetStatus = event.to.dataset.status;
+
+                                    if (!taskId || fromStatus === targetStatus) {
+                                        return;
+                                    }
+
+                                    event.to.removeChild(card);
+                                    event.from.insertBefore(
+                                        card,
+                                        event.from.children[event.oldIndex] ?? null
+                                    );
+
+                                    this.$wire.moveTask(taskId, targetStatus).catch(() => {
+                                        event.to.classList.add('kanban-invalid');
+                                        setTimeout(() => event.to.classList.remove('kanban-invalid'), 400);
+                                    });
+                                }
+                            }));
+                        });
+                    },
+
+                    enableBoardPan(){
+                        if (this.panCleanup) {
+                            this.panCleanup();
+                            this.panCleanup = null;
+                        }
+
+                        const shell = this.$root.querySelector('[data-kanban-shell]');
+                        if (!shell) return;
+
+                        // Track pointer position over the Kanban continuously.
+                        // During a task drag, reaching the left/right edge will
+                        // automatically pan the board without requiring manual drag.
+                        const trackPointer = event => {
+                            this.edgeScrollPointerX = event.clientX;
+
+                            if (document.body.dataset.kanbanDragging === '1') {
+                                this.startEdgeScroll();
+                            }
+                        };
+
+                        shell.addEventListener('pointermove', trackPointer);
+                        this.boardPointerMoveHandler = trackPointer;
+
+                        let isDown = false;
+                        let startX = 0;
+                        let startScrollLeft = 0;
+                        let moved = false;
+
+                        const shouldIgnore = target => {
+                            return !!target.closest(
+                                '.task-card, input, select, textarea, button, a, [data-kanban-list] > *'
+                            );
+                        };
+
+                        const onPointerDown = event => {
+                            if (event.button !== 0) return;
+                            if (document.body.dataset.kanbanDragging === '1') return;
+                            if (shouldIgnore(event.target)) return;
+
+                            isDown = true;
+                            moved = false;
+                            startX = event.clientX;
+                            startScrollLeft = shell.scrollLeft;
+                            shell.classList.add('is-panning');
+                            shell.setPointerCapture?.(event.pointerId);
+                        };
+
+                        const onPointerMove = event => {
+                            if (!isDown) return;
+
+                            const delta = event.clientX - startX;
+                            if (Math.abs(delta) > 3) moved = true;
+
+                            shell.scrollLeft = startScrollLeft - delta;
+                            event.preventDefault();
+                        };
+
+                        const stop = event => {
+                            if (!isDown) return;
+                            isDown = false;
+                            shell.classList.remove('is-panning');
+
+                            try {
+                                shell.releasePointerCapture?.(event.pointerId);
+                            } catch (_) {}
+                        };
+
+                        const onWheel = event => {
+                            // Keep normal mouse-wheel scrolling vertical.
+                            // Horizontal Kanban scrolling is only intentional
+                            // via Shift + wheel or a true horizontal trackpad gesture.
+                            if (!shell.matches(':hover')) return;
+
+                            if (event.shiftKey && Math.abs(event.deltaY) > 0) {
+                                shell.scrollLeft += event.deltaY;
+                                event.preventDefault();
+                                return;
+                            }
+
+                            if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+                                shell.scrollLeft += event.deltaX;
+                                event.preventDefault();
+                            }
+                        };
+
+                        shell.addEventListener('pointerdown', onPointerDown);
+                        shell.addEventListener('pointermove', onPointerMove);
+                        shell.addEventListener('pointerup', stop);
+                        shell.addEventListener('pointercancel', stop);
+                        shell.addEventListener('mouseleave', stop);
+                        shell.addEventListener('wheel', onWheel, { passive: false });
+
+                        this.panCleanup = () => {
+                            shell.removeEventListener('pointerdown', onPointerDown);
+                            shell.removeEventListener('pointermove', onPointerMove);
+                            shell.removeEventListener('pointermove', trackPointer);
+                            shell.removeEventListener('pointerup', stop);
+                            shell.removeEventListener('pointercancel', stop);
+                            shell.removeEventListener('mouseleave', stop);
+                            shell.removeEventListener('wheel', onWheel);
+                            this.boardPointerMoveHandler = null;
+                        };
+                    },
+
+                    startEdgeScroll(){
+                        if (this.edgeScrollFrame) return;
+
+                        const tick = () => {
+                            const shell = this.$root.querySelector('[data-kanban-shell]');
+
+                            if (
+                                !shell ||
+                                document.body.dataset.kanbanDragging !== '1' ||
+                                this.edgeScrollPointerX === null
+                            ) {
+                                this.stopEdgeScroll();
+                                return;
+                            }
+
+                            const rect = shell.getBoundingClientRect();
+                            const edge = 180;
+                            const maxSpeed = 34;
+                            let speed = 0;
+
+                            if (this.edgeScrollPointerX < rect.left + edge) {
+                                const strength = Math.min(
+                                    1,
+                                    (rect.left + edge - this.edgeScrollPointerX) / edge
+                                );
+                                speed = -Math.max(10, maxSpeed * strength);
+                            } else if (this.edgeScrollPointerX > rect.right - edge) {
+                                const strength = Math.min(
+                                    1,
+                                    (this.edgeScrollPointerX - (rect.right - edge)) / edge
+                                );
+                                speed = Math.max(10, maxSpeed * strength);
+                            }
+
+                            if (speed !== 0) {
+                                shell.scrollLeft += speed;
+                            }
+
+                            this.edgeScrollFrame = requestAnimationFrame(tick);
+                        };
+
+                        this.edgeScrollFrame = requestAnimationFrame(tick);
+                    },
+
+                    stopEdgeScroll(){
+                        if (this.edgeScrollFrame) {
+                            cancelAnimationFrame(this.edgeScrollFrame);
+                            this.edgeScrollFrame = null;
+                        }
+
+                        this.edgeScrollPointerX = null;
+                    },
+
+                    showToast(message){
+                        this.toast = message || 'Updated successfully.';
+                        clearTimeout(this.toastTimer);
+                        this.toastTimer = setTimeout(() => this.toast = '', 2600);
+                    }
+                };
+            }
         </script>
     @endonce
 </div>

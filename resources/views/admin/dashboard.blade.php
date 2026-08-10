@@ -1,4 +1,3 @@
-<style>.task-operation-pill{display:inline-flex;align-items:center;min-height:24px;padding:4px 10px;border-radius:999px;font-size:9px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;vertical-align:middle;white-space:nowrap}.task-operation-pill-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-operation-pill-swap{color:#175cd3;background:linear-gradient(135deg,#eff8ff,#e6f1ff);border-color:#b2ddff}</style>
 @extends('layouts.app')
 @section('title','Admin Dashboard')
 @section('workspace-title','Manager Dashboard')
@@ -50,7 +49,7 @@
                 <tbody>
                     @forelse($pendingRequests as $item)
                         <tr>
-                            <td><a class="file-link" href="{{ route('admin.tasks.show', $item->task) }}">{{ $item->task?->task_id ?? '—' }}</a><div style="margin-top:3px;font-weight:700">{{ $item->task?->display_task_name ?? 'Task removed' }}</div></td>
+                            <td><a class="file-link" href="{{ route('admin.tasks.show', $item->task) }}">{{ $item->task?->task_id ?? '—' }}</a><div style="margin-top:3px;font-weight:700">{{ $item->task?->task_name ?? 'Task removed' }}</div></td>
                             <td><span class="badge badge-warning">{{ ucfirst($item->request_type) }} · Pending</span></td>
                             <td>{{ $item->requester?->name ?? '—' }}</td>
                             <td style="max-width:320px"><div>{{ \Illuminate\Support\Str::limit($item->reason, 150) }}</div>@if($item->request_type === 'split' && !empty($item->split_details['creative_count']))<div class="muted" style="margin-top:4px">Split {{ $item->split_details['creative_count'] }} creatives</div>@endif @if($item->targetDesigner)<div class="muted" style="margin-top:4px">Preferred: {{ $item->targetDesigner->name }}</div>@endif</td>
@@ -69,12 +68,21 @@
                                                     @endif
                                                 @endforeach
                                             </select>
+                                                    @if($item->request_type === 'split')
+                                                        <label class="label" style="margin-top:6px">Approved Split Quantity</label>
+                                                        <input class="field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ($item->task?->total_creatives ?? 1) - 1) }}" value="{{ $item->split_details['creative_count'] ?? 1 }}" required>
+                                                        <div class="muted" style="margin:4px 0 6px">Designer requested {{ $item->split_details['creative_count'] ?? '—' }}. You can change the final quantity.</div>
+                                                    @endif
                                             <button class="btn btn-primary" style="width:100%">Approve</button>
                                         </form>
                                     @else
                                         <form method="POST" action="{{ route('admin.requests.approve', $item) }}" onsubmit="return confirm('Approve this request? This is the final decision.');">@csrf<button class="btn btn-primary" style="width:100%">Approve</button></form>
                                     @endif
-                                    <form method="POST" action="{{ route('admin.requests.reject', $item) }}" onsubmit="return confirm('Reject this request? This is the final decision.');">@csrf<button class="btn btn-danger" style="width:100%">Reject</button></form>
+                                    <form method="POST" action="{{ route('admin.requests.reject', $item) }}" onsubmit="const b=this.querySelector('button'); if(b.disabled) return false; if(!confirm('Decline this request? A reason is mandatory and this decision is final.')) return false; b.disabled=true; b.textContent='Declining...'; return true;">
+                                        @csrf
+                                        <textarea name="decision_reason" class="field" rows="2" required maxlength="5000" placeholder="Reason for declining this request..."></textarea>
+                                        <button class="btn btn-danger" style="width:100%;margin-top:6px">Decline</button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
@@ -90,7 +98,7 @@
 <div class="content-grid-3">
     <section class="panel">
         <div class="panel-header"><div class="panel-title">Recent Tasks</div></div>
-        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody>@forelse($recentTasks as $task)<tr><td><a class="file-link" href="{{ route('admin.tasks.show',$task) }}">{{ $task->task_id }}</a><div style="margin-top:3px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>{{ $task->display_task_name }}</span>@foreach($task->operation_pills as $pill)<span class="{{ $pill['class'] }}">{{ $pill['label'] }}</span>@endforeach</div></td><td>{{ $task->designer?->name ?? '—' }}</td><td><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M, h:i A') }}</td></tr>@empty<tr><td colspan="4" class="empty-state">No tasks available.</td></tr>@endforelse</tbody></table></div></div>
+        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody>@forelse($recentTasks as $task)<tr><td><a class="file-link" href="{{ route('admin.tasks.show',$task) }}">{{ $task->task_id }}</a><div style="margin-top:3px;font-weight:700">{{ $task->task_name }}</div></td><td>{{ $task->designer?->name ?? '—' }}</td><td><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M, h:i A') }}</td></tr>@empty<tr><td colspan="4" class="empty-state">No tasks available.</td></tr>@endforelse</tbody></table></div></div>
     </section>
 
     <section class="panel">
@@ -100,7 +108,7 @@
 
     <section class="panel">
         <div class="panel-header"><div class="panel-title">Recent Activity</div><a href="{{ route('admin.activity.index') }}" class="file-link" style="font-size:10px">View all</a></div>
-        <div class="panel-body"><div class="activity-list">@forelse($recentActivity as $event)<div class="activity-item"><strong>{{ $event->task?->task_id }} · {{ $event->task?->display_task_name }}</strong><p>{{ $event->changedBy?->name ?? 'User' }} moved task to {{ ucwords(str_replace('_',' ',$event->to_status)) }} · {{ $event->created_at->diffForHumans() }}</p></div>@empty<div class="empty-state">No activity recorded.</div>@endforelse</div></div>
+        <div class="panel-body"><div class="activity-list">@forelse($recentActivity as $event)<div class="activity-item"><strong>{{ $event->task?->task_id }} · {{ $event->task?->task_name }}</strong><p>{{ $event->changedBy?->name ?? 'User' }} moved task to {{ ucwords(str_replace('_',' ',$event->to_status)) }} · {{ $event->created_at->diffForHumans() }}</p></div>@empty<div class="empty-state">No activity recorded.</div>@endforelse</div></div>
     </section>
 </div>
 @endsection

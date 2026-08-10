@@ -15,6 +15,7 @@ class DesignTaskStatusService
         'assigned_tasks' => 'Assigned Tasks',
         'review_analysis' => 'Review and Analysis',
         'need_clarification' => 'Need Clarification',
+        'swap_tasks' => 'Swap Tasks',
         'yet_to_start' => 'Yet to Start',
         'in_progress' => 'In Progress',
         'waiting_confirmation' => 'Waiting for Confirmation',
@@ -75,6 +76,12 @@ class DesignTaskStatusService
     public function designerCanMove(string $fromStatus, string $targetStatus): bool
     {
         if ($fromStatus === $targetStatus) {
+            return false;
+        }
+
+        // Swap Tasks is a system-controlled holding stage.
+        // Designers cannot drag a task into or out of it.
+        if ($fromStatus === 'swap_tasks' || $targetStatus === 'swap_tasks') {
             return false;
         }
 

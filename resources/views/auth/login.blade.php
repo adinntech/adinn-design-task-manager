@@ -23,10 +23,56 @@
                 <input class="premium-input" id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="email" required autofocus placeholder="name@adinn.com">
             </div>
 
-            <div class="auth-group">
-                <label class="label" for="password">Password</label>
-                <input class="premium-input" id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
-            </div>
+<div class="auth-group">
+    <label class="label" for="password">Password</label>
+
+    <div style="position: relative;">
+        <input
+            class="premium-input"
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            placeholder="Enter your password"
+            style="padding-right: 65px;"
+        >
+
+        <button
+            type="button"
+            id="togglePassword"
+            onclick="
+                const input = document.getElementById('password');
+                const button = document.getElementById('togglePassword');
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.innerText = 'Hide';
+                } else {
+                    input.type = 'password';
+                    button.innerText = 'Show';
+                }
+            "
+            style="
+                position: absolute;
+                right: 14px;
+                top: 50%;
+                transform: translateY(-50%);
+                border: 0;
+                background: transparent;
+                padding: 0;
+                margin: 0;
+                font-size: 11px;
+                font-weight: 800;
+                color: #667085;
+                cursor: pointer;
+                width: auto;
+            "
+        >
+            Show
+        </button>
+    </div>
+</div>
 
             <div class="auth-options">
                 <label style="display:flex;align-items:center;gap:7px;"><input type="checkbox" name="remember" value="1"> Keep me signed in</label>

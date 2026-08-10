@@ -1,4 +1,3 @@
-<style>.task-operation-pill{display:inline-flex;align-items:center;min-height:24px;padding:4px 10px;border-radius:999px;font-size:9px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;vertical-align:middle;white-space:nowrap}.task-operation-pill-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-operation-pill-swap{color:#175cd3;background:linear-gradient(135deg,#eff8ff,#e6f1ff);border-color:#b2ddff}</style>
 @extends('layouts.app')
 @section('title','Designer Head Dashboard')
 @section('workspace-title','Designer Head Dashboard')
@@ -56,7 +55,7 @@
                             <tr>
                                 <td>
                                     <span class="file-link">{{ $item->task?->task_id ?? '—' }}</span>
-                                    <div style="margin-top:3px;font-weight:700">{{ $item->task?->display_task_name ?? 'Task removed' }}</div>
+                                    <div style="margin-top:3px;font-weight:700">{{ $item->task?->task_name ?? 'Task removed' }}</div>
                                     <div class="muted" style="margin-top:3px">{{ ucwords(str_replace('_',' ',$item->task?->vertical ?? '')) }}</div>
                                 </td>
                                 <td><span class="badge badge-dark">{{ ucfirst($item->request_type) }}</span></td>
@@ -93,6 +92,11 @@
                                                             @endif
                                                         @endforeach
                                                     </select>
+                                                    @if($item->request_type === 'split')
+                                                        <label class="label" style="margin-top:6px">Approved Split Quantity</label>
+                                                        <input class="field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ($item->task?->total_creatives ?? 1) - 1) }}" value="{{ $item->split_details['creative_count'] ?? 1 }}" required>
+                                                        <div class="muted" style="margin:4px 0 6px">Designer requested {{ $item->split_details['creative_count'] ?? '—' }}. You can change the final quantity.</div>
+                                                    @endif
                                                     <button class="btn btn-primary" style="width:100%">Approve</button>
                                                 </form>
                                             @else
@@ -101,9 +105,10 @@
                                                     <button class="btn btn-primary" style="width:100%">Approve</button>
                                                 </form>
                                             @endif
-                                            <form method="POST" action="{{ route('designer-head.requests.reject', $item) }}" onsubmit="return confirm('Reject this request? This decision is final.');">
+                                            <form method="POST" action="{{ route('designer-head.requests.reject', $item) }}" onsubmit="const b=this.querySelector('button'); if(b.disabled) return false; if(!confirm('Decline this request? A reason is mandatory and this decision is final.')) return false; b.disabled=true; b.textContent='Declining...'; return true;">
                                                 @csrf
-                                                <button class="btn btn-danger" style="width:100%">Reject</button>
+                                                <textarea name="decision_reason" class="field" rows="2" required maxlength="5000" placeholder="Reason for declining this request..."></textarea>
+                                                <button class="btn btn-danger" style="width:100%;margin-top:6px">Decline</button>
                                             </form>
                                         </div>
                                     @else
@@ -112,6 +117,7 @@
                                             <div class="muted" style="margin-top:3px">Approved Designer: {{ $item->approvedDesigner->name }}</div>
                                         @endif
                                         <div class="muted" style="margin-top:3px">{{ $item->admin_action_at?->format('d M Y, h:i A') ?? $item->designer_head_action_at?->format('d M Y, h:i A') ?? '—' }}</div>
+                                        @if($item->overall_status === 'rejected' && $item->decision_reason)<div class="muted" style="margin-top:4px;color:#b42318"><strong>Decline reason:</strong> {{ $item->decision_reason }}</div>@endif
                                     @endif
                                 </td>
                             </tr>

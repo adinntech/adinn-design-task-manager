@@ -39,7 +39,14 @@ class TaskKanban extends Component
     {
         return DesignTask::query()
             ->with(['assigner:id,name'])
-            ->where('designer_id', Auth::id())
+            ->where(function ($query) {
+                $query->where('designer_id', Auth::id())
+                    ->orWhereHas('requests', function ($requestQuery) {
+                        $requestQuery->where('request_type', 'swap')
+                            ->where('requested_by', Auth::id())
+                            ->where('overall_status', 'approved');
+                    });
+            })
             ->when($this->search !== '', function ($query) {
                 $term = '%'.trim($this->search).'%';
 
@@ -70,11 +77,9 @@ class TaskKanban extends Component
             return collect();
         }
 
-        $taskIds = $tasks->pluck('id');
-
         $requests = DesignTaskRequest::query()
-            ->whereIn('design_task_id', $taskIds)
-            ->whereIn('request_type', ['split', 'swap', 'decline'])
+            ->whereIn('design_task_id', $tasks->pluck('id'))
+            ->whereIn('request_type', ['split', 'swap'])
             ->latest('created_at')
             ->get()
             ->groupBy('design_task_id');
@@ -83,39 +88,54 @@ class TaskKanban extends Component
             $tags = collect();
             $taskRequests = $requests->get($task->id, collect());
 
-            // Child tasks produced by an approved split always carry the SPLIT tag.
+            if (! empty(data_get($task->requirements, '_swapped_from_task_id'))) {
+                $tags->push([
+                    'key' => 'swap',
+                    'label' => 'Swapped',
+                    'class' => 'task-tag-swap',
+                ]);
+            }
+
             if (! empty(data_get($task->requirements, '_split_request_id')) ||
                 ! empty(data_get($task->requirements, '_split_from_task_id'))) {
                 $tags->push([
                     'key' => 'split',
-                    'label' => 'Split',
+                    'label' => 'Split Approved',
                     'class' => 'task-tag-split',
                 ]);
             }
 
-            foreach (['split', 'swap', 'decline'] as $type) {
-                $request = $taskRequests->firstWhere('request_type', $type);
+            foreach (['split', 'swap'] as $type) {
+                $approved = $taskRequests->first(fn ($request) =>
+                    $request->request_type === $type && $request->overall_status === 'approved'
+                );
 
-                if (! $request) {
+                if ($approved) {
+                    $tags->push([
+                        'key' => $type,
+                        'label' => $type === 'split' ? 'Split Approved' : 'Swap Approved',
+                        'class' => $type === 'split' ? 'task-tag-split' : 'task-tag-swap',
+                    ]);
                     continue;
                 }
 
-                if ($request->overall_status === 'approved') {
-                    $tags->push(match ($type) {
-                        'split' => ['key' => 'split', 'label' => 'Split', 'class' => 'task-tag-split'],
-                        'swap' => ['key' => 'swap', 'label' => 'Swapped', 'class' => 'task-tag-swap'],
-                        default => ['key' => 'decline', 'label' => 'Declined', 'class' => 'task-tag-decline'],
-                    });
-
+                $latest = $taskRequests->firstWhere('request_type', $type);
+                if (! $latest) {
                     continue;
                 }
 
-                if (in_array($request->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true)) {
-                    $tags->push(match ($type) {
-                        'split' => ['key' => 'split-pending', 'label' => 'Split Requested', 'class' => 'task-tag-pending'],
-                        'swap' => ['key' => 'swap-pending', 'label' => 'Swap Requested', 'class' => 'task-tag-pending'],
-                        default => ['key' => 'decline-pending', 'label' => 'Decline Requested', 'class' => 'task-tag-pending'],
-                    });
+                if (in_array($latest->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true)) {
+                    $tags->push([
+                        'key' => $type,
+                        'label' => $type === 'swap' ? 'Waiting for Approval' : ucfirst($type).' Pending',
+                        'class' => 'task-tag-pending',
+                    ]);
+                } elseif ($latest->overall_status === 'rejected') {
+                    $tags->push([
+                        'key' => $type,
+                        'label' => ucfirst($type).' Declined',
+                        'class' => 'task-tag-decline',
+                    ]);
                 }
             }
 
@@ -127,8 +147,17 @@ class TaskKanban extends Component
     {
         $tasks = $this->tasks;
 
+        $statuses = DesignTaskStatusService::STATUSES;
+
+        // Swap Tasks is a special holding stage and should always be the final Kanban column.
+        if (array_key_exists('swap_tasks', $statuses)) {
+            $swapLabel = $statuses['swap_tasks'];
+            unset($statuses['swap_tasks']);
+            $statuses['swap_tasks'] = $swapLabel;
+        }
+
         return view('livewire.designer.task-kanban', [
-            'statuses' => DesignTaskStatusService::STATUSES,
+            'statuses' => $statuses,
             'tasks' => $tasks,
             'taskTags' => $this->buildTaskTags($tasks),
         ]);
