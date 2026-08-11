@@ -76,6 +76,17 @@
         .btn.is-loading::after{content:'';width:11px;height:11px;margin-left:7px;border:2px solid currentColor;border-right-color:transparent;border-radius:999px;display:inline-block;vertical-align:-2px;animation:btn-spin .65s linear infinite}
         @keyframes btn-spin{to{transform:rotate(360deg)}}
         @media(max-width:900px){.comment-actions{align-items:flex-start;flex-direction:column}.special-detail-grid{grid-template-columns:1fr}.eod-summary{grid-template-columns:1fr}.eod-record{grid-template-columns:1fr 1fr}.eod-entry-form{align-items:stretch;flex-direction:column}.eod-field{min-width:0;width:100%}}
+
+        .edit-history-list{display:flex;flex-direction:column;gap:10px}
+        .edit-history-batch{border:1px solid #e7e9ee;border-radius:12px;background:#fff;overflow:hidden}
+        .edit-history-batch-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:#f8f9fb;border-bottom:1px solid #eceef2}
+        .edit-history-editor{font-size:10px;font-weight:850;color:#344054}.edit-history-time{font-size:9px;color:#7b8493}
+        .edit-history-row{padding:11px 12px;border-bottom:1px solid #f0f1f3}.edit-history-row:last-child{border-bottom:0}
+        .edit-history-field{font-size:9px;font-weight:900;letter-spacing:.045em;text-transform:uppercase;color:#667085;margin-bottom:7px}
+        .edit-history-values{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:8px;align-items:center}
+        .edit-history-old,.edit-history-new{padding:9px 10px;border-radius:9px;font-size:10px;line-height:1.45;overflow-wrap:anywhere}
+        .edit-history-old{background:#fff1f1;border:1px solid #fecaca;color:#9b1c1c}.edit-history-old del{text-decoration-thickness:1.5px}
+        .edit-history-new{background:#ecfdf3;border:1px solid #abefc6;color:#067647;font-weight:750}.edit-history-arrow{text-align:center;color:#98a2b3;font-weight:900}
     </style>
 
     <div class="page-head">
@@ -156,6 +167,7 @@
             <button class="detail-tab" :class="{ active: tab === 'swap-details' }" @click="tab = 'swap-details'">Swap Details</button>
         @endif
         <button class="detail-tab" :class="{ active: tab === 'history' }" @click="tab = 'history'">Pipeline History</button>
+        <button class="detail-tab" :class="{ active: tab === 'edit-history' }" @click="tab = 'edit-history'">Edit History</button>
         <button class="detail-tab" :class="{ active: tab === 'eod' }" @click="tab = 'eod'">EOD</button>
     </div>
 
@@ -475,6 +487,45 @@
                         </article>
                     @empty
                         <div class="empty-state">No comments have been added yet.</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section x-show="tab === 'edit-history'" style="display:none">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Edit History</div>
+                    <div style="font-size:10px;color:#667085;margin-top:3px">All task edits made by BD or Admin are preserved here.</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="edit-history-list">
+                    @forelse($editHistory as $changes)
+                        @php
+                            $firstChange = $changes->first();
+                        @endphp
+                        <div class="edit-history-batch">
+                            <div class="edit-history-batch-head">
+                                <div class="edit-history-editor">Edited by {{ $firstChange->editor?->name ?? 'User' }}</div>
+                                <div class="edit-history-time">{{ $firstChange->created_at?->format('d M Y, h:i A') }}</div>
+                            </div>
+                            @foreach($changes as $change)
+                                <div class="edit-history-row">
+                                    <div class="edit-history-field">{{ $change->field_name }}</div>
+                                    <div class="edit-history-values">
+                                        <div class="edit-history-old"><del>{{ $change->old_value ?: '—' }}</del></div>
+                                        <div class="edit-history-arrow">→</div>
+                                        <div class="edit-history-new">{{ $change->new_value ?: '—' }}</div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @empty
+                        <div class="empty-state">No task edits have been recorded yet.</div>
                     @endforelse
                 </div>
             </div>

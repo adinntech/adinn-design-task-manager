@@ -20,8 +20,11 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::patch('/users/{user}/toggle', [UserController::class, 'toggle'])->name('users.toggle');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
         Route::get('/tasks', [TaskMonitoringController::class, 'index'])->name('tasks.index');
+        Route::get('/tasks/{task}/edit', [TaskMonitoringController::class, 'edit'])->name('tasks.edit');
+        Route::put('/tasks/{task}', [TaskMonitoringController::class, 'update'])->name('tasks.update');
         Route::get('/tasks/{task}', [TaskMonitoringController::class, 'show'])->name('tasks.show');
         Route::delete('/tasks/{task}', [TaskMonitoringController::class, 'destroy'])->name('tasks.destroy');
 

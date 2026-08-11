@@ -4,6 +4,7 @@ namespace App\Livewire\Designer;
 
 use App\Models\DesignTask;
 use App\Models\DesignTaskEodRecord;
+use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskCommentAttachment;
 use App\Models\DesignTaskRequest;
@@ -14,6 +15,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -350,6 +352,17 @@ class TaskDetail extends Component
         $eodCompletedTotal = (int) $eodRecords->sum('completed_count');
         $eodRemaining = max(0, (int) $this->task->total_creatives - $eodCompletedTotal);
 
+        $editHistory = collect();
+
+        if (Schema::hasTable('design_task_edit_histories')) {
+            $editHistory = DesignTaskEditHistory::query()
+                ->with('editor:id,name,role')
+                ->where('design_task_id', $this->task->id)
+                ->latest('created_at')
+                ->get()
+                ->groupBy('edit_batch_id');
+        }
+
         return view('livewire.designer.task-detail', [
             'statuses' => DesignTaskStatusService::STATUSES,
             'nextStatus' => $this->swapInitiatorReadOnly
@@ -395,6 +408,7 @@ class TaskDetail extends Component
             'requirementAttachmentCount' => $requirementAttachmentCount,
             'commentAttachmentCount' => $commentAttachmentCount,
             'attachmentCount' => $requirementAttachmentCount + $commentAttachmentCount,
+            'editHistory' => $editHistory,
         ]);
     }
 

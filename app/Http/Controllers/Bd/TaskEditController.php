@@ -1,23 +1,18 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Bd;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
-use App\Models\DesignTaskComment;
 use App\Models\DesignTaskEditHistory;
-use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
-use App\Services\DesignTaskStatusService;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
-class TaskMonitoringController extends Controller
+class TaskEditController extends Controller
 {
     private const NATURES = [
         'outdoor' => ['mockup_requirements', 'creative_adaptation', 'new_creative_design', 'cutout_size_calculation'],
@@ -41,97 +36,28 @@ class TaskMonitoringController extends Controller
         'due_at' => 'Due Date',
         'designer_id' => 'Assigned Designer',
         'total_creatives' => 'Total Creatives',
-        'status' => 'Status',
     ];
 
-    public function index(Request $request): View
+    public function edit(Request $request, DesignTask $task): View
     {
-        $tasks = DesignTask::query()
-            ->with(['designer:id,name', 'assigner:id,name'])
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $term = '%'.trim((string) $request->input('search')).'%';
+        $this->authorizeBdTask($request, $task);
 
-                $query->where(function ($q) use ($term) {
-                    $q->where('task_id', 'like', $term)
-                        ->orWhere('task_name', 'like', $term)
-                        ->orWhere('party_name', 'like', $term);
-                });
-            })
-            ->when($request->filled('vertical'), fn ($query) => $query->where('vertical', $request->input('vertical')))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->input('status')))
-            ->when($request->filled('priority'), fn ($query) => $query->where('priority', $request->input('priority')))
-            ->when($request->filled('designer_id'), fn ($query) => $query->where('designer_id', $request->input('designer_id')))
-            ->latest('assigned_at')
-            ->paginate(20)
-            ->withQueryString();
-
-        $designers = User::query()
-            ->where('role', 'designer')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $statuses = DesignTaskStatusService::STATUSES;
-
-        return view('admin.tasks.index', compact('tasks', 'designers', 'statuses'));
-    }
-
-    public function show(DesignTask $task): View
-    {
-        $task->load(['designer:id,name,email', 'assigner:id,name,email']);
-
-        $history = DesignTaskStatusHistory::query()
-            ->with('changedBy:id,name')
-            ->where('design_task_id', $task->id)
-            ->latest()
-            ->get();
-
-        $comments = DesignTaskComment::query()
-            ->with(['user:id,name', 'attachments'])
-            ->where('design_task_id', $task->id)
-            ->latest()
-            ->get();
-
-        $statuses = DesignTaskStatusService::STATUSES;
-
-        $editHistory = collect();
-
-        if (Schema::hasTable('design_task_edit_histories')) {
-            $editHistory = DesignTaskEditHistory::query()
-                ->with('editor:id,name,role')
-                ->where('design_task_id', $task->id)
-                ->latest('created_at')
-                ->get()
-                ->groupBy('edit_batch_id');
-        }
-
-        return view('admin.tasks.show', compact(
-            'task',
-            'history',
-            'comments',
-            'statuses',
-            'editHistory'
-        ));
-    }
-
-    public function edit(DesignTask $task): View
-    {
         $designers = User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('admin.tasks.edit', [
+        return view('bd.tasks.edit', [
             'task' => $task,
             'designers' => $designers,
-            'statuses' => DesignTaskStatusService::STATUSES,
             'natures' => self::NATURES,
         ]);
     }
 
-    public function update(Request $request, DesignTask $task): RedirectResponse
+    public function update(Request $request, DesignTask $task)
     {
-        $statuses = array_keys(DesignTaskStatusService::STATUSES);
+        $this->authorizeBdTask($request, $task);
 
         $data = $request->validate([
             'task_name' => ['required', 'string', 'max:180'],
@@ -142,14 +68,14 @@ class TaskMonitoringController extends Controller
                     $allowed = self::NATURES[$request->input('vertical')] ?? [];
 
                     if (! in_array($value, $allowed, true)) {
-                        $fail('The selected task nature is invalid for the selected vertical.');
+                        $fail('The selected task nature is invalid for the chosen vertical.');
                     }
                 },
             ],
             'party_type' => ['required', Rule::in(['client', 'agency'])],
             'party_name' => ['required', 'string', 'max:180'],
             'contact_person' => ['required', 'string', 'max:120'],
-            'mobile_number' => ['required', 'string', 'max:30'],
+            'mobile_number' => ['required', 'digits:10'],
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'due_at' => ['required', 'date'],
             'designer_id' => [
@@ -161,13 +87,12 @@ class TaskMonitoringController extends Controller
                 ),
             ],
             'total_creatives' => ['required', 'integer', 'min:1', 'max:9999'],
-            'status' => ['required', Rule::in($statuses)],
             'requirements' => ['sometimes', 'array'],
         ]);
 
-        $oldDesigner = User::query()->whereKey($task->designer_id)->value('name') ?? '—';
-        $newDesigner = User::query()->whereKey($data['designer_id'])->value('name') ?? '—';
-        $oldStatus = $task->status;
+        $oldDesignerName = User::query()->whereKey($task->designer_id)->value('name') ?? '—';
+        $newDesignerName = User::query()->whereKey($data['designer_id'])->value('name') ?? '—';
+
         $batchId = (string) Str::uuid();
         $historyRows = [];
 
@@ -175,31 +100,32 @@ class TaskMonitoringController extends Controller
             $task,
             $data,
             $request,
-            $oldDesigner,
-            $newDesigner,
-            $oldStatus,
             $batchId,
+            $oldDesignerName,
+            $newDesignerName,
             &$historyRows
         ) {
-            $updates = [];
+            $coreUpdates = [];
 
             foreach (self::CORE_FIELDS as $field => $label) {
-                $oldValue = $task->{$field};
-                $newValue = $data[$field];
+                $oldRaw = $task->{$field};
+                $newRaw = $data[$field];
 
-                $oldComparable = $field === 'due_at'
-                    ? optional($task->due_at)->format('Y-m-d H:i:s')
-                    : (string) ($oldValue ?? '');
-
-                $newComparable = $field === 'due_at'
-                    ? date('Y-m-d H:i:s', strtotime((string) $newValue))
-                    : (string) ($newValue ?? '');
+                if ($field === 'due_at') {
+                    $oldComparable = optional($task->due_at)->format('Y-m-d H:i:s');
+                    $newComparable = date('Y-m-d H:i:s', strtotime((string) $newRaw));
+                } else {
+                    $oldComparable = is_object($oldRaw) && method_exists($oldRaw, '__toString')
+                        ? (string) $oldRaw
+                        : (string) ($oldRaw ?? '');
+                    $newComparable = (string) ($newRaw ?? '');
+                }
 
                 if ($oldComparable === $newComparable) {
                     continue;
                 }
 
-                $updates[$field] = $newValue;
+                $coreUpdates[$field] = $newRaw;
 
                 $historyRows[] = [
                     'design_task_id' => $task->id,
@@ -207,11 +133,11 @@ class TaskMonitoringController extends Controller
                     'edit_batch_id' => $batchId,
                     'field_name' => $label,
                     'old_value' => $field === 'designer_id'
-                        ? $oldDesigner
-                        : $this->displayValue($field, $oldValue),
+                        ? $oldDesignerName
+                        : $this->displayValue($field, $oldRaw),
                     'new_value' => $field === 'designer_id'
-                        ? $newDesigner
-                        : $this->displayValue($field, $newValue),
+                        ? $newDesignerName
+                        : $this->displayValue($field, $newRaw),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -227,7 +153,9 @@ class TaskMonitoringController extends Controller
 
                 $oldValue = $oldRequirements[$key] ?? null;
 
-                if ($this->stringify($oldValue) === $this->stringify($submittedValue)) {
+                // Uploaded-file paths are display-only in the edit page and are not
+                // submitted. This prevents accidental deletion of existing files.
+                if ($this->valuesEqual($oldValue, $submittedValue)) {
                     continue;
                 }
 
@@ -245,8 +173,8 @@ class TaskMonitoringController extends Controller
                 ];
             }
 
-            if ($updates !== []) {
-                $task->fill($updates);
+            if ($coreUpdates !== []) {
+                $task->fill($coreUpdates);
             }
 
             if ($newRequirements !== $oldRequirements) {
@@ -257,45 +185,29 @@ class TaskMonitoringController extends Controller
                 $task->save();
             }
 
-            if (
-                $oldStatus !== $data['status']
-                && Schema::hasTable('design_task_status_histories')
-            ) {
-                DesignTaskStatusHistory::create([
-                    'design_task_id' => $task->id,
-                    'from_status' => $oldStatus,
-                    'to_status' => $data['status'],
-                    'changed_by' => $request->user()->id,
-                    'change_source' => 'admin_edit',
-                    'note' => 'Task status updated by Admin.',
-                ]);
-            }
-
-            if (
-                $historyRows !== []
-                && Schema::hasTable('design_task_edit_histories')
-            ) {
+            if ($historyRows !== []) {
                 DesignTaskEditHistory::query()->insert($historyRows);
             }
         });
 
+        if ($historyRows === []) {
+            return redirect()
+                ->route('bd.tasks.show', $task)
+                ->with('success', 'No changes were detected.');
+        }
+
         return redirect()
-            ->route('admin.tasks.show', $task)
-            ->with('success', $historyRows === []
-                ? 'No task changes were detected.'
-                : 'Task updated successfully.');
+            ->route('bd.tasks.show', ['task' => $task, 'tab' => 'edit-history'])
+            ->with('success', 'Task updated successfully. Edit History has been recorded.');
     }
 
-    public function destroy(DesignTask $task): RedirectResponse
+    private function authorizeBdTask(Request $request, DesignTask $task): void
     {
-        $taskId = $task->task_id;
-        $taskName = $task->task_name;
-
-        $task->delete();
-
-        return redirect()
-            ->route('admin.tasks.index')
-            ->with('success', "Task {$taskId} - {$taskName} deleted successfully.");
+        abort_unless(
+            $request->user()?->role === 'bd'
+            && (int) $task->assigned_by === (int) $request->user()->id,
+            403
+        );
     }
 
     private function displayValue(string $field, mixed $value): string
@@ -310,11 +222,6 @@ class TaskMonitoringController extends Controller
             } catch (\Throwable) {
                 return (string) $value;
             }
-        }
-
-        if ($field === 'status') {
-            return DesignTaskStatusService::STATUSES[(string) $value]
-                ?? Str::headline((string) $value);
         }
 
         if (in_array($field, ['vertical', 'task_nature'], true)) {
@@ -343,5 +250,10 @@ class TaskMonitoringController extends Controller
         }
 
         return (string) $value;
+    }
+
+    private function valuesEqual(mixed $oldValue, mixed $newValue): bool
+    {
+        return $this->stringify($oldValue) === $this->stringify($newValue);
     }
 }
