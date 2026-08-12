@@ -15,12 +15,12 @@ class DesignTaskStatusService
         'assigned_tasks' => 'Assigned Tasks',
         'review_analysis' => 'Review and Analysis',
         'need_clarification' => 'Need Clarification',
-        'swap_tasks' => 'Swap Tasks',
         'yet_to_start' => 'Yet to Start',
         'in_progress' => 'In Progress',
         'waiting_confirmation' => 'Waiting for Confirmation',
         'rework' => 'Rework',
         'completed' => 'Completed',
+        'swap_tasks' => 'Swap Tasks',
     ];
 
     private const ORDER = [
@@ -34,28 +34,41 @@ class DesignTaskStatusService
         'completed' => 8,
     ];
 
-    public function moveAsDesigner(
-        DesignTask $task,
-        User $designer,
-        string $targetStatus,
-        string $source = 'designer'
-    ): DesignTask {
+    public function moveAsDesigner(DesignTask $task, User $designer, string $targetStatus, string $source = 'designer'): DesignTask
+    {
         if ($designer->role !== 'designer' || (int) $task->designer_id !== (int) $designer->id) {
             throw new AuthorizationException('You are not allowed to update this task.');
         }
 
         if (! array_key_exists($targetStatus, self::STATUSES)) {
-            throw ValidationException::withMessages([
-                'status' => 'The selected task status is invalid.',
-            ]);
+            throw ValidationException::withMessages(['status' => 'The selected task status is invalid.']);
         }
 
         $fromStatus = $task->status;
 
         if (! $this->designerCanMove($fromStatus, $targetStatus)) {
-            throw ValidationException::withMessages([
-                'status' => 'This status movement is not permitted for the Designer.',
-            ]);
+            throw ValidationException::withMessages(['status' => 'This status movement is not permitted for the Designer.']);
+        }
+
+        if ($targetStatus === 'waiting_confirmation') {
+            if (! in_array($fromStatus, ['in_progress', 'rework'], true)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Waiting for Confirmation is available only from In Progress or Rework.',
+                ]);
+            }
+
+            $progress = app(DesignTaskProgressService::class);
+            if (! $progress->isComplete($task)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Complete 100% of the creatives before moving to Waiting for Confirmation.',
+                ]);
+            }
+
+            if ($fromStatus === 'rework' && ! $progress->currentReworkHasUpload($task)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Upload the current Rework ZIP in Task Updation before moving to Waiting for Confirmation.',
+                ]);
+            }
         }
 
         return DB::transaction(function () use ($task, $designer, $targetStatus, $fromStatus, $source) {
@@ -75,26 +88,17 @@ class DesignTaskStatusService
 
     public function designerCanMove(string $fromStatus, string $targetStatus): bool
     {
-        if ($fromStatus === $targetStatus) {
-            return false;
-        }
-
-        // Swap Tasks is a system-controlled holding stage.
-        // Designers cannot drag a task into or out of it.
-        if ($fromStatus === 'swap_tasks' || $targetStatus === 'swap_tasks') {
-            return false;
-        }
+        if ($fromStatus === $targetStatus) return false;
+        if ($fromStatus === 'swap_tasks' || $targetStatus === 'swap_tasks') return false;
+        if (in_array($targetStatus, ['rework', 'completed'], true)) return false;
+        if (in_array($fromStatus, ['waiting_confirmation', 'completed'], true)) return false;
 
         if ($fromStatus === 'rework') {
-            return $targetStatus === 'yet_to_start';
+            return $targetStatus === 'waiting_confirmation';
         }
 
-        if (in_array($targetStatus, ['rework', 'completed'], true)) {
-            return false;
-        }
-
-        if (in_array($fromStatus, ['waiting_confirmation', 'completed'], true)) {
-            return false;
+        if ($targetStatus === 'waiting_confirmation') {
+            return $fromStatus === 'in_progress';
         }
 
         return (self::ORDER[$targetStatus] ?? 0) > (self::ORDER[$fromStatus] ?? 0);
@@ -108,7 +112,7 @@ class DesignTaskStatusService
             'need_clarification' => 'yet_to_start',
             'yet_to_start' => 'in_progress',
             'in_progress' => 'waiting_confirmation',
-            'rework' => 'yet_to_start',
+            'rework' => 'waiting_confirmation',
             default => null,
         };
     }

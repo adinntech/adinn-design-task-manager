@@ -4,8 +4,6 @@
 @section('workspace-subtitle','Monitor and administratively manage every design task')
 @section('content')
 
-@if(session('success'))<div class="flash flash-success">{{ session('success') }}</div>@endif
-@if(session('error'))<div class="flash flash-error">{{ session('error') }}</div>@endif
 
 <div class="page-head">
     <div>
@@ -84,7 +82,16 @@
                                     <a class="btn btn-secondary" href="{{ route('admin.tasks.show',$task) }}">View</a>
                                     <a class="btn btn-secondary" href="{{ route('admin.tasks.edit',$task) }}">Edit</a>
 
-                                    <form method="POST" action="{{ route('admin.tasks.destroy',$task) }}" onsubmit="return confirm('Delete {{ $task->task_id }}? The task will disappear from normal views while its retained audit data/files remain available in storage.');">
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.tasks.destroy',$task) }}"
+                                        data-formal-confirm
+                                        data-confirm-title="Delete Task?"
+                                        data-confirm-message="Are you sure you want to delete {{ $task->task_id }} — {{ $task->display_task_name ?? $task->task_name }}?"
+                                        data-confirm-label="Yes, Delete"
+                                        data-processing-label="Deleting..."
+                                        data-confirm-tone="danger"
+                                    >
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn" style="background:#fff1f2;color:#b42318;border:1px solid #fecdd3">Delete</button>
@@ -102,4 +109,6 @@
         <div class="pagination-wrap">{{ $tasks->links() }}</div>
     </div>
 </div>
+
+<x-formal-confirm-dialog />
 @endsection

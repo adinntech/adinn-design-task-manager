@@ -61,7 +61,7 @@
         </div>
 
         <div><label class="label">Priority *</label><select class="field" name="priority" required>@foreach(['low'=>'Low','medium'=>'Medium','high'=>'High','urgent'=>'Urgent'] as $v=>$l)<option value="{{ $v }}" @selected(old('priority')===$v)>{{ $l }}</option>@endforeach</select></div>
-        <div><label class="label">Due Date & Time *</label><input class="field" type="datetime-local" name="due_at" value="{{ old('due_at') }}" required></div>
+        <div><label class="label">Due Date & Time *</label><input class="field" id="dueAt" type="datetime-local" name="due_at" value="{{ old('due_at') }}" required><p class="text-xs text-slate-500 mt-1">Choose a working day within the next 7 working days.</p></div>
         <div><label class="label">Designer Name *</label><select class="field" name="designer_id" required><option value="">Select designer</option>@foreach($designers as $designer)<option value="{{ $designer->id }}" @selected((string)old('designer_id')===(string)$designer->id)>{{ $designer->name }}</option>@endforeach</select></div>
 
         <div>
@@ -216,5 +216,36 @@ nature.addEventListener('change',renderFields);
 document.getElementById('partyType').addEventListener('change',e=>document.getElementById('partyNameLabel').textContent=(e.target.value==='agency'?'Agency':'Client')+' Name *');
 document.getElementById('taskForm').addEventListener('reset',()=>setTimeout(()=>{vertical.value='';populateNatures();},0));
 if(oldVertical){vertical.value=oldVertical;populateNatures(oldNature);} else populateNatures();
+
+const dueAtInput = document.getElementById('dueAt');
+if (dueAtInput) {
+    const nowDate = new Date();
+    const pad = value => String(value).padStart(2, '0');
+    const localValue = date => `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    dueAtInput.min = localValue(nowDate);
+
+    const maxDate = new Date(nowDate);
+    maxDate.setHours(23, 59, 0, 0);
+    let workingDays = 0;
+    while (workingDays < 7) {
+        const day = maxDate.getDay();
+        if (day !== 0 && day !== 6) workingDays++;
+        if (workingDays < 7) maxDate.setDate(maxDate.getDate() + 1);
+    }
+    dueAtInput.max = localValue(maxDate);
+
+    dueAtInput.addEventListener('change', () => {
+        if (!dueAtInput.value) return;
+        const chosen = new Date(dueAtInput.value);
+        if (chosen.getDay() === 0 || chosen.getDay() === 6) {
+            dueAtInput.setCustomValidity('Please choose a working day (Monday to Friday).');
+            dueAtInput.reportValidity();
+            dueAtInput.value = '';
+        } else {
+            dueAtInput.setCustomValidity('');
+        }
+    });
+}
+
 </script>
 @endsection

@@ -82,7 +82,17 @@
                                                     Preferred Designer:
                                                     <strong style="color:#111827">{{ $item->targetDesigner?->name ?? 'No preference' }}</strong>
                                                 </div>
-                                                <form method="POST" action="{{ route('designer-head.requests.approve', $item) }}" onsubmit="return confirm('Approve this request and assign it to the selected Designer? This decision is final.');">
+                                                <form
+                    method="POST"
+                    action="{{ route('designer-head.requests.approve', $item) }}"
+                    data-formal-confirm
+                    data-confirm-title="Approve { ucfirst($item->request_type) } Request?"
+                    data-confirm-message="You are about to approve this { strtolower($item->request_type) } request. The approved decision will be applied to the task workflow immediately."
+                    data-confirm-note="Please verify the approved Designer and quantity, where applicable, before confirming. This decision is final for the current request."
+                    data-confirm-label="Approve Request"
+                    data-processing-label="Approving..."
+                    data-confirm-tone="success"
+                >
                                                     @csrf
                                                     <select name="approved_designer_id" class="field" required style="margin-bottom:6px">
                                                         <option value="">Select approved Designer</option>
@@ -100,12 +110,28 @@
                                                     <button class="btn btn-primary" style="width:100%">Approve</button>
                                                 </form>
                                             @else
-                                                <form method="POST" action="{{ route('designer-head.requests.approve', $item) }}" onsubmit="return confirm('Approve this request? This decision is final.');">
+                                                <form
+                    method="POST"
+                    action="{{ route('designer-head.requests.approve', $item) }}"
+                    data-formal-confirm
+                    data-confirm-title="Approve { ucfirst($item->request_type) } Request?"
+                    data-confirm-message="You are about to approve this { strtolower($item->request_type) } request. The approved decision will be applied to the task workflow immediately."
+                    data-confirm-note="Please verify the approved Designer and quantity, where applicable, before confirming. This decision is final for the current request."
+                    data-confirm-label="Approve Request"
+                    data-processing-label="Approving..."
+                    data-confirm-tone="success"
+                >
                                                     @csrf
                                                     <button class="btn btn-primary" style="width:100%">Approve</button>
                                                 </form>
                                             @endif
-                                            <form method="POST" action="{{ route('designer-head.requests.reject', $item) }}" onsubmit="const b=this.querySelector('button'); if(b.disabled) return false; if(!confirm('Decline this request? A reason is mandatory and this decision is final.')) return false; b.disabled=true; b.textContent='Declining...'; return true;">
+                                            <form method="POST" action="{{ route('designer-head.requests.reject', $item) }}" data-formal-confirm
+                    data-confirm-title="Decline {{ ucfirst($item->request_type) }} Request?"
+                    data-confirm-message="You are about to decline this request. The Designer will be informed through the request status and task history."
+                    data-confirm-note="Please ensure a meaningful decline reason has been entered before continuing. This decision is final for the current request."
+                    data-confirm-label="Decline Request"
+                    data-processing-label="Declining..."
+                    data-confirm-tone="danger">
                                                 @csrf
                                                 <textarea name="decision_reason" class="field" rows="2" required maxlength="5000" placeholder="Reason for declining this request..."></textarea>
                                                 <button class="btn btn-danger" style="width:100%;margin-top:6px">Decline</button>
@@ -141,4 +167,6 @@
         </div>
     </section>
 </div>
+
+<x-formal-confirm-dialog />
 @endsection

@@ -4,8 +4,6 @@
 @section('workspace-subtitle','Create, update, deactivate and safely delete role-based users')
 @section('content')
 
-@if(session('success'))<div class="flash flash-success">{{ session('success') }}</div>@endif
-@if(session('error'))<div class="flash flash-error">{{ session('error') }}</div>@endif
 
 <div class="page-head">
     <div>
@@ -77,7 +75,16 @@
                                             </button>
                                         </form>
 
-                                        <form method="POST" action="{{ route('admin.users.destroy',$user) }}" onsubmit="return confirm('Delete {{ $user->name }}? Users with existing task/history activity will be protected and cannot be permanently deleted.');">
+                                        <form
+                                            method="POST"
+                                            action="{{ route('admin.users.destroy',$user) }}"
+                                            data-formal-confirm
+                                            data-confirm-title="Delete User Account?"
+                                            data-confirm-message="Are you sure you want to delete the account for {{ $user->name }}?"
+                                            data-confirm-label="Yes, Delete"
+                                            data-processing-label="Deleting..."
+                                            data-confirm-tone="danger"
+                                        >
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn" style="background:#fff1f2;color:#b42318;border:1px solid #fecdd3">
@@ -100,4 +107,6 @@
         <div class="pagination-wrap">{{ $users->links() }}</div>
     </div>
 </div>
+
+<x-formal-confirm-dialog />
 @endsection

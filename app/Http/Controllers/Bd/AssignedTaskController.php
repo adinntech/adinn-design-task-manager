@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Bd;
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskComment;
+use App\Models\DesignTaskCommentAttachment;
 use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -89,8 +93,12 @@ class AssignedTaskController extends Controller
             ->latest('submitted_at')
             ->get();
 
-        $eodCompletedTotal = (int) $eodRecords->sum('completed_count');
-        $eodRemaining = max(0, (int) $task->total_creatives - $eodCompletedTotal);
+        $progressService = app(DesignTaskProgressService::class);
+        $eodCompletedTotal = $progressService->completed($task);
+        $eodRemaining = $progressService->remaining($task);
+        $progressPercentage = $progressService->percentage($task);
+        $progressColorKey = $progressService->colorKey($progressPercentage);
+        $reworkCount = $progressService->reworkCount($task);
 
         $editHistory = collect();
         if (Schema::hasTable('design_task_edit_histories')) {
@@ -136,10 +144,80 @@ class AssignedTaskController extends Controller
             'eodRecords' => $eodRecords,
             'eodCompletedTotal' => $eodCompletedTotal,
             'eodRemaining' => $eodRemaining,
+            'progressPercentage' => $progressPercentage,
+            'progressColorKey' => $progressColorKey,
+            'reworkCount' => $reworkCount,
             'editHistory' => $editHistory,
             'requirementAttachmentGroups' => $requirementAttachmentGroups,
             'attachmentCount' => $requirementAttachmentCount + $commentAttachmentCount,
         ]);
+    }
+
+    public function addComment(Request $request, DesignTask $task): RedirectResponse
+    {
+        abort_unless(
+            $request->user()?->role === 'bd'
+            && (int) $task->assigned_by === (int) $request->user()->id,
+            403
+        );
+
+        $data = $request->validate([
+            'comment' => ['required', 'string', 'max:10000'],
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'max:102400'],
+        ]);
+
+        DB::transaction(function () use ($request, $task, $data) {
+            $newComment = DesignTaskComment::create([
+                'design_task_id' => $task->id,
+                'user_id' => $request->user()->id,
+                'status_at_comment' => $task->status,
+                'comment' => trim($data['comment']),
+            ]);
+
+            foreach ($request->file('attachments', []) as $index => $file) {
+                $originalBase = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
+                $extension = strtolower($file->getClientOriginalExtension());
+                $safeBase = $originalBase !== '' ? $originalBase : 'attachment';
+
+                $fileName = sprintf(
+                    '%s__comment-%05d__%s__%s__%02d.%s',
+                    $task->task_id,
+                    $newComment->id,
+                    $safeBase,
+                    now()->format('Ymd-His-v'),
+                    $index + 1,
+                    $extension
+                );
+
+                $root = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
+
+                $directory = implode('/', [
+                    $root,
+                    now()->format('Y'),
+                    $task->vertical,
+                    $task->task_id.'_'.Str::slug($task->task_name),
+                    Str::slug($task->task_nature),
+                    'comments',
+                    'comment-'.$newComment->id,
+                ]);
+
+                $path = $file->storePubliclyAs($directory, $fileName, 'spaces');
+
+                DesignTaskCommentAttachment::create([
+                    'design_task_comment_id' => $newComment->id,
+                    'disk' => 'spaces',
+                    'path' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('bd.tasks.show', ['task' => $task, 'tab' => 'comments'])
+            ->with('success', 'Comment added successfully.');
     }
 
     private function statusTitle(?string $from, ?string $to): string

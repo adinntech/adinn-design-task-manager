@@ -39,7 +39,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 .due-pill.due-soon{background:#fef3c7;color:#b45309}
 .due-pill.due-safe{background:#dcfce7;color:#15803d}
 .due-pill.due-completed{background:#f1f5f9;color:#64748b}.task-card-id{color:#7c8492;font-size:9px;font-weight:850}.task-card-name{margin-top:6px;font-size:12px;font-weight:900;line-height:1.35}.task-card-client{margin-top:4px;color:#5f6877;font-size:10px}.task-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.task-history-tag{display:inline-flex;align-items:center;min-height:22px;padding:3px 9px;border-radius:999px;font-size:8px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;box-shadow:0 2px 7px rgba(16,24,40,.05)}.task-tag-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-tag-swap{color:#067647;background:linear-gradient(135deg,#ecfdf3,#dcfae6);border-color:#abefc6}.task-tag-decline{color:#b42318;background:linear-gradient(135deg,#fff1f0,#fee4e2);border-color:#fecdca}.task-tag-pending{color:#b54708;background:linear-gradient(135deg,#fffaeb,#fff4d6);border-color:#fedf89}.task-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.task-meta-item{border-radius:8px;background:#f7f8fa;padding:7px;font-size:9px;color:#616a78}.task-meta-item strong{display:block;color:#343b46;font-size:8px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}.sortable-ghost{opacity:.35}.sortable-chosen{box-shadow:0 12px 30px rgba(0,0,0,.14)}.kanban-invalid{animation:invalidDrop .35s ease}@keyframes invalidDrop{50%{background:#fee4e2}}.designer-toast{position:fixed;right:22px;bottom:22px;z-index:9999;background:#15171c;color:#fff;border-left:4px solid #e30613;padding:12px 15px;border-radius:10px;box-shadow:0 15px 40px rgba(0,0,0,.2);font-size:11px}@media(max-width:900px){.designer-toolbar{grid-template-columns:1fr}}
-    </style>
+    .card-progress{margin-top:9px}.card-progress-head{display:flex;justify-content:space-between;gap:8px;font-size:8px;font-weight:900;color:#667085}.card-progress-track{height:6px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:5px}.card-progress-fill{height:100%;border-radius:999px}.p-start .card-progress-fill{background:#94a3b8}.p-low .card-progress-fill{background:#f59e0b}.p-mid .card-progress-fill{background:#3b82f6}.p-high .card-progress-fill{background:#8b5cf6}.p-complete .card-progress-fill{background:#16a34a}</style>
 
     <div class="page-head">
         <div><h1>My Tasks</h1><p>Manage assigned design tasks across the complete production pipeline.</p></div>
@@ -104,7 +104,16 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                     </div>
                                 @endif
 
-                                <div class="task-card-meta">
+                                @php
+                                $completedCreatives = min((int) $task->total_creatives, (int) ($task->completed_creatives ?? 0));
+                                $progressPercent = min(100, (int) round(($completedCreatives / max(1, (int) $task->total_creatives)) * 100));
+                                $progressClass = $progressPercent >= 100 ? 'p-complete' : ($progressPercent >= 75 ? 'p-high' : ($progressPercent >= 50 ? 'p-mid' : ($progressPercent >= 25 ? 'p-low' : 'p-start')));
+                            @endphp
+                            <div class="card-progress {{ $progressClass }}">
+                                <div class="card-progress-head"><span>{{ $completedCreatives }} / {{ $task->total_creatives }} creatives</span><span>{{ $progressPercent }}%</span></div>
+                                <div class="card-progress-track"><div class="card-progress-fill" style="width:{{ $progressPercent }}%"></div></div>
+                            </div>
+                            <div class="task-card-meta">
                                     <div class="task-meta-item"><strong>Vertical</strong>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</div>
                                     <div class="task-meta-item"><strong>Creatives</strong>{{ $task->total_creatives }}</div>
                                     <div class="task-meta-item"><strong>Due</strong>{{ \Illuminate\Support\Carbon::parse($task->due_at)->format('d M, h:i A') }}</div>

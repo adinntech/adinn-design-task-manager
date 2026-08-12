@@ -38,7 +38,7 @@ class TaskKanban extends Component
     public function getTasksProperty(): Collection
     {
         return DesignTask::query()
-            ->with(['assigner:id,name'])
+            ->with(['assigner:id,name'])->withSum(['eodRecords as completed_creatives' => fn ($query) => $query->where('update_type', 'progress')], 'completed_count')
             ->where(function ($query) {
                 $query->where('designer_id', Auth::id())
                     ->orWhereHas('requests', function ($requestQuery) {

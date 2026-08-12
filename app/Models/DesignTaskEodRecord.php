@@ -9,10 +9,15 @@ class DesignTaskEodRecord extends Model
     protected $fillable = [
         'design_task_id',
         'designer_id',
+        'update_type',
         'completed_count',
         'total_creatives_snapshot',
         'cumulative_completed',
         'remaining_creatives',
+        'rework_count_snapshot',
+        'attachment_disk',
+        'attachment_path',
+        'attachment_original_name',
         'submitted_at',
     ];
 
@@ -31,5 +36,15 @@ class DesignTaskEodRecord extends Model
     public function designer()
     {
         return $this->belongsTo(User::class, 'designer_id');
+    }
+
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk($this->attachment_disk ?: 'spaces')
+            ->url($this->attachment_path);
     }
 }

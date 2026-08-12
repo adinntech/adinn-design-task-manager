@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Bd;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
-use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -68,7 +67,32 @@ class TaskController extends Controller
             'contact_person' => ['required', 'string', 'max:120'],
             'mobile_number' => ['required', 'digits:10'],
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
-            'due_at' => ['required', 'date', 'after:now'],
+            'due_at' => [
+                'required',
+                'date',
+                'after:now',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $due = \Illuminate\Support\Carbon::parse($value);
+                    if ($due->isWeekend()) {
+                        $fail('Deadline must be a working day (Monday to Friday).');
+                        return;
+                    }
+
+                    $cursor = now()->startOfDay();
+                    $allowedDates = [];
+
+                    while (count($allowedDates) < 7) {
+                        if (! $cursor->isWeekend()) {
+                            $allowedDates[] = $cursor->toDateString();
+                        }
+                        $cursor->addDay();
+                    }
+
+                    if (! in_array($due->toDateString(), $allowedDates, true)) {
+                        $fail('Deadline must be one of the next 7 working dates.');
+                    }
+                },
+            ],
             'designer_id' => [
                 'required',
                 Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'designer')->where('is_active', true)),
@@ -130,29 +154,6 @@ class TaskController extends Controller
 
             $task->update([
                 'task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $task->id),
-            ]);
-
-            DesignTaskStatusHistory::create([
-                'design_task_id' => $task->id,
-                'from_status' => null,
-                'to_status' => 'assigned_tasks',
-                'changed_by' => auth()->id(),
-                'change_source' => 'task_created',
-                'note' => 'Task created by '.auth()->user()->name.'.',
-                'created_at' => $task->created_at,
-                'updated_at' => $task->created_at,
-            ]);
-
-            $designerName = User::query()->whereKey($data['designer_id'])->value('name') ?? 'Designer';
-            DesignTaskStatusHistory::create([
-                'design_task_id' => $task->id,
-                'from_status' => 'assigned_tasks',
-                'to_status' => 'assigned_tasks',
-                'changed_by' => auth()->id(),
-                'change_source' => 'task_assigned',
-                'note' => 'Task assigned to '.$designerName.'.',
-                'created_at' => $task->assigned_at,
-                'updated_at' => $task->assigned_at,
             ]);
 
             return $task->fresh();

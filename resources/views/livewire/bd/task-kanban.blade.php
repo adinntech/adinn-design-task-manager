@@ -81,7 +81,7 @@
             .bd-toolbar{grid-template-columns:1fr}
             .bd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
         }
-    </style>
+    .card-progress{margin-top:9px}.card-progress-head{display:flex;justify-content:space-between;gap:8px;font-size:8px;font-weight:900;color:#667085}.card-progress-track{height:6px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:5px}.card-progress-fill{height:100%;border-radius:999px}.p-start .card-progress-fill{background:#94a3b8}.p-low .card-progress-fill{background:#f59e0b}.p-mid .card-progress-fill{background:#3b82f6}.p-high .card-progress-fill{background:#8b5cf6}.p-complete .card-progress-fill{background:#16a34a}</style>
 
     <div class="page-head">
         <div>
@@ -204,7 +204,16 @@
                                         </div>
                                     @endif
 
-                                    <div class="task-card-meta">
+                                    @php
+                                    $completedCreatives = min((int) $task->total_creatives, (int) ($task->completed_creatives ?? 0));
+                                    $progressPercent = min(100, (int) round(($completedCreatives / max(1, (int) $task->total_creatives)) * 100));
+                                    $progressClass = $progressPercent >= 100 ? 'p-complete' : ($progressPercent >= 75 ? 'p-high' : ($progressPercent >= 50 ? 'p-mid' : ($progressPercent >= 25 ? 'p-low' : 'p-start')));
+                                @endphp
+                                <div class="card-progress {{ $progressClass }}">
+                                    <div class="card-progress-head"><span>{{ $completedCreatives }} / {{ $task->total_creatives }} creatives</span><span>{{ $progressPercent }}%</span></div>
+                                    <div class="card-progress-track"><div class="card-progress-fill" style="width:{{ $progressPercent }}%"></div></div>
+                                </div>
+                                <div class="task-card-meta">
                                         <div class="task-meta-item">
                                             <strong>Designer</strong>
                                             {{ $task->designer?->name ?? '—' }}

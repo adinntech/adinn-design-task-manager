@@ -94,7 +94,7 @@ class TaskKanban extends Component
             ->with([
                 'designer:id,name',
                 'assigner:id,name',
-            ])
+            ])->withSum(['eodRecords as completed_creatives' => fn ($query) => $query->where('update_type', 'progress')], 'completed_count')
             ->where('assigned_by', Auth::id())
             ->when($this->search !== '', function ($query) {
                 $term = '%'.trim($this->search).'%';

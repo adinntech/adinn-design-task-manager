@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DesignTask;
+use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
@@ -16,8 +17,9 @@ class DesignTaskRequestService
     public const TYPES = ['decline', 'split', 'swap'];
 
     private const REQUESTABLE_TYPES = [
-        'review_analysis' => ['decline', 'split', 'swap'],
-        'need_clarification' => ['decline', 'split', 'swap'],
+        'assigned_tasks' => ['decline'],
+        'review_analysis' => ['split', 'swap'],
+        'need_clarification' => ['split', 'swap'],
         'yet_to_start' => ['split', 'swap'],
         'in_progress' => ['split', 'swap'],
     ];
@@ -30,6 +32,14 @@ class DesignTaskRequestService
     public function allowedTypesForTask(DesignTask $task): array
     {
         $allowed = $this->allowedTypes($task->status);
+
+        if (! empty(data_get($task->requirements, '_swapped_from_task_id'))) {
+            $allowed = array_values(array_diff($allowed, ['swap']));
+        }
+
+        if (! empty(data_get($task->requirements, '_split_request_id')) || ! empty(data_get($task->requirements, '_split_from_task_id'))) {
+            $allowed = array_values(array_diff($allowed, ['split']));
+        }
 
         $approvedTypes = DesignTaskRequest::query()
             ->where('design_task_id', $task->id)
@@ -383,6 +393,29 @@ class DesignTaskRequestService
         $activeTask->update([
             'task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $activeTask->id),
         ]);
+
+        // Carry existing Task Updation progress into the logical active task so
+        // the approved swap does not reset completed creative progress.
+        DesignTaskEodRecord::query()
+            ->where('design_task_id', $originalTask->id)
+            ->orderBy('id')
+            ->get()
+            ->each(function (DesignTaskEodRecord $record) use ($activeTask): void {
+                DesignTaskEodRecord::create([
+                    'design_task_id' => $activeTask->id,
+                    'designer_id' => $record->designer_id,
+                    'update_type' => $record->update_type ?? 'progress',
+                    'completed_count' => $record->completed_count,
+                    'total_creatives_snapshot' => $record->total_creatives_snapshot,
+                    'cumulative_completed' => $record->cumulative_completed,
+                    'remaining_creatives' => $record->remaining_creatives,
+                    'rework_count_snapshot' => $record->rework_count_snapshot,
+                    'attachment_disk' => $record->attachment_disk,
+                    'attachment_path' => $record->attachment_path,
+                    'attachment_original_name' => $record->attachment_original_name,
+                    'submitted_at' => $record->submitted_at,
+                ]);
+            });
 
         $originalRequirements['_swap_active_task_id'] = $activeTask->id;
         $originalRequirements['_swap_active_task_code'] = $activeTask->task_id;

@@ -4,8 +4,6 @@
 @section('workspace-subtitle','Administrative task view and control')
 @section('content')
 
-@if(session('success'))<div class="flash flash-success">{{ session('success') }}</div>@endif
-@if(session('error'))<div class="flash flash-error">{{ session('error') }}</div>@endif
 
 <style>
     .admin-edit-history{margin-top:14px}
@@ -28,7 +26,16 @@
         <a class="btn btn-secondary" href="{{ route('admin.tasks.index') }}">Back to Tasks</a>
         <a class="btn btn-secondary" href="{{ route('admin.tasks.edit',$task) }}">Edit Task</a>
 
-        <form method="POST" action="{{ route('admin.tasks.destroy',$task) }}" onsubmit="return confirm('Delete {{ $task->task_id }}? This task will be removed from normal views, but retained history/files will not be intentionally deleted.');">
+        <form
+                                        method="POST"
+                                        action="{{ route('admin.tasks.destroy',$task) }}"
+                                        data-formal-confirm
+                                        data-confirm-title="Delete Task?"
+                                        data-confirm-message="Are you sure you want to delete {{ $task->task_id }} — {{ $task->display_task_name ?? $task->task_name }}?"
+                                        data-confirm-label="Yes, Delete"
+                                        data-processing-label="Deleting..."
+                                        data-confirm-tone="danger"
+                                    >
             @csrf
             @method('DELETE')
             <button type="submit" class="btn" style="background:#fff1f2;color:#b42318;border:1px solid #fecdd3">Delete Task</button>
@@ -162,4 +169,6 @@
         </section>
     </aside>
 </div>
+
+<x-formal-confirm-dialog />
 @endsection
