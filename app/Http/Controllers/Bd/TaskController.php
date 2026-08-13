@@ -7,6 +7,7 @@ use App\Models\DesignTask;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -20,19 +21,17 @@ class TaskController extends Controller
         'fixtures' => ['design_with_creative', 'design_without_creative'],
         'signage' => ['mockup', 'creative_adaptation', 'new_creative', 'technical_drawing', 'three_d_design', 'technical_and_three_d'],
         'pop_offsets' => ['mockup_design', 'design_adaptation', 'creative_design'],
-        'digital_marketing' => ['proposal', 'logo_design', 'poster_design', 'video_design'],
         'events_activations' => ['proposal_designs', 'element_design_with_creative', 'element_design_without_creative', 'three_d_layout'],
+        'media' => ['theatre_ads', 'newspaper_ads', 'fm', 'tv_ads'],
     ];
 
-    private const ARRAY_FILES = [
+    private const FILE_FIELDS = [
         'supporting_documents', 'content_images', 'logo_images', 'reference_images', 'additional_attachments',
-    ];
-
-    private const SINGLE_FILES = [
         'site_photo', 'creative', 'reference_image', 'company_details_document', 'hoarding_artwork',
         'description_upload', 'vehicle_details', 'brand_details_upload', 'recce_report', 'client_format_manual',
         'fixture_details', 'material_specifications', 'dealer_details', 'technical_drawing', 'element_list',
-        'requirement_list', 'brand_guidelines', 'previous_logo', 'client_audio',
+        'requirement_list', 'brand_guidelines', 'previous_logo', 'client_audio', 'dimension_upload', 'size_upload',
+        'video_clip', 'existing_audio_creative', 'sample_video_clip', 'creative_content_upload', 'logo_brand_image',
     ];
 
     public function create()
@@ -64,34 +63,14 @@ class TaskController extends Controller
             ],
             'party_type' => ['required', Rule::in(['client', 'agency'])],
             'party_name' => ['required', 'string', 'max:180'],
-            'contact_person' => ['required', 'string', 'max:120'],
-            'mobile_number' => ['required', 'digits:10'],
+            'contact_person' => ['nullable', 'string', 'max:120'],
+            'mobile_number' => ['nullable', 'digits:10'],
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'due_at' => [
                 'required',
                 'date',
-                'after:now',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    $due = \Illuminate\Support\Carbon::parse($value);
-                    if ($due->isWeekend()) {
-                        $fail('Deadline must be a working day (Monday to Friday).');
-                        return;
-                    }
-
-                    $cursor = now()->startOfDay();
-                    $allowedDates = [];
-
-                    while (count($allowedDates) < 7) {
-                        if (! $cursor->isWeekend()) {
-                            $allowedDates[] = $cursor->toDateString();
-                        }
-                        $cursor->addDay();
-                    }
-
-                    if (! in_array($due->toDateString(), $allowedDates, true)) {
-                        $fail('Deadline must be one of the next 7 working dates.');
-                    }
-                },
+                'after_or_equal:today',
+                'before_or_equal:'.$this->maximumAllowedDueDate()->format('Y-m-d H:i:s'),
             ],
             'designer_id' => [
                 'required',
@@ -120,16 +99,66 @@ class TaskController extends Controller
             })
             ->all();
 
-        if (isset($data['board_width'], $data['board_height'])) {
-            $width = (float) $data['board_width'];
-            $height = (float) $data['board_height'];
-            unset($requirements['board_width'], $requirements['board_height']);
-            $requirements['board_size'] = [
-                'width' => $width,
-                'height' => $height,
-                'unit' => 'feet',
-                'square_feet' => round($width * $height, 2),
-            ];
+        $dimensionRows = collect($data['dimension_rows'] ?? [])
+            ->filter(function ($row): bool {
+                if (! is_array($row)) {
+                    return false;
+                }
+
+                return filled($row['name'] ?? null)
+                    || filled($row['width'] ?? null)
+                    || filled($row['height'] ?? null);
+            })
+            ->map(function ($row): array {
+                $width = (float) ($row['width'] ?? 0);
+                $height = (float) ($row['height'] ?? 0);
+
+                return [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'width' => $width,
+                    'height' => $height,
+                    'unit' => 'feet',
+                    'area' => round($width * $height, 2),
+                ];
+            })
+            ->values()
+            ->all();
+
+        unset($requirements['dimension_rows']);
+
+        if ($dimensionRows !== []) {
+            $requirements['board_details'] = $dimensionRows;
+        }
+
+        $sizeRows = collect($data['size_rows'] ?? [])
+            ->filter(function ($row): bool {
+                if (! is_array($row)) {
+                    return false;
+                }
+
+                return filled($row['name'] ?? null)
+                    || filled($row['width'] ?? null)
+                    || filled($row['height'] ?? null);
+            })
+            ->map(function ($row): array {
+                $width = (float) ($row['width'] ?? 0);
+                $height = (float) ($row['height'] ?? 0);
+
+                return [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'width' => $width,
+                    'height' => $height,
+                    'unit' => 'feet',
+                    'area' => round($width * $height, 2),
+                ];
+            })
+            ->values()
+            ->all();
+
+        unset($requirements['size_rows']);
+
+        if ($sizeRows !== []) {
+            $requirements['size_details'] = $sizeRows;
         }
 
         $task = DB::transaction(function () use ($data): DesignTask {
@@ -142,8 +171,8 @@ class TaskController extends Controller
                 'task_nature' => $data['task_nature'],
                 'party_type' => $data['party_type'],
                 'party_name' => $data['party_name'],
-                'contact_person' => $data['contact_person'],
-                'mobile_number' => $data['mobile_number'],
+                'contact_person' => $data['contact_person'] ?? '',
+                'mobile_number' => $data['mobile_number'] ?? '',
                 'priority' => $data['priority'],
                 'due_at' => $data['due_at'],
                 'designer_id' => $data['designer_id'],
@@ -174,18 +203,7 @@ class TaskController extends Controller
         ]);
 
         try {
-            foreach (self::SINGLE_FILES as $field) {
-                if ($request->hasFile($field)) {
-                    $requirements[$field] = $this->storeSingleFile(
-                        file: $request->file($field),
-                        directory: "{$taskFolder}/{$field}",
-                        taskId: $task->task_id,
-                        fieldName: $field
-                    );
-                }
-            }
-
-            foreach (self::ARRAY_FILES as $field) {
+            foreach (self::FILE_FIELDS as $field) {
                 if ($request->hasFile($field)) {
                     $requirements[$field] = $this->storeMultipleFiles(
                         files: $request->file($field),
@@ -326,6 +344,7 @@ class TaskController extends Controller
             'creative_mobile_number' => ['nullable', 'digits:10'],
             'address' => ['nullable', 'string', 'max:3000'],
             'company_details_other' => ['nullable', 'string', 'max:5000'],
+            'company_details' => ['nullable', 'string', 'max:10000'],
             'brand_details' => ['nullable', 'string', 'max:5000'],
             'location' => ['nullable', 'string', 'max:255'],
             'vehicle_quantity' => ['nullable', 'integer', 'min:1', 'max:9999'],
@@ -335,36 +354,164 @@ class TaskController extends Controller
             'facebook_link' => ['nullable', 'url', 'max:2048'],
             'mockup_type' => ['nullable', 'string', 'max:120'],
             'roadshow_subtype' => ['nullable', 'string', 'max:180'],
-            'vehicle_type' => ['nullable', 'string', 'max:180'],
+            'vehicle_type' => [
+                'nullable',
+                Rule::in([
+                '3 Side LED 14 feet',
+                '3 Side LED 18 feet',
+                '7x5 LED Hybrid 8 feet',
+                'Box Model Triangle Roof',
+                'Center Portion Triangle Roof',
+                'Center Portion Without Roof',
+                'L-Model Box Roof with Utility Room',
+                'L-Model Box Roof',
+                'L-Model Without Roof',
+                'L-Shape LED',
+                'Single Side LED 17 feet',
+                'Static Model'
+                ]),
+            ],
             'media' => ['nullable', 'string', 'max:180'],
             'signage_subtype' => ['nullable', 'string', 'max:180'],
             'pop_subtype' => ['nullable', 'string', 'max:180'],
             'events_subtype' => ['nullable', 'string', 'max:180'],
             'design_type' => ['nullable', 'string', 'max:180'],
+            'product_type' => ['nullable', Rule::in([
+                'Leaflets', 'Poster', 'Brochure', 'Visiting Card', 'Pocket Card', 'Dangler',
+                'Roll Up Standee', 'Sunpack Sheet', 'Calendar', 'ID Card', 'Other',
+            ])],
+            'product_type_other' => ['nullable', 'required_if:product_type,Other', 'string', 'max:180'],
+            'vehicle_type_other' => ['nullable', 'required_if:vehicle_type,Other', 'string', 'max:180'],
+            'media_other' => ['nullable', 'required_if:media,Other', 'string', 'max:180'],
+            'media_task_nature' => ['nullable', Rule::in(['Creative Adaptation', 'Own Creative'])],
+            'theatre_screen_name' => ['nullable', 'string', 'max:180'],
+            'ad_type' => ['nullable', Rule::in(['Slide', 'Video'])],
+            'screen_width' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'screen_height' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'screen_ratio' => ['nullable', 'string', 'max:100'],
+            'fm_station' => ['nullable', 'string', 'max:180'],
+            'tv_type' => ['nullable', Rule::in(['Local', 'Satellite', 'Channel'])],
+            'creative_width' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'creative_height' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'size_unit' => ['nullable', Rule::in(['px', 'mm', 'cm', 'inch', 'ft'])],
+            'creative_content_details' => ['nullable', 'string', 'max:10000'],
             'ratio' => ['nullable', 'string', 'max:50'],
-            'board_width' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
-            'board_height' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'outdoor_type' => ['nullable', Rule::in([
+                'Bus Shelter', 'Unipole', 'Standard', 'Auto Branding', 'Pole Kiosk', 'Digital', 'Signal Post',
+            ])],
+            'board_type' => ['nullable', Rule::in(['Static', 'Digital'])],
+            'dimension_rows' => [
+                'nullable',
+                'array',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request, $vertical): void {
+                    if ($vertical !== 'outdoor') {
+                        return;
+                    }
+
+                    $rows = is_array($value) ? $value : [];
+                    $nonEmptyRows = collect($rows)->filter(function ($row): bool {
+                        if (! is_array($row)) {
+                            return false;
+                        }
+
+                        return filled($row['name'] ?? null)
+                            || filled($row['width'] ?? null)
+                            || filled($row['height'] ?? null);
+                    });
+
+                    foreach ($nonEmptyRows as $row) {
+                        if (
+                            blank($row['name'] ?? null)
+                            || blank($row['width'] ?? null)
+                            || blank($row['height'] ?? null)
+                        ) {
+                            $fail('Complete Name, Width and Height for every Board Details row, or remove the incomplete row.');
+                            return;
+                        }
+                    }
+
+                    $hasCompleteRow = $nonEmptyRows->contains(function ($row): bool {
+                        return filled($row['name'] ?? null)
+                            && is_numeric($row['width'] ?? null)
+                            && (float) $row['width'] > 0
+                            && is_numeric($row['height'] ?? null)
+                            && (float) $row['height'] > 0;
+                    });
+
+                    if (! $hasCompleteRow && ! $request->hasFile('dimension_upload')) {
+                        $fail('Provide at least one complete Board Details row or upload a Board Details file.');
+                    }
+                },
+            ],
+            'dimension_rows.*.name' => ['nullable', 'string', 'max:180'],
+            'dimension_rows.*.width' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'dimension_rows.*.height' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'dimension_rows.*.area' => ['nullable', 'numeric', 'min:0'],
+            'size_rows' => [
+                'nullable',
+                'array',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request, $vertical, $nature): void {
+                    if ($vertical !== 'pop_offsets' || ! in_array($nature, ['design_adaptation', 'creative_design'], true)) {
+                        return;
+                    }
+
+                    $rows = is_array($value) ? $value : [];
+                    $nonEmptyRows = collect($rows)->filter(function ($row): bool {
+                        if (! is_array($row)) {
+                            return false;
+                        }
+
+                        return filled($row['name'] ?? null)
+                            || filled($row['width'] ?? null)
+                            || filled($row['height'] ?? null);
+                    });
+
+                    foreach ($nonEmptyRows as $row) {
+                        if (
+                            blank($row['name'] ?? null)
+                            || blank($row['width'] ?? null)
+                            || blank($row['height'] ?? null)
+                        ) {
+                            $fail('Complete Name, Width and Height for every Size Details row, or remove the incomplete row.');
+                            return;
+                        }
+                    }
+
+                    $hasCompleteRow = $nonEmptyRows->contains(function ($row): bool {
+                        return filled($row['name'] ?? null)
+                            && is_numeric($row['width'] ?? null)
+                            && (float) $row['width'] > 0
+                            && is_numeric($row['height'] ?? null)
+                            && (float) $row['height'] > 0;
+                    });
+
+                    if (! $hasCompleteRow && ! $request->hasFile('size_upload')) {
+                        $fail('Provide at least one complete Size Details row or upload a Size Details file.');
+                    }
+                },
+            ],
+            'size_rows.*.name' => ['nullable', 'string', 'max:180'],
+            'size_rows.*.width' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'size_rows.*.height' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'size_rows.*.area' => ['nullable', 'numeric', 'min:0'],
+
         ];
 
-        foreach (self::SINGLE_FILES as $field) {
-            $common[$field] = $field === 'client_audio'
-                ? ['nullable', 'file', 'mimes:mp3,wav,m4a,aac,ogg', 'max:51200']
-                : ['nullable', 'file', 'max:102400'];
-        }
-
-        foreach (self::ARRAY_FILES as $field) {
+        foreach (self::FILE_FIELDS as $field) {
             $common[$field] = ['nullable', 'array', 'max:20'];
-            $common["{$field}.*"] = ['file', 'max:102400'];
+            $common["{$field}.*"] = $field === 'client_audio'
+                ? ['file', 'mimes:mp3,wav,m4a,aac,ogg', 'max:51200']
+                : ['file', 'max:102400'];
         }
 
         $required = match ("{$vertical}.{$nature}") {
-            'outdoor.mockup_requirements' => ['description', 'mockup_type', 'board_width', 'board_height'],
-            'outdoor.creative_adaptation' => ['description', 'board_width', 'board_height'],
+            'outdoor.mockup_requirements' => ['description', 'mockup_type'],
+            'outdoor.creative_adaptation' => ['description'],
             'outdoor.new_creative_design' => ['description', 'brand_name'],
             'outdoor.cutout_size_calculation' => ['description', 'hoarding_artwork'],
 
-            'roadshow.creative_adaptation_requirements' => ['roadshow_subtype', 'vehicle_type', 'media'],
-            'roadshow.new_creative_design' => ['roadshow_subtype', 'vehicle_type', 'media'],
+            'roadshow.creative_adaptation_requirements' => ['roadshow_subtype', 'vehicle_type'],
+            'roadshow.new_creative_design' => ['roadshow_subtype', 'vehicle_type'],
 
             'fixtures.design_with_creative' => ['description', 'recce_report', 'fixture_details'],
             'fixtures.design_without_creative' => ['description', 'recce_report', 'fixture_details'],
@@ -372,23 +519,25 @@ class TaskController extends Controller
             'signage.mockup' => ['description', 'recce_report'],
             'signage.creative_adaptation' => ['description', 'creative', 'material_specifications'],
             'signage.new_creative' => ['description', 'recce_report', 'material_specifications'],
-            'signage.technical_drawing' => ['description', 'recce_report', 'material_specifications'],
-            'signage.three_d_design' => ['signage_subtype', 'description', 'recce_report', 'material_specifications'],
-            'signage.technical_and_three_d' => ['description', 'recce_report', 'material_specifications'],
+            'signage.technical_drawing' => ['description', 'recce_report'],
+            'signage.three_d_design' => ['description', 'recce_report'],
+            'signage.technical_and_three_d' => ['description', 'recce_report'],
 
-            'pop_offsets.mockup_design' => ['description'],
-            'pop_offsets.design_adaptation' => ['description'],
-            'pop_offsets.creative_design' => ['pop_subtype', 'description'],
+            'pop_offsets.mockup_design' => ['description', 'product_type', 'company_details'],
+            'pop_offsets.design_adaptation' => ['description', 'product_type', 'company_details'],
+            'pop_offsets.creative_design' => ['description', 'product_type', 'company_details'],
 
-            'digital_marketing.proposal' => ['description'],
-            'digital_marketing.logo_design' => ['description'],
-            'digital_marketing.poster_design' => ['description'],
-            'digital_marketing.video_design' => ['description'],
 
             'events_activations.proposal_designs' => ['description', 'requirement_list'],
             'events_activations.element_design_with_creative' => ['description', 'creative', 'recce_report', 'requirement_list'],
             'events_activations.element_design_without_creative' => ['description'],
-            'events_activations.three_d_layout' => ['events_subtype', 'description', 'requirement_list'],
+            'events_activations.three_d_layout' => ['description', 'requirement_list'],
+
+            'media.theatre_ads' => ['media_task_nature', 'theatre_screen_name', 'ad_type', 'screen_width', 'screen_height'],
+            'media.newspaper_ads' => ['media_task_nature'],
+            'media.fm' => ['media_task_nature', 'fm_station', 'description'],
+            'media.tv_ads' => ['media_task_nature', 'tv_type', 'ad_type'],
+
             default => [],
         };
 
@@ -396,11 +545,79 @@ class TaskController extends Controller
             $common[$field][0] = 'required';
         }
 
+        if ($vertical === 'outdoor') {
+            $common['outdoor_type'][0] = 'required';
+
+            if (in_array($nature, ['mockup_requirements', 'creative_adaptation', 'new_creative_design'], true)) {
+                $common['board_type'][0] = 'required';
+            }
+        }
+
         if ($vertical === 'roadshow') {
             $common['description'] = ['nullable', 'required_without:description_upload', 'string', 'max:10000'];
-            $common['description_upload'] = ['nullable', 'required_without:description', 'file', 'max:102400'];
+            $common['description_upload'] = ['nullable', 'required_without:description', 'array', 'max:20'];
+        }
+
+        if ($vertical === 'media') {
+            $mediaTaskNature = $request->input('media_task_nature');
+
+            if ($nature === 'theatre_ads') {
+                $common['screen_ratio'][0] = 'required';
+
+                if ($mediaTaskNature === 'Creative Adaptation') {
+                    $common['description'][0] = 'required';
+                }
+
+                if ($mediaTaskNature === 'Own Creative') {
+                    $common['description'][0] = 'required';
+                    $common['company_details'][0] = 'required';
+                }
+            }
+
+            if ($nature === 'newspaper_ads') {
+                $common['description'][0] = 'required';
+                $common['creative_width'][0] = 'required';
+                $common['creative_height'][0] = 'required';
+                $common['size_unit'][0] = 'required';
+
+                if ($mediaTaskNature === 'Own Creative') {
+                    $common['company_details'][0] = 'required';
+                }
+            }
+
+            if ($nature === 'fm' && $mediaTaskNature === 'Own Creative') {
+                $common['company_details'][0] = 'required';
+            }
+
+            if ($nature === 'tv_ads') {
+                $common['creative_width'][0] = 'required';
+                $common['creative_height'][0] = 'required';
+                $common['description'][0] = 'required';
+
+                if ($mediaTaskNature === 'Own Creative') {
+                    $common['company_details'][0] = 'required';
+                    $common['screen_ratio'][0] = 'required';
+                }
+            }
         }
 
         return $common;
     }
+
+    private function maximumAllowedDueDate(): Carbon
+    {
+        $date = now()->copy()->startOfDay();
+        $workingDaysAdded = 0;
+
+        while ($workingDaysAdded < 7) {
+            $date->addDay();
+
+            if (! $date->isWeekend()) {
+                $workingDaysAdded++;
+            }
+        }
+
+        return $date->endOfDay();
+    }
+
 }

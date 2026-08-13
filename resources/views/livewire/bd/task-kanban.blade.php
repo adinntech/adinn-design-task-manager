@@ -81,7 +81,7 @@
             .bd-toolbar{grid-template-columns:1fr}
             .bd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
         }
-    .card-progress{margin-top:9px}.card-progress-head{display:flex;justify-content:space-between;gap:8px;font-size:8px;font-weight:900;color:#667085}.card-progress-track{height:6px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:5px}.card-progress-fill{height:100%;border-radius:999px}.p-start .card-progress-fill{background:#94a3b8}.p-low .card-progress-fill{background:#f59e0b}.p-mid .card-progress-fill{background:#3b82f6}.p-high .card-progress-fill{background:#8b5cf6}.p-complete .card-progress-fill{background:#16a34a}</style>
+    </style>
 
     <div class="page-head">
         <div>
@@ -204,16 +204,7 @@
                                         </div>
                                     @endif
 
-                                    @php
-                                    $completedCreatives = min((int) $task->total_creatives, (int) ($task->completed_creatives ?? 0));
-                                    $progressPercent = min(100, (int) round(($completedCreatives / max(1, (int) $task->total_creatives)) * 100));
-                                    $progressClass = $progressPercent >= 100 ? 'p-complete' : ($progressPercent >= 75 ? 'p-high' : ($progressPercent >= 50 ? 'p-mid' : ($progressPercent >= 25 ? 'p-low' : 'p-start')));
-                                @endphp
-                                <div class="card-progress {{ $progressClass }}">
-                                    <div class="card-progress-head"><span>{{ $completedCreatives }} / {{ $task->total_creatives }} creatives</span><span>{{ $progressPercent }}%</span></div>
-                                    <div class="card-progress-track"><div class="card-progress-fill" style="width:{{ $progressPercent }}%"></div></div>
-                                </div>
-                                <div class="task-card-meta">
+                                    <div class="task-card-meta">
                                         <div class="task-meta-item">
                                             <strong>Designer</strong>
                                             {{ $task->designer?->name ?? '—' }}
@@ -279,11 +270,13 @@
                     toast: '',
                     toastTimer: null,
                     cleanupPan: null,
+                    pointerEdgeCleanup: null,
                     sortables: [],
 
                     init(){
                         this.$nextTick(() => {
                             this.enablePan();
+                            this.enablePointerEdgeScroll();
                             this.refreshSortable();
                         });
 
@@ -291,6 +284,7 @@
                             Livewire.hook('morph.updated', () => {
                                 this.$nextTick(() => {
                                     this.enablePan();
+                                    this.enablePointerEdgeScroll();
                                     this.refreshSortable();
                                 });
                             });
@@ -358,6 +352,92 @@
                                 }
                             }));
                         });
+                    },
+
+
+                    enablePointerEdgeScroll(){
+                        const shell = this.$root.querySelector('[data-kanban-shell], [data-bd-kanban-shell]');
+                        if (!shell) return;
+
+                        if (this.pointerEdgeCleanup) {
+                            this.pointerEdgeCleanup();
+                            this.pointerEdgeCleanup = null;
+                        }
+
+                        let pointerX = null;
+                        let pointerInside = false;
+                        let frame = null;
+
+                        const edgeZone = 110;
+                        const maxSpeed = 22;
+
+                        const tick = () => {
+                            if (!pointerInside || pointerX === null) {
+                                frame = null;
+                                return;
+                            }
+
+                            const rect = shell.getBoundingClientRect();
+                            let speed = 0;
+
+                            if (pointerX <= rect.left + edgeZone) {
+                                const strength = Math.max(0, Math.min(1, (rect.left + edgeZone - pointerX) / edgeZone));
+                                speed = -Math.max(5, maxSpeed * strength);
+                            } else if (pointerX >= rect.right - edgeZone) {
+                                const strength = Math.max(0, Math.min(1, (pointerX - (rect.right - edgeZone)) / edgeZone));
+                                speed = Math.max(5, maxSpeed * strength);
+                            }
+
+                            if (speed !== 0) {
+                                shell.scrollLeft += speed;
+                                frame = requestAnimationFrame(tick);
+                            } else {
+                                frame = null;
+                            }
+                        };
+
+                        const ensureTick = () => {
+                            if (frame === null) {
+                                frame = requestAnimationFrame(tick);
+                            }
+                        };
+
+                        const onMove = event => {
+                            pointerInside = true;
+                            pointerX = event.clientX;
+                            ensureTick();
+                        };
+
+                        const onEnter = event => {
+                            pointerInside = true;
+                            pointerX = event.clientX;
+                            ensureTick();
+                        };
+
+                        const onLeave = () => {
+                            pointerInside = false;
+                            pointerX = null;
+
+                            if (frame !== null) {
+                                cancelAnimationFrame(frame);
+                                frame = null;
+                            }
+                        };
+
+                        shell.addEventListener('pointermove', onMove);
+                        shell.addEventListener('pointerenter', onEnter);
+                        shell.addEventListener('pointerleave', onLeave);
+
+                        this.pointerEdgeCleanup = () => {
+                            shell.removeEventListener('pointermove', onMove);
+                            shell.removeEventListener('pointerenter', onEnter);
+                            shell.removeEventListener('pointerleave', onLeave);
+
+                            if (frame !== null) {
+                                cancelAnimationFrame(frame);
+                                frame = null;
+                            }
+                        };
                     },
 
                     enablePan(){

@@ -490,7 +490,7 @@
                 @elseif($task->status === 'in_progress' && $eodRemaining > 0)
                     <div class="eod-entry-form">
                         <div class="eod-field">
-                            <label class="label" for="eodCompletedCount">Number of Creatives</label>
+                            <label class="label" for="eodCompletedCount">Progress Added</label>
                             <input
                                 id="eodCompletedCount"
                                 class="premium-input"
@@ -499,7 +499,7 @@
                                 max="{{ $eodRemaining }}"
                                 wire:model="eodCompletedCount"
                                 placeholder="Enter completed creatives"
-                             required>
+                            >
                             @error('eodCompletedCount')
                                 <div class="muted" style="color:#b4232f;margin-top:5px">{{ $message }}</div>
                             @enderror
@@ -541,7 +541,7 @@
                             </div>
 
                             <div class="eod-record-cell">
-                                <span>{{ ($record->update_type ?? 'progress') === 'rework' ? 'Update Type' : 'Number of Creatives' }}</span>
+                                <span>{{ ($record->update_type ?? 'progress') === 'rework' ? 'Update Type' : 'Progress Added' }}</span>
                                 <strong>{{ ($record->update_type ?? 'progress') === 'rework' ? 'Rework Upload' : $record->completed_count }}</strong>
                             </div>
 

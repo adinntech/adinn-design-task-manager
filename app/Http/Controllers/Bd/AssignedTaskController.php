@@ -149,6 +149,8 @@ class AssignedTaskController extends Controller
             'reworkCount' => $reworkCount,
             'editHistory' => $editHistory,
             'requirementAttachmentGroups' => $requirementAttachmentGroups,
+            'requirementAttachmentCount' => $requirementAttachmentCount,
+            'commentAttachmentCount' => $commentAttachmentCount,
             'attachmentCount' => $requirementAttachmentCount + $commentAttachmentCount,
         ]);
     }
