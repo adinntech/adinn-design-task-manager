@@ -113,11 +113,11 @@ class DesignTaskRequestService
         });
     }
 
-    public function approve(DesignTaskRequest $request, User $approver, ?int $approvedDesignerId = null, ?int $approvedSplitCount = null): DesignTaskRequest
+    public function approve(DesignTaskRequest $request, User $approver, ?int $approvedDesignerId = null, ?int $approvedSplitCount = null, ?string $decisionComment = null): DesignTaskRequest
     {
         $this->guardApprover($approver);
 
-        return DB::transaction(function () use ($request, $approver, $approvedDesignerId, $approvedSplitCount) {
+        return DB::transaction(function () use ($request, $approver, $approvedDesignerId, $approvedSplitCount, $decisionComment) {
             $lockedRequest = DesignTaskRequest::query()->lockForUpdate()->findOrFail($request->id);
             $this->guardPending($lockedRequest);
 
@@ -160,16 +160,18 @@ class DesignTaskRequestService
                 default => throw ValidationException::withMessages(['request' => 'Unsupported request type.']),
             };
 
+            $decisionComment = trim((string) $decisionComment);
+
             $lockedRequest->update(array_merge($this->decisionAuditFields($approver, 'approved'), [
                 'overall_status' => 'approved',
-                'decision_reason' => null,
+                'decision_reason' => $decisionComment !== '' ? $decisionComment : null,
             ]));
 
             $this->recordHistory(
                 $lockedTask->fresh(),
                 $approver,
                 'request_approved',
-                ucfirst($lockedRequest->request_type).' request approved by '.ucwords(str_replace('_', ' ', $approver->role)).'. '.$executionNote
+                ucfirst($lockedRequest->request_type).' request approved by '.ucwords(str_replace('_', ' ', $approver->role)).'. '.$executionNote.($decisionComment !== '' ? ' Comment: '.$decisionComment : '')
             );
 
             return $lockedRequest->fresh();

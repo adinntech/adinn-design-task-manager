@@ -5,63 +5,63 @@ namespace App\Http\Controllers\DesignerHead;
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
-use App\Models\User;
 
 class DashboardController extends Controller
 {
+    private const COLUMNS = [
+        'assigned_tasks' => 'Assigned Tasks',
+        'review_analysis' => 'Review & Analysis',
+        'need_clarification' => 'Need Clarification',
+        'yet_to_start' => 'Yet to Start',
+        'in_progress' => 'In Progress',
+        'waiting_confirmation' => 'Waiting Confirmation',
+        'rework' => 'Rework',
+        'completed' => 'Completed',
+        'swap_tasks' => 'Swap Tasks',
+    ];
+
     public function index()
     {
-        $requests = DesignTaskRequest::query()
+        $pendingRequests = DesignTaskRequest::query()
+            ->pending()
             ->with([
-                'task:id,task_id,task_name,vertical,status,total_creatives,designer_id',
+                'task:id,task_id,task_name,vertical,status,priority,due_at,designer_id,total_creatives',
+                'task.designer:id,name',
                 'requester:id,name',
                 'targetDesigner:id,name',
-                'approvedDesigner:id,name',
-                'designerHeadActor:id,name',
-                'adminActor:id,name',
             ])
             ->latest()
             ->get();
 
-        $splitTaskIds = $requests
-            ->where('request_type', 'split')
-            ->pluck('split_details.created_task_id')
-            ->filter()
-            ->values();
+        $tasks = DesignTask::query()
+            ->with(['designer:id,name'])
+            ->latest('assigned_at')
+            ->get([
+                'id',
+                'task_id',
+                'task_name',
+                'vertical',
+                'task_nature',
+                'priority',
+                'due_at',
+                'designer_id',
+                'total_creatives',
+                'status',
+                'assigned_at',
+                'requirements',
+            ]);
 
-        $splitTasks = DesignTask::query()
-            ->whereIn('id', $splitTaskIds)
-            ->get(['id', 'task_id'])
-            ->keyBy('id');
-
-        $pendingStatuses = ['pending_approval', 'pending_designer_head', 'pending_admin'];
-
-        $stats = [
-            'total' => $requests->count(),
-            'pending' => $requests->whereIn('overall_status', $pendingStatuses)->count(),
-            'approved' => $requests->where('overall_status', 'approved')->count(),
-            'rejected' => $requests->where('overall_status', 'rejected')->count(),
-        ];
-
-        $byType = [
-            'decline' => $requests->where('request_type', 'decline')->count(),
-            'split' => $requests->where('request_type', 'split')->count(),
-            'swap' => $requests->where('request_type', 'swap')->count(),
-        ];
-
-        $designers = User::query()
-            ->where('role', 'designer')
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $tasksByStatus = [];
+        foreach (self::COLUMNS as $status => $label) {
+            $tasksByStatus[$status] = $tasks->where('status', $status)->values();
+        }
 
         return view('designer-head.dashboard', [
-            'requests' => $requests,
-            'stats' => $stats,
-            'byType' => $byType,
-            'splitTasks' => $splitTasks,
-            'pendingStatuses' => $pendingStatuses,
-            'designers' => $designers,
+            'pendingRequests' => $pendingRequests,
+            'tasksByStatus' => $tasksByStatus,
+            'columns' => self::COLUMNS,
+            'totalTasks' => $tasks->count(),
+            'pendingRequestCount' => $pendingRequests->count(),
         ]);
     }
 }

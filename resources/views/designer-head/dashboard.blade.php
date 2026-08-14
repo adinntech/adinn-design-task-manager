@@ -1,172 +1,180 @@
 @extends('layouts.app')
-@section('title','Designer Head Dashboard')
-@section('workspace-title','Designer Head Dashboard')
-@section('workspace-subtitle','Review requests raised by designers across all tasks')
+
+@section('title','Designer Head Kanban')
+@section('workspace-title','Designer Head Kanban')
+@section('workspace-subtitle','View all Designer tasks and review pending requests')
+
 @section('content')
+<style>
+    .dh-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .dh-head h1{font-size:22px;line-height:1.2;font-weight:800;color:#101828;margin:0 0 5px}
+    .dh-head p{margin:0;color:#667085;font-size:12px}
+    .dh-stats{display:flex;gap:8px;flex-wrap:wrap}
+    .dh-stat{border:1px solid #eaecf0;background:#fff;border-radius:12px;padding:9px 12px;min-width:110px}
+    .dh-stat span{display:block;color:#667085;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+    .dh-stat strong{display:block;color:#101828;font-size:18px;margin-top:2px}
+    .dh-readonly{display:inline-flex;align-items:center;gap:6px;border:1px solid #d0d5dd;background:#f9fafb;color:#475467;padding:7px 10px;border-radius:999px;font-size:10px;font-weight:800}
+    .dh-board-wrap{overflow-x:auto;padding:2px 2px 14px;scrollbar-width:thin}
+    .dh-board{display:flex;gap:12px;align-items:flex-start;min-width:max-content}
+    .dh-column{width:292px;flex:0 0 292px;border:1px solid #e4e7ec;background:#f8fafc;border-radius:16px;overflow:hidden}
+    .dh-column.request-column{background:#fff8f7;border-color:#fecaca}
+    .dh-col-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;border-bottom:1px solid #e4e7ec;background:#fff}
+    .request-column .dh-col-head{background:#fff1f0;border-bottom-color:#fecaca}
+    .dh-col-title{font-weight:800;color:#101828;font-size:12px}
+    .dh-count{display:inline-flex;align-items:center;justify-content:center;min-width:25px;height:22px;padding:0 7px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:9px;font-weight:800}
+    .request-column .dh-count{background:#fee4e2;color:#b42318}
+    .dh-col-body{padding:10px;display:flex;flex-direction:column;gap:9px;min-height:520px;max-height:calc(100vh - 240px);overflow-y:auto}
+    .dh-card{display:block;text-decoration:none;border:1px solid #e4e7ec;background:#fff;border-radius:13px;padding:11px;box-shadow:0 1px 2px rgba(16,24,40,.03);transition:.16s ease}
+    .dh-card:hover{border-color:#cfd4dc;box-shadow:0 4px 12px rgba(16,24,40,.07);transform:translateY(-1px)}
+    .dh-request{border-left:4px solid #e11d48}
+    .dh-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:7px}
+    .dh-task-id{font-size:9px;font-weight:900;color:#d92d20;letter-spacing:.02em}
+    .dh-type{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;border-radius:999px;padding:4px 7px}
+    .dh-type.split{background:#eef4ff;color:#3538cd}
+    .dh-type.swap{background:#f4ebff;color:#7f56d9}
+    .dh-type.decline{background:#fff1f3;color:#c01048}
+    .dh-task-name{font-size:12px;font-weight:800;line-height:1.35;color:#101828;margin-bottom:8px}
+    .dh-meta{display:grid;gap:5px;color:#667085;font-size:9px}
+    .dh-meta-row{display:flex;justify-content:space-between;gap:8px}
+    .dh-meta-row span:first-child{color:#98a2b3}
+    .dh-meta-row strong{color:#344054;text-align:right;font-weight:700}
+    .dh-reason{margin-top:8px;padding-top:8px;border-top:1px solid #f2f4f7;color:#475467;font-size:9px;line-height:1.45}
+    .dh-open{margin-top:9px;color:#d92d20;font-size:9px;font-weight:800}
+    .dh-empty{border:1px dashed #d0d5dd;border-radius:12px;padding:24px 10px;text-align:center;color:#98a2b3;font-size:10px;background:rgba(255,255,255,.6)}
+    .dh-priority{font-size:8px;font-weight:800;text-transform:uppercase;border-radius:999px;padding:3px 6px;background:#f2f4f7;color:#475467}
+    .dh-due-overdue{color:#b42318!important}
+    .dh-due-today{color:#b54708!important}
+</style>
 
-<div class="page-head">
-    <div><h1>Designer Head Dashboard</h1><p>Approve or reject Decline, Split and Swap requests across all verticals.</p></div>
+<div class="dh-head">
+    <div>
+        <h1>Designer Head Kanban</h1>
+        <p>View all Designer tasks. Requests must be opened before they can be accepted or declined.</p>
+    </div>
+    <div class="dh-stats">
+        <div class="dh-stat">
+            <span>Pending Requests</span>
+            <strong>{{ $pendingRequestCount }}</strong>
+        </div>
+        <div class="dh-stat">
+            <span>Total Tasks</span>
+            <strong>{{ $totalTasks }}</strong>
+        </div>
+        <div class="dh-readonly">View Only Kanban</div>
+    </div>
 </div>
 
-<div class="metric-grid">
-    <div class="metric-card"><div class="metric-label">Total Requests</div><div class="metric-value">{{ $stats['total'] }}</div><div class="metric-note">All time</div></div>
-    <div class="metric-card"><div class="metric-label">Pending Approval</div><div class="metric-value">{{ $stats['pending'] }}</div><div class="metric-note">Either you or Admin can decide</div></div>
-    <div class="metric-card"><div class="metric-label">Approved</div><div class="metric-value">{{ $stats['approved'] }}</div><div class="metric-note">Finalized requests</div></div>
-    <div class="metric-card"><div class="metric-label">Rejected</div><div class="metric-value">{{ $stats['rejected'] }}</div><div class="metric-note">Finalized requests</div></div>
+<div class="dh-board-wrap">
+    <div class="dh-board">
+        <section class="dh-column request-column">
+            <div class="dh-col-head">
+                <div class="dh-col-title">Requests</div>
+                <div class="dh-count">{{ $pendingRequests->count() }}</div>
+            </div>
+            <div class="dh-col-body">
+                @forelse($pendingRequests as $request)
+                    <a
+                        class="dh-card dh-request"
+                        href="{{ $request->task ? route('designer-head.tasks.show', $request->task) . '#request-' . $request->id : '#' }}"
+                    >
+                        <div class="dh-card-top">
+                            <div class="dh-task-id">{{ $request->task?->task_id ?? 'TASK REMOVED' }}</div>
+                            <div class="dh-type {{ $request->request_type }}">{{ ucfirst($request->request_type) }}</div>
+                        </div>
+
+                        <div class="dh-task-name">{{ $request->task?->task_name ?? 'Task unavailable' }}</div>
+
+                        <div class="dh-meta">
+                            <div class="dh-meta-row">
+                                <span>Requested By</span>
+                                <strong>{{ $request->requester?->name ?? '—' }}</strong>
+                            </div>
+                            <div class="dh-meta-row">
+                                <span>Current Designer</span>
+                                <strong>{{ $request->task?->designer?->name ?? '—' }}</strong>
+                            </div>
+
+                            @if($request->request_type === 'split')
+                                <div class="dh-meta-row">
+                                    <span>Proposed Split</span>
+                                    <strong>{{ data_get($request->split_details, 'creative_count', '—') }} creative(s)</strong>
+                                </div>
+                            @endif
+
+                            @if(in_array($request->request_type, ['split','swap'], true))
+                                <div class="dh-meta-row">
+                                    <span>Preferred Designer</span>
+                                    <strong>{{ $request->targetDesigner?->name ?? 'Not specified' }}</strong>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="dh-reason">{{ \Illuminate\Support\Str::limit($request->reason, 120) }}</div>
+                        <div class="dh-open">Open task to review →</div>
+                    </a>
+                @empty
+                    <div class="dh-empty">No pending Decline, Split or Swap requests.</div>
+                @endforelse
+            </div>
+        </section>
+
+        @foreach($columns as $status => $label)
+            @php
+                $columnTasks = $tasksByStatus[$status] ?? collect();
+            @endphp
+
+            <section class="dh-column">
+                <div class="dh-col-head">
+                    <div class="dh-col-title">{{ $label }}</div>
+                    <div class="dh-count">{{ $columnTasks->count() }}</div>
+                </div>
+
+                <div class="dh-col-body">
+                    @forelse($columnTasks as $task)
+                        @php
+                            $dueClass = '';
+                            if ($task->status !== 'completed' && $task->due_at) {
+                                if ($task->due_at->isPast() && ! $task->due_at->isToday()) {
+                                    $dueClass = 'dh-due-overdue';
+                                } elseif ($task->due_at->isToday()) {
+                                    $dueClass = 'dh-due-today';
+                                }
+                            }
+                        @endphp
+
+                        <a class="dh-card" href="{{ route('designer-head.tasks.show', $task) }}">
+                            <div class="dh-card-top">
+                                <div class="dh-task-id">{{ $task->task_id }}</div>
+                                <div class="dh-priority">{{ $task->priority }}</div>
+                            </div>
+
+                            <div class="dh-task-name">{{ $task->task_name }}</div>
+
+                            <div class="dh-meta">
+                                <div class="dh-meta-row">
+                                    <span>Designer</span>
+                                    <strong>{{ $task->designer?->name ?? 'Unassigned' }}</strong>
+                                </div>
+                                <div class="dh-meta-row">
+                                    <span>Vertical</span>
+                                    <strong>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</strong>
+                                </div>
+                                <div class="dh-meta-row">
+                                    <span>Creatives</span>
+                                    <strong>{{ $task->total_creatives }}</strong>
+                                </div>
+                                <div class="dh-meta-row">
+                                    <span>Due</span>
+                                    <strong class="{{ $dueClass }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</strong>
+                                </div>
+                            </div>
+                        </a>
+                    @empty
+                        <div class="dh-empty">No tasks in this stage.</div>
+                    @endforelse
+                </div>
+            </section>
+        @endforeach
+    </div>
 </div>
-
-<div class="dashboard-grid">
-    <section class="panel">
-        <div class="panel-header">
-            <div>
-                <div class="panel-title">Designer Requests</div>
-                <div class="metric-note">The first decision by Designer Head or Admin finalizes the request</div>
-            </div>
-        </div>
-
-        <div class="panel-body" style="padding:0">
-            <div class="table-wrap" style="border:0;border-radius:0 0 16px 16px">
-                <table class="premium-table" style="min-width:1120px">
-                    <thead>
-                        <tr>
-                            <th>Task</th>
-                            <th>Type</th>
-                            <th>Requested By</th>
-                            <th>Details</th>
-                            <th>Status</th>
-                            <th>Raised</th>
-                            <th>Decision</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($requests as $item)
-                            @php
-                                $statusBadge = match($item->overall_status) {
-                                    'approved' => 'badge-success',
-                                    'rejected' => 'badge-danger',
-                                    default => 'badge-warning',
-                                };
-                                $createdSplitTask = $item->request_type === 'split'
-                                    ? $splitTasks->get($item->split_details['created_task_id'] ?? null)
-                                    : null;
-                                $isPending = in_array($item->overall_status, $pendingStatuses, true);
-                                $decider = $item->adminActor ?: $item->designerHeadActor;
-                            @endphp
-                            <tr>
-                                <td>
-                                    <span class="file-link">{{ $item->task?->task_id ?? '—' }}</span>
-                                    <div style="margin-top:3px;font-weight:700">{{ $item->task?->task_name ?? 'Task removed' }}</div>
-                                    <div class="muted" style="margin-top:3px">{{ ucwords(str_replace('_',' ',$item->task?->vertical ?? '')) }}</div>
-                                </td>
-                                <td><span class="badge badge-dark">{{ ucfirst($item->request_type) }}</span></td>
-                                <td>{{ $item->requester?->name ?? '—' }}</td>
-                                <td style="max-width:300px">
-                                    <div style="white-space:pre-wrap">{{ \Illuminate\Support\Str::limit($item->reason, 150) }}</div>
-                                    @if($item->request_type === 'split' && !empty($item->split_details['creative_count']))
-                                        <div class="muted" style="margin-top:5px">Split {{ $item->split_details['creative_count'] }} creatives</div>
-                                    @endif
-                                    @if($item->targetDesigner)
-                                        <div class="muted" style="margin-top:4px">Preferred: {{ $item->targetDesigner->name }}</div>
-                                    @endif
-                                    @if($createdSplitTask)
-                                        <div style="margin-top:4px;font-size:10px;color:#08784b;font-weight:700">Created: {{ $createdSplitTask->task_id }}</div>
-                                    @endif
-                                </td>
-                                <td><span class="badge {{ $statusBadge }}">{{ $item->status_label }}</span></td>
-                                <td>{{ $item->created_at->format('d M Y, h:i A') }}</td>
-                                <td>
-                                    @if($isPending)
-                                        <div style="display:grid;gap:7px;min-width:210px">
-                                            @if(in_array($item->request_type, ['split','swap'], true))
-                                                <div class="muted">
-                                                    Preferred Designer:
-                                                    <strong style="color:#111827">{{ $item->targetDesigner?->name ?? 'No preference' }}</strong>
-                                                </div>
-                                                <form
-                    method="POST"
-                    action="{{ route('designer-head.requests.approve', $item) }}"
-                    data-formal-confirm
-                    data-confirm-title="Approve { ucfirst($item->request_type) } Request?"
-                    data-confirm-message="You are about to approve this { strtolower($item->request_type) } request. The approved decision will be applied to the task workflow immediately."
-                    data-confirm-note="Please verify the approved Designer and quantity, where applicable, before confirming. This decision is final for the current request."
-                    data-confirm-label="Approve Request"
-                    data-processing-label="Approving..."
-                    data-confirm-tone="success"
-                >
-                                                    @csrf
-                                                    <select name="approved_designer_id" class="field" required style="margin-bottom:6px">
-                                                        <option value="">Select approved Designer</option>
-                                                        @foreach($designers as $designer)
-                                                            @if((int)$designer->id !== (int)($item->task?->designer_id ?? 0))
-                                                                <option value="{{ $designer->id }}" @selected((int)$designer->id === (int)($item->target_designer_id ?? 0))>{{ $designer->name }}{{ (int)$designer->id === (int)($item->target_designer_id ?? 0) ? ' · Preferred' : '' }}</option>
-                                                            @endif
-                                                        @endforeach
-                                                    </select>
-                                                    @if($item->request_type === 'split')
-                                                        <label class="label" style="margin-top:6px">Approved Split Quantity</label>
-                                                        <input class="field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ($item->task?->total_creatives ?? 1) - 1) }}" value="{{ $item->split_details['creative_count'] ?? 1 }}" required>
-                                                        <div class="muted" style="margin:4px 0 6px">Designer requested {{ $item->split_details['creative_count'] ?? '—' }}. You can change the final quantity.</div>
-                                                    @endif
-                                                    <button class="btn btn-primary" style="width:100%">Approve</button>
-                                                </form>
-                                            @else
-                                                <form
-                    method="POST"
-                    action="{{ route('designer-head.requests.approve', $item) }}"
-                    data-formal-confirm
-                    data-confirm-title="Approve { ucfirst($item->request_type) } Request?"
-                    data-confirm-message="You are about to approve this { strtolower($item->request_type) } request. The approved decision will be applied to the task workflow immediately."
-                    data-confirm-note="Please verify the approved Designer and quantity, where applicable, before confirming. This decision is final for the current request."
-                    data-confirm-label="Approve Request"
-                    data-processing-label="Approving..."
-                    data-confirm-tone="success"
-                >
-                                                    @csrf
-                                                    <button class="btn btn-primary" style="width:100%">Approve</button>
-                                                </form>
-                                            @endif
-                                            <form method="POST" action="{{ route('designer-head.requests.reject', $item) }}" data-formal-confirm
-                    data-confirm-title="Decline {{ ucfirst($item->request_type) }} Request?"
-                    data-confirm-message="You are about to decline this request. The Designer will be informed through the request status and task history."
-                    data-confirm-note="Please ensure a meaningful decline reason has been entered before continuing. This decision is final for the current request."
-                    data-confirm-label="Decline Request"
-                    data-processing-label="Declining..."
-                    data-confirm-tone="danger">
-                                                @csrf
-                                                <textarea name="decision_reason" class="field" rows="2" required maxlength="5000" placeholder="Reason for declining this request..."></textarea>
-                                                <button class="btn btn-danger" style="width:100%;margin-top:6px">Decline</button>
-                                            </form>
-                                        </div>
-                                    @else
-                                        <strong style="font-size:10px">{{ $decider?->name ?? '—' }}</strong>
-                                        @if($item->approvedDesigner)
-                                            <div class="muted" style="margin-top:3px">Approved Designer: {{ $item->approvedDesigner->name }}</div>
-                                        @endif
-                                        <div class="muted" style="margin-top:3px">{{ $item->admin_action_at?->format('d M Y, h:i A') ?? $item->designer_head_action_at?->format('d M Y, h:i A') ?? '—' }}</div>
-                                        @if($item->overall_status === 'rejected' && $item->decision_reason)<div class="muted" style="margin-top:4px;color:#b42318"><strong>Decline reason:</strong> {{ $item->decision_reason }}</div>@endif
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="7" class="empty-state">No requests have been raised yet.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
-
-    <section class="panel">
-        <div class="panel-header"><div class="panel-title">Requests by Type</div></div>
-        <div class="panel-body">
-            <div class="info-grid">
-                <div class="info-item"><span>Decline</span><strong>{{ $byType['decline'] }}</strong></div>
-                <div class="info-item"><span>Split</span><strong>{{ $byType['split'] }}</strong></div>
-                <div class="info-item"><span>Swap</span><strong>{{ $byType['swap'] }}</strong></div>
-            </div>
-        </div>
-    </section>
-</div>
-
-<x-formal-confirm-dialog />
 @endsection
