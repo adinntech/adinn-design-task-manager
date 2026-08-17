@@ -19,6 +19,15 @@ class RequestActionController extends Controller
             'decision_comment' => ['nullable', 'string', 'max:5000'],
         ];
 
+        if ($taskRequest->request_type === 'decline') {
+            $rules['approved_designer_id'] = [
+                'required',
+                Rule::exists('users', 'id')->where(
+                    fn ($query) => $query->where('role', 'designer')->where('is_active', true)
+                ),
+            ];
+        }
+
         if (in_array($taskRequest->request_type, ['split', 'swap'], true)) {
             $rules['approved_designer_id'] = [
                 'required',

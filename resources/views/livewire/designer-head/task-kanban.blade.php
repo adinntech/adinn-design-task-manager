@@ -1,7 +1,7 @@
 <div
     x-data="bdKanban()"
     x-init="init()"
-    x-on:bd-task-updated.window="showToast($event.detail.message)"
+    x-on:designer-head-task-updated.window="showToast($event.detail.message)"
 >
     <style>
         .bd-toolbar{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(160px,.65fr) minmax(150px,.55fr);gap:9px;margin-bottom:14px}
@@ -10,7 +10,7 @@
         .kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;position:relative}
         .kanban-shell::-webkit-scrollbar{display:none}
         .kanban-shell.is-panning{cursor:grabbing}
-        .kanban-board{display:grid;grid-template-columns:repeat(9,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}
+        .kanban-board{display:grid;grid-template-columns:repeat(10,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}
         .kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}
         .kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}
         .kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}
@@ -81,22 +81,27 @@
             .bd-toolbar{grid-template-columns:1fr}
             .bd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
         }
+
+        .request-column{border-color:#fecaca;background:#fff8f7}
+        .request-column .kanban-column-header{background:#fff1f0;border-bottom-color:#fecaca}
+        .request-card{border-left-color:#e30613!important;background:linear-gradient(90deg,#fff1f1 0,#fff 22%)}
+        .request-type-pill{display:inline-flex;align-items:center;min-height:20px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:950;text-transform:uppercase;letter-spacing:.04em}
+        .request-type-decline{background:#fff1f0;color:#b42318;border:1px solid #fecdca}
+        .request-type-split{background:#f4f0ff;color:#6938ef;border:1px solid #d9d6fe}
+        .request-type-swap{background:#ecfdf3;color:#067647;border:1px solid #abefc6}
+        .request-open-label{margin-top:9px;padding-top:8px;border-top:1px solid #eef0f3;color:#e30613;font-size:9px;font-weight:900}
     </style>
 
     <div class="page-head">
         <div>
-            <h1>BD Task Kanban</h1>
-            <p>Monitor every design task created by you across the complete production pipeline.</p>
-        </div>
-
-        <div class="page-actions">
-            <a class="btn btn-primary" href="{{ route('bd.tasks.create') }}">＋ Create New Task</a>
+            <h1>All Tasks</h1>
+            <p>Monitor all Designer tasks across the complete production pipeline.</p>
         </div>
     </div>
 
     <div class="bd-metrics">
         <div class="metric-card">
-            <div class="metric-label">My Total Tasks</div>
+            <div class="metric-label">Total Tasks</div>
             <div class="metric-value">{{ $stats['total'] }}</div>
         </div>
         <div class="metric-card">
@@ -145,20 +150,66 @@
         </div>
     </div>
 
-    <div class="kanban-shell" data-bd-kanban-shell>
+    <div class="kanban-shell" data-designer-head-kanban-shell>
         <div class="kanban-board">
+            <section class="kanban-column request-column" wire:key="designer-head-requests">
+                <header class="kanban-column-header">
+                    <span class="kanban-column-title">Requests</span>
+                    <span class="kanban-count">{{ $pendingRequests->count() }}</span>
+                </header>
+
+                <div class="kanban-list">
+                    @forelse($pendingRequests as $request)
+                        @if($request->task)
+                            <article class="task-card request-card">
+                                <a
+                                    class="task-card-link"
+                                    href="{{ route('designer-head.tasks.show', ['task' => $request->task, 'tab' => $request->request_type === 'split' ? 'split-details' : ($request->request_type === 'swap' ? 'swap-details' : 'decline-details')]) }}"
+                                    draggable="false"
+                                >
+                                    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                                        <div class="task-card-id">{{ $request->task->task_id }}</div>
+                                        <span class="request-type-pill request-type-{{ $request->request_type }}">{{ ucfirst($request->request_type) }}</span>
+                                    </div>
+
+                                    <div class="task-card-name">{{ $request->task->display_task_name ?? $request->task->task_name }}</div>
+                                    <div class="task-card-client">{{ $request->task->party_name }}</div>
+
+                                    <div class="task-card-meta">
+                                        <div class="task-meta-item"><strong>Requested By</strong>{{ $request->requester?->name ?? '—' }}</div>
+                                        <div class="task-meta-item"><strong>Designer</strong>{{ $request->task->designer?->name ?? '—' }}</div>
+
+                                        @if($request->request_type === 'split')
+                                            <div class="task-meta-item"><strong>Requested Split</strong>{{ data_get($request,'split_count') ?? data_get($request,'split_details.requested_count') ?? data_get($request,'split_details.creative_count') ?? '—' }}</div>
+                                        @endif
+
+                                        @if(in_array($request->request_type, ['split','swap'], true))
+                                            <div class="task-meta-item"><strong>Preferred Designer</strong>{{ $request->targetDesigner?->name ?? '—' }}</div>
+                                        @endif
+                                    </div>
+
+                                    <div class="request-open-label">Open task to review</div>
+                                </a>
+                            </article>
+                        @endif
+                    @empty
+                        <div class="empty-state">No pending requests.</div>
+                    @endforelse
+                </div>
+            </section>
+
             @foreach($statuses as $statusKey => $statusLabel)
                 @php
                     $columnTasks = $tasks->where('status', $statusKey);
                 @endphp
 
-                <section class="kanban-column status-{{ $statusKey }}" wire:key="bd-column-{{ $statusKey }}">
+                <section class="kanban-column status-{{ $statusKey }}" wire:key="designer-head-column-{{ $statusKey }}">
                     <header class="kanban-column-header">
                         <span class="kanban-column-title">{{ $statusLabel }}</span>
                         <span class="kanban-count">{{ $columnTasks->count() }}</span>
                     </header>
 
-                    <div class="kanban-list" data-bd-kanban-list data-status="{{ $statusKey }}">
+                    <div class="kanban-list" data-designer-head-kanban-list data-status="{{ $statusKey }}">
                         @forelse($columnTasks as $task)
                             @php
                                 $dueAt = \Illuminate\Support\Carbon::parse($task->due_at);
@@ -182,8 +233,8 @@
                                 }
                             @endphp
 
-                            <article class="task-card {{ $dueClass }} {{ $task->status === 'waiting_confirmation' ? 'bd-draggable-card' : '' }}" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="bd-task-{{ $task->id }}">
-                                <a class="task-card-link" href="{{ route('bd.tasks.show', $task) }}" draggable="false">
+                            <article class="task-card {{ $dueClass }}" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="designer-head-task-{{ $task->id }}">
+                                <a class="task-card-link" href="{{ route('designer-head.tasks.show', $task) }}" draggable="false">
                                     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
                                         <span class="task-card-id">{{ $task->task_id }}</span>
 
@@ -227,29 +278,7 @@
                                     </div>
                                 </a>
 
-                                @if($task->status === 'waiting_confirmation')
-                                    <div class="bd-card-actions">
-                                        <button
-                                            type="button"
-                                            class="bd-card-action bd-card-rework"
-                                            wire:click="markRework({{ $task->id }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="markRework({{ $task->id }}),markCompleted({{ $task->id }})"
-                                        >
-                                            Rework
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="bd-card-action bd-card-complete"
-                                            wire:click="markCompleted({{ $task->id }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="markRework({{ $task->id }}),markCompleted({{ $task->id }})"
-                                        >
-                                            Completed
-                                        </button>
-                                    </div>
-                                @endif
+                                
                             </article>
                         @empty
                             <div class="kanban-empty">No matching tasks</div>
@@ -295,7 +324,7 @@
                         this.sortables.forEach(item => item.destroy());
                         this.sortables = [];
 
-                        document.querySelectorAll('[data-bd-kanban-list]').forEach(list => {
+                        document.querySelectorAll('[data-designer-head-kanban-list]').forEach(list => {
                             this.sortables.push(new Sortable(list, {
                                 group: 'bd-kanban',
                                 animation: 180,
@@ -356,7 +385,7 @@
 
 
                     enablePointerEdgeScroll(){
-                        const shell = this.$root.querySelector('[data-kanban-shell], [data-bd-kanban-shell]');
+                        const shell = this.$root.querySelector('[data-kanban-shell], [data-designer-head-kanban-shell]');
                         if (!shell) return;
 
                         if (this.pointerEdgeCleanup) {
@@ -446,7 +475,7 @@
                             this.cleanupPan = null;
                         }
 
-                        const shell = this.$root.querySelector('[data-bd-kanban-shell]');
+                        const shell = this.$root.querySelector('[data-designer-head-kanban-shell]');
                         if (!shell) return;
 
                         let isDown = false;

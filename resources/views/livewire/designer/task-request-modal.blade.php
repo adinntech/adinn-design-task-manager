@@ -27,11 +27,7 @@
                 </div>
 
                 <div class="request-modal-body">
-                    <div class="request-hint">
-                        This request does not change the task immediately. It becomes effective only when either the Designer Head or Admin approves it.
-                    </div>
-
-                    <div>
+<div>
                         <label class="label">Reason *</label>
                         <textarea class="premium-textarea" rows="3" wire:model="reason" placeholder="Explain why this request is needed..."></textarea>
                         @error('reason') <div class="field-error">{{ $message }}</div> @enderror
@@ -85,7 +81,7 @@
                     <div>
                         <label class="label">Attachment (optional)</label>
                         <input type="file" wire:model="attachment">
-                        <div class="muted" style="margin-top:4px">Maximum 100 MB. Stored in the existing DigitalOcean Spaces request folder.</div>
+                        <div class="muted" style="margin-top:4px">Maximum 100 MB.</div>
                         <div class="muted" wire:loading wire:target="attachment" style="margin-top:4px">Preparing attachment...</div>
                         @error('attachment') <div class="field-error">{{ $message }}</div> @enderror
                     </div>

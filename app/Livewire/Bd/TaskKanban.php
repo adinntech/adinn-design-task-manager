@@ -34,17 +34,6 @@ class TaskKanban extends Component
         $this->moveBdOwnedStatus($taskId, 'completed');
     }
 
-    public function moveTask(int $taskId, string $targetStatus): void
-    {
-        if (! in_array($targetStatus, ['rework', 'completed'], true)) {
-            throw ValidationException::withMessages([
-                'status' => 'BD can move tasks only to Rework or Completed.',
-            ]);
-        }
-
-        $this->moveBdOwnedStatus($taskId, $targetStatus);
-    }
-
     private function moveBdOwnedStatus(int $taskId, string $targetStatus): void
     {
         abort_unless(in_array($targetStatus, ['rework', 'completed'], true), 403);
@@ -94,7 +83,7 @@ class TaskKanban extends Component
             ->with([
                 'designer:id,name',
                 'assigner:id,name',
-            ])->withSum(['eodRecords as completed_creatives' => fn ($query) => $query->where('update_type', 'progress')], 'completed_count')
+            ])
             ->where('assigned_by', Auth::id())
             ->when($this->search !== '', function ($query) {
                 $term = '%'.trim($this->search).'%';
@@ -114,39 +103,11 @@ class TaskKanban extends Component
             ->orderBy('due_at')
             ->get();
 
-        // BD should never monitor an approved Swap under the Swap Tasks column.
-        // The original task is only the read-only Swap record for Designer A.
-        // BD should see the active swapped task under Assigned Tasks.
-        $approvedSwapOriginalIds = DesignTaskRequest::query()
-            ->whereIn('design_task_id', $tasks->pluck('id'))
-            ->where('request_type', 'swap')
-            ->where('overall_status', 'approved')
-            ->pluck('design_task_id')
-            ->all();
-
+        // An approved Swap creates a read-only shadow task for the original Designer
+        // and a new active task for the approved Designer. BD should monitor the
+        // active task only, while the Swap remains traceable in task history.
         return $tasks
-            ->reject(function (DesignTask $task) use ($approvedSwapOriginalIds) {
-                $requirements = $task->requirements ?? [];
-
-                // New workflow shadow record.
-                if ((bool) data_get($requirements, '_swap_shadow', false)) {
-                    return true;
-                }
-
-                // Backward-compatible: hide the original approved-Swap task from BD
-                // whenever it is still sitting in Swap Tasks.
-                return $task->status === 'swap_tasks'
-                    && in_array($task->id, $approvedSwapOriginalIds, true);
-            })
-            ->map(function (DesignTask $task) {
-                // The active swapped copy must always be represented under Assigned Tasks
-                // for BD, even if an older record retained another status.
-                if (! empty(data_get($task->requirements, '_swapped_from_task_id'))) {
-                    $task->status = 'assigned_tasks';
-                }
-
-                return $task;
-            })
+            ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
             ->values();
     }
 
@@ -234,11 +195,10 @@ class TaskKanban extends Component
         $statuses = DesignTaskStatusService::STATUSES;
 
         if (! array_key_exists('swap_tasks', $statuses)) {
-            $statuses['swap_tasks'] = 'Swap Tasks';
+            $statuses['swap_tasks'] = 'Swapped Tasks';
         } else {
-            $swapLabel = $statuses['swap_tasks'];
             unset($statuses['swap_tasks']);
-            $statuses['swap_tasks'] = $swapLabel;
+            $statuses['swap_tasks'] = 'Swapped Tasks';
         }
 
         return view('livewire.bd.task-kanban', [

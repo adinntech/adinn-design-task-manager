@@ -156,7 +156,7 @@ class DesignTaskRequestService
             $executionNote = match ($lockedRequest->request_type) {
                 'swap' => $this->executeSwap($lockedRequest),
                 'split' => $this->executeSplit($lockedRequest),
-                'decline' => 'Decline approved. Task remains assigned until it is explicitly reassigned.',
+                'decline' => $this->executeDecline($lockedRequest, $approvedDesignerId),
                 default => throw ValidationException::withMessages(['request' => 'Unsupported request type.']),
             };
 
@@ -341,6 +341,25 @@ class DesignTaskRequestService
                 'approved_creative_count' => 'Approved split quantity must be at least 1 and must leave at least 1 creative with the original task.',
             ]);
         }
+    }
+
+
+    private function executeDecline(DesignTaskRequest $request, ?int $approvedDesignerId): string
+    {
+        if (! $approvedDesignerId) {
+            throw ValidationException::withMessages([
+                'approved_designer_id' => 'Please select a designer before approving this decline request.',
+            ]);
+        }
+
+        $designer = User::query()->whereKey($approvedDesignerId)->where('role', 'designer')->firstOrFail();
+
+        $request->task->update([
+            'designer_id' => $designer->id,
+            'status' => 'assigned_tasks',
+        ]);
+
+        return 'Decline approved. Task reassigned to '.$designer->name.'.';
     }
 
     private function executeSwap(DesignTaskRequest $request): string

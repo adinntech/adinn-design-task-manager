@@ -16,6 +16,15 @@ class RequestActionController extends Controller
     public function approve(Request $request, DesignTaskRequest $taskRequest, DesignTaskRequestService $service): RedirectResponse
     {
         $rules = [];
+        if ($taskRequest->request_type === 'decline') {
+            $rules['approved_designer_id'] = [
+                'required',
+                Rule::exists('users', 'id')->where(
+                    fn ($query) => $query->where('role', 'designer')->where('is_active', true)
+                ),
+            ];
+        }
+
         if (in_array($taskRequest->request_type, ['split', 'swap'], true)) {
             $rules['approved_designer_id'] = [
                 'required',
@@ -33,6 +42,7 @@ class RequestActionController extends Controller
                 auth()->user(),
                 isset($validated['approved_designer_id']) ? (int) $validated['approved_designer_id'] : null,
                 isset($validated['approved_creative_count']) ? (int) $validated['approved_creative_count'] : null,
+                $validated['decision_comment'] ?? null,
             );
         } catch (ValidationException|AuthorizationException $e) {
             $message = $e instanceof ValidationException ? $e->validator->errors()->first() : $e->getMessage();
