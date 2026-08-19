@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskCommentAttachment;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Services\DesignTaskProgressService;
+use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 
 class AssignedTaskController extends Controller
 {
@@ -115,24 +118,21 @@ class AssignedTaskController extends Controller
             ->sum(fn (array $group) => count($group['files']));
         $commentAttachmentCount = $comments->sum(fn ($comment) => $comment->attachments->count());
 
-        $pipelineEvents = collect();
-        foreach ($history as $event) {
-            $pipelineEvents->push([
-                'title' => $event->note ?: $this->statusTitle($event->from_status, $event->to_status),
-                'description' => 'By '.($event->changedBy?->name ?? 'System'),
-                'role' => $event->changedBy?->role ?? 'default',
-                'created_at' => $event->created_at,
-            ]);
-        }
-        foreach ($comments as $comment) {
-            $pipelineEvents->push([
-                'title' => 'Comment Added',
-                'description' => 'By '.($comment->user?->name ?? 'User').' · '.Str::limit(trim((string) $comment->comment), 120),
-                'role' => $comment->user?->role ?? 'default',
-                'created_at' => $comment->created_at,
-            ]);
-        }
-        $pipelineEvents = $pipelineEvents->sortByDesc(fn ($event) => $event['created_at']?->getTimestamp() ?? 0)->values();
+        $pipelineEvents = app(DesignTaskPipelineService::class)->build(
+            $task,
+            $history,
+            $comments,
+            $editHistory
+        );
+
+        $bdReviews = DesignTaskBdReview::query()
+            ->with('submitter:id,name,role')
+            ->where('design_task_id', $task->id)
+            ->latest()
+            ->get();
+
+        $taskRating = $bdReviews
+            ->first(fn (DesignTaskBdReview $review) => $review->action === 'completed');
 
         return view('bd.tasks.show', [
             'task' => $task,
@@ -152,7 +152,159 @@ class AssignedTaskController extends Controller
             'requirementAttachmentCount' => $requirementAttachmentCount,
             'commentAttachmentCount' => $commentAttachmentCount,
             'attachmentCount' => $requirementAttachmentCount + $commentAttachmentCount,
+            'bdReviews' => $bdReviews,
+            'taskRating' => $taskRating,
         ]);
+    }
+
+    public function submitRework(Request $request, DesignTask $task): RedirectResponse
+    {
+        $this->authorizeBdTask($request, $task);
+
+        $data = $request->validate([
+            'number_of_creatives' => ['required', 'integer', 'min:1', 'max:'.$task->total_creatives],
+            'comment' => ['required', 'string', 'max:10000'],
+        ], [
+            'number_of_creatives.required' => 'Enter the number of creatives requiring rework.',
+            'number_of_creatives.max' => 'Rework creatives cannot exceed the total number of creatives.',
+            'comment.required' => 'Enter the rework comments.',
+        ]);
+
+        DB::transaction(function () use ($request, $task, $data) {
+            $lockedTask = DesignTask::query()->lockForUpdate()->findOrFail($task->id);
+
+            if ($lockedTask->status !== 'waiting_confirmation') {
+                throw ValidationException::withMessages(['status' => 'Rework can be requested only while the task is Waiting for Confirmation.']);
+            }
+
+            if ((int) $data['number_of_creatives'] > (int) $lockedTask->total_creatives) {
+                throw ValidationException::withMessages([
+                    'number_of_creatives' => 'Rework creatives cannot exceed the current total number of creatives.',
+                ]);
+            }
+
+            DesignTaskBdReview::create([
+                'design_task_id' => $lockedTask->id,
+                'submitted_by' => $request->user()->id,
+                'action' => 'rework',
+                'number_of_creatives' => (int) $data['number_of_creatives'],
+                'comment' => trim($data['comment']),
+            ]);
+
+            DesignTaskComment::create([
+                'design_task_id' => $lockedTask->id,
+                'user_id' => $request->user()->id,
+                'status_at_comment' => $lockedTask->status,
+                'comment' => 'Rework requested for '.(int) $data['number_of_creatives'].' creative(s).'."\n".trim($data['comment']),
+            ]);
+
+            $fromStatus = $lockedTask->status;
+            $lockedTask->update(['status' => 'rework']);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $lockedTask->id,
+                'from_status' => $fromStatus,
+                'to_status' => 'rework',
+                'changed_by' => $request->user()->id,
+                'change_source' => 'bd_rework',
+                'note' => 'BD requested rework for '.(int) $data['number_of_creatives'].' creative(s).',
+            ]);
+        });
+
+        return redirect()
+            ->route('bd.tasks.show', ['task' => $task, 'tab' => 'eod'])
+            ->with('success', 'Task moved to Rework.');
+    }
+
+    public function completeWithRating(Request $request, DesignTask $task): RedirectResponse
+    {
+        $this->authorizeBdTask($request, $task);
+
+        $halfStarRule = function (string $attribute, mixed $value, \Closure $fail): void {
+            $number = (float) $value;
+            if ($number < 0.5 || $number > 5 || abs(($number * 2) - round($number * 2)) > 0.0001) {
+                $fail('Each rating must be between 0.5 and 5 stars in 0.5-star increments.');
+            }
+        };
+
+        $data = $request->validate([
+            'designer_attitude' => ['required', 'numeric', $halfStarRule],
+            'design_satisfaction' => ['required', 'numeric', $halfStarRule],
+            'rework_iteration' => ['required', 'numeric', $halfStarRule],
+            'meeting_deadline' => ['required', 'numeric', $halfStarRule],
+            'client_satisfaction' => ['required', 'numeric', $halfStarRule],
+            'rating_comment' => ['nullable', 'string', 'max:10000'],
+        ]);
+
+        $overall = round((
+            (float) $data['designer_attitude']
+            + (float) $data['design_satisfaction']
+            + (float) $data['rework_iteration']
+            + (float) $data['meeting_deadline']
+            + (float) $data['client_satisfaction']
+        ) / 5, 2);
+
+        if ($overall < 3 && trim((string) ($data['rating_comment'] ?? '')) === '') {
+            return back()
+                ->withErrors(['rating_comment' => 'Comments are mandatory when the overall rating is below 3 stars.'])
+                ->withInput();
+        }
+
+        DB::transaction(function () use ($request, $task, $data, $overall) {
+            $lockedTask = DesignTask::query()->lockForUpdate()->findOrFail($task->id);
+
+            if ($lockedTask->status !== 'waiting_confirmation') {
+                throw ValidationException::withMessages(['status' => 'A task can be completed only from Waiting for Confirmation.']);
+            }
+
+            $progress = app(DesignTaskProgressService::class)->percentage($lockedTask);
+            if ($progress < 100) {
+                throw ValidationException::withMessages(['status' => 'The task cannot be completed until creative progress reaches 100%.']);
+            }
+
+            if (DesignTaskBdReview::query()->where('design_task_id', $lockedTask->id)->where('action', 'completed')->exists()) {
+                throw ValidationException::withMessages(['status' => 'A completion rating has already been submitted for this task.']);
+            }
+
+            DesignTaskBdReview::create([
+                'design_task_id' => $lockedTask->id,
+                'submitted_by' => $request->user()->id,
+                'action' => 'completed',
+                'number_of_creatives' => (int) $lockedTask->total_creatives,
+                'comment' => trim((string) ($data['rating_comment'] ?? '')) ?: null,
+                'designer_attitude' => $data['designer_attitude'],
+                'design_satisfaction' => $data['design_satisfaction'],
+                'rework_iteration' => $data['rework_iteration'],
+                'meeting_deadline' => $data['meeting_deadline'],
+                'client_satisfaction' => $data['client_satisfaction'],
+                'overall_rating' => $overall,
+            ]);
+
+            $fromStatus = $lockedTask->status;
+            $lockedTask->update(['status' => 'completed']);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $lockedTask->id,
+                'from_status' => $fromStatus,
+                'to_status' => 'completed',
+                'changed_by' => $request->user()->id,
+                'change_source' => 'bd_completion_rating',
+                'note' => 'Task completed by BD with an overall rating of '.number_format($overall, 2).' / 5.',
+            ]);
+        });
+
+        return redirect()
+            ->route('bd.tasks.show', ['task' => $task, 'tab' => 'ratings'])
+            ->with('success', 'Task completed and rating submitted successfully.');
+    }
+
+    private function authorizeBdTask(Request $request, DesignTask $task): void
+    {
+        abort_unless(
+            $request->user()?->role === 'bd'
+            && (int) $task->assigned_by === (int) $request->user()->id,
+            403
+        );
     }
 
     public function addComment(Request $request, DesignTask $task): RedirectResponse

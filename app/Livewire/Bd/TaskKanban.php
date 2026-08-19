@@ -81,6 +81,7 @@ class TaskKanban extends Component
     {
         $tasks = DesignTask::query()
             ->with([
+                'bdReview',
                 'designer:id,name',
                 'assigner:id,name',
             ])
@@ -111,6 +112,12 @@ class TaskKanban extends Component
             ->values();
     }
 
+    /**
+     * Build one compact request-status badge for each visible Kanban card.
+     *
+     * Only the latest request is shown so the card stays clean while still
+     * exposing the current state of Decline, Task Split and Task Transfer requests.
+     */
     private function buildTaskTags(Collection $tasks): SupportCollection
     {
         if ($tasks->isEmpty()) {
@@ -119,72 +126,48 @@ class TaskKanban extends Component
 
         $requests = DesignTaskRequest::query()
             ->whereIn('design_task_id', $tasks->pluck('id'))
-            ->whereIn('request_type', ['split', 'swap'])
+            ->whereIn('request_type', ['decline', 'split', 'swap'])
             ->latest('created_at')
             ->get()
             ->groupBy('design_task_id');
 
         return $tasks->mapWithKeys(function (DesignTask $task) use ($requests) {
-            $tags = collect();
-            $taskRequests = $requests->get($task->id, collect());
+            $latestRequest = $requests->get($task->id, collect())->first();
 
-            if (! empty(data_get($task->requirements, '_swapped_from_task_id'))) {
-                $tags->push([
-                    'key' => 'swap',
-                    'label' => 'Swapped',
-                    'class' => 'task-tag-swap',
-                ]);
+            if (! $latestRequest) {
+                return [$task->id => []];
             }
 
-            if (
-                ! empty(data_get($task->requirements, '_split_request_id'))
-                || ! empty(data_get($task->requirements, '_split_from_task_id'))
-            ) {
-                $tags->push([
-                    'key' => 'split',
-                    'label' => 'Split Approved',
-                    'class' => 'task-tag-split',
-                ]);
-            }
+            $typeLabel = match ($latestRequest->request_type) {
+                'split' => 'Split',
+                'swap' => 'Swap',
+                'decline' => 'Decline',
+                default => 'Request',
+            };
 
-            foreach (['split', 'swap'] as $type) {
-                $approved = $taskRequests->first(
-                    fn ($request) => $request->request_type === $type
-                        && $request->overall_status === 'approved'
-                );
+            $isPending = in_array(
+                $latestRequest->overall_status,
+                ['pending_approval', 'pending_designer_head', 'pending_admin'],
+                true
+            );
 
-                if ($approved) {
-                    $tags->push([
-                        'key' => $type,
-                        'label' => $type === 'split' ? 'Split Approved' : 'Swap Approved',
-                        'class' => $type === 'split' ? 'task-tag-split' : 'task-tag-swap',
-                    ]);
+            $statusLabel = $isPending
+                ? 'Pending'
+                : ($latestRequest->overall_status === 'approved' ? 'Approved' : 'Declined');
 
-                    continue;
-                }
+            $statusClass = $isPending
+                ? 'task-request-pending'
+                : ($latestRequest->overall_status === 'approved'
+                    ? 'task-request-approved'
+                    : 'task-request-declined');
 
-                $latest = $taskRequests->firstWhere('request_type', $type);
-
-                if (! $latest) {
-                    continue;
-                }
-
-                if (in_array($latest->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true)) {
-                    $tags->push([
-                        'key' => $type,
-                        'label' => $type === 'swap' ? 'Waiting for Approval' : 'Split Pending',
-                        'class' => 'task-tag-pending',
-                    ]);
-                } elseif ($latest->overall_status === 'rejected') {
-                    $tags->push([
-                        'key' => $type,
-                        'label' => ucfirst($type).' Declined',
-                        'class' => 'task-tag-decline',
-                    ]);
-                }
-            }
-
-            return [$task->id => $tags->unique('key')->values()->all()];
+            return [
+                $task->id => [[
+                    'key' => 'latest-request',
+                    'label' => $typeLabel.' · '.$statusLabel,
+                    'class' => 'task-request-status '.$statusClass,
+                ]],
+            ];
         });
     }
 

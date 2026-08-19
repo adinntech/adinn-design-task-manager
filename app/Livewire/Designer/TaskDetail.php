@@ -7,11 +7,13 @@ use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskCommentAttachment;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Services\DesignTaskRequestService;
 use App\Services\DesignTaskStatusService;
 use App\Services\DesignTaskProgressService;
+use App\Services\DesignTaskPipelineService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +36,7 @@ class TaskDetail extends Component
     public ?int $eodCompletedCount = null;
     public $taskUpdateAttachment = null;
     public $reworkAttachment = null;
+    public ?int $reworkCompletedCount = null;
     public bool $swapInitiatorReadOnly = false;
 
     private function isSwapShadowTask(?DesignTask $task = null): bool
@@ -139,6 +142,52 @@ class TaskDetail extends Component
             );
 
         $this->task = $task;
+
+        $this->reconcileCompletedRework();
+    }
+
+    private function reconcileCompletedRework(): void
+    {
+        if ($this->swapInitiatorReadOnly || $this->task->status !== 'rework') {
+            return;
+        }
+
+        $progressService = app(DesignTaskProgressService::class);
+
+        // 100% overall progress is the final completion signal.
+        // Do not keep legacy Rework tasks stuck only because older rows do not
+        // have a DesignTaskBdReview record for the current cycle.
+        if (! $progressService->isComplete($this->task)) {
+            return;
+        }
+
+        DB::transaction(function (): void {
+            $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
+            $progressService = app(DesignTaskProgressService::class);
+
+            if ($task->status !== 'rework' || ! $progressService->isComplete($task)) {
+                return;
+            }
+
+            $task->update(['status' => 'waiting_confirmation']);
+
+            app(DesignTaskRequestService::class)->autoRejectPendingForStatus(
+                $task,
+                'waiting_confirmation',
+                Auth::user()
+            );
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => 'rework',
+                'to_status' => 'waiting_confirmation',
+                'changed_by' => Auth::id(),
+                'change_source' => 'rework_reconciled',
+                'note' => 'Rework progress reached 100% and was automatically moved to Waiting for BD Review.',
+            ]);
+        });
+
+        $this->task = $this->task->fresh();
     }
 
     public function moveToNextStatus(): void
@@ -242,55 +291,67 @@ class TaskDetail extends Component
             'taskUpdateAttachment.mimes' => 'Task Updation accepts ZIP files only.',
         ]);
 
-        $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
-        $progressService = app(DesignTaskProgressService::class);
-        $alreadyCompleted = $progressService->completed($task);
-        $remainingBefore = max(0, (int) $task->total_creatives - $alreadyCompleted);
-        $progressAdded = (int) $this->eodCompletedCount;
-
-        if ($remainingBefore <= 0) {
-            $this->addError('eodCompletedCount', 'Creative progress is already 100%.');
-            return;
-        }
-
-        if ($progressAdded > $remainingBefore) {
-            $this->addError('eodCompletedCount', 'You can add only '.$remainingBefore.' remaining creative'.($remainingBefore === 1 ? '' : 's').'.');
-            return;
-        }
-
-        $cumulativeCompleted = $alreadyCompleted + $progressAdded;
-        $remainingAfter = max(0, (int) $task->total_creatives - $cumulativeCompleted);
         $file = $this->taskUpdateAttachment;
-        $root = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
-        $directory = implode('/', [$root, now()->format('Y'), $task->vertical, $task->task_id.'_'.Str::slug($task->task_name), Str::slug($task->task_nature), 'task-updation']);
-        $fileName = $task->task_id.'__task-updation__'.now()->format('Ymd-His-v').'.zip';
-        $path = $file->storePubliclyAs($directory, $fileName, 'spaces');
 
-        DesignTaskEodRecord::create([
-            'design_task_id' => $task->id,
-            'designer_id' => Auth::id(),
-            'update_type' => 'progress',
-            'completed_count' => $progressAdded,
-            'total_creatives_snapshot' => (int) $task->total_creatives,
-            'cumulative_completed' => $cumulativeCompleted,
-            'remaining_creatives' => $remainingAfter,
-            'rework_count_snapshot' => null,
-            'attachment_disk' => 'spaces',
-            'attachment_path' => $path,
-            'attachment_original_name' => $file->getClientOriginalName(),
-            'submitted_at' => now(),
-        ]);
+        DB::transaction(function () use ($file): void {
+            $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
-        DesignTaskStatusHistory::create([
-            'design_task_id' => $task->id,
-            'from_status' => $task->status,
-            'to_status' => $task->status,
-            'changed_by' => Auth::id(),
-            'change_source' => 'task_updation',
-            'note' => 'Task Updation submitted: '.$progressAdded.' progress added, '.$remainingAfter.' remaining.',
-        ]);
+            if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'in_progress') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'eodCompletedCount' => 'Task Updation is no longer available for this task.',
+                ]);
+            }
 
-        $this->task = $task->fresh();
+            $progressService = app(DesignTaskProgressService::class);
+            $alreadyCompleted = $progressService->completed($task);
+            $remainingBefore = max(0, (int) $task->total_creatives - $alreadyCompleted);
+            $progressAdded = (int) $this->eodCompletedCount;
+
+            if ($remainingBefore <= 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'eodCompletedCount' => 'Creative progress is already 100%.',
+                ]);
+            }
+
+            if ($progressAdded > $remainingBefore) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'eodCompletedCount' => 'You can add only '.$remainingBefore.' remaining creative'.($remainingBefore === 1 ? '' : 's').'.',
+                ]);
+            }
+
+            $cumulativeCompleted = $alreadyCompleted + $progressAdded;
+            $remainingAfter = max(0, (int) $task->total_creatives - $cumulativeCompleted);
+            $root = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
+            $directory = implode('/', [$root, now()->format('Y'), $task->vertical, $task->task_id.'_'.Str::slug($task->task_name), Str::slug($task->task_nature), 'task-updation']);
+            $fileName = $task->task_id.'__task-updation__'.now()->format('Ymd-His-v').'.zip';
+            $path = $file->storePubliclyAs($directory, $fileName, 'spaces');
+
+            DesignTaskEodRecord::create([
+                'design_task_id' => $task->id,
+                'designer_id' => Auth::id(),
+                'update_type' => 'progress',
+                'completed_count' => $progressAdded,
+                'total_creatives_snapshot' => (int) $task->total_creatives,
+                'cumulative_completed' => $cumulativeCompleted,
+                'remaining_creatives' => $remainingAfter,
+                'rework_count_snapshot' => null,
+                'attachment_disk' => 'spaces',
+                'attachment_path' => $path,
+                'attachment_original_name' => $file->getClientOriginalName(),
+                'submitted_at' => now(),
+            ]);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => $task->status,
+                'to_status' => $task->status,
+                'changed_by' => Auth::id(),
+                'change_source' => 'task_updation',
+                'note' => 'Task Updation submitted: '.$progressAdded.' progress added, '.$remainingAfter.' remaining.',
+            ]);
+        });
+
+        $this->task = $this->task->fresh();
         $this->reset(['eodCompletedCount', 'taskUpdateAttachment']);
         $this->dispatch('eod-updated', message: 'Task Updation submitted successfully.');
     }
@@ -300,54 +361,152 @@ class TaskDetail extends Component
         abort_unless(Auth::user()?->role === 'designer' && $this->canInteractFully(), 403);
 
         if ($this->task->status !== 'rework') {
-            $this->addError('reworkAttachment', 'Rework upload is available only when the task is in Rework.');
+            $this->addError('reworkCompletedCount', 'Rework submission is available only while the task is in Rework.');
             return;
         }
 
+        $progressService = app(DesignTaskProgressService::class);
+        $pendingBefore = $progressService->currentReworkPending($this->task);
+
         $this->validate([
+            'reworkCompletedCount' => ['required', 'integer', 'min:1', 'max:'.$pendingBefore],
             'reworkAttachment' => ['required', 'file', 'mimes:zip', 'max:102400'],
         ], [
+            'reworkCompletedCount.required' => 'Enter the number of reworked creatives being submitted.',
+            'reworkCompletedCount.max' => 'You cannot submit more creatives than the current Rework pending count.',
             'reworkAttachment.required' => 'Upload the Rework creative ZIP.',
             'reworkAttachment.mimes' => 'Rework creative upload accepts ZIP files only.',
         ]);
 
-        $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
-        $progressService = app(DesignTaskProgressService::class);
-        $reworkCount = $progressService->reworkCount($task);
-        $completed = $progressService->completed($task);
-        $remaining = max(0, (int) $task->total_creatives - $completed);
         $file = $this->reworkAttachment;
-        $root = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
-        $directory = implode('/', [$root, now()->format('Y'), $task->vertical, $task->task_id.'_'.Str::slug($task->task_name), Str::slug($task->task_nature), 'rework', 'rework-'.$reworkCount]);
-        $fileName = $task->task_id.'__rework-'.$reworkCount.'__'.now()->format('Ymd-His-v').'.zip';
-        $path = $file->storePubliclyAs($directory, $fileName, 'spaces');
+        $submittedCount = (int) $this->reworkCompletedCount;
+        $nextStage = 'rework';
+        $pendingAfter = $pendingBefore;
 
-        DesignTaskEodRecord::create([
-            'design_task_id' => $task->id,
-            'designer_id' => Auth::id(),
-            'update_type' => 'rework',
-            'completed_count' => 0,
-            'total_creatives_snapshot' => (int) $task->total_creatives,
-            'cumulative_completed' => $completed,
-            'remaining_creatives' => $remaining,
-            'rework_count_snapshot' => $reworkCount,
-            'attachment_disk' => 'spaces',
-            'attachment_path' => $path,
-            'attachment_original_name' => $file->getClientOriginalName(),
-            'submitted_at' => now(),
-        ]);
+        DB::transaction(function () use ($file, $submittedCount, &$nextStage, &$pendingAfter): void {
+            $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
-        DesignTaskStatusHistory::create([
-            'design_task_id' => $task->id,
-            'from_status' => $task->status,
-            'to_status' => $task->status,
-            'changed_by' => Auth::id(),
-            'change_source' => 'rework_upload',
-            'note' => 'Rework #'.$reworkCount.' creative ZIP uploaded.',
-        ]);
+            if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'rework') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'reworkCompletedCount' => 'Rework submission is no longer available for this task.',
+                ]);
+            }
 
-        $this->reset('reworkAttachment');
-        $this->dispatch('eod-updated', message: 'Rework creative uploaded successfully.');
+            $progressService = app(DesignTaskProgressService::class);
+            $reworkCount = $progressService->reworkCount($task);
+            $pending = $progressService->currentReworkPending($task);
+
+            if ($reworkCount < 1 || $pending < 1) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'reworkCompletedCount' => 'No pending creatives remain in the current Rework cycle.',
+                ]);
+            }
+
+            if ($submittedCount > $pending) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'reworkCompletedCount' => 'You cannot submit more creatives than the current Rework pending count.',
+                ]);
+            }
+
+            $root = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
+            $directory = implode('/', [
+                $root,
+                now()->format('Y'),
+                $task->vertical,
+                $task->task_id.'_'.Str::slug($task->task_name),
+                Str::slug($task->task_nature),
+                'rework',
+                'rework-'.$reworkCount,
+            ]);
+
+            $fileName = $task->task_id.'__rework-'.$reworkCount.'__'.now()->format('Ymd-His-v').'.zip';
+            $path = $file->storePubliclyAs($directory, $fileName, 'spaces');
+
+            // completed() includes this record, so calculate snapshots after create.
+            DesignTaskEodRecord::create([
+                'design_task_id' => $task->id,
+                'designer_id' => Auth::id(),
+                'update_type' => 'rework',
+                'completed_count' => $submittedCount,
+                'total_creatives_snapshot' => (int) $task->total_creatives,
+                'cumulative_completed' => 0,
+                'remaining_creatives' => 0,
+                'rework_count_snapshot' => $reworkCount,
+                'attachment_disk' => 'spaces',
+                'attachment_path' => $path,
+                'attachment_original_name' => $file->getClientOriginalName(),
+                'submitted_at' => now(),
+            ]);
+
+            $completedNow = $progressService->completed($task);
+            $remainingNow = $progressService->remaining($task);
+            $pendingAfter = $progressService->currentReworkPending($task);
+
+            DesignTaskEodRecord::query()
+                ->where('design_task_id', $task->id)
+                ->where('update_type', 'rework')
+                ->where('rework_count_snapshot', $reworkCount)
+                ->latest('id')
+                ->limit(1)
+                ->update([
+                    'cumulative_completed' => $completedNow,
+                    'remaining_creatives' => $remainingNow,
+                ]);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => 'rework',
+                'to_status' => 'rework',
+                'changed_by' => Auth::id(),
+                'change_source' => 'rework_upload',
+                'note' => 'Rework #'.$reworkCount.': '.$submittedCount.' creative(s) resubmitted. '.$pendingAfter.' rework creative(s) pending.',
+            ]);
+
+            $isFullyComplete = $progressService->isComplete($task);
+
+            if ($isFullyComplete || $pendingAfter === 0) {
+                $nextStage = $isFullyComplete
+                    ? 'waiting_confirmation'
+                    : 'in_progress';
+
+                // At 100%, overall progress is authoritative. This prevents a task
+                // being trapped in Rework because of stale cycle metadata.
+                if ($isFullyComplete) {
+                    $pendingAfter = 0;
+                }
+
+                $task->update(['status' => $nextStage]);
+
+                app(DesignTaskRequestService::class)->autoRejectPendingForStatus(
+                    $task,
+                    $nextStage,
+                    Auth::user()
+                );
+
+                DesignTaskStatusHistory::create([
+                    'design_task_id' => $task->id,
+                    'from_status' => 'rework',
+                    'to_status' => $nextStage,
+                    'changed_by' => Auth::id(),
+                    'change_source' => 'rework_completed',
+                    'note' => $nextStage === 'waiting_confirmation'
+                        ? 'Rework #'.$reworkCount.' reached 100% and returned to Waiting for Confirmation.'
+                        : 'Rework #'.$reworkCount.' completed and returned to In Progress because overall progress is below 100%.',
+                ]);
+            }
+        });
+
+        $this->task = $this->task->fresh();
+        $this->reset(['reworkCompletedCount', 'reworkAttachment']);
+
+        $message = $pendingAfter > 0
+            ? 'Rework submitted. '.$pendingAfter.' creative(s) remain in this Rework cycle.'
+            : ($nextStage === 'waiting_confirmation'
+                ? 'Rework completed. Task sent to Waiting for Confirmation.'
+                : 'Rework completed. Task returned to In Progress.');
+
+        $this->dispatch('eod-updated', message: $message);
+        $this->dispatch('task-status-changed', message: $message);
     }
 
     public function render()
@@ -453,7 +612,7 @@ class TaskDetail extends Component
                 ->where('design_task_id', $this->task->id)
                 ->latest()
                 ->get(),
-            'pipelineEvents' => $this->buildPipelineEvents($history, $comments),
+            'pipelineEvents' => app(DesignTaskPipelineService::class)->build($this->task, $history, $comments, $editHistory),
             'eodRecords' => $eodRecords,
             'eodCompletedTotal' => $eodCompletedTotal,
             'eodRemaining' => $eodRemaining,
@@ -461,6 +620,14 @@ class TaskDetail extends Component
             'progressColorKey' => $progressColorKey,
             'reworkCount' => $reworkCount,
             'currentReworkHasUpload' => $currentReworkHasUpload,
+            'currentReworkRequested' => $progressService->currentReworkRequested($this->task),
+            'currentReworkCompleted' => $progressService->currentReworkCompleted($this->task),
+            'currentReworkPending' => $progressService->currentReworkPending($this->task),
+            'latestReworkReview' => DesignTaskBdReview::query()
+                ->where('design_task_id', $this->task->id)
+                ->where('action', 'rework')
+                ->latest()
+                ->first(),
             'isCommentOnlySwap' => $this->isSwapShadowTask(),
             'requests' => $requests = DesignTaskRequest::query()
                 ->with([

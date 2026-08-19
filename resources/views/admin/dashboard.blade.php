@@ -53,7 +53,7 @@
                             <td><span class="badge badge-warning">{{ ucfirst($item->request_type) }} · Pending</span></td>
                             <td>{{ $item->requester?->name ?? '—' }}</td>
                             <td style="max-width:320px"><div>{{ \Illuminate\Support\Str::limit($item->reason, 150) }}</div>@if($item->request_type === 'split' && !empty($item->split_details['creative_count']))<div class="muted" style="margin-top:4px">Split {{ $item->split_details['creative_count'] }} creatives</div>@endif @if($item->targetDesigner)<div class="muted" style="margin-top:4px">Preferred: {{ $item->targetDesigner->name }}</div>@endif</td>
-                            <td>{{ $item->created_at->format('d M Y, h:i A') }}</td>
+                            <td>{{ $item->created_at->format('d M Y') }}</td>
                             <td>
                                 <div style="display:grid;gap:6px;min-width:210px">
                                     @if(in_array($item->request_type, ['split','swap'], true))
@@ -83,6 +83,7 @@
                                                         <input class="field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ($item->task?->total_creatives ?? 1) - 1) }}" value="{{ $item->split_details['creative_count'] ?? 1 }}" required>
                                                         <div class="muted" style="margin:4px 0 6px">Designer requested {{ $item->split_details['creative_count'] ?? '—' }}. You can change the final quantity.</div>
                                                     @endif
+                                            <textarea name="decision_comment" class="field" rows="2" placeholder="Optional approval comment" style="margin-bottom:6px"></textarea>
                                             <button class="btn btn-primary" style="width:100%">Approve</button>
                                         </form>
                                     @else
@@ -90,13 +91,25 @@
                     method="POST"
                     action="{{ route('admin.requests.approve', $item) }}"
                     data-formal-confirm
-                    data-confirm-title="Approve { ucfirst($item->request_type) } Request?"
-                    data-confirm-message="You are about to approve this { strtolower($item->request_type) } request. The approved decision will be applied to the task workflow immediately."
-                    data-confirm-note="Please verify the approved Designer and quantity, where applicable, before confirming. This decision is final for the current request."
+                    data-confirm-title="Approve {{ ucfirst($item->request_type) }} Request?"
+                    data-confirm-message="You are about to approve this {{ strtolower($item->request_type) }} request. The approved decision will be applied to the task workflow immediately."
+                    data-confirm-note="Please verify the reassigned Designer before confirming. This decision is final for the current request."
                     data-confirm-label="Approve Request"
                     data-processing-label="Approving..."
                     data-confirm-tone="success"
-                >@csrf<button class="btn btn-primary" style="width:100%">Approve</button></form>
+                >
+                                            @csrf
+                                            <select name="approved_designer_id" class="field" required style="margin-bottom:6px">
+                                                <option value="">Select approved Designer</option>
+                                                @foreach($approvalDesigners as $designer)
+                                                    @if((int)$designer->id !== (int)($item->task?->designer_id ?? 0))
+                                                        <option value="{{ $designer->id }}">{{ $designer->name }}</option>
+                                                    @endif
+                                                @endforeach
+                                            </select>
+                                            <textarea name="decision_comment" class="field" rows="2" placeholder="Optional approval comment" style="margin-bottom:6px"></textarea>
+                                            <button class="btn btn-primary" style="width:100%">Approve</button>
+                                        </form>
                                     @endif
                                     <form method="POST" action="{{ route('admin.requests.reject', $item) }}" data-formal-confirm
                     data-confirm-title="Decline {{ ucfirst($item->request_type) }} Request?"
@@ -124,7 +137,7 @@
 <div class="content-grid-3">
     <section class="panel">
         <div class="panel-header"><div class="panel-title">Recent Tasks</div></div>
-        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody>@forelse($recentTasks as $task)<tr><td><a class="file-link" href="{{ route('admin.tasks.show',$task) }}">{{ $task->task_id }}</a><div style="margin-top:3px;font-weight:700">{{ $task->task_name }}</div></td><td>{{ $task->designer?->name ?? '—' }}</td><td><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M, h:i A') }}</td></tr>@empty<tr><td colspan="4" class="empty-state">No tasks available.</td></tr>@endforelse</tbody></table></div></div>
+        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody>@forelse($recentTasks as $task)<tr><td><a class="file-link" href="{{ route('admin.tasks.show',$task) }}">{{ $task->task_id }}</a><div style="margin-top:3px;font-weight:700">{{ $task->task_name }}</div></td><td>{{ $task->designer?->name ?? '—' }}</td><td><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M Y') }}</td></tr>@empty<tr><td colspan="4" class="empty-state">No tasks available.</td></tr>@endforelse</tbody></table></div></div>
     </section>
 
     <section class="panel">

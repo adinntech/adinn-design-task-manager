@@ -65,15 +65,49 @@
     .head-btn-decline{background:#e30613;color:#fff}
     @media(max-width:760px){.head-decision-grid{grid-template-columns:1fr}}
 
-.request-choice-actions{display:flex;gap:10px;margin-top:12px}
-.request-choice-btn{border:0;border-radius:9px;padding:9px 16px;font-size:10px;font-weight:900;cursor:pointer}
-.request-choice-accept{background:#16a34a;color:#fff}
-.request-choice-decline{background:#dc2626;color:#fff}
-.request-choice-form{display:none;margin-top:12px}
-.request-choice-form.active{display:block}
+        /* Pipeline History role colors + responsive safety */
+        .history-view-card{min-width:0}
+        .history-view-body{min-width:0}
+        .history-pipeline-card{
+            min-width:0;
+            overflow:hidden;
+            border-left-width:4px!important;
+            overflow-wrap:anywhere;
+        }
+        .history-pipeline-card.role-bd{border-left-color:#e30613!important;background:linear-gradient(90deg,#fff7f7 0,#fff 72px)}
+        .history-pipeline-card.role-designer{border-left-color:#2563eb!important;background:linear-gradient(90deg,#f7fbff 0,#fff 72px)}
+        .history-pipeline-card.role-designer_head{border-left-color:#7c3aed!important;background:linear-gradient(90deg,#faf8ff 0,#fff 72px)}
+        .history-pipeline-card.role-admin{border-left-color:#111827!important;background:linear-gradient(90deg,#f7f8fa 0,#fff 72px)}
+        .history-pipeline-card.role-default{border-left-color:#98a2b3!important}
+        .history-role-badge.role-bd{background:#fff1f1;color:#b42318;border:1px solid #fecaca}
+        .history-role-badge.role-designer{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+        .history-role-badge.role-designer_head{background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe}
+        .history-role-badge.role-admin{background:#111827;color:#fff;border:1px solid #111827}
+        .history-role-badge.role-default{background:#f2f4f7;color:#667085;border:1px solid #e4e7ec}
+        .history-pipeline-title,
+        .history-pipeline-meta{overflow-wrap:anywhere;word-break:break-word}
+        .history-pipeline-top{min-width:0}
+        .history-pipeline-title{min-width:0;flex:1}
+        .history-role-badge{flex:0 0 auto}
+        .history-switcher{max-width:100%;overflow-x:auto}
+        @media(max-width:700px){
+            .history-view-head{align-items:flex-start;flex-wrap:wrap}
+            .history-view-count{flex:0 0 auto}
+            .history-pipeline-top{gap:8px}
+            .history-pipeline-card{padding:10px}
+            .history-pipeline-meta{font-size:8.5px;line-height:1.55}
+            .history-role-badge{font-size:7.5px;min-height:20px;padding:3px 6px}
+        }
+        @media(max-width:460px){
+            .history-pipeline-top{flex-direction:column;align-items:flex-start}
+            .history-role-badge{align-self:flex-start}
+            .history-view-head{display:block}
+            .history-view-count{margin-top:7px}
+        }
+
 </style>
 
-<div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview', requestAction: null }">
+<div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview' }">
     <div class="page-head">
         <div>
             <h1>{{ $task->display_task_name ?? $task->task_name }}</h1>
@@ -89,22 +123,22 @@
         <button class="bd-detail-tab" :class="{active:tab==='overview'}" @click="tab='overview'">Overview</button>
         
         <button class="bd-detail-tab" :class="{active:tab==='comments'}" @click="tab='comments'">Comments</button>
-        @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Split Details</button>@endif
-        @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Swap Details</button>@endif
-        @if($declineRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='decline-details'}" @click="tab='decline-details'">Decline Details</button>@endif
+        @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Task Split Details</button>@endif
+        @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Task Transfer Details</button>@endif
+        @if($declineRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='decline-details'}" @click="tab='decline-details'">Decline Request Details</button>@endif
         <button class="bd-detail-tab" :class="{active:tab==='history'}" @click="tab='history'">History</button>
-        <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Task Updation</button>
+        <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates</button>
     </div>
 
     <section class="bd-tab-panel" x-show="tab==='overview'">
         <div class="detail-grid">
             <div>
-                <details class="collapse-panel"><summary>Task Information</summary><div class="collapse-body"><div class="info-grid">
+                <details class="collapse-panel"><summary>Task Details</summary><div class="collapse-body"><div class="info-grid">
                     @foreach(['Client / Agency'=>ucfirst($task->party_type).' · '.$task->party_name,'Contact Person'=>$task->contact_person,'Mobile Number'=>$task->mobile_number,'Vertical'=>ucwords(str_replace('_',' ',$task->vertical)),'Task Nature'=>ucwords(str_replace('_',' ',$task->task_nature)),'Priority'=>ucfirst($task->priority),'Designer'=>$task->designer?->name ?? '—','Total Creatives'=>$task->total_creatives,'Due Date'=>$task->due_at?->format('d M Y, h:i A'),'Assigned At'=>$task->assigned_at?->format('d M Y, h:i A')] as $key=>$value)
                         <div class="info-item"><span>{{ $key }}</span><strong>{{ $value }}</strong></div>
                     @endforeach
                 </div></div></details>
-                <details class="collapse-panel"><summary>Requirement Details</summary><div class="collapse-body"><div class="requirement-list">
+                <details class="collapse-panel"><summary>Task Requirements</summary><div class="collapse-body"><div class="requirement-list">
                     @forelse(($task->requirements ?? []) as $key=>$value)
                         @php
                             $isRequirementFile = (is_string($value) && str_contains($value,'/') && !filter_var($value,FILTER_VALIDATE_URL))
@@ -137,7 +171,7 @@
                         <div class="bd-comment role-{{ $comment->user?->role ?? 'default' }}">
                             <div class="bd-comment-head">
                                 <strong>{{ $comment->user?->name ?? 'User' }}</strong>
-                                <span>{{ $comment->created_at?->format('d M Y, h:i A') }}</span>
+                                <span>{{ $comment->created_at?->format('d M Y · h:i A') }}</span>
                             </div>
 
                             <div class="bd-comment-message">{{ $comment->comment }}</div>
@@ -213,7 +247,7 @@
     @if($splitRequests->isNotEmpty())
     <section class="bd-tab-panel" x-show="tab==='split-details'" x-cloak>
         <div class="panel">
-            <div class="panel-header"><div class="panel-title">Split Details</div></div>
+            <div class="panel-header"><div class="panel-title">Task Split Details</div></div>
             <div class="panel-body">
                 @foreach($splitRequests as $request)
                     @php
@@ -230,12 +264,12 @@
                         <div class="bd-request-head">
                             <div>
                                 <div class="bd-request-title">Split {{ ucwords(str_replace('_',' ',$request->overall_status)) }}</div>
-                                <div class="bd-request-meta">Requested by {{ $request->requester?->name ?? 'Designer' }} · {{ $request->created_at?->format('d M Y, h:i A') }}</div>
+                                <div class="bd-request-meta">{{ $request->created_at?->format('d M Y · h:i A') }}</div>
                             </div>
                             <span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$request->overall_status)) }}</span>
                         </div>
 
-                        <div class="bd-request-grid">
+                        <div class="bd-request-grid"><div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded At</strong>{{ $isPendingRequest ? 'Pending Response' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded By</strong>{{ $isPendingRequest ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div>
                             <div class="bd-request-field"><strong>Requested Split</strong>{{ $requestedSplit ?? '—' }}</div>
                             <div class="bd-request-field"><strong>Approved Split</strong>{{ $approvedSplit ?? '—' }}</div>
                             <div class="bd-request-field"><strong>Preferred Designer</strong>{{ $request->targetDesigner?->name ?? '—' }}</div>
@@ -245,14 +279,9 @@
                         </div>
 
                         @if($isPendingRequest)
-                            <div class="request-choice-actions">
-    <button type="button" class="request-choice-btn request-choice-accept" @click="requestAction='accept'">Accept</button>
-    <button type="button" class="request-choice-btn request-choice-decline" @click="requestAction='decline'">Decline</button>
-</div>
-
-<div class="head-decision" x-show="requestAction" x-cloak>
+                            <div class="head-decision">
                                 <div class="head-decision-grid">
-                                    <form class="head-decision-box request-choice-form" :class="{active: requestAction==='accept'}" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
+                                    <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
                                         @csrf
                                         <div class="head-decision-title">Accept Split Request</div>
 
@@ -276,7 +305,7 @@
                                         <div class="head-btn-row"><button class="head-btn head-btn-accept" type="submit">Accept</button></div>
                                     </form>
 
-                                    <form class="head-decision-box request-choice-form" :class="{active: requestAction==='decline'}" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">
+                                    <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">
                                         @csrf
                                         <div class="head-decision-title">Decline Split Request</div>
                                         <label class="head-label">Decline Comment *</label>
@@ -297,7 +326,7 @@
     @if($swapRequests->isNotEmpty())
     <section class="bd-tab-panel" x-show="tab==='swap-details'" x-cloak>
         <div class="panel">
-            <div class="panel-header"><div class="panel-title">Swap Details</div></div>
+            <div class="panel-header"><div class="panel-title">Task Transfer Details</div></div>
             <div class="panel-body">
                 @foreach($swapRequests as $request)
                     @php
@@ -308,12 +337,12 @@
                         <div class="bd-request-head">
                             <div>
                                 <div class="bd-request-title">Swap {{ ucwords(str_replace('_',' ',$request->overall_status)) }}</div>
-                                <div class="bd-request-meta">Requested by {{ $request->requester?->name ?? 'Designer' }} · {{ $request->created_at?->format('d M Y, h:i A') }}</div>
+                                <div class="bd-request-meta">{{ $request->created_at?->format('d M Y · h:i A') }}</div>
                             </div>
                             <span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$request->overall_status)) }}</span>
                         </div>
 
-                        <div class="bd-request-grid">
+                        <div class="bd-request-grid"><div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded At</strong>{{ $isPendingRequest ? 'Pending Response' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded By</strong>{{ $isPendingRequest ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div>
                             <div class="bd-request-field"><strong>Preferred Designer</strong>{{ $request->targetDesigner?->name ?? '—' }}</div>
                             <div class="bd-request-field"><strong>Approved Designer</strong>{{ $request->approvedDesigner?->name ?? '—' }}</div>
                             @if($request->reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>Request Reason</strong>{{ $request->reason }}</div>@endif
@@ -321,16 +350,11 @@
                         </div>
 
                         @if($isPendingRequest)
-                            <div class="request-choice-actions">
-    <button type="button" class="request-choice-btn request-choice-accept" @click="requestAction='accept'">Accept</button>
-    <button type="button" class="request-choice-btn request-choice-decline" @click="requestAction='decline'">Decline</button>
-</div>
-
-<div class="head-decision" x-show="requestAction" x-cloak>
+                            <div class="head-decision">
                                 <div class="head-decision-grid">
-                                    <form class="head-decision-box request-choice-form" :class="{active: requestAction==='accept'}" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
+                                    <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
                                         @csrf
-                                        <div class="head-decision-title">Accept Swap Request</div>
+                                        <div class="head-decision-title">Accept Task Transfer Request</div>
 
                                         <label class="head-label">Final Designer *</label>
                                         <select class="head-field" name="approved_designer_id" required>
@@ -348,9 +372,9 @@
                                         <div class="head-btn-row"><button class="head-btn head-btn-accept" type="submit">Accept</button></div>
                                     </form>
 
-                                    <form class="head-decision-box request-choice-form" :class="{active: requestAction==='decline'}" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">
+                                    <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">
                                         @csrf
-                                        <div class="head-decision-title">Decline Swap Request</div>
+                                        <div class="head-decision-title">Decline Task Transfer Request</div>
                                         <label class="head-label">Decline Comment *</label>
                                         <textarea class="head-field" name="decision_reason" placeholder="Enter the reason for declining" required>{{ old('decision_reason') }}</textarea>
                                         <div class="head-hint">Mandatory</div>
@@ -369,7 +393,7 @@
 @if($declineRequests->isNotEmpty())
     <section class="bd-tab-panel" x-show="tab==='decline-details'" x-cloak>
         <div class="panel">
-            <div class="panel-header"><div class="panel-title">Decline Details</div></div>
+            <div class="panel-header"><div class="panel-title">Decline Request Details</div></div>
             <div class="panel-body">
                 @foreach($declineRequests as $request)
                     @php
@@ -379,24 +403,19 @@
                         <div class="bd-request-head">
                             <div>
                                 <div class="bd-request-title">Decline {{ ucwords(str_replace('_',' ',$request->overall_status)) }}</div>
-                                <div class="bd-request-meta">Requested by {{ $request->requester?->name ?? 'Designer' }} · {{ $request->created_at?->format('d M Y, h:i A') }}</div>
+                                <div class="bd-request-meta">{{ $request->created_at?->format('d M Y · h:i A') }}</div>
                             </div>
                             <span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$request->overall_status)) }}</span>
                         </div>
-                        <div class="bd-request-grid">
+                        <div class="bd-request-grid"><div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded At</strong>{{ $isPendingRequest ? 'Pending Response' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded By</strong>{{ $isPendingRequest ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div>
                             <div class="bd-request-field" style="grid-column:1/-1"><strong>Request Reason</strong>{{ $request->reason }}</div>
                             @if($request->decision_reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>Decision Comment</strong>{{ $request->decision_reason }}</div>@endif
                         </div>
 
                         @if($isPendingRequest)
-                            <div class="request-choice-actions">
-    <button type="button" class="request-choice-btn request-choice-accept" @click="requestAction='accept'">Accept</button>
-    <button type="button" class="request-choice-btn request-choice-decline" @click="requestAction='decline'">Decline</button>
-</div>
-
-<div class="head-decision" x-show="requestAction" x-cloak>
+                            <div class="head-decision">
                                 <div class="head-decision-grid">
-                                    <form class="head-decision-box request-choice-form" :class="{active: requestAction==='accept'}" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
+                                    <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
                                         @csrf
                                         <div class="head-decision-title">Accept Decline Request</div>
                                         <label class="head-label">Comment</label>
@@ -405,7 +424,7 @@
                                         <div class="head-btn-row"><button class="head-btn head-btn-accept" type="submit">Accept</button></div>
                                     </form>
 
-                                    <form class="head-decision-box request-choice-form" :class="{active: requestAction==='decline'}" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">
+                                    <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">
                                         @csrf
                                         <div class="head-decision-title">Decline Request</div>
                                         <label class="head-label">Decline Comment *</label>
@@ -440,7 +459,7 @@
                 :class="{ 'active': historyView === 'task' }"
                 @click="historyView='task'"
             >
-                Task History
+                Edit History
             </button>
         </div>
 
@@ -460,17 +479,17 @@
                             $historyRole = $event['role'] ?? 'default';
                         @endphp
 
-                        <div class="history-pipeline-card">
+                        <div class="history-pipeline-card role-{{ $historyRole }}">
                             <div class="history-pipeline-top">
                                 <div class="history-pipeline-title">{{ $event['title'] }}</div>
-                                <span class="history-role-badge">
+                                <span class="history-role-badge role-{{ $historyRole }}">
                                     {{ $historyRole === 'default' ? 'System' : ucwords(str_replace('_', ' ', $historyRole)) }}
                                 </span>
                             </div>
 
                             <div class="history-pipeline-meta">
-                                {{ $event['description'] }}
-                                · {{ $event['created_at']?->format('d M Y, h:i A') }}
+                                {{ str_ireplace('reconciled', 'moved to', $event['description']) }}
+                                · {{ $event['created_at']?->format('d M Y · h:i A') }}
                             </div>
                         </div>
                     @empty
@@ -484,7 +503,7 @@
             <div class="history-view-card">
                 <div class="history-view-head">
                     <div>
-                        <div class="history-view-title">Task History</div>
+                        <div class="history-view-title">Edit History</div>
                         <div class="history-view-subtitle">Every recorded change to task information.</div>
                     </div>
                     <span class="history-view-count">{{ $editHistory->count() }} Updates</span>
@@ -530,8 +549,8 @@
         </div>
     </section>
 
-    <section class="bd-tab-panel" x-show="tab==='eod'" x-cloak><div class="panel"><div class="panel-header"><div><div class="panel-title">Task Updation</div><div style="font-size:10px;color:#667085;margin-top:3px">Designer Task Updation records and Rework uploads.</div></div></div><div class="panel-body">@if($reworkCount > 0)<div class="task-update-note">Rework Count: <strong>{{ $reworkCount }}</strong></div>@endif<div class="bd-eod-summary"><div class="bd-eod-card"><span>Total Creatives</span><strong>{{ $task->total_creatives }}</strong></div><div class="bd-eod-card"><span>Completed</span><strong>{{ $eodCompletedTotal }}</strong></div><div class="bd-eod-card"><span>Remaining</span><strong>{{ $eodRemaining }}</strong></div></div>
-        @forelse($eodRecords as $record)<div class="bd-eod-row"><div><strong>Submitted By</strong>{{ $record->designer?->name ?? '—' }}<br>{{ $record->submitted_at?->format('d M Y, h:i A') }}@if($record->attachment_url)<br><a target="_blank" href="{{ $record->attachment_url }}">{{ $record->attachment_original_name ?? 'Download ZIP' }}</a>@endif</div><div><strong>{{ ($record->update_type ?? 'progress') === 'rework' ? 'Update Type' : 'Progress Added' }}</strong>{{ ($record->update_type ?? 'progress') === 'rework' ? 'Rework #'.$record->rework_count_snapshot : $record->completed_count }}</div><div><strong>Total Creatives</strong>{{ $record->total_creatives_snapshot }}</div><div><strong>Total Completed</strong>{{ $record->cumulative_completed }}</div><div><strong>Remaining</strong>{{ $record->remaining_creatives }}</div></div>@empty<div class="empty-state">No Task Updation records have been submitted yet.</div>@endforelse
+    <section class="bd-tab-panel" x-show="tab==='eod'" x-cloak><div class="panel"><div class="panel-header"><div><div class="panel-title">Progress Updates</div><div style="font-size:10px;color:#667085;margin-top:3px">Designer Progress Updates records and Rework uploads.</div></div></div><div class="panel-body">@if($reworkCount > 0)<div class="task-update-note">Rework Count: <strong>{{ $reworkCount }}</strong></div>@endif<div class="bd-eod-summary"><div class="bd-eod-card"><span>Total Creatives</span><strong>{{ $task->total_creatives }}</strong></div><div class="bd-eod-card"><span>Completed</span><strong>{{ $eodCompletedTotal }}</strong></div><div class="bd-eod-card"><span>Remaining</span><strong>{{ $eodRemaining }}</strong></div></div>
+        @forelse($eodRecords as $record)<div class="bd-eod-row"><div><strong>Submitted By</strong>{{ $record->designer?->name ?? '—' }}<br>{{ $record->submitted_at?->format('d M Y, h:i A') }}@if($record->attachment_url)<br><a target="_blank" href="{{ $record->attachment_url }}">{{ $record->attachment_original_name ?? 'Download ZIP' }}</a>@endif</div><div><strong>{{ ($record->update_type ?? 'progress') === 'rework' ? 'Update Type' : 'Progress Added' }}</strong>{{ ($record->update_type ?? 'progress') === 'rework' ? 'Rework #'.$record->rework_count_snapshot : $record->completed_count }}</div><div><strong>Total Creatives</strong>{{ $record->total_creatives_snapshot }}</div><div><strong>Total Completed</strong>{{ $record->cumulative_completed }}</div><div><strong>Remaining</strong>{{ $record->remaining_creatives }}</div></div>@empty<div class="empty-state">No Progress Updates records have been submitted yet.</div>@endforelse
     </div></div></section>
 </div>
 @endsection

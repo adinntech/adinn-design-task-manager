@@ -26,6 +26,7 @@ class TaskRequestModal extends Component
     public string $splitDetailsText = '';
     public string $notes = '';
     public $attachment = null;
+    public array $attachments = [];
 
     protected $listeners = ['open-request-modal' => 'open'];
 
@@ -92,9 +93,22 @@ class TaskRequestModal extends Component
             default => null,
         };
 
-        $attachments = $this->attachment instanceof UploadedFile
-            ? [$this->storeAttachment($this->attachment)]
-            : null;
+        $requestFiles = collect($this->attachments)
+            ->filter(fn ($file) => $file instanceof UploadedFile)
+            ->values();
+
+        // Backward compatibility for older tests / calls that still set the
+        // singular attachment property.
+        if ($this->attachment instanceof UploadedFile) {
+            $requestFiles->push($this->attachment);
+        }
+
+        $attachments = $requestFiles
+            ->map(fn (UploadedFile $file) => $this->storeAttachment($file))
+            ->values()
+            ->all();
+
+        $attachments = $attachments !== [] ? $attachments : null;
 
         app(DesignTaskRequestService::class)->create(
             $this->task,
@@ -118,6 +132,8 @@ class TaskRequestModal extends Component
         $rules = [
             'reason' => ['required', 'string', 'max:5000'],
             'attachment' => ['nullable', 'file', 'max:102400'],
+            'attachments' => ['array', 'max:10'],
+            'attachments.*' => ['file', 'max:102400'],
         ];
 
         if ($this->type === 'split') {
@@ -170,7 +186,7 @@ class TaskRequestModal extends Component
 
     private function resetFields(): void
     {
-        $this->reset(['type', 'reason', 'targetDesignerId', 'creativeCount', 'splitDetailsText', 'notes', 'attachment']);
+        $this->reset(['type', 'reason', 'targetDesignerId', 'creativeCount', 'splitDetailsText', 'notes', 'attachment', 'attachments']);
         $this->resetErrorBag();
         $this->resetValidation();
     }

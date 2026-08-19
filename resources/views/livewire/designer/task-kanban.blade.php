@@ -4,7 +4,7 @@
 .kanban-shell{position:relative}
 body[data-kanban-dragging="1"] .kanban-shell::before,
 body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z-index:50;top:0;width:34px;height:100%;pointer-events:none;opacity:.2}
-.kanban-shell .task-card,.kanban-shell input,.kanban-shell select,.kanban-shell button,.kanban-shell a{user-select:auto}.kanban-board{display:grid;grid-template-columns:repeat(9,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}.kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}
+.kanban-shell .task-card,.kanban-shell input,.kanban-shell select,.kanban-shell button,.kanban-shell a{user-select:auto}.kanban-board{display:grid;grid-template-columns:repeat(9,270px);gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}.kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}
 
 .kanban-column.status-assigned_tasks .kanban-column-header{border-top-color:#667085;background:#f9fafb}
 .kanban-column.status-review_analysis .kanban-column-header{border-top-color:#2563eb;background:#eff6ff}
@@ -38,8 +38,189 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 .due-pill.due-today{background:#ffedd5;color:#c2410c}
 .due-pill.due-soon{background:#fef3c7;color:#b45309}
 .due-pill.due-safe{background:#dcfce7;color:#15803d}
-.due-pill.due-completed{background:#f1f5f9;color:#64748b}.task-card-id{color:#7c8492;font-size:9px;font-weight:850}.task-card-name{margin-top:6px;font-size:12px;font-weight:900;line-height:1.35}.task-card-client{margin-top:4px;color:#5f6877;font-size:10px}.task-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.task-history-tag{display:inline-flex;align-items:center;min-height:22px;padding:3px 9px;border-radius:999px;font-size:8px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;box-shadow:0 2px 7px rgba(16,24,40,.05)}.task-tag-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-tag-swap{color:#067647;background:linear-gradient(135deg,#ecfdf3,#dcfae6);border-color:#abefc6}.task-tag-decline{color:#b42318;background:linear-gradient(135deg,#fff1f0,#fee4e2);border-color:#fecdca}.task-tag-pending{color:#b54708;background:linear-gradient(135deg,#fffaeb,#fff4d6);border-color:#fedf89}.task-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.task-meta-item{border-radius:8px;background:#f7f8fa;padding:7px;font-size:9px;color:#616a78}.task-meta-item strong{display:block;color:#343b46;font-size:8px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}.sortable-ghost{opacity:.35}.sortable-chosen{box-shadow:0 12px 30px rgba(0,0,0,.14)}.kanban-invalid{animation:invalidDrop .35s ease}@keyframes invalidDrop{50%{background:#fee4e2}}.designer-toast{position:fixed;right:22px;bottom:22px;z-index:9999;background:#15171c;color:#fff;border-left:4px solid #e30613;padding:12px 15px;border-radius:10px;box-shadow:0 15px 40px rgba(0,0,0,.2);font-size:11px}@media(max-width:900px){.designer-toolbar{grid-template-columns:1fr}}
-    </style>
+.due-pill.due-completed{background:#f1f5f9;color:#64748b}.task-card-id{color:#7c8492;font-size:9px;font-weight:850}.task-card-name{margin-top:6px;font-size:12px;font-weight:900;line-height:1.35}.task-card-client{margin-top:4px;color:#5f6877;font-size:10px}.kanban-progress{margin-top:9px;padding:8px;border:1px solid #e7e9ef;border-radius:9px;background:#fff}.kanban-progress-head{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:8px;color:#667085}.kanban-progress-head strong{font-size:8px;color:#344054}.kanban-progress-track{height:6px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:6px}.kanban-progress-fill{height:100%;background:#e30613;border-radius:999px}.task-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.task-history-tag{display:inline-flex;align-items:center;min-height:22px;padding:3px 9px;border-radius:999px;font-size:8px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent;box-shadow:0 2px 7px rgba(16,24,40,.05)}.task-tag-split{color:#6938ef;background:linear-gradient(135deg,#f4f0ff,#ede9fe);border-color:#d9d6fe}.task-tag-swap{color:#067647;background:linear-gradient(135deg,#ecfdf3,#dcfae6);border-color:#abefc6}.task-tag-decline{color:#b42318;background:linear-gradient(135deg,#fff1f0,#fee4e2);border-color:#fecdca}.task-tag-pending{color:#b54708;background:linear-gradient(135deg,#fffaeb,#fff4d6);border-color:#fedf89}.task-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.task-meta-item{border-radius:8px;background:#f7f8fa;padding:7px;font-size:9px;color:#616a78}.task-meta-item strong{display:block;color:#343b46;font-size:8px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}.sortable-ghost{opacity:.35}.sortable-chosen{box-shadow:0 12px 30px rgba(0,0,0,.14)}.kanban-invalid{animation:invalidDrop .35s ease}@keyframes invalidDrop{50%{background:#fee4e2}}.designer-toast{position:fixed;right:22px;bottom:22px;z-index:9999;background:#15171c;color:#fff;border-left:4px solid #e30613;padding:12px 15px;border-radius:10px;box-shadow:0 15px 40px rgba(0,0,0,.2);font-size:11px}@media(max-width:900px){.designer-toolbar{grid-template-columns:1fr}}
+    
+    .kanban-rating{
+        margin-top:8px;
+        padding:8px 9px;
+        border:1px solid #f2e2a4;
+        border-radius:9px;
+        background:#fffaf0;
+    }
+    .kanban-rating-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        margin-bottom:4px;
+    }
+    .kanban-rating-label{
+        font-size:8px;
+        font-weight:900;
+        color:#7c5c00;
+        text-transform:uppercase;
+        letter-spacing:.03em;
+    }
+    .kanban-rating-value{
+        font-size:9px;
+        font-weight:900;
+        color:#6b4f00;
+        white-space:nowrap;
+    }
+    .kanban-rating-stars{
+        display:flex;
+        align-items:center;
+        gap:2px;
+        line-height:1;
+    }
+    .kanban-rating-star{
+        --star-fill:0%;
+        display:inline-block;
+        width:14px;
+        height:14px;
+        flex:0 0 14px;
+        font-size:14px;
+        line-height:14px;
+        font-family:Arial,"Segoe UI Symbol",sans-serif;
+        background:linear-gradient(
+            90deg,
+            #f5b301 0%,
+            #f5b301 var(--star-fill),
+            #d8dee8 var(--star-fill),
+            #d8dee8 100%
+        );
+        -webkit-background-clip:text;
+        background-clip:text;
+        -webkit-text-fill-color:transparent;
+        color:transparent;
+    }
+
+
+        /* Latest request status shown directly on each Kanban task card */
+        .task-card-tags{
+            display:flex;
+            flex-wrap:wrap;
+            gap:5px;
+            margin-top:8px;
+            min-width:0;
+        }
+        .task-request-status{
+            display:inline-flex;
+            align-items:center;
+            max-width:100%;
+            min-height:22px;
+            padding:4px 8px;
+            border-radius:999px;
+            border:1px solid transparent;
+            font-size:8px;
+            font-weight:950;
+            letter-spacing:.02em;
+            line-height:1.2;
+            white-space:normal;
+            overflow-wrap:anywhere;
+        }
+        .task-request-pending{
+            color:#9a6700;
+            background:#fffaeb;
+            border-color:#fedf89;
+        }
+        .task-request-approved{
+            color:#067647;
+            background:#ecfdf3;
+            border-color:#abefc6;
+        }
+        .task-request-declined{
+            color:#b42318;
+            background:#fff1f0;
+            border-color:#fecdca;
+        }
+        @media(max-width:520px){
+            .task-request-status{
+                font-size:7.5px;
+                padding:4px 7px;
+            }
+        }
+
+
+        /* Clean request indicator in the card header */
+        .task-card-head-row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;min-width:0}
+        .task-card-badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0;max-width:68%}
+        .task-card-badges-main{display:flex;gap:5px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+        .task-request-top{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            max-width:100%;
+            min-height:22px;
+            padding:4px 8px;
+            border-radius:999px;
+            border:1px solid transparent;
+            font-size:7.5px;
+            line-height:1.2;
+            font-weight:950;
+            letter-spacing:.025em;
+            text-transform:uppercase;
+            text-align:center;
+            overflow-wrap:anywhere;
+        }
+        .task-request-top.task-request-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}
+        .task-request-top.task-request-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}
+        .task-request-top.task-request-declined{color:#b42318;background:#fff1f0;border-color:#fecdca}
+        @media(max-width:520px){
+            .task-card-head-row{gap:7px}
+            .task-card-badges{max-width:72%}
+            .task-request-top{font-size:7px;padding:4px 6px}
+        }
+
+
+        /* Request status aligned with Task Name */
+        .task-name-request-row{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            margin-top:10px;
+            min-width:0;
+        }
+        .task-name-request-row .task-card-name{
+            margin:0!important;
+            flex:1;
+            min-width:0;
+        }
+        .task-request-inline{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            flex:0 0 auto;
+            max-width:52%;
+            min-height:21px;
+            padding:4px 8px;
+            border-radius:999px;
+            border:1px solid transparent;
+            font-size:7.5px;
+            line-height:1.1;
+            font-weight:950;
+            letter-spacing:.02em;
+            text-transform:uppercase;
+            text-align:center;
+            white-space:nowrap;
+        }
+        .task-request-inline.task-request-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}
+        .task-request-inline.task-request-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}
+        .task-request-inline.task-request-declined{color:#b42318;background:#fff1f0;border-color:#fecdca}
+        @media(max-width:520px){
+            .task-name-request-row{
+                align-items:flex-start;
+                gap:7px;
+            }
+            .task-request-inline{
+                font-size:7px;
+                padding:4px 6px;
+                max-width:48%;
+            }
+        }
+
+</style>
 
     <div class="page-head">
         <div><h1>My Tasks</h1><p>Manage assigned design tasks across the complete production pipeline.</p></div>
@@ -86,23 +267,60 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                 }
                             @endphp
                             <a href="{{ route('designer.tasks.show', $task) }}" class="task-card {{ $dueClass }}" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="task-{{ $task->id }}">
-                                <div style="display:flex;justify-content:space-between;gap:8px;align-items:start">
-                                    <span class="task-card-id">{{ $task->task_id }}</span>
-                                    <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-                                        <span class="due-pill {{ $dueClass }}">{{ $dueLabel }}</span>
-                                        <span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span>
+                                <div class="task-card-head-row">
+                                        <span class="task-card-id">{{ $task->task_id }}</span>
+
+                                        <div class="task-card-badges">
+                                            <div class="task-card-badges-main">
+                                                <span class="due-pill {{ $dueClass }}">{{ $dueLabel }}</span>
+                                                <span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                    <div class="task-name-request-row">
+                                        <div class="task-card-name">{{ $task->display_task_name ?? $task->task_name }}</div>
+
+                                        @if(!empty($taskTags[$task->id][0]))
+                                            @php
+                                                $inlineRequest = $taskTags[$task->id][0];
+                                            @endphp
+                                            <span class="task-request-inline {{ $inlineRequest['class'] }}">
+                                                {{ $inlineRequest['label'] }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                <div class="task-card-client">{{ ucfirst($task->party_type) }} · {{ $task->party_name }}</div>
+                                    @include('partials.kanban-task-progress', ['task' => $task])
+
+                                
+
+                            @if($task->status === 'completed' && $task->bdReview && $task->bdReview->overall_rating !== null)
+                                @php
+                                    $kanbanRating = max(0, min(5, (float) $task->bdReview->overall_rating));
+                                @endphp
+                                <div class="kanban-rating">
+                                    <div class="kanban-rating-head">
+                                        <span class="kanban-rating-label">Overall Rating</span>
+                                        <span class="kanban-rating-value">{{ number_format($kanbanRating, 2) }} / 5</span>
+                                    </div>
+                                    <div class="kanban-rating-stars" aria-label="{{ number_format($kanbanRating, 1) }} out of 5 stars">
+                                        @for($ratingStarIndex = 1; $ratingStarIndex <= 5; $ratingStarIndex++)
+                                            @php
+                                                $ratingStarFill = $kanbanRating >= $ratingStarIndex
+                                                    ? 100
+                                                    : ($kanbanRating >= ($ratingStarIndex - 0.5) ? 50 : 0);
+                                            @endphp
+                                            <span
+                                                class="kanban-rating-star"
+                                                style="--star-fill:{{ $ratingStarFill }}%;"
+                                                aria-hidden="true"
+                                            >★</span>
+                                        @endfor
                                     </div>
                                 </div>
-                                <div class="task-card-name">{{ $task->display_task_name }}</div>
-                                <div class="task-card-client">{{ ucfirst($task->party_type) }} · {{ $task->party_name }}</div>
+                            @endif
 
-                                @if(!empty($taskTags[$task->id]))
-                                    <div class="task-card-tags">
-                                        @foreach($taskTags[$task->id] as $tag)
-                                            <span class="task-history-tag {{ $tag['class'] }}">{{ $tag['label'] }}</span>
-                                        @endforeach
-                                    </div>
-                                @endif
 
                                 <div class="task-card-meta">
                                     <div class="task-meta-item"><strong>Vertical</strong>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</div>

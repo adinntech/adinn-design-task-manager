@@ -306,7 +306,7 @@ class TaskMonitoringController extends Controller
 
         if ($field === 'due_at') {
             try {
-                return \Illuminate\Support\Carbon::parse($value)->format('d M Y, h:i A');
+                return \Illuminate\Support\Carbon::parse($value)->format('d M Y');
             } catch (\Throwable) {
                 return (string) $value;
             }

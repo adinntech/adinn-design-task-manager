@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\DesignTask;
-use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
@@ -18,8 +17,8 @@ class DesignTaskRequestService
 
     private const REQUESTABLE_TYPES = [
         'assigned_tasks' => ['decline'],
-        'review_analysis' => ['split', 'swap'],
-        'need_clarification' => ['split', 'swap'],
+        'review_analysis' => ['decline', 'split', 'swap'],
+        'need_clarification' => ['decline', 'split', 'swap'],
         'yet_to_start' => ['split', 'swap'],
         'in_progress' => ['split', 'swap'],
     ];
@@ -32,14 +31,6 @@ class DesignTaskRequestService
     public function allowedTypesForTask(DesignTask $task): array
     {
         $allowed = $this->allowedTypes($task->status);
-
-        if (! empty(data_get($task->requirements, '_swapped_from_task_id'))) {
-            $allowed = array_values(array_diff($allowed, ['swap']));
-        }
-
-        if (! empty(data_get($task->requirements, '_split_request_id')) || ! empty(data_get($task->requirements, '_split_from_task_id'))) {
-            $allowed = array_values(array_diff($allowed, ['split']));
-        }
 
         $approvedTypes = DesignTaskRequest::query()
             ->where('design_task_id', $task->id)
@@ -113,11 +104,11 @@ class DesignTaskRequestService
         });
     }
 
-    public function approve(DesignTaskRequest $request, User $approver, ?int $approvedDesignerId = null, ?int $approvedSplitCount = null, ?string $decisionComment = null): DesignTaskRequest
+    public function approve(DesignTaskRequest $request, User $approver, ?int $approvedDesignerId = null, ?int $approvedSplitCount = null): DesignTaskRequest
     {
         $this->guardApprover($approver);
 
-        return DB::transaction(function () use ($request, $approver, $approvedDesignerId, $approvedSplitCount, $decisionComment) {
+        return DB::transaction(function () use ($request, $approver, $approvedDesignerId, $approvedSplitCount) {
             $lockedRequest = DesignTaskRequest::query()->lockForUpdate()->findOrFail($request->id);
             $this->guardPending($lockedRequest);
 
@@ -138,7 +129,9 @@ class DesignTaskRequestService
                         'status' => 'This task already has an approved '.ucfirst($lockedRequest->request_type).' request.',
                     ]);
                 }
+            }
 
+            if (in_array($lockedRequest->request_type, ['decline', 'split', 'swap'], true)) {
                 $approvedDesigner = $this->resolveApprovedDesigner($lockedTask, $approvedDesignerId);
                 $lockedRequest->approved_designer_id = $approvedDesigner->id;
                 $lockedRequest->save();
@@ -156,22 +149,20 @@ class DesignTaskRequestService
             $executionNote = match ($lockedRequest->request_type) {
                 'swap' => $this->executeSwap($lockedRequest),
                 'split' => $this->executeSplit($lockedRequest),
-                'decline' => $this->executeDecline($lockedRequest, $approvedDesignerId),
+                'decline' => $this->executeDecline($lockedRequest, $approver),
                 default => throw ValidationException::withMessages(['request' => 'Unsupported request type.']),
             };
 
-            $decisionComment = trim((string) $decisionComment);
-
             $lockedRequest->update(array_merge($this->decisionAuditFields($approver, 'approved'), [
                 'overall_status' => 'approved',
-                'decision_reason' => $decisionComment !== '' ? $decisionComment : null,
+                'decision_reason' => null,
             ]));
 
             $this->recordHistory(
                 $lockedTask->fresh(),
                 $approver,
                 'request_approved',
-                ucfirst($lockedRequest->request_type).' request approved by '.ucwords(str_replace('_', ' ', $approver->role)).'. '.$executionNote.($decisionComment !== '' ? ' Comment: '.$decisionComment : '')
+                ucfirst($lockedRequest->request_type).' request approved by '.ucwords(str_replace('_', ' ', $approver->role)).'. '.$executionNote
             );
 
             return $lockedRequest->fresh();
@@ -223,6 +214,75 @@ class DesignTaskRequestService
 
             return $lockedRequest->fresh();
         });
+    }
+
+
+    /**
+     * Automatically close pending requests that are no longer valid after
+     * a task advances in the production pipeline.
+     *
+     * - Decline requests expire once the task reaches Ready to Start.
+     * - Task Split / Task Transfer requests expire once the task reaches
+     *   Waiting for BD Review.
+     *
+     * This is a system response: no human approver is recorded, but the
+     * response timestamp and reason are preserved for the audit trail.
+     */
+    public function autoRejectPendingForStatus(
+        DesignTask $task,
+        string $status,
+        ?User $statusChangedBy = null
+    ): int {
+        $types = match ($status) {
+            'yet_to_start' => ['decline'],
+            'waiting_confirmation' => ['split', 'swap'],
+            default => [],
+        };
+
+        if ($types === []) {
+            return 0;
+        }
+
+        $reasons = [
+            'decline' => 'Decline request automatically rejected because the task moved to Ready to Start.',
+            'split' => 'Task Split request automatically rejected because the task moved to Waiting for BD Review.',
+            'swap' => 'Task Transfer request automatically rejected because the task moved to Waiting for BD Review.',
+        ];
+
+        $pendingStatuses = ['pending_approval', 'pending_designer_head', 'pending_admin'];
+
+        $requests = DesignTaskRequest::query()
+            ->where('design_task_id', $task->id)
+            ->whereIn('request_type', $types)
+            ->whereIn('overall_status', $pendingStatuses)
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($requests as $request) {
+            $reason = $reasons[$request->request_type];
+
+            $request->update([
+                'overall_status' => 'rejected',
+                'decision_reason' => $reason,
+                'designer_head_status' => 'rejected',
+                'designer_head_action_by' => null,
+                'designer_head_action_at' => now(),
+                'admin_status' => 'not_required',
+                'admin_action_by' => null,
+                'admin_action_at' => null,
+            ]);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => $status,
+                'to_status' => $status,
+                'changed_by' => $statusChangedBy?->id,
+                'change_source' => 'request_auto_rejected',
+                'note' => $reason,
+            ]);
+        }
+
+        return $requests->count();
     }
 
     private function guardRequestCreation(DesignTask $task, User $user, string $type, string $reason, array $data): void
@@ -278,12 +338,7 @@ class DesignTaskRequestService
 
         if ($type === 'split') {
             $count = (int) data_get($data, 'split_details.creative_count', 0);
-            if ($task->total_creatives < 2) {
-                throw ValidationException::withMessages(['creativeCount' => 'This task cannot be split because it has fewer than 2 creatives.']);
-            }
-            if ($count < 1 || $count >= $task->total_creatives) {
-                throw ValidationException::withMessages(['creativeCount' => 'Creative count to split must be at least 1 and less than the task total of '.$task->total_creatives.'.']);
-            }
+            $this->validateSplitCountAgainstProgress($task, $count, 'creativeCount');
         }
     }
 
@@ -336,30 +391,61 @@ class DesignTaskRequestService
 
     private function validateApprovedSplitCount(DesignTask $task, ?int $count): void
     {
-        if (! $count || $count < 1 || $count >= (int) $task->total_creatives) {
+        $this->validateSplitCountAgainstProgress($task, (int) $count, 'approved_creative_count');
+    }
+
+    private function validateSplitCountAgainstProgress(DesignTask $task, int $count, string $field): void
+    {
+        $total = (int) $task->total_creatives;
+
+        if ($total < 2) {
             throw ValidationException::withMessages([
-                'approved_creative_count' => 'Approved split quantity must be at least 1 and must leave at least 1 creative with the original task.',
+                $field => 'This task cannot be split because it has fewer than 2 creatives.',
+            ]);
+        }
+
+        $completed = app(DesignTaskProgressService::class)->completed($task);
+
+        // Completed creatives must stay on the original task.
+        // The split can only take from creatives that are still incomplete,
+        // and the original task must always retain at least one creative.
+        $maxSplittable = min($total - 1, max(0, $total - $completed));
+
+        if ($count < 1 || $count > $maxSplittable) {
+            $message = $completed > 0
+                ? 'Split quantity must be between 1 and '.$maxSplittable.' so completed creative progress is preserved on the original task.'
+                : 'Split quantity must be at least 1 and must leave at least 1 creative with the original task.';
+
+            throw ValidationException::withMessages([
+                $field => $message,
             ]);
         }
     }
 
-
-    private function executeDecline(DesignTaskRequest $request, ?int $approvedDesignerId): string
+    private function executeDecline(DesignTaskRequest $request, User $approver): string
     {
-        if (! $approvedDesignerId) {
-            throw ValidationException::withMessages([
-                'approved_designer_id' => 'Please select a designer before approving this decline request.',
-            ]);
-        }
+        $task = $request->task;
+        $replacementDesigner = $request->approvedDesigner
+            ?: User::query()->findOrFail($request->approved_designer_id);
 
-        $designer = User::query()->whereKey($approvedDesignerId)->where('role', 'designer')->firstOrFail();
+        $fromStatus = $task->status;
 
-        $request->task->update([
-            'designer_id' => $designer->id,
+        $task->update([
+            'designer_id' => $replacementDesigner->id,
             'status' => 'assigned_tasks',
+            'assigned_at' => now(),
         ]);
 
-        return 'Decline approved. Task reassigned to '.$designer->name.'.';
+        $this->recordStatusMovement(
+            $task,
+            $approver,
+            $fromStatus,
+            'assigned_tasks',
+            'decline_approved_reassignment',
+            'Decline approved. Task reassigned to '.$replacementDesigner->name.' and returned to Assigned Tasks.'
+        );
+
+        return 'Task reassigned to '.$replacementDesigner->name.' and returned to Assigned Tasks.';
     }
 
     private function executeSwap(DesignTaskRequest $request): string
@@ -414,29 +500,6 @@ class DesignTaskRequestService
         $activeTask->update([
             'task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $activeTask->id),
         ]);
-
-        // Carry existing Task Updation progress into the logical active task so
-        // the approved swap does not reset completed creative progress.
-        DesignTaskEodRecord::query()
-            ->where('design_task_id', $originalTask->id)
-            ->orderBy('id')
-            ->get()
-            ->each(function (DesignTaskEodRecord $record) use ($activeTask): void {
-                DesignTaskEodRecord::create([
-                    'design_task_id' => $activeTask->id,
-                    'designer_id' => $record->designer_id,
-                    'update_type' => $record->update_type ?? 'progress',
-                    'completed_count' => $record->completed_count,
-                    'total_creatives_snapshot' => $record->total_creatives_snapshot,
-                    'cumulative_completed' => $record->cumulative_completed,
-                    'remaining_creatives' => $record->remaining_creatives,
-                    'rework_count_snapshot' => $record->rework_count_snapshot,
-                    'attachment_disk' => $record->attachment_disk,
-                    'attachment_path' => $record->attachment_path,
-                    'attachment_original_name' => $record->attachment_original_name,
-                    'submitted_at' => $record->submitted_at,
-                ]);
-            });
 
         $originalRequirements['_swap_active_task_id'] = $activeTask->id;
         $originalRequirements['_swap_active_task_code'] = $activeTask->task_id;

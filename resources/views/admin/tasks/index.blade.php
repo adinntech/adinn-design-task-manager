@@ -76,7 +76,7 @@
                             <td>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</td>
                             <td><span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span></td>
                             <td><span class="badge badge-dark">{{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</span></td>
-                            <td>{{ $task->due_at?->format('d M, h:i A') }}</td>
+                            <td>{{ $task->due_at?->format('d M Y') }}</td>
                             <td>
                                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                                     <a class="btn btn-secondary" href="{{ route('admin.tasks.show',$task) }}">View</a>

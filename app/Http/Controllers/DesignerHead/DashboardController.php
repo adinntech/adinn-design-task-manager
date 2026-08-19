@@ -4,64 +4,103 @@ namespace App\Http\Controllers\DesignerHead;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    private const COLUMNS = [
-        'assigned_tasks' => 'Assigned Tasks',
-        'review_analysis' => 'Review & Analysis',
-        'need_clarification' => 'Need Clarification',
-        'yet_to_start' => 'Yet to Start',
-        'in_progress' => 'In Progress',
-        'waiting_confirmation' => 'Waiting Confirmation',
-        'rework' => 'Rework',
-        'completed' => 'Completed',
-        'swap_tasks' => 'Swap Tasks',
-    ];
-
-    public function index()
+    public function index(Request $request): View
     {
-        $pendingRequests = DesignTaskRequest::query()
-            ->pending()
+        abort_unless($request->user()?->role === 'designer_head', 403);
+
+        $now = now();
+
+        $tasks = DesignTask::query()
+            ->with(['designer:id,name'])
+            ->get()
+            ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
+            ->values();
+
+        $pendingStatuses = ['pending_approval', 'pending_designer_head', 'pending_admin'];
+
+        $requests = DesignTaskRequest::query()
             ->with([
-                'task:id,task_id,task_name,vertical,status,priority,due_at,designer_id,total_creatives',
+                'task:id,task_id,task_name,designer_id,status,priority',
                 'task.designer:id,name',
                 'requester:id,name',
                 'targetDesigner:id,name',
+                'approvedDesigner:id,name',
             ])
             ->latest()
             ->get();
 
-        $tasks = DesignTask::query()
-            ->with(['designer:id,name'])
-            ->latest('assigned_at')
-            ->get([
-                'id',
-                'task_id',
-                'task_name',
-                'vertical',
-                'task_nature',
-                'priority',
-                'due_at',
-                'designer_id',
-                'total_creatives',
-                'status',
-                'assigned_at',
-                'requirements',
-            ]);
+        $pendingRequests = $requests
+            ->whereIn('overall_status', $pendingStatuses)
+            ->values();
 
-        $tasksByStatus = [];
-        foreach (self::COLUMNS as $status => $label) {
-            $tasksByStatus[$status] = $tasks->where('status', $status)->values();
-        }
+        $submittedToday = DesignTaskEodRecord::query()
+            ->whereDate('submitted_at', $now->toDateString())
+            ->distinct('design_task_id')
+            ->count('design_task_id');
+
+        $stats = [
+            'total' => $tasks->count(),
+            'new_assignments' => $tasks->where('status', 'assigned_tasks')->count(),
+            'in_progress' => $tasks->where('status', 'in_progress')->count(),
+            'submitted_today' => $submittedToday,
+            'pending_review' => $tasks->where('status', 'waiting_confirmation')->count(),
+            'overdue' => $tasks
+                ->filter(fn (DesignTask $task) =>
+                    $task->status !== 'completed'
+                    && $task->due_at
+                    && $task->due_at->lt($now)
+                )
+                ->count(),
+            'approval_pending' => $pendingRequests->count(),
+        ];
+
+        $designers = User::query()
+            ->where('role', 'designer')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $workload = $designers->map(function (User $designer) use ($tasks, $now) {
+            $designerTasks = $tasks->where('designer_id', $designer->id);
+            $active = $designerTasks->whereNotIn('status', ['completed'])->count();
+            $completed = $designerTasks->where('status', 'completed')->count();
+            $overdue = $designerTasks->filter(fn (DesignTask $task) =>
+                $task->status !== 'completed'
+                && $task->due_at
+                && $task->due_at->lt($now)
+            )->count();
+
+            // Compact visual indicator, capped at 100%.
+            $loadPercent = min(100, $active * 10);
+
+            return [
+                'designer' => $designer,
+                'active' => $active,
+                'completed' => $completed,
+                'overdue' => $overdue,
+                'load_percent' => $loadPercent,
+                'status' => match (true) {
+                    $loadPercent >= 80 => 'Busy',
+                    $loadPercent >= 50 => 'Working',
+                    default => 'Available',
+                },
+            ];
+        })->sortByDesc('active')->values();
 
         return view('designer-head.dashboard', [
-            'pendingRequests' => $pendingRequests,
-            'tasksByStatus' => $tasksByStatus,
-            'columns' => self::COLUMNS,
-            'totalTasks' => $tasks->count(),
-            'pendingRequestCount' => $pendingRequests->count(),
+            'stats' => $stats,
+            'workload' => $workload,
+            'swapRequests' => $requests->where('request_type', 'swap')->take(6)->values(),
+            'splitRequests' => $requests->where('request_type', 'split')->take(6)->values(),
         ]);
     }
 }

@@ -41,6 +41,57 @@
 .vehicle-preview-image-wrap{border:1px solid #eaecf0;border-radius:12px;background:#f8fafc;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:140px}
 .vehicle-preview-image{display:block;width:100%;height:140px;object-fit:contain;background:#fff}
 @media(max-width:900px){.vehicle-preview-inner{grid-template-columns:1fr}.vehicle-preview-image{height:180px}}
+
+    .standard-form-section{
+        margin-top:8px;
+        padding-top:16px;
+        border-top:1px solid #e8ebf0;
+    }
+    .standard-form-section:first-child{margin-top:0;padding-top:0;border-top:0}
+    .standard-form-section-title{
+        font-size:12px;
+        font-weight:950;
+        color:#101828;
+        letter-spacing:-.01em;
+    }
+    .media-size-card{
+        grid-column:1/-1;
+        border:1px solid #e4e7ec;
+        border-radius:13px;
+        background:#fff;
+        padding:14px;
+    }
+    .media-size-head{
+        display:flex;
+        justify-content:space-between;
+        gap:12px;
+        align-items:center;
+        margin-bottom:12px;
+    }
+    .media-size-title{font-size:11px;font-weight:900;color:#101828}
+    .media-size-subtitle{font-size:9px;color:#667085;margin-top:3px}
+    .media-size-row{
+        display:grid;
+        grid-template-columns:minmax(170px,1.35fr) minmax(90px,.7fr) minmax(90px,.7fr) minmax(90px,.7fr) 48px;
+        gap:9px;
+        align-items:end;
+        margin-top:9px;
+    }
+    .media-size-remove{
+        height:42px;
+        border:1px solid #fecaca;
+        background:#fff1f2;
+        color:#b42318;
+        border-radius:9px;
+        font-size:18px;
+        font-weight:800;
+        cursor:pointer;
+    }
+    @media(max-width:850px){
+        .media-size-row{grid-template-columns:1fr 1fr}
+        .media-size-remove{width:48px}
+    }
+
 </style>
 
 <div class="page-head">
@@ -66,7 +117,7 @@
     <h2 class="text-lg font-bold mb-5">Common Task Details</h2>
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
         <div><label class="label">Task ID</label><input class="field bg-slate-100" value="Auto-generated after submission" disabled></div>
-        <div><label class="label">Assigned At</label><input class="field bg-slate-100" value="{{ now()->format('d M Y, h:i A') }}" disabled></div>
+        <div><label class="label">Assigned At</label><input class="field bg-slate-100" value="{{ now()->format('d M Y') }}" disabled></div>
         <div><label class="label">Assigned By</label><input class="field bg-slate-100" value="{{ auth()->user()->name }}" disabled></div>
 
         <div class="lg:col-span-2"><label class="label">Task Name *</label><input class="field" name="task_name" value="{{ old('task_name') }}" required></div>
@@ -75,8 +126,8 @@
             <select class="field" id="vertical" name="vertical" required>
                 <option value="">Select vertical</option>
                 @foreach([
-                    'outdoor'=>'Outdoor','roadshow'=>'RoadShow','fixtures'=>'Fixtures','signage'=>'Signage',
-                    'pop_offsets'=>'POP and Offsets','events_activations'=>'Events and Activations','media'=>'Media'
+                    'outdoor'=>'Outdoor','roadshow'=>'Road Show','fixtures'=>'Fixtures','signage'=>'Signage',
+                    'pop_offsets'=>'Print / POP','events_activations'=>'Events & Activations','media'=>'Media'
                 ] as $value=>$label)
                     <option value="{{ $value }}" @selected(old('vertical')===$value)>{{ $label }}</option>
                 @endforeach
@@ -148,202 +199,7 @@ const oldValues=@json(old());
 const oldVertical=@json(old('vertical'));
 const oldNature=@json(old('task_nature'));
 
-const forms={
-outdoor:{label:'Outdoor',natures:{
- mockup_requirements:{label:'Mock-up Requirements',fields:[['mockup_type','Mock-up Type','select',true,['Mock-up','Innovative Mock-up']],['description','Description / Content','textarea',true],['site_photo','Site Photo','file'],['creative','Creative','file'],['website_link','Website Link','url'],['supporting_documents','Reference / Supporting Documents','files'],['client_audio','Client Audio','audio']]},
- creative_adaptation:{label:'Creative Adaptation',fields:[['description','Description / Content','textarea',true],['site_photo','Site Photo','file'],['creative','Creative','file'],['supporting_documents','Excel / PPT / Other Documents','files'],['reference_image','Reference Image','file'],['client_audio','Client Audio','audio']]},
- new_creative_design:{label:'New Creative Design',fields:[['description','Description / Content','textarea',true],['content_images','Content Image / Video','mediafiles'],['logo_images','Logo Images','files'],['brand_name','Brand Name','text',true],['creative_contact_person','Contact Person','text'],['creative_mobile_number','Mobile Number','text'],['address','Address','textarea'],['company_details_document','Company Details Document','file'],['supporting_documents','Excel / PPT / Other Documents','files'],['client_audio','Client Audio','audio']]},
- cutout_size_calculation:{label:'3D Cut-out Size Calculation',fields:[['description','Description','textarea',true],['hoarding_artwork','Hoarding Image / Open Artwork','file',true],['supporting_documents','Excel / PPT / Other Documents','files'],['client_audio','Client Audio','audio']]}
-}},
-roadshow:{label:'RoadShow',natures:{
- creative_adaptation_requirements:{label:'Creative Adaptation Requirements',fields:[
-  ['roadshow_subtype','Task Nature Type','select',true,['Creative Adaptation','3D Mockup Creative Adaptation']],
-  ['description','Description / Content','textarea'],
-  ['description_upload','Reference','file'],
-  ['vehicle_type','Vehicle Name','vehicle_select',true,['3 Side LED 14 feet','3 Side LED 18 feet','7x5 LED Hybrid 8 feet','Box Model Triangle Roof','Center Portion Triangle Roof','Center Portion Without Roof','L-Model Box Roof with Utility Room','L-Model Box Roof','L-Model Without Roof','L-Shape LED','Single Side LED 17 feet','Static Model']],
-  ['creative','Creative','file'],
-  ['vehicle_quantity','Quantity of Vehicles','number'],
-  ['location','Location','location'],
-  ['supporting_documents','Reference / Excel / PPT / Other Documents','files'],
-  ['client_audio','Client Audio','audio']
- ]},
- new_creative_design:{label:'New Creative Design',fields:[
-  ['roadshow_subtype','Task Nature Type','select',true,['New Creative Design','3D Mockup New Creative Design']],
-  ['vehicle_type','Vehicle Name','vehicle_select',true,['3 Side LED 14 feet','3 Side LED 18 feet','7x5 LED Hybrid 8 feet','Box Model Triangle Roof','Center Portion Triangle Roof','Center Portion Without Roof','L-Model Box Roof with Utility Room','L-Model Box Roof','L-Model Without Roof','L-Shape LED','Single Side LED 17 feet','Static Model']],
-  ['vehicle_details','Vehicle Details','file'],
-  ['description','Description / Content','textarea'],
-  ['description_upload','Reference','file'],
-  ['logo_images','Logo','files'],
-  ['reference_images','Reference Images','files'],
-  ['content_images','Content Image / Video','mediafiles'],
-  ['brand_details','Brand Details','textarea'],
-  ['brand_details_upload','Brand Details Upload','file'],
-  ['brand_name','Brand Name','text'],
-  ['creative_contact_person','Contact Person','text'],
-  ['creative_mobile_number','Mobile Number','text'],
-  ['address','Address','textarea'],
-  ['supporting_documents','Excel / PPT / Other Documents','files'],
-  ['client_audio','Client Audio','audio']
- ]}
-}},
-fixtures:{label:'Fixtures',natures:{
- design_with_creative:{label:'Design with Creative Given',fields:[['description','Description','textarea',true],['recce_report','Recce Report','file',true],['client_format_manual','Client Format Manual','file'],['creative','Creative','file'],['fixture_details','All Fixture Details','file',true],['additional_attachments','References','files'],['client_audio','Client Recording','audio']]},
- design_without_creative:{label:'Design without Creative',fields:[['description','Description','textarea',true],['recce_report','Recce Report (PPT/PDF/JPG)','file',true],['logo_images','Client Logo','files'],['website_link','Client Website','url'],['client_format_manual','Client Format Manual','file'],['fixture_details','All Fixture Details (Excel)','file',true],['reference_images','References','files'],['client_audio','Client Recording','audio']]}
-}},
-signage:{label:'Signage',natures:{
- mockup:{label:'Mock Up',fields:[
-  ['description','Description','textarea',true],
-  ['recce_report','Recce PPT','file',true],
-  ['material_specifications','Material Detail','file'],
-  ['client_format_manual','Client Format Manual','file'],
-  ['creative','Creative (Optional)','file'],
-  ['reference_images','References','files'],
-  ['client_audio','Client Recording','audio']
- ]},
- creative_adaptation:{label:'Creative Adaptation',fields:[
-  ['description','Description','textarea',true],
-  ['recce_report','Recce PPT','file'],
-  ['material_specifications','Material Detail','file',true],
-  ['client_format_manual','Client Format Manual','file'],
-  ['creative','Creative','file',true],
-  ['dealer_details','Dealer Details','file'],
-  ['reference_images','References','files'],
-  ['client_audio','Client Recording','audio']
- ]},
- new_creative:{label:'New Creative',fields:[
-  ['description','Description','textarea',true],
-  ['recce_report','Recce PPT','file',true],
-  ['material_specifications','Material Detail','file',true],
-  ['logo_images','Logo','files'],
-  ['client_format_manual','Client Format Manual','file'],
-  ['dealer_details','Dealer Details','file'],
-  ['reference_images','References','files'],
-  ['client_audio','Audio Reference','audio']
- ]},
- technical_drawing:{label:'Technical Drawing Design',fields:[
-  ['description','Description','textarea',true],
-  ['recce_report','Recce PPT','file',true],
-  ['creative','Creative','file'],
-  ['logo_images','Logo','files'],
-  ['client_format_manual','Client Format Manual','file'],
-  ['reference_images','References','files'],
-  ['client_audio','Audio Reference','audio']
- ]},
- three_d_design:{label:'3D Design',fields:[
-  
-  ['description','Description','textarea',true],
-  ['recce_report','Recce PPT','file',true],
-  ['technical_drawing','Technical Drawing','file'],
-  ['creative','Creative','file'],
-  ['logo_images','Logo','files'],
-  ['client_format_manual','Client Format Manual','file'],
-  ['reference_images','References','files'],
-  ['client_audio','Audio Reference','audio']
- ]},
- technical_and_three_d:{label:'Technical Drawing & 3D Design',fields:[
-  ['description','Description','textarea',true],
-  ['recce_report','Recce PPT','file',true],
-  ['creative','Creative','file'],
-  ['logo_images','Logo','files'],
-  ['client_format_manual','Client Format Manual','file'],
-  ['reference_images','References','files'],
-  ['client_audio','Audio Reference','audio']
- ]}
-}},
-pop_offsets:{label:'POP and Offsets',natures:{
- mockup_design:{label:'Mockup Design',fields:[
-  ['product_type','Product Type','select',true,['Leaflets','Poster','Brochure','Visiting Card','Pocket Card','Dangler','Roll Up Standee','Sunpack Sheet','Calendar','ID Card','Other']],
-  ['description','Description','textarea',true],
-  ['company_details','Company Details','textarea',true],
-  ['logo_images','Logo','files'],
-  ['creative','Creative','file'],
-  ['reference_images','References','files'],
-  ['client_audio','Client Call Recording','audio']
- ]},
- design_adaptation:{label:'Creative Adaptation',fields:[
-  ['product_type','Product Type','select',true,['Leaflets','Poster','Brochure','Visiting Card','Pocket Card','Dangler','Roll Up Standee','Sunpack Sheet','Calendar','ID Card','Other']],
-  ['description','Description','textarea',true],
-  ['company_details','Company Details','textarea',true],
-  ['logo_images','Logo','files'],
-  ['size_details','Size Details','sizes',true],
-  ['creative','Creative','file'],
-  ['reference_images','References','files'],
-  ['element_list','Element List','file'],
-  ['client_audio','Client Call Recording','audio']
- ]},
- creative_design:{label:'Own Creative',fields:[
-  
-  ['product_type','Product Type','select',true,['Leaflets','Poster','Brochure','Visiting Card','Pocket Card','Dangler','Roll Up Standee','Sunpack Sheet','Calendar','ID Card','Other']],
-  ['description','Description','textarea',true],
-  ['company_details','Company Details','textarea',true],
-  ['logo_images','Logo','files'],
-  ['size_details','Size Details','sizes',true],
-  ['reference_images','References','files'],
-  ['element_list','Element List','file'],
-  ['client_audio','Client Call Recording','audio']
- ]}
-}},
-events_activations:{label:'Events and Activations',natures:{
- proposal_designs:{label:'Proposal Designs',fields:[['description','Description','textarea',true],['location','Location','location'],['requirement_list','Requirement List','file',true],['reference_images','References','files'],['client_audio','Audio Reference','audio']]},
- element_design_with_creative:{label:'Element Design with Creative Given',fields:[['description','Description','textarea',true],['location','Location','location'],['creative','Creatives','file',true],['reference_images','Reference Images','files'],['recce_report','Recce','file',true],['brand_guidelines','Brand Guidelines','file'],['requirement_list','Requirement List','file',true],['client_audio','Audio Reference','audio']]},
- element_design_without_creative:{label:'Element Design Creative Not Given',fields:[['description','Description','textarea',true],['location','Location','location'],['logo_images','Logo','files'],['reference_images','References','files'],['recce_report','Recce','file'],['brand_guidelines','Brand Guidelines','file'],['requirement_list','Requirement List','file'],['client_audio','Audio Reference','audio']]},
- three_d_layout:{label:'3D Layout',fields:[['description','Description','textarea',true],['location','Location','location'],['reference_images','References','files'],['recce_report','Recce','file'],['brand_guidelines','Brand Guidelines','file'],['requirement_list','Requirement List','file',true],['client_audio','Audio Reference','audio']]}
-}},
-media:{label:'Media',natures:{
- theatre_ads:{label:'Theatre Ads',fields:[
-  ['media_task_nature','Task Nature','select',true,['Creative Adaptation','Own Creative']],
-  ['theatre_screen_name','Theatre / Screen Name','text',true],
-  ['ad_type','Ad Type','select',true,['Slide','Video']],
-  ['screen_width','Screen Size – Width','number',true],
-  ['screen_height','Screen Size – Height','number',true],
-  ['screen_ratio','Screen Ratio','text',true],
-  ['description','Description / Content','textarea',true],
-  ['creative','Creative Upload','file'],
-  ['video_clip','Video Clip','mediafiles'],
-  ['reference_images','Reference Attachment','files'],
-  ['company_details','Company / Brand Details','textarea'],
-  ['logo_images','Logo Image','files'],
-  ['creative_content_details','Creative Content / Details','textarea'],
-  ['creative_content_upload','Creative Content Upload','file'],
-  ['client_audio','Client Audio','audio']
- ]},
- newspaper_ads:{label:'News Paper Ads',fields:[
-  ['media_task_nature','Task Nature','select',true,['Creative Adaptation','Own Creative']],
-  ['description','Description / Content','textarea',true],
-  ['creative_width','Creative Size – Width','number',true],
-  ['creative_height','Creative Size – Height','number',true],
-  ['size_unit','Size Unit','select',true,['px','mm','cm','inch','ft']],
-  ['creative','Creative Upload','file'],
-  ['reference_images','Reference Image / Attachment','files'],
-  ['company_details','Company / Brand Details','textarea'],
-  ['logo_brand_image','Logo / Brand Image','files']
- ]},
- fm:{label:'FM',fields:[
-  ['media_task_nature','Task Nature','select',true,['Creative Adaptation','Own Creative']],
-  ['fm_station','FM Station / Channel','text',true],
-  ['description','Description / Content','textarea',true],
-  ['existing_audio_creative','Existing Audio / Creative Upload','audio'],
-  ['reference_images','Reference Attachment','files'],
-  ['company_details','Company / Brand Details','textarea'],
-  ['client_audio','Client Audio / Voice Reference','audio']
- ]},
- tv_ads:{label:'TV Ads',fields:[
-  ['media_task_nature','Task Nature','select',true,['Creative Adaptation','Own Creative']],
-  ['tv_type','TV Type','select',true,['Local','Satellite','Channel']],
-  ['ad_type','Ad Type','select',true,['Slide','Video']],
-  ['creative_width','Creative Size – Width','number',true],
-  ['creative_height','Creative Size – Height','number',true],
-  ['description','Description / Content','textarea',true],
-  ['creative','Creative Upload / Creative Content / Sample Image','file'],
-  ['video_clip','Video Clip','mediafiles'],
-  ['sample_video_clip','Sample Video Clip','mediafiles'],
-  ['company_details','Company / Brand Details','textarea'],
-  ['logo_images','Logo Image','files'],
-  ['screen_ratio','Screen Ratio','text'],
-  ['reference_images','Reference Attachment','files'],
-  ['client_audio','Client Audio','audio']
- ]}
-}}};
+const forms={"outdoor":{"label":"Outdoor","natures":{"mockup_requirements":{"label":"Mockup","fields":[["__section_details","Outdoor / Board Details","section",false,[]],["outdoor_type","Outdoor Type","select",true,["Bus Shelter","Unipole","Standard","Auto Branding","Pole Kiosk","Digital","Signal Post"]],["board_type","Display Type","select",true,["Static","Digital"]],["board_details","Board / Display Size Details","dimensions",true,[]],["mockup_type","Mockup Type","select",true,["Mock-up","Innovative Mock-up"]],["site_photo","Site Photo","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["website_link","Website Link","url",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"creative_adaptation":{"label":"Creative Adaptation","fields":[["__section_details","Outdoor / Board Details","section",false,[]],["outdoor_type","Outdoor Type","select",true,["Bus Shelter","Unipole","Standard","Auto Branding","Pole Kiosk","Digital","Signal Post"]],["board_type","Display Type","select",true,["Static","Digital"]],["board_details","Board / Display Size Details","dimensions",true,[]],["site_photo","Site Photo","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"new_creative_design":{"label":"Own Creative","fields":[["__section_details","Outdoor / Board Details","section",false,[]],["outdoor_type","Outdoor Type","select",true,["Bus Shelter","Unipole","Standard","Auto Branding","Pole Kiosk","Digital","Signal Post"]],["board_type","Display Type","select",true,["Static","Digital"]],["board_details","Board / Display Size Details","dimensions",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["brand_name","Brand Name","text",true,[]],["creative_contact_person","Contact Person","text",false,[]],["creative_mobile_number","Mobile Number","text",false,[]],["address","Address","textarea",false,[]],["company_details_document","Company Details Document","file",false,[]],["__section_creative","Creative","section",false,[]],["content_images","Creative Content / Assets","mediafiles",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"cutout_size_calculation":{"label":"3D Cutout Size Calculation","fields":[["__section_details","Outdoor / Board Details","section",false,[]],["outdoor_type","Outdoor Type","select",true,["Bus Shelter","Unipole","Standard","Auto Branding","Pole Kiosk","Digital","Signal Post"]],["board_details","Board / Display Size Details","dimensions",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["hoarding_artwork","Creative / Artwork","file",true,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]}}},"roadshow":{"label":"Road Show","natures":{"creative_adaptation_requirements":{"label":"Creative Adaptation","fields":[["__section_details","Vehicle / Campaign Details","section",false,[]],["roadshow_subtype","Road Show Type","select",true,["Creative Adaptation","3D Mockup Creative Adaptation"]],["vehicle_type","Vehicle Type","vehicle_select",true,["3 Side LED 14 feet","3 Side LED 18 feet","7x5 LED Hybrid 8 feet","Box Model Triangle Roof","Center Portion Triangle Roof","Center Portion Without Roof","L-Model Box Roof with Utility Room","L-Model Box Roof","L-Model Without Roof","L-Shape LED","Single Side LED 17 feet","Static Model"]],["vehicle_quantity","Vehicle Quantity","number",false,[]],["location","Campaign Location","location",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"new_creative_design":{"label":"Own Creative","fields":[["__section_details","Vehicle / Campaign Details","section",false,[]],["roadshow_subtype","Road Show Type","select",true,["New Creative Design","3D Mockup New Creative Design"]],["vehicle_type","Vehicle Type","vehicle_select",true,["3 Side LED 14 feet","3 Side LED 18 feet","7x5 LED Hybrid 8 feet","Box Model Triangle Roof","Center Portion Triangle Roof","Center Portion Without Roof","L-Model Box Roof with Utility Room","L-Model Box Roof","L-Model Without Roof","L-Shape LED","Single Side LED 17 feet","Static Model"]],["vehicle_details","Vehicle Details","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["brand_details","Brand Details","textarea",false,[]],["brand_details_upload","Brand Details Upload","file",false,[]],["brand_name","Brand Name","text",false,[]],["creative_contact_person","Contact Person","text",false,[]],["creative_mobile_number","Mobile Number","text",false,[]],["address","Address","textarea",false,[]],["__section_creative","Creative","section",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["content_images","Creative Content / Assets","mediafiles",false,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]}}},"fixtures":{"label":"Fixtures","natures":{"design_with_creative":{"label":"Creative Adaptation","fields":[["__section_details","Fixture Details","section",false,[]],["recce_report","Site Recce / Measurement Details","file",true,[]],["client_format_manual","Client Brand / Format Guidelines","file",false,[]],["fixture_details","Fixture Specifications / Details","file",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"design_without_creative":{"label":"Own Creative","fields":[["__section_details","Fixture Details","section",false,[]],["recce_report","Site Recce / Measurement Details","file",true,[]],["client_format_manual","Client Brand / Format Guidelines","file",false,[]],["fixture_details","Fixture Specifications / Details","file",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["website_link","Client Website","url",false,[]],["__section_creative","Creative","section",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]}}},"signage":{"label":"Signage","natures":{"mockup":{"label":"Mockup","fields":[["__section_details","Signage / Site Details","section",false,[]],["recce_report","Site Recce / Measurement Details","file",true,[]],["material_specifications","Material Details","file",false,[]],["client_format_manual","Client Brand / Format Guidelines","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"creative_adaptation":{"label":"Creative Adaptation","fields":[["__section_details","Signage / Site Details","section",false,[]],["recce_report","Site Recce / Measurement Details","file",false,[]],["material_specifications","Material Details","file",true,[]],["client_format_manual","Client Brand / Format Guidelines","file",false,[]],["dealer_details","Dealer / Location Details","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",true,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"new_creative":{"label":"Own Creative","fields":[["__section_details","Signage / Site Details","section",false,[]],["recce_report","Site Recce / Measurement Details","file",true,[]],["material_specifications","Material Details","file",true,[]],["client_format_manual","Client Brand / Format Guidelines","file",false,[]],["dealer_details","Dealer / Location Details","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"technical_drawing":{"label":"Technical Drawing","fields":[["__section_details","Signage / Site Details","section",false,[]],["recce_report","Site Recce / Measurement Details","file",true,[]],["client_format_manual","Client Brand / Format Guidelines","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"three_d_design":{"label":"3D Design","fields":[["__section_details","Signage / Site Details","section",false,[]],["recce_report","Site Recce / Measurement Details","file",true,[]],["technical_drawing","Technical Drawing","file",false,[]],["client_format_manual","Client Brand / Format Guidelines","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"technical_and_three_d":{"label":"Technical Drawing + 3D Design","fields":[["__section_details","Signage / Site Details","section",false,[]],["recce_report","Site Recce / Measurement Details","file",true,[]],["client_format_manual","Client Brand / Format Guidelines","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]}}},"pop_offsets":{"label":"Print / POP","natures":{"mockup_design":{"label":"Mockup","fields":[["__section_details","Print / Product Details","section",false,[]],["product_type","Print / Product Type","select",true,["Leaflets","Poster","Brochure","Visiting Card","Pocket Card","Dangler","Roll Up Standee","Sunpack Sheet","Calendar","ID Card","Other"]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["creative","Creative","file",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"design_adaptation":{"label":"Creative Adaptation","fields":[["__section_details","Print / Product Details","section",false,[]],["product_type","Print / Product Type","select",true,["Leaflets","Poster","Brochure","Visiting Card","Pocket Card","Dangler","Roll Up Standee","Sunpack Sheet","Calendar","ID Card","Other"]],["size_details","Print Size Details","sizes",true,[]],["element_list","Print / Element Details","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["creative","Creative","file",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"creative_design":{"label":"Own Creative","fields":[["__section_details","Print / Product Details","section",false,[]],["product_type","Print / Product Type","select",true,["Leaflets","Poster","Brochure","Visiting Card","Pocket Card","Dangler","Roll Up Standee","Sunpack Sheet","Calendar","ID Card","Other"]],["size_details","Print Size Details","sizes",true,[]],["element_list","Print / Element Details","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]}}},"events_activations":{"label":"Events & Activations","natures":{"proposal_designs":{"label":"Proposal Design","fields":[["__section_details","Event / Activation Details","section",false,[]],["location","Event / Activation Location","location",false,[]],["requirement_list","Event / Activation Requirement Details","file",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"element_design_with_creative":{"label":"Creative Adaptation","fields":[["__section_details","Event / Activation Details","section",false,[]],["location","Event / Activation Location","location",false,[]],["recce_report","Venue / Site Recce Details","file",true,[]],["brand_guidelines","Brand Guidelines","file",false,[]],["requirement_list","Event / Activation Requirement Details","file",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","file",true,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"element_design_without_creative":{"label":"Own Creative","fields":[["__section_details","Event / Activation Details","section",false,[]],["location","Event / Activation Location","location",false,[]],["recce_report","Venue / Site Recce Details","file",false,[]],["brand_guidelines","Brand Guidelines","file",false,[]],["requirement_list","Event / Activation Requirement Details","file",false,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["logo_images","Logo / Brand Assets","files",false,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"three_d_layout":{"label":"3D Layout","fields":[["__section_details","Event / Activation Details","section",false,[]],["location","Event / Activation Location","location",false,[]],["recce_report","Venue / Site Recce Details","file",false,[]],["brand_guidelines","Brand Guidelines","file",false,[]],["requirement_list","Event / Activation Requirement Details","file",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]}}},"media":{"label":"Media","natures":{"creative_adaptation":{"label":"Creative Adaptation","fields":[["__section_details","Media Details","section",false,[]],["media_type","Media Type","select",true,["Theatre Ads","Newspaper Ads","TV Ads"]],["creative_size_details","Creative Size Details","media_sizes",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",false,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative","files",true,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]},"own_creative":{"label":"Own Creative","fields":[["__section_details","Media Details","section",false,[]],["media_type","Media Type","select",true,["Theatre Ads","Newspaper Ads","TV Ads"]],["creative_size_details","Creative Size Details","media_sizes",true,[]],["__section_description","Description","section",false,[]],["description","Description","textarea",true,[]],["__section_company","Company Details","section",false,[]],["company_details","Company Details","textarea",true,[]],["company_details_upload","Company Details Upload","files",false,[]],["__section_creative","Creative","section",false,[]],["creative","Creative / Sample Assets","files",false,[]],["__section_references","References","section",false,[]],["reference_notes","References","textarea",false,[]],["attachments","Attachments","files",false,[]],["__section_audio","Audio Reference","section",false,[]],["client_audio","Audio Reference","audio",false,[]]]}}}};
 
 const outdoorTypes=['Bus Shelter','Unipole','Standard','Auto Branding','Pole Kiosk','Digital','Signal Post'];
 const outdoorBoardTypeNatures=new Set(['mockup_requirements','creative_adaptation','new_creative_design']);
@@ -403,7 +259,7 @@ function bindLiveValidation(root=document){
 
 function uploadHtml(name,label,required=false,accept=''){
  const star=required?' *':'',req=required?'required':'',acceptAttr=accept?`accept="${accept}"`:'';
- return `<div class="md:col-span-2"><label class="label">${label}${star}</label><input class="field" type="file" name="${name}[]" multiple ${acceptAttr} ${req}><p class="text-xs text-slate-500 mt-1">Multiple files are allowed.</p></div>`;
+ return `<div class="md:col-span-2"><label class="label">${label}${star}</label><input class="field" type="file" name="${name}[]" multiple data-accumulate-files ${acceptAttr} ${req}><p class="multi-file-help">Select multiple files together, or choose more files later. Use × to remove any file before submitting.</p></div>`;
 }
 function dimensionRowHtml(index,row={}){
  const name=esc(row.name??''),width=esc(row.width??''),height=esc(row.height??'');
@@ -421,7 +277,7 @@ function dimensionsHtml(){
  return `<div class="dimension-card" data-dimension-block>
   <div class="dimension-head"><div><div class="dimension-title">Board Details *</div><div class="dimension-subtitle">Fill at least one complete row, or upload the Board Details. Area is calculated automatically.</div></div><button type="button" class="btn btn-secondary" data-add-dimension>+ Add New Row</button></div>
   <div data-dimension-rows data-next-index="${rows.length}">${rows.map((row,index)=>dimensionRowHtml(index,row)).join('')}</div>
-  <div class="dimension-upload"><label class="label">Or Upload Board Details / Dimensions</label><input class="field" type="file" name="dimension_upload[]" multiple data-dimension-upload><p class="text-xs text-slate-500 mt-1">Multiple files are allowed. Either a complete row or an upload is mandatory.</p></div>
+  <div class="dimension-upload"><label class="label">Or Upload Board Details / Dimensions</label><input class="field" type="file" name="dimension_upload[]" multiple data-accumulate-files data-dimension-upload><p class="text-xs text-slate-500 mt-1">Multiple files are allowed. Either a complete row or an upload is mandatory.</p></div>
   <p class="live-field-error hidden" data-dimension-error></p>
  </div>`;
 }
@@ -442,9 +298,81 @@ function sizesHtml(){
  return `<div class="dimension-card" data-size-block>
   <div class="dimension-head"><div><div class="dimension-title">Size Details *</div><div class="dimension-subtitle">Fill at least one complete row, or upload the Size Details. Area is calculated automatically.</div></div><button type="button" class="btn btn-secondary" data-add-size>+ Add New Row</button></div>
   <div data-size-rows data-next-index="${rows.length}">${rows.map((row,index)=>sizeRowHtml(index,row)).join('')}</div>
-  <div class="dimension-upload"><label class="label">Or Upload Size Details</label><input class="field" type="file" name="size_upload[]" multiple data-size-upload><p class="text-xs text-slate-500 mt-1">Multiple files are allowed. Either a complete row or an upload is mandatory.</p></div>
+  <div class="dimension-upload"><label class="label">Or Upload Size Details</label><input class="field" type="file" name="size_upload[]" multiple data-accumulate-files data-size-upload><p class="text-xs text-slate-500 mt-1">Multiple files are allowed. Either a complete row or an upload is mandatory.</p></div>
   <p class="live-field-error hidden" data-size-error></p>
  </div>`;
+}
+
+function mediaSizeRowHtml(index,row={}){
+ const name=esc(row.name??''),width=esc(row.width??''),height=esc(row.height??''),ratio=esc(row.ratio??'');
+ return `<div class="media-size-row" data-media-size-row>
+  <div><label class="label">Name</label><input class="field media-size-name" type="text" name="media_size_rows[${index}][name]" value="${name}" placeholder="e.g. Main Creative"></div>
+  <div><label class="label">Width</label><input class="field media-size-width" type="number" min="0.01" step="0.01" name="media_size_rows[${index}][width]" value="${width}" placeholder="Width"></div>
+  <div><label class="label">Height</label><input class="field media-size-height" type="number" min="0.01" step="0.01" name="media_size_rows[${index}][height]" value="${height}" placeholder="Height"></div>
+  <div><label class="label">Ratio</label><input class="field media-size-ratio" type="text" name="media_size_rows[${index}][ratio]" value="${ratio}" placeholder="e.g. 16:9"></div>
+  <button type="button" class="media-size-remove" data-remove-media-size title="Remove row">×</button>
+ </div>`;
+}
+function mediaSizesHtml(){
+ const rows=Array.isArray(oldValues.media_size_rows)&&oldValues.media_size_rows.length?oldValues.media_size_rows:[{}];
+ return `<div class="media-size-card" data-media-size-block>
+  <div class="media-size-head">
+   <div><div class="media-size-title">Creative Size Details *</div><div class="media-size-subtitle">Add every required creative size using Name, Width, Height and Ratio.</div></div>
+   <button type="button" class="btn btn-secondary" data-add-media-size>+ Add New Row</button>
+  </div>
+  <div data-media-size-rows data-next-index="${rows.length}">${rows.map((row,index)=>mediaSizeRowHtml(index,row)).join('')}</div>
+  <p class="live-field-error hidden" data-media-size-error></p>
+ </div>`;
+}
+function validateMediaSizes(show=true){
+ const block=fieldsBox.querySelector('[data-media-size-block]');
+ if(!block)return true;
+ const rows=[...block.querySelectorAll('[data-media-size-row]')];
+ let hasComplete=false,hasPartial=false;
+ rows.forEach(row=>{
+  const name=String(row.querySelector('.media-size-name')?.value||'').trim();
+  const width=parseFloat(row.querySelector('.media-size-width')?.value||0);
+  const height=parseFloat(row.querySelector('.media-size-height')?.value||0);
+  const ratio=String(row.querySelector('.media-size-ratio')?.value||'').trim();
+  const any=!!name||width>0||height>0||!!ratio;
+  const complete=!!name&&width>0&&height>0&&!!ratio;
+  if(complete)hasComplete=true;
+  if(any&&!complete)hasPartial=true;
+ });
+ let message='';
+ if(hasPartial)message='Complete Name, Width, Height and Ratio for every Creative Size Details row, or remove the incomplete row.';
+ else if(!hasComplete)message='Add at least one complete Creative Size Details row.';
+ if(show&&block.querySelector('[data-media-size-error]')){
+  const error=block.querySelector('[data-media-size-error]');
+  error.textContent=message;
+  error.classList.toggle('hidden',!message);
+  block.style.borderColor=message?'#f04438':'#e4e7ec';
+ }
+ return !message;
+}
+function bindMediaSizes(){
+ const block=fieldsBox.querySelector('[data-media-size-block]');
+ if(!block)return;
+ const rowsBox=block.querySelector('[data-media-size-rows]');
+ const bindRow=row=>{
+  if(row.dataset.mediaSizeBound==='1')return;
+  row.dataset.mediaSizeBound='1';
+  row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>validateMediaSizes(true)));
+  row.querySelector('[data-remove-media-size]')?.addEventListener('click',()=>{
+   if(rowsBox.querySelectorAll('[data-media-size-row]').length===1){
+    row.querySelectorAll('input').forEach(input=>input.value='');
+   }else row.remove();
+   validateMediaSizes(true);
+  });
+  bindLiveValidation(row);
+ };
+ rowsBox.querySelectorAll('[data-media-size-row]').forEach(bindRow);
+ block.querySelector('[data-add-media-size]')?.addEventListener('click',()=>{
+  const index=Number(rowsBox.dataset.nextIndex||0);
+  rowsBox.dataset.nextIndex=String(index+1);
+  rowsBox.insertAdjacentHTML('beforeend',mediaSizeRowHtml(index,{}));
+  bindRow(rowsBox.lastElementChild);
+ });
 }
 
 const roadshowVehicleImages={
@@ -464,6 +392,8 @@ const roadshowVehicleImages={
 
 function fieldHtml(f){
  const [name,label,type,required=false,options=[]]=f;
+ if(type==='section')return `<div class="md:col-span-2 standard-form-section"><div class="standard-form-section-title">${label}</div></div>`;
+ if(type==='media_sizes')return mediaSizesHtml();
  const star=required?' *':'',req=required?'required':'',rawOld=previous(name),old=esc(rawOld);
  const wrap=name==='description'||name.includes('details')||['file','files','audio','mediafiles'].includes(type)?'md:col-span-2':'';
  if(type==='dimensions')return dimensionsHtml();
@@ -511,17 +441,7 @@ function fieldHtml(f){
  const inputType=['url','email'].includes(type)?type:'text';
  return `<div class="${wrap}"><label class="label">${label}${star}</label><input class="field" type="${inputType}" name="${name}" value="${old}" ${req}></div>`;
 }
-function effectiveFields(form){
- let fields=[...form.fields];
- if(vertical.value==='outdoor'){
-  const prefix=[['outdoor_type','Outdoor Type','select',true,outdoorTypes]];
-  if(outdoorBoardTypeNatures.has(nature.value))prefix.push(['board_type','Board Type','select',true,['Static','Digital']]);
-  prefix.push(['board_details','Board Details','dimensions',true]);
-  fields=[...prefix,...fields];
- }
- if(companyDetailsNatures.has(`${vertical.value}.${nature.value}`))fields.push(['company_details','Company Details','textarea']);
- return fields;
-}
+function effectiveFields(form){ return [...form.fields]; }
 function populateNatures(selected=''){
  nature.innerHTML='<option value="">Select task nature</option>';
  const cfg=forms[vertical.value];
@@ -547,8 +467,8 @@ function validateDimensions(show=true){
  });
  const hasUpload=(upload?.files?.length||0)>0;
  let message='';
- if(hasPartial)message='Complete Name, Width and Height for every Board Details row, or remove the incomplete row.';
- else if(!hasComplete&&!hasUpload)message='Provide at least one complete Board Details row or upload the Board Details.';
+ if(hasPartial)message='Complete Name, Width and Height for every Board / Display Size row, or remove the incomplete row.';
+ else if(!hasComplete&&!hasUpload)message='Provide at least one complete Board / Display Size row or upload the details.';
  if(show&&error){error.textContent=message;error.classList.toggle('hidden',!message);block.style.borderColor=message?'#f04438':'#e4e7ec';}
  return !message;
 }
@@ -676,81 +596,7 @@ function bindSizes(){
 }
 
 
-function applyMediaTaskNatureVisibility(){
- if(vertical.value!=='media')return;
-
- const mediaNatureSelect=fieldsBox.querySelector('select[name="media_task_nature"]');
- if(!mediaNatureSelect)return;
-
- const mediaType=nature.value;
-
- const rows=[...fieldsBox.children];
- const findWrap=name=>fieldsBox.querySelector(`[name="${name}"]`)?.closest('div.md\\:col-span-2, div');
-
- const setVisible=(name,visible,required=false)=>{
-  const input=fieldsBox.querySelector(`[name="${name}"], [name="${name}[]"]`);
-  const wrap=input?.closest('div.md\\:col-span-2, div');
-  if(!input||!wrap)return;
-  wrap.classList.toggle('hidden',!visible);
-  input.required=visible&&required;
-  if(!visible){
-   if(input.type==='file')input.value='';
-   else input.value='';
-   setError(input,'');
-  }
- };
-
- const refresh=()=>{
-  const mode=mediaNatureSelect.value;
-  const own=mode==='Own Creative';
-  const adapt=mode==='Creative Adaptation';
-
-  if(mediaType==='theatre_ads'){
-   setVisible('description',adapt||own,true);
-   setVisible('creative',adapt,false);
-   setVisible('video_clip',adapt,false);
-   setVisible('reference_images',adapt||own,false);
-   setVisible('client_audio',adapt||own,false);
-   setVisible('company_details',own,true);
-   setVisible('logo_images',own,false);
-   setVisible('creative_content_details',own,false);
-   setVisible('creative_content_upload',own,false);
-  }
-
-  if(mediaType==='newspaper_ads'){
-   setVisible('creative',adapt,false);
-   setVisible('reference_images',adapt||own,false);
-   setVisible('company_details',own,true);
-   setVisible('logo_brand_image',own,false);
-  }
-
-  if(mediaType==='fm'){
-   setVisible('existing_audio_creative',adapt,false);
-   setVisible('reference_images',adapt||own,false);
-   setVisible('client_audio',adapt||own,false);
-   setVisible('company_details',own,true);
-  }
-
-  if(mediaType==='tv_ads'){
-   setVisible('creative',adapt||own,false);
-   setVisible('video_clip',adapt,false);
-   setVisible('sample_video_clip',own,false);
-   setVisible('company_details',own,true);
-   setVisible('logo_images',own,false);
-   setVisible('screen_ratio',own,true);
-   setVisible('reference_images',adapt||own,false);
-   setVisible('client_audio',adapt||own,false);
-  }
- };
-
- if(mediaNatureSelect.dataset.mediaBound!=='1'){
-  mediaNatureSelect.dataset.mediaBound='1';
-  mediaNatureSelect.addEventListener('change',refresh);
- }
- refresh();
-}
-
-
+function applyMediaTaskNatureVisibility(){}
 function bindRoadshowVehiclePreview(){
  const select=fieldsBox.querySelector('[data-roadshow-vehicle]');
  if(!select)return;
@@ -782,7 +628,7 @@ function renderFields(){
  if(!form){fieldsBox.innerHTML='';return;}
  title.textContent=`${cfg.label} — ${form.label}`;
  fieldsBox.innerHTML=effectiveFields(form).map(fieldHtml).join('');
- bindDimensions();bindSizes();bindOtherFields(fieldsBox);bindLiveValidation(fieldsBox);bindRoadshowVehiclePreview();applyMediaTaskNatureVisibility();
+ bindDimensions();bindSizes();bindMediaSizes();bindOtherFields(fieldsBox);bindLiveValidation(fieldsBox);bindRoadshowVehiclePreview();
 }
 
 vertical.addEventListener('change',()=>populateNatures());
@@ -795,6 +641,7 @@ taskForm.addEventListener('submit',event=>{
  taskForm.querySelectorAll('input,select,textarea').forEach(input=>{if(!validateField(input,true))valid=false;});
  if(!validateDimensions(true))valid=false;
  if(!validateSizes(true))valid=false;
+ if(!validateMediaSizes(true))valid=false;
  if(!valid){event.preventDefault();taskForm.querySelector('.has-error,[data-dimension-error]:not(.hidden)')?.scrollIntoView({behavior:'smooth',block:'center'});}
 });
 

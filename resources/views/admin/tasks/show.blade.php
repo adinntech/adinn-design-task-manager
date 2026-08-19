@@ -57,9 +57,9 @@
                         'Priority'=>ucfirst($task->priority),
                         'Designer'=>$task->designer?->name ?? '—',
                         'Assigned By'=>$task->assigner?->name ?? '—',
-                        'Due Date'=>$task->due_at?->format('d M Y, h:i A'),
+                        'Due Date'=>$task->due_at?->format('d M Y'),
                         'Total Creatives'=>$task->total_creatives,
-                        'Assigned At'=>$task->assigned_at?->format('d M Y, h:i A')
+                        'Assigned At'=>$task->assigned_at?->format('d M Y')
                     ] as $k=>$v)
                         <div class="info-item"><span>{{ $k }}</span><strong>{{ $v }}</strong></div>
                     @endforeach
@@ -76,7 +76,9 @@
                         <div class="requirement-row">
                             <div class="requirement-key">{{ ucwords(str_replace('_',' ',$key)) }}</div>
                             <div>
-                                @if(is_array($value))
+                                @if($key === 'board_details' && is_array($value))
+                                    @include('partials.board-details-table',['rows'=>$value])
+                                @elseif(is_array($value))
                                     @if(isset($value['square_feet']))
                                         {{ $value['width'] ?? '' }} × {{ $value['height'] ?? '' }} feet = {{ $value['square_feet'] }} sq.ft
                                     @else
@@ -112,7 +114,7 @@
                         @endphp
                         <div class="admin-edit-batch">
                             <div class="admin-edit-batch-head">
-                                {{ $first->editor?->name ?? 'User' }} · {{ $first->created_at?->format('d M Y, h:i A') }}
+                                {{ $first->editor?->name ?? 'User' }} · {{ $first->created_at?->format('d M Y') }}
                             </div>
                             @foreach($changes as $change)
                                 <div class="admin-edit-row">
@@ -139,7 +141,7 @@
                     @forelse($history as $event)
                         <div class="activity-item">
                             <strong>{{ $event->from_status ? ($statuses[$event->from_status] ?? $event->from_status).' → ' : '' }}{{ $statuses[$event->to_status] ?? $event->to_status }}</strong>
-                            <p>{{ $event->changedBy?->name ?? 'User' }} · {{ $event->created_at->format('d M Y, h:i A') }}</p>
+                            <p>{{ $event->changedBy?->name ?? 'User' }} · {{ $event->created_at->format('d M Y') }}</p>
                         </div>
                     @empty
                         <div class="empty-state">No pipeline activity.</div>
@@ -155,8 +157,8 @@
                     @forelse($comments as $comment)
                         <div class="activity-item">
                             <strong>{{ $comment->user?->name ?? 'User' }}</strong>
-                            <p style="white-space:pre-wrap">{{ $comment->comment }}</p>
-                            <p>{{ $comment->created_at->format('d M Y, h:i A') }}</p>
+                            <p style="white-space:pre-wrap;font-size:11px;font-weight:450;line-height:1.55">{{ $comment->comment }}</p>
+                            <p>{{ $comment->created_at->format('d M Y') }}</p>
                             @foreach($comment->attachments as $attachment)
                                 <div><a class="file-link" href="{{ $attachment->url }}" target="_blank">{{ $attachment->original_name }}</a></div>
                             @endforeach

@@ -50,7 +50,7 @@
         .task-card-link{display:block;color:inherit;text-decoration:none}
         .task-card-id{color:#7c8492;font-size:9px;font-weight:850}
         .task-card-name{margin-top:6px;font-size:12px;font-weight:900;line-height:1.35}
-        .task-card-client{margin-top:4px;color:#5f6877;font-size:10px}
+        .task-card-client{margin-top:4px;color:#5f6877;font-size:10px}.kanban-progress{margin-top:9px;padding:8px;border:1px solid #e7e9ef;border-radius:9px;background:#fff}.kanban-progress-head{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:8px;color:#667085}.kanban-progress-head strong{font-size:8px;color:#344054}.kanban-progress-track{height:6px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:6px}.kanban-progress-fill{height:100%;background:#e30613;border-radius:999px}
         .task-card-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
         .task-history-tag{display:inline-flex;align-items:center;min-height:22px;padding:3px 9px;border-radius:999px;font-size:8px;font-weight:950;letter-spacing:.055em;text-transform:uppercase;border:1px solid transparent}
         .task-tag-split{color:#6938ef;background:#f4f0ff;border-color:#d9d6fe}
@@ -81,7 +81,188 @@
             .bd-toolbar{grid-template-columns:1fr}
             .bd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
         }
-    </style>
+    
+    .kanban-rating{
+        margin-top:8px;
+        padding:8px 9px;
+        border:1px solid #f2e2a4;
+        border-radius:9px;
+        background:#fffaf0;
+    }
+    .kanban-rating-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        margin-bottom:4px;
+    }
+    .kanban-rating-label{
+        font-size:8px;
+        font-weight:900;
+        color:#7c5c00;
+        text-transform:uppercase;
+        letter-spacing:.03em;
+    }
+    .kanban-rating-value{
+        font-size:9px;
+        font-weight:900;
+        color:#6b4f00;
+        white-space:nowrap;
+    }
+    .kanban-rating-stars{
+        display:flex;
+        align-items:center;
+        gap:2px;
+        line-height:1;
+    }
+    .kanban-rating-star{
+        --star-fill:0%;
+        display:inline-block;
+        width:14px;
+        height:14px;
+        flex:0 0 14px;
+        font-size:14px;
+        line-height:14px;
+        font-family:Arial,"Segoe UI Symbol",sans-serif;
+        background:linear-gradient(
+            90deg,
+            #f5b301 0%,
+            #f5b301 var(--star-fill),
+            #d8dee8 var(--star-fill),
+            #d8dee8 100%
+        );
+        -webkit-background-clip:text;
+        background-clip:text;
+        -webkit-text-fill-color:transparent;
+        color:transparent;
+    }
+
+
+        /* Latest request status shown directly on each Kanban task card */
+        .task-card-tags{
+            display:flex;
+            flex-wrap:wrap;
+            gap:5px;
+            margin-top:8px;
+            min-width:0;
+        }
+        .task-request-status{
+            display:inline-flex;
+            align-items:center;
+            max-width:100%;
+            min-height:22px;
+            padding:4px 8px;
+            border-radius:999px;
+            border:1px solid transparent;
+            font-size:8px;
+            font-weight:950;
+            letter-spacing:.02em;
+            line-height:1.2;
+            white-space:normal;
+            overflow-wrap:anywhere;
+        }
+        .task-request-pending{
+            color:#9a6700;
+            background:#fffaeb;
+            border-color:#fedf89;
+        }
+        .task-request-approved{
+            color:#067647;
+            background:#ecfdf3;
+            border-color:#abefc6;
+        }
+        .task-request-declined{
+            color:#b42318;
+            background:#fff1f0;
+            border-color:#fecdca;
+        }
+        @media(max-width:520px){
+            .task-request-status{
+                font-size:7.5px;
+                padding:4px 7px;
+            }
+        }
+
+
+        /* Clean request indicator in the card header */
+        .task-card-head-row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;min-width:0}
+        .task-card-badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0;max-width:68%}
+        .task-card-badges-main{display:flex;gap:5px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+        .task-request-top{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            max-width:100%;
+            min-height:22px;
+            padding:4px 8px;
+            border-radius:999px;
+            border:1px solid transparent;
+            font-size:7.5px;
+            line-height:1.2;
+            font-weight:950;
+            letter-spacing:.025em;
+            text-transform:uppercase;
+            text-align:center;
+            overflow-wrap:anywhere;
+        }
+        .task-request-top.task-request-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}
+        .task-request-top.task-request-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}
+        .task-request-top.task-request-declined{color:#b42318;background:#fff1f0;border-color:#fecdca}
+        @media(max-width:520px){
+            .task-card-head-row{gap:7px}
+            .task-card-badges{max-width:72%}
+            .task-request-top{font-size:7px;padding:4px 6px}
+        }
+
+
+        /* Request status aligned with Task Name */
+        .task-name-request-row{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            margin-top:10px;
+            min-width:0;
+        }
+        .task-name-request-row .task-card-name{
+            margin:0!important;
+            flex:1;
+            min-width:0;
+        }
+        .task-request-inline{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            flex:0 0 auto;
+            max-width:52%;
+            min-height:21px;
+            padding:4px 8px;
+            border-radius:999px;
+            border:1px solid transparent;
+            font-size:7.5px;
+            line-height:1.1;
+            font-weight:950;
+            letter-spacing:.02em;
+            text-transform:uppercase;
+            text-align:center;
+            white-space:nowrap;
+        }
+        .task-request-inline.task-request-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}
+        .task-request-inline.task-request-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}
+        .task-request-inline.task-request-declined{color:#b42318;background:#fff1f0;border-color:#fecdca}
+        @media(max-width:520px){
+            .task-name-request-row{
+                align-items:flex-start;
+                gap:7px;
+            }
+            .task-request-inline{
+                font-size:7px;
+                padding:4px 6px;
+                max-width:48%;
+            }
+        }
+
+</style>
 
     <div class="page-head">
         <div>
@@ -182,27 +363,63 @@
                                 }
                             @endphp
 
-                            <article class="task-card {{ $dueClass }} {{ $task->status === 'waiting_confirmation' ? 'bd-draggable-card' : '' }}" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="bd-task-{{ $task->id }}">
+                            <article class="task-card {{ $dueClass }}" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="bd-task-{{ $task->id }}">
                                 <a class="task-card-link" href="{{ route('bd.tasks.show', $task) }}" draggable="false">
-                                    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                                    <div class="task-card-head-row">
                                         <span class="task-card-id">{{ $task->task_id }}</span>
 
-                                        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-                                            <span class="due-pill {{ $dueClass }}">{{ $dueLabel }}</span>
-                                            <span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span>
+                                        <div class="task-card-badges">
+                                            <div class="task-card-badges-main">
+                                                <span class="due-pill {{ $dueClass }}">{{ $dueLabel }}</span>
+                                                <span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span>
+                                            </div>
+
                                         </div>
                                     </div>
 
-                                    <div class="task-card-name">{{ $task->display_task_name ?? $task->task_name }}</div>
-                                    <div class="task-card-client">{{ ucfirst($task->party_type) }} · {{ $task->party_name }}</div>
+                                    <div class="task-name-request-row">
+                                        <div class="task-card-name">{{ $task->display_task_name ?? $task->task_name }}</div>
 
-                                    @if(!empty($taskTags[$task->id]))
-                                        <div class="task-card-tags">
-                                            @foreach($taskTags[$task->id] as $tag)
-                                                <span class="task-history-tag {{ $tag['class'] }}">{{ $tag['label'] }}</span>
-                                            @endforeach
-                                        </div>
-                                    @endif
+                                        @if(!empty($taskTags[$task->id][0]))
+                                            @php
+                                                $inlineRequest = $taskTags[$task->id][0];
+                                            @endphp
+                                            <span class="task-request-inline {{ $inlineRequest['class'] }}">
+                                                {{ $inlineRequest['label'] }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <div class="task-card-client">{{ ucfirst($task->party_type) }} · {{ $task->party_name }}</div>
+                                    @include('partials.kanban-task-progress', ['task' => $task])
+
+                                    
+
+                            @if($task->status === 'completed' && $task->bdReview && $task->bdReview->overall_rating !== null)
+                                @php
+                                    $kanbanRating = max(0, min(5, (float) $task->bdReview->overall_rating));
+                                @endphp
+                                <div class="kanban-rating">
+                                    <div class="kanban-rating-head">
+                                        <span class="kanban-rating-label">Overall Rating</span>
+                                        <span class="kanban-rating-value">{{ number_format($kanbanRating, 2) }} / 5</span>
+                                    </div>
+                                    <div class="kanban-rating-stars" aria-label="{{ number_format($kanbanRating, 1) }} out of 5 stars">
+                                        @for($ratingStarIndex = 1; $ratingStarIndex <= 5; $ratingStarIndex++)
+                                            @php
+                                                $ratingStarFill = $kanbanRating >= $ratingStarIndex
+                                                    ? 100
+                                                    : ($kanbanRating >= ($ratingStarIndex - 0.5) ? 50 : 0);
+                                            @endphp
+                                            <span
+                                                class="kanban-rating-star"
+                                                style="--star-fill:{{ $ratingStarFill }}%;"
+                                                aria-hidden="true"
+                                            >★</span>
+                                        @endfor
+                                    </div>
+                                </div>
+                            @endif
+
 
                                     <div class="task-card-meta">
                                         <div class="task-meta-item">
@@ -222,32 +439,20 @@
 
                                         <div class="task-meta-item">
                                             <strong>Due</strong>
-                                            {{ $dueAt->format('d M, h:i A') }}
+                                            {{ $dueAt->format('d M Y') }}
                                         </div>
                                     </div>
                                 </a>
 
                                 @if($task->status === 'waiting_confirmation')
                                     <div class="bd-card-actions">
-                                        <button
-                                            type="button"
-                                            class="bd-card-action bd-card-rework"
-                                            wire:click="markRework({{ $task->id }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="markRework({{ $task->id }}),markCompleted({{ $task->id }})"
-                                        >
-                                            Rework
-                                        </button>
-
-                                        <button
-                                            type="button"
+                                        <a
+                                            href="{{ route('bd.tasks.show', ['task' => $task, 'tab' => 'eod']) }}"
                                             class="bd-card-action bd-card-complete"
-                                            wire:click="markCompleted({{ $task->id }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="markRework({{ $task->id }}),markCompleted({{ $task->id }})"
+                                            style="text-decoration:none;text-align:center;width:100%"
                                         >
-                                            Completed
-                                        </button>
+                                            Review Task
+                                        </a>
                                     </div>
                                 @endif
                             </article>
@@ -292,66 +497,10 @@
                     },
 
                     refreshSortable(){
+                        // BD Kanban is intentionally view-only. Rework and Completion
+                        // require structured review data from the task detail page.
                         this.sortables.forEach(item => item.destroy());
                         this.sortables = [];
-
-                        document.querySelectorAll('[data-bd-kanban-list]').forEach(list => {
-                            this.sortables.push(new Sortable(list, {
-                                group: 'bd-kanban',
-                                animation: 180,
-                                ghostClass: 'sortable-ghost',
-                                chosenClass: 'sortable-chosen',
-                                fallbackOnBody: true,
-
-                                draggable: '.bd-draggable-card',
-
-                                onMove: event => {
-                                    const card = event.dragged;
-                                    const fromStatus = card?.dataset?.taskStatus;
-                                    const targetStatus = event.to?.dataset?.status;
-
-                                    return fromStatus === 'waiting_confirmation'
-                                        && ['rework', 'completed'].includes(targetStatus);
-                                },
-
-                                onEnd: event => {
-                                    const card = event.item;
-                                    const taskId = Number(card.dataset.taskId);
-                                    const fromStatus = card.dataset.taskStatus;
-                                    const targetStatus = event.to.dataset.status;
-
-                                    const valid = fromStatus === 'waiting_confirmation'
-                                        && ['rework', 'completed'].includes(targetStatus);
-
-                                    if (!valid) {
-                                        if (event.to !== event.from) {
-                                            event.to.removeChild(card);
-                                            event.from.insertBefore(
-                                                card,
-                                                event.from.children[event.oldIndex] ?? null
-                                            );
-                                        }
-
-                                        event.to.classList.add('kanban-invalid');
-                                        setTimeout(() => event.to.classList.remove('kanban-invalid'), 400);
-
-                                        this.showToast('BD can move tasks only from Waiting for Confirmation to Rework or Completed.');
-                                        return;
-                                    }
-
-                                    event.to.removeChild(card);
-                                    event.from.insertBefore(
-                                        card,
-                                        event.from.children[event.oldIndex] ?? null
-                                    );
-
-                                    this.$wire.moveTask(taskId, targetStatus)
-                                        .catch(() => {
-                                            this.showToast('Task could not be moved.');
-                                        });
-                                }
-                            }));
-                        });
                     },
 
 

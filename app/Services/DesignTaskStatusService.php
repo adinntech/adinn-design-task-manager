@@ -12,15 +12,15 @@ use Illuminate\Validation\ValidationException;
 class DesignTaskStatusService
 {
     public const STATUSES = [
-        'assigned_tasks' => 'Assigned Tasks',
-        'review_analysis' => 'Review and Analysis',
-        'need_clarification' => 'Need Clarification',
-        'yet_to_start' => 'Yet to Start',
+        'assigned_tasks' => 'New Assignments',
+        'review_analysis' => 'Requirement Review',
+        'need_clarification' => 'Clarification Needed',
+        'yet_to_start' => 'Ready to Start',
         'in_progress' => 'In Progress',
-        'waiting_confirmation' => 'Waiting for Confirmation',
+        'waiting_confirmation' => 'Waiting for BD Review',
         'rework' => 'Rework',
         'completed' => 'Completed',
-        'swap_tasks' => 'Swapped Tasks',
+        'swap_tasks' => 'Transferred Tasks',
     ];
 
     private const ORDER = [
@@ -40,7 +40,7 @@ class DesignTaskStatusService
         string $targetStatus,
         string $source = 'designer'
     ): DesignTask {
-        if ($designer->role !== 'designer' || (int) $task->designer_id !== (int) $designer->id) {
+        if ($designer->role !== 'designer') {
             throw new AuthorizationException('You are not allowed to update this task.');
         }
 
@@ -50,26 +50,54 @@ class DesignTaskStatusService
             ]);
         }
 
-        $fromStatus = $task->status;
+        return DB::transaction(function () use ($task, $designer, $targetStatus, $source) {
+            $lockedTask = DesignTask::query()->lockForUpdate()->findOrFail($task->id);
 
-        if (! $this->designerCanMove($fromStatus, $targetStatus)) {
-            throw ValidationException::withMessages([
-                'status' => 'This status movement is not permitted for the Designer.',
-            ]);
-        }
+            if ((int) $lockedTask->designer_id !== (int) $designer->id) {
+                throw new AuthorizationException('You are not allowed to update this task.');
+            }
 
-        return DB::transaction(function () use ($task, $designer, $targetStatus, $fromStatus, $source) {
-            $task->update(['status' => $targetStatus]);
+            $fromStatus = $lockedTask->status;
+
+            if (! $this->designerCanMove($fromStatus, $targetStatus)) {
+                throw ValidationException::withMessages([
+                    'status' => 'This status movement is not permitted for the Designer.',
+                ]);
+            }
+
+            if ($targetStatus === 'waiting_confirmation') {
+                $progressService = app(DesignTaskProgressService::class);
+
+                if ($progressService->percentage($lockedTask) < 100) {
+                    throw ValidationException::withMessages([
+                        'status' => 'BD Review is available only after creative progress reaches 100%.',
+                    ]);
+                }
+
+                if ($fromStatus === 'rework' && ! $progressService->currentReworkHasUpload($lockedTask)) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Upload the corrected Rework ZIP before sending the task for BD Review.',
+                    ]);
+                }
+            }
+
+            $lockedTask->update(['status' => $targetStatus]);
+
+            app(DesignTaskRequestService::class)->autoRejectPendingForStatus(
+                $lockedTask,
+                $targetStatus,
+                $designer
+            );
 
             DesignTaskStatusHistory::create([
-                'design_task_id' => $task->id,
+                'design_task_id' => $lockedTask->id,
                 'from_status' => $fromStatus,
                 'to_status' => $targetStatus,
                 'changed_by' => $designer->id,
                 'change_source' => $source,
             ]);
 
-            return $task->fresh();
+            return $lockedTask->fresh();
         });
     }
 
@@ -79,14 +107,14 @@ class DesignTaskStatusService
             return false;
         }
 
-        // Swapped Tasks is a system-controlled holding stage.
-        // Designers cannot drag a task into or out of it.
         if ($fromStatus === 'swap_tasks' || $targetStatus === 'swap_tasks') {
             return false;
         }
 
+        // After BD sends a task to Rework, the corrected ZIP is submitted in the
+        // Rework stage and the Designer returns it directly for BD confirmation.
         if ($fromStatus === 'rework') {
-            return $targetStatus === 'yet_to_start';
+            return $targetStatus === 'waiting_confirmation';
         }
 
         if (in_array($targetStatus, ['rework', 'completed'], true)) {
@@ -108,7 +136,7 @@ class DesignTaskStatusService
             'need_clarification' => 'yet_to_start',
             'yet_to_start' => 'in_progress',
             'in_progress' => 'waiting_confirmation',
-            'rework' => 'yet_to_start',
+            'rework' => 'waiting_confirmation',
             default => null,
         };
     }

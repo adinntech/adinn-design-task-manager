@@ -1,5 +1,5 @@
 @php
-    $titles = ['decline' => 'Decline Request', 'split' => 'Split Request', 'swap' => 'Swap Request'];
+    $titles = ['decline' => 'Decline Request', 'split' => 'Task Split Request', 'swap' => 'Task Transfer Request'];
 @endphp
 
 <div>
@@ -27,7 +27,11 @@
                 </div>
 
                 <div class="request-modal-body">
-<div>
+                    <div class="request-hint">
+                        This request does not change the task immediately. It becomes effective only when either the Designer Head or Admin approves it.
+                    </div>
+
+                    <div>
                         <label class="label">Reason *</label>
                         <textarea class="premium-textarea" rows="3" wire:model="reason" placeholder="Explain why this request is needed..."></textarea>
                         @error('reason') <div class="field-error">{{ $message }}</div> @enderror
@@ -79,11 +83,12 @@
                     @endif
 
                     <div>
-                        <label class="label">Attachment (optional)</label>
-                        <input type="file" wire:model="attachment">
-                        <div class="muted" style="margin-top:4px">Maximum 100 MB.</div>
-                        <div class="muted" wire:loading wire:target="attachment" style="margin-top:4px">Preparing attachment...</div>
-                        @error('attachment') <div class="field-error">{{ $message }}</div> @enderror
+                        <label class="label">Attachments (optional)</label>
+                        <input type="file" wire:model="attachments" multiple data-accumulate-files>
+                        <div class="multi-file-help">Add files one by one or select several together. Maximum 100 MB per file.</div>
+                        <div class="muted" wire:loading wire:target="attachments" style="margin-top:4px">Preparing attachments...</div>
+                        @error('attachments') <div class="field-error">{{ $message }}</div> @enderror
+                        @error('attachments.*') <div class="field-error">{{ $message }}</div> @enderror
                     </div>
 
                     @error('type') <div class="field-error">{{ $message }}</div> @enderror

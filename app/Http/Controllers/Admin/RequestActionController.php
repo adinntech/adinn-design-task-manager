@@ -15,7 +15,9 @@ class RequestActionController extends Controller
 {
     public function approve(Request $request, DesignTaskRequest $taskRequest, DesignTaskRequestService $service): RedirectResponse
     {
-        $rules = [];
+        $rules = [
+            'decision_comment' => ['nullable', 'string', 'max:5000'],
+        ];
         if ($taskRequest->request_type === 'decline') {
             $rules['approved_designer_id'] = [
                 'required',
@@ -34,7 +36,7 @@ class RequestActionController extends Controller
         if ($taskRequest->request_type === 'split') {
             $rules['approved_creative_count'] = ['required', 'integer', 'min:1'];
         }
-        $validated = $rules ? $request->validate($rules) : [];
+        $validated = $request->validate($rules);
 
         try {
             $service->approve(

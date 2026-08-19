@@ -66,7 +66,7 @@ class AuthenticatedSessionController extends Controller
     {
         return match ($role) {
             'admin' => redirect()->route('admin.dashboard'),
-            'bd' => redirect()->route('bd.tasks.index'),
+            'bd' => redirect()->route('bd.dashboard'),
             'designer' => redirect()->route('designer.tasks.index'),
             'designer_head' => redirect()->route('designer-head.dashboard'),
             default => abort(403, 'No workspace is configured for this role.'),

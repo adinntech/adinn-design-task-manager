@@ -3,12 +3,20 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DesignerHead\RequestActionController;
 use App\Http\Controllers\DesignerHead\TaskController;
+use App\Http\Controllers\DesignerHead\DashboardController;
 
 Route::middleware(['auth','role:designer_head'])
     ->prefix('designer-head')
     ->name('designer-head.')
     ->group(function () {
-        Route::view('/', 'designer-head.dashboard')->name('dashboard');
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+        Route::view('/assigned-tasks', 'designer-head.assigned-tasks')
+            ->name('assigned-tasks');
+
+        // Backward compatibility for older dashboard/bookmarked links.
+        Route::redirect('/all-tasks', '/designer-head/assigned-tasks')
+            ->name('all-tasks');
 
         Route::get('/tasks/{task}', [TaskController::class, 'show'])
             ->name('tasks.show');

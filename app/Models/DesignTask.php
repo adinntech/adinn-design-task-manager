@@ -83,4 +83,10 @@ class DesignTask extends Model
 
         return array_values($pills);
     }
+
+    public function bdReview()
+    {
+        return $this->hasOne(\App\Models\DesignTaskBdReview::class, 'design_task_id')->latestOfMany();
+    }
+
 }

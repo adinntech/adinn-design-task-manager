@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Bd;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -22,7 +23,7 @@ class TaskController extends Controller
         'signage' => ['mockup', 'creative_adaptation', 'new_creative', 'technical_drawing', 'three_d_design', 'technical_and_three_d'],
         'pop_offsets' => ['mockup_design', 'design_adaptation', 'creative_design'],
         'events_activations' => ['proposal_designs', 'element_design_with_creative', 'element_design_without_creative', 'three_d_layout'],
-        'media' => ['theatre_ads', 'newspaper_ads', 'fm', 'tv_ads'],
+        'media' => ['creative_adaptation', 'own_creative'],
     ];
 
     private const FILE_FIELDS = [
@@ -32,6 +33,7 @@ class TaskController extends Controller
         'fixture_details', 'material_specifications', 'dealer_details', 'technical_drawing', 'element_list',
         'requirement_list', 'brand_guidelines', 'previous_logo', 'client_audio', 'dimension_upload', 'size_upload',
         'video_clip', 'existing_audio_creative', 'sample_video_clip', 'creative_content_upload', 'logo_brand_image',
+        'company_details_upload', 'attachments',
     ];
 
     public function create()
@@ -161,6 +163,29 @@ class TaskController extends Controller
             $requirements['size_details'] = $sizeRows;
         }
 
+        $mediaSizeRows = collect($data['media_size_rows'] ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->filter(fn ($row) =>
+                filled($row['name'] ?? null)
+                || filled($row['width'] ?? null)
+                || filled($row['height'] ?? null)
+                || filled($row['ratio'] ?? null)
+            )
+            ->map(fn ($row) => [
+                'name' => trim((string) ($row['name'] ?? '')),
+                'width' => (float) ($row['width'] ?? 0),
+                'height' => (float) ($row['height'] ?? 0),
+                'ratio' => trim((string) ($row['ratio'] ?? '')),
+            ])
+            ->values()
+            ->all();
+
+        unset($requirements['media_size_rows']);
+
+        if ($mediaSizeRows !== []) {
+            $requirements['creative_size_details'] = $mediaSizeRows;
+        }
+
         $task = DB::transaction(function () use ($data): DesignTask {
             $task = DesignTask::create([
                 'task_id' => 'PENDING-'.Str::uuid(),
@@ -183,6 +208,24 @@ class TaskController extends Controller
 
             $task->update([
                 'task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $task->id),
+            ]);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => null,
+                'to_status' => 'assigned_tasks',
+                'changed_by' => auth()->id(),
+                'change_source' => 'task_created',
+                'note' => 'Task Created',
+            ]);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => 'assigned_tasks',
+                'to_status' => 'assigned_tasks',
+                'changed_by' => auth()->id(),
+                'change_source' => 'task_assigned',
+                'note' => 'Task Assigned',
             ]);
 
             return $task->fresh();
@@ -339,6 +382,9 @@ class TaskController extends Controller
 
         $common = [
             'description' => ['nullable', 'string', 'max:10000'],
+            'other_details' => ['nullable', 'string', 'max:10000'],
+            'reference_notes' => ['nullable', 'string', 'max:10000'],
+            'media_type' => ['nullable', Rule::in(['Theatre Ads', 'Newspaper Ads', 'TV Ads'])],
             'brand_name' => ['nullable', 'string', 'max:180'],
             'creative_contact_person' => ['nullable', 'string', 'max:120'],
             'creative_mobile_number' => ['nullable', 'digits:10'],
@@ -447,6 +493,48 @@ class TaskController extends Controller
             'dimension_rows.*.width' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
             'dimension_rows.*.height' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
             'dimension_rows.*.area' => ['nullable', 'numeric', 'min:0'],
+            'media_size_rows' => [
+                'nullable',
+                'array',
+                function (string $attribute, mixed $value, \Closure $fail) use ($vertical): void {
+                    if ($vertical !== 'media') {
+                        return;
+                    }
+
+                    $rows = collect(is_array($value) ? $value : [])
+                        ->filter(fn ($row) => is_array($row))
+                        ->filter(fn ($row) =>
+                            filled($row['name'] ?? null)
+                            || filled($row['width'] ?? null)
+                            || filled($row['height'] ?? null)
+                            || filled($row['ratio'] ?? null)
+                        );
+
+                    if ($rows->isEmpty()) {
+                        $fail('Add at least one complete Creative Size Details row.');
+                        return;
+                    }
+
+                    foreach ($rows as $row) {
+                        if (
+                            blank($row['name'] ?? null)
+                            || ! is_numeric($row['width'] ?? null)
+                            || (float) ($row['width'] ?? 0) <= 0
+                            || ! is_numeric($row['height'] ?? null)
+                            || (float) ($row['height'] ?? 0) <= 0
+                            || blank($row['ratio'] ?? null)
+                        ) {
+                            $fail('Complete Name, Width, Height and Ratio for every Creative Size Details row.');
+                            return;
+                        }
+                    }
+                },
+            ],
+            'media_size_rows.*.name' => ['nullable', 'string', 'max:180'],
+            'media_size_rows.*.width' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'media_size_rows.*.height' => ['nullable', 'numeric', 'min:0.01', 'max:99999'],
+            'media_size_rows.*.ratio' => ['nullable', 'string', 'max:100'],
+
             'size_rows' => [
                 'nullable',
                 'array',
@@ -533,10 +621,8 @@ class TaskController extends Controller
             'events_activations.element_design_without_creative' => ['description'],
             'events_activations.three_d_layout' => ['description', 'requirement_list'],
 
-            'media.theatre_ads' => ['media_task_nature', 'theatre_screen_name', 'ad_type', 'screen_width', 'screen_height'],
-            'media.newspaper_ads' => ['media_task_nature'],
-            'media.fm' => ['media_task_nature', 'fm_station', 'description'],
-            'media.tv_ads' => ['media_task_nature', 'tv_type', 'ad_type'],
+            'media.creative_adaptation' => ['media_type', 'description', 'creative'],
+            'media.own_creative' => ['media_type', 'description', 'company_details'],
 
             default => [],
         };
@@ -559,45 +645,16 @@ class TaskController extends Controller
         }
 
         if ($vertical === 'media') {
-            $mediaTaskNature = $request->input('media_task_nature');
+            $common['media_type'][0] = 'required';
+            $common['media_size_rows'][0] = 'required';
+            $common['description'][0] = 'required';
 
-            if ($nature === 'theatre_ads') {
-                $common['screen_ratio'][0] = 'required';
-
-                if ($mediaTaskNature === 'Creative Adaptation') {
-                    $common['description'][0] = 'required';
-                }
-
-                if ($mediaTaskNature === 'Own Creative') {
-                    $common['description'][0] = 'required';
-                    $common['company_details'][0] = 'required';
-                }
+            if ($nature === 'creative_adaptation') {
+                $common['creative'][0] = 'required';
             }
 
-            if ($nature === 'newspaper_ads') {
-                $common['description'][0] = 'required';
-                $common['creative_width'][0] = 'required';
-                $common['creative_height'][0] = 'required';
-                $common['size_unit'][0] = 'required';
-
-                if ($mediaTaskNature === 'Own Creative') {
-                    $common['company_details'][0] = 'required';
-                }
-            }
-
-            if ($nature === 'fm' && $mediaTaskNature === 'Own Creative') {
+            if ($nature === 'own_creative') {
                 $common['company_details'][0] = 'required';
-            }
-
-            if ($nature === 'tv_ads') {
-                $common['creative_width'][0] = 'required';
-                $common['creative_height'][0] = 'required';
-                $common['description'][0] = 'required';
-
-                if ($mediaTaskNature === 'Own Creative') {
-                    $common['company_details'][0] = 'required';
-                    $common['screen_ratio'][0] = 'required';
-                }
             }
         }
 

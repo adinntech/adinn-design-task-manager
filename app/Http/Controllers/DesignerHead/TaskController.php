@@ -11,6 +11,7 @@ use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Services\DesignTaskProgressService;
+use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -118,24 +119,12 @@ class TaskController extends Controller
             ->sum(fn (array $group) => count($group['files']));
         $commentAttachmentCount = $comments->sum(fn ($comment) => $comment->attachments->count());
 
-        $pipelineEvents = collect();
-        foreach ($history as $event) {
-            $pipelineEvents->push([
-                'title' => $event->note ?: $this->statusTitle($event->from_status, $event->to_status),
-                'description' => 'By '.($event->changedBy?->name ?? 'System'),
-                'role' => $event->changedBy?->role ?? 'default',
-                'created_at' => $event->created_at,
-            ]);
-        }
-        foreach ($comments as $comment) {
-            $pipelineEvents->push([
-                'title' => 'Comment Added',
-                'description' => 'By '.($comment->user?->name ?? 'User').' · '.Str::limit(trim((string) $comment->comment), 120),
-                'role' => $comment->user?->role ?? 'default',
-                'created_at' => $comment->created_at,
-            ]);
-        }
-        $pipelineEvents = $pipelineEvents->sortByDesc(fn ($event) => $event['created_at']?->getTimestamp() ?? 0)->values();
+        $pipelineEvents = app(DesignTaskPipelineService::class)->build(
+            $task,
+            $history,
+            $comments,
+            $editHistory
+        );
 
         return view('designer-head.tasks.show', [
             'task' => $task,
