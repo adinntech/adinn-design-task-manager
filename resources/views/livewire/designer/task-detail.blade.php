@@ -43,19 +43,26 @@
         .role-pill.role-designer{background:#eff6ff;color:#1d4ed8}.role-pill.role-bd{background:#ecfdf3;color:#15803d}.role-pill.role-designer_head{background:#f5f3ff;color:#6d28d9}.role-pill.role-admin{background:#fff1f2;color:#e30613}.role-pill.role-default{background:#f2f4f7;color:#667085}
         .history-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border:1px solid #ebe7ff;background:linear-gradient(180deg,#fbfaff 0%,#f7f5ff 100%);border-radius:12px;margin-bottom:12px}.history-header-title{font-size:13px;font-weight:900;color:#4f2db8;letter-spacing:-.01em}.history-count{display:inline-flex;align-items:center;justify-content:center;min-width:62px;padding:5px 9px;border-radius:999px;background:#efe9ff;color:#6d28d9;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.history-list{display:flex;flex-direction:column;gap:9px}.history-item{border:1px solid #e7e9ef;border-left:4px solid #d0d5dd;border-radius:12px;padding:12px 14px;background:#fff;box-shadow:0 2px 8px rgba(16,24,40,.025)}.history-item.role-designer{border-left-color:#2563eb}.history-item.role-bd{border-left-color:#e30613}.history-item.role-designer_head{border-left-color:#7c3aed}.history-item.role-admin{border-left-color:#111827}.history-event-title{font-size:12px;font-weight:900;color:#17191f;line-height:1.35}.history-meta{margin-top:5px;font-size:10px;color:#7a8494;line-height:1.55}.history-description{color:#4f5b6b;font-weight:600}.history-time{color:#98a2b3}.history-item:hover{border-color:#dfe3ea;box-shadow:0 5px 16px rgba(16,24,40,.045)}
         .special-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.special-detail-card{border:1px solid #e7e9ef;border-radius:12px;padding:12px;background:#fff}.special-detail-card span{display:block;font-size:9px;text-transform:uppercase;color:#7c8492;font-weight:800;letter-spacing:.05em}.special-detail-card strong{display:block;margin-top:5px;font-size:12px;color:#16181d}
-        .eod-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+        .eod-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
         .eod-stat{border:1px solid #e7e9ef;border-radius:12px;padding:13px;background:#fff}
         .eod-stat span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#7c8492;font-weight:850}
         .eod-stat strong{display:block;margin-top:5px;font-size:18px;color:#111827}
-        .eod-entry-form{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;padding:14px;border:1px solid #e7e9ef;border-radius:12px;background:#f9fafb;margin-bottom:14px}
-        .eod-field{min-width:220px;flex:1}
-        .eod-history{display:flex;flex-direction:column;gap:9px}
-        .eod-record{display:grid;grid-template-columns:1.1fr repeat(4,minmax(90px,.7fr));gap:10px;align-items:center;padding:12px 14px;border:1px solid #e7e9ef;border-radius:12px;background:#fff}
+        .eod-overall{margin-bottom:16px;padding:14px;border:1px solid #e7e9ef;border-radius:12px;background:#f9fafb}
+        .eod-overall-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px;font-weight:850;color:#344054}
+        .eod-overall-head strong{font-size:15px;color:#111827}
+        .eod-entry-card{padding:16px;border:1px solid #e7e9ef;border-radius:12px;background:#f9fafb;margin-bottom:16px}
+        .eod-entry-title{font-size:12px;font-weight:900;color:#111827;margin-bottom:12px}
+        .eod-entry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+        .eod-entry-card input[type=file]{padding:8px;border:1px solid #dfe2e8;border-radius:8px;background:#fff;font-size:10px;width:100%}
+        .eod-history{display:flex;flex-direction:column;gap:10px}
+        .eod-record{border:1px solid #e7e9ef;border-radius:12px;padding:13px 14px;background:#fff}
+        .eod-record-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid #f2f4f7}
         .eod-record-main strong{display:block;font-size:11px;color:#111827}
         .eod-record-main span{display:block;margin-top:3px;font-size:9px;color:#7c8492}
+        .eod-record-grid{display:grid;grid-template-columns:repeat(4,minmax(90px,1fr));gap:10px}
         .eod-record-cell span{display:block;font-size:8px;text-transform:uppercase;color:#98a2b3;font-weight:800;letter-spacing:.04em}
         .eod-record-cell strong{display:block;margin-top:3px;font-size:11px;color:#344054}
-        .eod-zero{color:#15803d!important}.eod-stat.rework-stat{background:#fff9eb;border-color:#f5d16a}.eod-stat.rework-stat span{color:#9a6700}.eod-stat.rework-stat strong{color:#7a5200}.eod-record.is-rework{border-color:#f2ce68;background:linear-gradient(180deg,#fffdf7,#fff9e8);box-shadow:inset 4px 0 0 #f5b301}.eod-record.is-progress{border-left:4px solid #d9dee7}.eod-kind{display:inline-flex;align-items:center;min-height:21px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:900;margin-bottom:5px}.eod-kind.rework{background:#fff0c2;color:#7a5200;border:1px solid #f2cf68}.eod-kind.progress{background:#f2f4f7;color:#475467;border:1px solid #e4e7ec}@media(max-width:900px){.eod-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.eod-summary{grid-template-columns:1fr}}
+        .eod-zero{color:#15803d!important}.eod-stat.rework-stat{background:#fff9eb;border-color:#f5d16a}.eod-stat.rework-stat span{color:#9a6700}.eod-stat.rework-stat strong{color:#7a5200}.eod-record.is-rework{border-color:#f2ce68;background:linear-gradient(180deg,#fffdf7,#fff9e8);box-shadow:inset 4px 0 0 #f5b301}.eod-record.is-progress{border-left:4px solid #d9dee7}.eod-kind{display:inline-flex;align-items:center;min-height:21px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:900;margin-bottom:5px}.eod-kind.rework{background:#fff0c2;color:#7a5200;border:1px solid #f2cf68}.eod-kind.progress{background:#f2f4f7;color:#475467;border:1px solid #e4e7ec}@media(max-width:900px){.eod-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.eod-record-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.eod-entry-grid{grid-template-columns:1fr}}@media(max-width:560px){.eod-summary{grid-template-columns:1fr}}
         .muted{color:#7c8492;font-size:10px}
         .attachment-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
         .attachment-download{display:inline-flex;align-items:center;justify-content:center;padding:6px 9px;border:1px solid #dfe3ea;border-radius:8px;background:#fff;color:#344054;font-size:9px;font-weight:850;text-decoration:none;white-space:nowrap}
@@ -90,7 +97,7 @@
         .edit-history-old{background:#fff1f1;border:1px solid #fecaca;color:#9b1c1c}.edit-history-old del{text-decoration-thickness:1.5px}
         .edit-history-new{background:#ecfdf3;border:1px solid #abefc6;color:#067647;font-weight:750}.edit-history-arrow{text-align:center;color:#98a2b3;font-weight:900}
 
-        .progress-card{padding:13px;border:1px solid #e7e9ef;border-radius:12px;background:#fff;margin-top:12px}.progress-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.progress-title{font-size:10px;font-weight:900;color:#344054}.progress-value{font-size:11px;font-weight:950}.progress-track{height:9px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:8px}.progress-fill{height:100%;border-radius:999px;transition:width .25s}.progress-start .progress-fill{background:#94a3b8}.progress-low .progress-fill{background:#f59e0b}.progress-mid .progress-fill{background:#3b82f6}.progress-high .progress-fill{background:#8b5cf6}.progress-complete .progress-fill{background:#16a34a}.progress-start .progress-value{color:#64748b}.progress-low .progress-value{color:#b45309}.progress-mid .progress-value{color:#1d4ed8}.progress-high .progress-value{color:#7c3aed}.progress-complete .progress-value{color:#15803d}.collapse-panel{border:1px solid #e7e9ef;border-radius:12px;background:#fff;margin-bottom:14px;overflow:hidden}.collapse-panel summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:11px;font-weight:900;color:#1d2939;display:flex;justify-content:space-between;align-items:center}.collapse-panel summary::-webkit-details-marker{display:none}.collapse-panel summary:after{content:'+';font-size:17px;color:#667085}.collapse-panel[open] summary:after{content:'−'}.collapse-panel .collapse-body{border-top:1px solid #eef0f3;padding:14px}.task-update-note{padding:10px 12px;border-radius:10px;background:#fffaeb;border:1px solid #fedf89;color:#93370d;font-size:10px;margin-bottom:12px}.rework-box{padding:13px;border:1px solid #fecaca;background:#fff7f7;border-radius:12px;margin-bottom:14px}.rework-flow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}.rework-flow-card{padding:11px;border:1px solid #fee2e2;border-radius:10px;background:#fff}.rework-flow-card span{display:block;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#991b1b}.rework-flow-card strong{display:block;margin-top:4px;font-size:15px;color:#111827}.rework-route-note{display:flex;gap:9px;align-items:flex-start;padding:10px 11px;border-radius:10px;background:#fff;border:1px solid #fed7aa;color:#9a3412;font-size:9px;line-height:1.5;margin:10px 0}.rework-upload-wrap{padding:12px;border:1px dashed #fca5a5;border-radius:10px;background:#fff}.rework-upload-wrap input[type=file]{width:100%;padding:9px;border:1px solid #e5e7eb;border-radius:8px;background:#fff}.rework-submit{margin-top:10px;min-width:190px}.rework-stage-note{padding:10px 12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:9px;line-height:1.5;margin-top:10px}@media(max-width:700px){.rework-flow-grid{grid-template-columns:1fr}}.update-file{margin-top:8px;font-size:9px}.history-section-title{font-size:11px;font-weight:900;margin:18px 0 9px;color:#1d2939}.history-section-title:first-child{margin-top:0}
+        .progress-card{padding:13px;border:1px solid #e7e9ef;border-radius:12px;background:#fff;margin-top:12px}.progress-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.progress-title{font-size:10px;font-weight:900;color:#344054}.progress-value{font-size:11px;font-weight:950}.progress-track{height:9px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:8px}.progress-fill{height:100%;border-radius:999px;transition:width .25s}.progress-summary{margin-top:8px;font-size:9px;font-weight:750;color:#667085;text-align:left}.progress-start .progress-fill{background:#94a3b8}.progress-low .progress-fill{background:#f59e0b}.progress-mid .progress-fill{background:#3b82f6}.progress-high .progress-fill{background:#8b5cf6}.progress-complete .progress-fill{background:#16a34a}.progress-start .progress-value{color:#64748b}.progress-low .progress-value{color:#b45309}.progress-mid .progress-value{color:#1d4ed8}.progress-high .progress-value{color:#7c3aed}.progress-complete .progress-value{color:#15803d}.collapse-panel{border:1px solid #e7e9ef;border-radius:12px;background:#fff;margin-bottom:14px;overflow:hidden}.collapse-panel summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:11px;font-weight:900;color:#1d2939;display:flex;justify-content:space-between;align-items:center}.collapse-panel summary::-webkit-details-marker{display:none}.collapse-panel summary:after{content:'+';font-size:17px;color:#667085}.collapse-panel[open] summary:after{content:'−'}.collapse-panel .collapse-body{border-top:1px solid #eef0f3;padding:14px}.task-update-note{padding:10px 12px;border-radius:10px;background:#fffaeb;border:1px solid #fedf89;color:#93370d;font-size:10px;margin-bottom:12px}.rework-box{padding:13px;border:1px solid #fecaca;background:#fff7f7;border-radius:12px;margin-bottom:14px}.rework-flow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}.rework-flow-card{padding:11px;border:1px solid #fee2e2;border-radius:10px;background:#fff}.rework-flow-card span{display:block;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#991b1b}.rework-flow-card strong{display:block;margin-top:4px;font-size:15px;color:#111827}.rework-route-note{display:flex;gap:9px;align-items:flex-start;padding:10px 11px;border-radius:10px;background:#fff;border:1px solid #fed7aa;color:#9a3412;font-size:9px;line-height:1.5;margin:10px 0}.rework-upload-wrap{padding:12px;border:1px dashed #fca5a5;border-radius:10px;background:#fff}.rework-upload-wrap input[type=file]{width:100%;padding:9px;border:1px solid #e5e7eb;border-radius:8px;background:#fff}.rework-submit{margin-top:10px;min-width:190px}.rework-stage-note{padding:10px 12px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:9px;line-height:1.5;margin-top:10px}@media(max-width:700px){.rework-flow-grid{grid-template-columns:1fr}}.update-file{margin-top:8px;font-size:9px}.history-section-title{font-size:11px;font-weight:900;margin:18px 0 9px;color:#1d2939}.history-section-title:first-child{margin-top:0}
     
         .history-switcher{display:flex;gap:6px;padding:6px;background:#f4f5f7;border:1px solid #e4e7ec;border-radius:12px;margin-bottom:14px;width:max-content}
         .history-switch-btn{border:0;background:transparent;color:#667085;border-radius:8px;padding:8px 13px;font-size:10px;font-weight:900;cursor:pointer;transition:.16s ease}
@@ -563,9 +570,10 @@
                         <div class="progress-card progress-{{ $progressColorKey }}">
                             <div class="progress-head">
                                 <span class="progress-title">Creative Progress</span>
-                                <span class="progress-value">{{ $eodCompletedTotal }} / {{ $task->total_creatives }} · {{ $progressPercentage }}%</span>
+                                <span class="progress-value">{{ $progressPercentage }}%</span>
                             </div>
                             <div class="progress-track"><div class="progress-fill" style="width:{{ $progressPercentage }}%"></div></div>
+                            <div class="progress-summary">{{ $eodCompletedTotal }} of {{ $task->total_creatives }} creatives completed • {{ $eodRemaining }} remaining</div>
                         </div>
                         @endif
 
@@ -757,6 +765,14 @@
                 </div>
     
                 <div class="panel-body">
+                    <div class="eod-overall">
+                        <div class="eod-overall-head">
+                            <span>Overall Completion</span>
+                            <strong>{{ $progressPercentage }}%</strong>
+                        </div>
+                        <div class="progress-track"><div class="progress-fill" style="width:{{ $progressPercentage }}%"></div></div>
+                    </div>
+
                     <div class="eod-summary">
                         <div class="eod-stat">
                             <span>Total Creatives</span>
@@ -864,36 +880,40 @@
                             Progress Updates history is view-only.
                         </div>
                     @elseif($task->status === 'in_progress' && $eodRemaining > 0)
-                        <div class="eod-entry-form">
-                            <div class="eod-field">
-                                <label class="label" for="eodCompletedCount">Progress Added</label>
-                                <input
-                                    id="eodCompletedCount"
-                                    class="premium-input"
-                                    type="number"
-                                    min="1"
-                                    max="{{ $eodRemaining }}"
-                                    wire:model="eodCompletedCount"
-                                    placeholder="Enter completed creatives"
-                                >
-                                @error('eodCompletedCount')
-                                    <div class="muted" style="color:#b4232f;margin-top:5px">{{ $message }}</div>
-                                @enderror
-                            </div>
-    
-                            <div class="eod-field">
-                                <label class="label">Progress Updates ZIP *</label>
-                                <input class="field" type="file" accept=".zip,application/zip" wire:model="taskUpdateAttachment">
-                                @error('taskUpdateAttachment')<div class="error">{{ $message }}</div>@enderror
+                        <div class="eod-entry-card">
+                            <div class="eod-entry-title">Add Progress Update</div>
+                            <div class="eod-entry-grid">
+                                <div class="eod-field">
+                                    <label class="label" for="eodCompletedCount">Creatives Completed Now</label>
+                                    <input
+                                        id="eodCompletedCount"
+                                        class="premium-input"
+                                        type="number"
+                                        min="1"
+                                        max="{{ $eodRemaining }}"
+                                        wire:model="eodCompletedCount"
+                                        placeholder="e.g. 10"
+                                    >
+                                    @error('eodCompletedCount')
+                                        <div class="muted" style="color:#b4232f;margin-top:5px">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="eod-field">
+                                    <label class="label">Progress Updates ZIP *</label>
+                                    <input class="field" type="file" accept=".zip,application/zip" wire:model="taskUpdateAttachment">
+                                    @error('taskUpdateAttachment')<div class="error">{{ $message }}</div>@enderror
+                                </div>
                             </div>
                             <button
                                 class="btn btn-primary"
+                                style="margin-top:12px"
                                 wire:click="submitEod"
                                 wire:loading.attr="disabled"
                                 wire:target="submitEod"
                                 wire:loading.class="is-loading"
                             >
-                                Submit Progress Updates
+                                Submit Progress Update
                             </button>
                         </div>
                     @elseif(in_array($task->status, ['waiting_confirmation','completed'], true))
@@ -908,36 +928,42 @@
                                 $isReworkRecord = ($record->update_type ?? 'progress') === 'rework';
                             @endphp
                             <div class="eod-record {{ $isReworkRecord ? 'is-rework' : 'is-progress' }}">
-                                <div class="eod-record-main">
-                                    <span class="eod-kind {{ $isReworkRecord ? 'rework' : 'progress' }}">{{ $isReworkRecord ? 'Rework Submission' : 'Progress Submission' }}</span>
-                                    <strong>Submitted by {{ $record->designer?->name ?? 'Designer' }}</strong>
-                                    <span>{{ $record->submitted_at->format('d M Y · h:i A') }}</span>
-                                    @if($record->attachment_url)
-                                        <a class="update-file" target="_blank" href="{{ $record->attachment_url }}">{{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
-                                    @endif
-                                    @if(($record->update_type ?? 'progress') === 'rework')
-                                        <span class="badge badge-danger" style="margin-top:5px">Rework #{{ $record->rework_count_snapshot }}</span>
-                                    @endif
+                                <div class="eod-record-head">
+                                    <div class="eod-record-main">
+                                        <span class="eod-kind {{ $isReworkRecord ? 'rework' : 'progress' }}">{{ $isReworkRecord ? 'Rework Submission' : 'Progress Submission' }}</span>
+                                        <strong>Submitted by {{ $record->designer?->name ?? 'Designer' }}</strong>
+                                        <span>{{ $record->submitted_at->format('d M Y · h:i A') }}</span>
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                                        @if(($record->update_type ?? 'progress') === 'rework')
+                                            <span class="badge badge-danger">Rework #{{ $record->rework_count_snapshot }}</span>
+                                        @endif
+                                        @if($record->attachment_url)
+                                            <a class="update-file" target="_blank" href="{{ $record->attachment_url }}">{{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
+                                        @endif
+                                    </div>
                                 </div>
-    
-                                <div class="eod-record-cell">
-                                    <span>{{ $isReworkRecord ? 'Reworked Creatives' : 'Progress Added' }}</span>
-                                    <strong>{{ $record->completed_count }}</strong>
-                                </div>
-    
-                                <div class="eod-record-cell">
-                                    <span>Total Creatives</span>
-                                    <strong>{{ $record->total_creatives_snapshot }}</strong>
-                                </div>
-    
-                                <div class="eod-record-cell">
-                                    <span>Total Completed</span>
-                                    <strong>{{ $record->cumulative_completed }}</strong>
-                                </div>
-    
-                                <div class="eod-record-cell">
-                                    <span>Remaining</span>
-                                    <strong class="{{ $record->remaining_creatives === 0 ? 'eod-zero' : '' }}">{{ $record->remaining_creatives }}</strong>
+
+                                <div class="eod-record-grid">
+                                    <div class="eod-record-cell">
+                                        <span>{{ $isReworkRecord ? 'Reworked Creatives' : 'Progress Added' }}</span>
+                                        <strong>{{ $record->completed_count }}</strong>
+                                    </div>
+
+                                    <div class="eod-record-cell">
+                                        <span>Total Creatives</span>
+                                        <strong>{{ $record->total_creatives_snapshot }}</strong>
+                                    </div>
+
+                                    <div class="eod-record-cell">
+                                        <span>Total Completed</span>
+                                        <strong>{{ $record->cumulative_completed }}</strong>
+                                    </div>
+
+                                    <div class="eod-record-cell">
+                                        <span>Remaining</span>
+                                        <strong class="{{ $record->remaining_creatives === 0 ? 'eod-zero' : '' }}">{{ $record->remaining_creatives }}</strong>
+                                    </div>
                                 </div>
                             </div>
                         @empty
