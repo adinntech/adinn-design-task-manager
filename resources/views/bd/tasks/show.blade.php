@@ -737,7 +737,7 @@
                             </div>
                             <div class="bd-review-actions">
                                 <button type="submit" class="btn bd-danger-btn">Rework</button>
-                                <button type="button" class="btn bd-complete-btn" @click="showRating = !showRating">Completed</button>
+                                <button type="button" class="btn bd-complete-btn" @click="showRating = !showRating">Mark As Completed</button>
                             </div>
                         </form>
 

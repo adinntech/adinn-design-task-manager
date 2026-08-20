@@ -63,6 +63,7 @@ class TaskRequestModal extends Component
         return User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
+            ->where('id', '!=', Auth::id())
             ->orderBy('name')
             ->get(['id', 'name']);
     }

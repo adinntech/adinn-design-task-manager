@@ -54,7 +54,7 @@
                         <div>
                             <label class="label">Preferred Designer (optional)</label>
                             <select class="premium-select" wire:model="targetDesignerId">
-                                <option value="">Keep with current designer</option>
+                                <option value="">No preference</option>
                                 @foreach($designers as $designer)
                                     <option value="{{ $designer->id }}">{{ $designer->name }}</option>
                                 @endforeach

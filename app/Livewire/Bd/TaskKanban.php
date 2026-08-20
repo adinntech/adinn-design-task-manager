@@ -132,6 +132,14 @@ class TaskKanban extends Component
             ->groupBy('design_task_id');
 
         return $tasks->mapWithKeys(function (DesignTask $task) use ($requests) {
+            if (data_get($task->requirements, '_split_from_task_id')) {
+                return [$task->id => [[
+                    'key' => 'latest-request',
+                    'label' => 'Split Task',
+                    'class' => 'task-request-status task-request-approved',
+                ]]];
+            }
+
             $latestRequest = $requests->get($task->id, collect())->first();
 
             if (! $latestRequest) {
@@ -159,6 +167,14 @@ class TaskKanban extends Component
                         'class' => 'task-request-status task-request-approved',
                     ]],
                 ];
+            }
+
+            if ($latestRequest->request_type === 'split' && $latestRequest->overall_status === 'approved') {
+                return [$task->id => [[
+                    'key' => 'latest-request',
+                    'label' => 'Split Task',
+                    'class' => 'task-request-status task-request-approved',
+                ]]];
             }
 
             $statusLabel = $isPending
