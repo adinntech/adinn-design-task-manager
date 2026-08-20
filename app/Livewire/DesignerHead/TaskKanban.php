@@ -47,9 +47,23 @@ class TaskKanban extends Component
             ->orderBy('due_at')
             ->get();
 
-        return $tasks
+        $tasks = $tasks
             ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
             ->values();
+
+        $declinedTaskIds = DesignTaskRequest::query()
+            ->where('request_type', 'decline')
+            ->where('overall_status', 'approved')
+            ->whereNotNull('approved_designer_id')
+            ->whereIn('design_task_id', $tasks->pluck('id'))
+            ->pluck('design_task_id')
+            ->all();
+
+        return $tasks->each(function (DesignTask $task) use ($declinedTaskIds) {
+            if (in_array($task->id, $declinedTaskIds, true)) {
+                $task->status = 'decline_tasks';
+            }
+        });
     }
 
     public function getPendingRequestsProperty()
@@ -137,6 +151,7 @@ class TaskKanban extends Component
             unset($statuses['swap_tasks']);
             $statuses['swap_tasks'] = 'Swapped Tasks';
         }
+        $statuses['decline_tasks'] = 'Decline Tasks';
 
         return view('livewire.designer-head.task-kanban', [
             'statuses' => $statuses,
