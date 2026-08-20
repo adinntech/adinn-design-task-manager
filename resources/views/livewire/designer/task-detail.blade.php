@@ -939,7 +939,9 @@
                                             <span class="badge badge-danger">Rework #{{ $record->rework_count_snapshot }}</span>
                                         @endif
                                         @if($record->attachment_url)
-                                            <a class="update-file" target="_blank" href="{{ $record->attachment_url }}">{{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
+                                            <a class="attachment-download" target="_blank" href="{{ $record->attachment_url }}" title="Download">⬇ {{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
+                                        @else
+                                            <span class="muted" style="font-size:9px">No file available</span>
                                         @endif
                                     </div>
                                 </div>

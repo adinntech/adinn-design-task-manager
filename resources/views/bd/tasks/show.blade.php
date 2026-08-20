@@ -673,8 +673,11 @@
                             <strong>Submitted By</strong>
                             {{ $record->designer?->name ?? '—' }}<br>
                             {{ $record->submitted_at?->format('d M Y · h:i A') }}
+                            <br>
                             @if($record->attachment_url)
-                                <br><a target="_blank" href="{{ $record->attachment_url }}">{{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
+                                <a class="bd-file-btn bd-file-download" target="_blank" href="{{ $record->attachment_url }}" title="Download">⬇ {{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
+                            @else
+                                <span class="muted" style="font-size:9px">No file available</span>
                             @endif
                         </div>
                         <div>
