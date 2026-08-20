@@ -260,16 +260,19 @@
 
             @if($nextStatus)
                 @php
+                    $hasPendingDecline = in_array('decline', $pendingRequestTypes, true);
                     $waitingForBdReviewBlocked = $nextStatus === 'waiting_confirmation' && $progressPercentage < 100;
+                    $moveBlocked = $hasPendingDecline || $waitingForBdReviewBlocked;
+                    $moveBlockedReason = $hasPendingDecline ? 'Resolve the pending Decline request first.' : 'Complete 100% creative progress first.';
                 @endphp
                 <div style="display:flex;flex-direction:column;align-items:stretch">
                     <button
                         type="button"
-                        class="btn btn-primary {{ $waitingForBdReviewBlocked ? 'btn-progress-disabled' : '' }}"
-                        @if($waitingForBdReviewBlocked)
+                        class="btn btn-primary {{ $moveBlocked ? 'btn-progress-disabled' : '' }}"
+                        @if($moveBlocked)
                             disabled
                             aria-disabled="true"
-                            title="Complete 100% creative progress first."
+                            title="{{ $moveBlockedReason }}"
                         @else
                             wire:click="moveToNextStatus"
                             wire:loading.attr="disabled"
@@ -282,8 +285,8 @@
                             Move to {{ $statuses[$nextStatus] ?? ucwords(str_replace('_', ' ', $nextStatus)) }}
                         @endif
                     </button>
-                    @if($waitingForBdReviewBlocked)
-                        <div class="progress-gate-note">Complete 100% creative progress first.</div>
+                    @if($moveBlocked)
+                        <div class="progress-gate-note">{{ $moveBlockedReason }}</div>
                     @endif
                 </div>
             @endif
@@ -579,8 +582,10 @@
                             @endif
                         @elseif($nextStatus)
                             @php
+                                $sidebarPendingDecline = in_array('decline', $pendingRequestTypes, true);
                                 $waitingGateBlocked = $nextStatus === 'waiting_confirmation'
                                     && $progressPercentage < 100;
+                                $sidebarMoveBlocked = $sidebarPendingDecline || $waitingGateBlocked;
                             @endphp
 
                             <button
@@ -589,14 +594,14 @@
                                 wire:click="moveToNextStatus"
                                 wire:loading.attr="disabled"
                                 wire:target="moveToNextStatus"
-                                @disabled($waitingGateBlocked)
+                                @disabled($sidebarMoveBlocked)
                             >
                                 {{ $nextStatus === 'waiting_confirmation' ? 'Move to Waiting for BD Review' : 'Move to Next Stage' }}
                             </button>
 
-                            @if($waitingGateBlocked)
+                            @if($sidebarMoveBlocked)
                                 <div class="muted" style="margin-top:7px;color:#b45309">
-                                    Complete 100% creative progress first.
+                                    {{ $sidebarPendingDecline ? 'Resolve the pending Decline request first.' : 'Complete 100% creative progress first.' }}
                                 </div>
                             @endif
                         @endif

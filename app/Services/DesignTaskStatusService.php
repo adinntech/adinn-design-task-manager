@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DesignTask;
+use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -58,6 +59,18 @@ class DesignTaskStatusService
             }
 
             $fromStatus = $lockedTask->status;
+
+            $hasPendingDecline = DesignTaskRequest::query()
+                ->where('design_task_id', $lockedTask->id)
+                ->where('request_type', 'decline')
+                ->whereIn('overall_status', ['pending_approval', 'pending_designer_head', 'pending_admin'])
+                ->exists();
+
+            if ($hasPendingDecline) {
+                throw ValidationException::withMessages([
+                    'status' => 'This task has a pending Decline request. Status cannot be changed until it is resolved.',
+                ]);
+            }
 
             if (! $this->designerCanMove($fromStatus, $targetStatus)) {
                 throw ValidationException::withMessages([
