@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskEditHistory;
+use App\Models\DesignTaskEodRecord;
+use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
+use App\Services\DesignTaskPipelineService;
+use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,16 +85,25 @@ class TaskMonitoringController extends Controller
         $task->load(['designer:id,name,email', 'assigner:id,name,email']);
 
         $history = DesignTaskStatusHistory::query()
-            ->with('changedBy:id,name')
+            ->with('changedBy:id,name,role')
             ->where('design_task_id', $task->id)
             ->latest()
             ->get();
 
         $comments = DesignTaskComment::query()
-            ->with(['user:id,name', 'attachments'])
+            ->with(['user:id,name,role', 'attachments'])
             ->where('design_task_id', $task->id)
             ->latest()
             ->get();
+
+        $clarificationComments = $comments
+            ->where('status_at_comment', 'need_clarification')
+            ->sortBy('created_at')
+            ->values();
+
+        $generalComments = $comments
+            ->reject(fn ($c) => $c->status_at_comment === 'need_clarification')
+            ->values();
 
         $statuses = DesignTaskStatusService::STATUSES;
 
@@ -108,15 +121,92 @@ class TaskMonitoringController extends Controller
         $requirementAttachmentGroups = $this->collectRequirementAttachments($task->requirements ?? []);
         $requirementAttachmentCount = collect($requirementAttachmentGroups)
             ->sum(fn ($group) => count($group['files']));
+        $commentAttachmentCount = $comments->sum(fn ($comment) => $comment->attachments->count());
+
+        $requestRelations = [
+            'requester:id,name,role',
+            'targetDesigner:id,name',
+            'approvedDesigner:id,name',
+            'designerHeadActor:id,name,role',
+            'adminActor:id,name,role',
+        ];
+
+        $declineRequests = DesignTaskRequest::query()
+            ->with($requestRelations)
+            ->where('request_type', 'decline')
+            ->where('design_task_id', $task->id)
+            ->latest()
+            ->get();
+
+        $splitRequests = DesignTaskRequest::query()
+            ->with($requestRelations)
+            ->where('request_type', 'split')
+            ->where(function ($query) use ($task) {
+                $query->where('design_task_id', $task->id);
+
+                $originatingRequestId = data_get($task->requirements, '_split_request_id');
+                if ($originatingRequestId) {
+                    $query->orWhere('id', $originatingRequestId);
+                }
+            })
+            ->latest()
+            ->get();
+
+        $swapRequests = DesignTaskRequest::query()
+            ->with($requestRelations)
+            ->where('request_type', 'swap')
+            ->where(function ($query) use ($task) {
+                $query->where('design_task_id', $task->id);
+
+                $swapRequestId = data_get($task->requirements, '_swap_request_id');
+                if ($swapRequestId) {
+                    $query->orWhere('id', $swapRequestId);
+                }
+            })
+            ->latest()
+            ->get();
+
+        $eodRecords = DesignTaskEodRecord::query()
+            ->with('designer:id,name,role')
+            ->where('design_task_id', $task->id)
+            ->latest('submitted_at')
+            ->get();
+
+        $progressService = app(DesignTaskProgressService::class);
+        $eodCompletedTotal = $progressService->completed($task);
+        $eodRemaining = $progressService->remaining($task);
+        $progressPercentage = $progressService->percentage($task);
+        $progressColorKey = $progressService->colorKey($progressPercentage);
+        $reworkCount = $progressService->reworkCount($task);
+
+        $pipelineEvents = app(DesignTaskPipelineService::class)->build(
+            $task,
+            $history,
+            $comments,
+            $editHistory
+        );
 
         return view('admin.tasks.show', compact(
             'task',
             'history',
             'comments',
+            'generalComments',
+            'clarificationComments',
             'statuses',
             'editHistory',
             'requirementAttachmentGroups',
-            'requirementAttachmentCount'
+            'requirementAttachmentCount',
+            'commentAttachmentCount',
+            'declineRequests',
+            'splitRequests',
+            'swapRequests',
+            'eodRecords',
+            'eodCompletedTotal',
+            'eodRemaining',
+            'progressPercentage',
+            'progressColorKey',
+            'reworkCount',
+            'pipelineEvents'
         ));
     }
 
