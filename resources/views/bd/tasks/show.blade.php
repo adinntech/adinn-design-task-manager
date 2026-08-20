@@ -297,7 +297,7 @@
         @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
             <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates</button>
         @endif
-        @if($task->status === 'completed' && $taskRating)
+        @if($task->status === 'completed')
             <button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings</button>
         @endif
     </div>
@@ -798,7 +798,7 @@
     </section>
     @endif
 
-    @if($task->status === 'completed' && $taskRating)
+    @if($task->status === 'completed')
     <section class="bd-tab-panel" x-show="tab==='ratings'" x-cloak>
         <div class="panel">
             <div class="panel-header">
@@ -809,6 +809,9 @@
             </div>
 
             <div class="panel-body">
+                @if(! $taskRating)
+                    <div class="empty-state">No rating available.</div>
+                @else
                 @php
                     $overallRatingValue = max(0, min(5, (float) $taskRating->overall_rating));
                 @endphp
@@ -886,6 +889,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
     </section>

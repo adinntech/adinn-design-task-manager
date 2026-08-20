@@ -24,6 +24,7 @@
 
     .bd-comment-feed{display:flex;flex-direction:column;gap:10px}.bd-comment{margin:0;padding:14px;border-radius:13px;background:#fff;border:1px solid #eaecf0;box-shadow:0 2px 8px rgba(16,24,40,.025)}.bd-comment-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.bd-comment-person{display:flex;align-items:center;gap:9px;min-width:0}.bd-comment-avatar{width:30px;height:30px;border-radius:9px;background:#f2f4f7;display:grid;place-items:center;font-size:10px;font-weight:950;color:#344054;flex:0 0 auto}.bd-comment-name{font-size:10px;font-weight:900;color:#101828}.bd-comment-date{font-size:8px;color:#98a2b3;margin-top:2px}.bd-comment-message{margin-top:8px;font-size:10px;line-height:1.65;color:#344054;font-weight:450;white-space:pre-wrap}.bd-comment-files{margin-top:11px;display:flex;flex-direction:column;gap:6px}.bd-comment-file{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 9px;border:1px solid #eaecf0;border-radius:9px;background:#fafbfc}.bd-comment-file-primary{min-width:0;display:flex;align-items:center;gap:7px}.bd-comment-file-name{font-size:9px;font-weight:750;color:#344054;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.bd-comment-open{font-size:8px;font-weight:900;color:#e30613;text-decoration:none}.bd-comment-download{font-size:8px;font-weight:800;color:#667085;text-decoration:none}
 
+    .rating-summary-shell{border:1px solid #f1d07a;border-radius:14px;background:linear-gradient(180deg,#fffdf7 0%,#fff9e9 100%);padding:14px;box-shadow:0 4px 14px rgba(245,179,1,.06)}.rating-summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.rating-summary-kicker{font-size:8px;font-weight:950;letter-spacing:.045em;text-transform:uppercase;color:#8a6200}.rating-summary-score{font-size:14px;font-weight:950;color:#624600;white-space:nowrap}.rating-summary-stars{display:flex;align-items:center;gap:4px;margin-top:7px;line-height:1}.rating-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.rating-compact-item{border:1px solid #eee3bd;border-radius:11px;background:rgba(255,255,255,.74);padding:10px 11px;min-width:0}.rating-compact-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.rating-compact-label{font-size:8px;font-weight:950;color:#5f6470;text-transform:uppercase;letter-spacing:.025em;line-height:1.35}.rating-compact-score{font-size:10px;font-weight:950;color:#5d4300;white-space:nowrap}.rating-compact-stars{display:flex;align-items:center;gap:3px;margin-top:7px;line-height:1}.rating-static-star{--star-fill:0%;display:inline-block;width:17px;height:17px;flex:0 0 17px;font-size:17px;line-height:17px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}.rating-overall-item{border-color:#efcc69;background:#fffaf0}.rating-meta-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:10px}.rating-comment-compact,.rating-submitted-compact{border:1px solid #e8e2cf;border-radius:10px;background:#fff;padding:10px 11px;font-size:9px;line-height:1.5;color:#475467}.rating-comment-compact strong,.rating-submitted-compact strong{color:#101828;font-weight:900}.rating-submitted-compact{min-width:220px}@media(max-width:760px){.rating-compact-grid{grid-template-columns:1fr}.rating-meta-row{grid-template-columns:1fr}.rating-submitted-compact{min-width:0}}
 </style>
 
 <div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview' }">
@@ -59,6 +60,7 @@
         @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
             <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates</button>
         @endif
+        @if($task->status === 'completed')<button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings</button>@endif
     </div>
 
     <section class="bd-tab-panel" x-show="tab==='overview'">
@@ -274,6 +276,58 @@
             </div>
         </div>
     </section>
+    @endif
+
+    @if($task->status === 'completed')
+    <section class="bd-tab-panel" x-show="tab==='ratings'" x-cloak><div class="panel"><div class="panel-header"><div><div class="panel-title">Ratings</div><div style="font-size:9px;color:#667085;margin-top:3px">Final BD rating submitted when the task was completed.</div></div></div><div class="panel-body">
+        @if(! $taskRating)
+            <div class="empty-state">No rating available.</div>
+        @else
+            @php $overallRatingValue = max(0, min(5, (float) $taskRating->overall_rating)); @endphp
+            <div class="rating-summary-shell">
+                <div class="rating-summary-top">
+                    <div>
+                        <div class="rating-summary-kicker">Overall Rating</div>
+                        <div class="rating-summary-stars" aria-label="{{ number_format($overallRatingValue, 2) }} out of 5 stars">
+                            @for($starIndex = 1; $starIndex <= 5; $starIndex++)
+                                @php $starFill = $overallRatingValue >= $starIndex ? 100 : ($overallRatingValue >= ($starIndex - 0.5) ? 50 : 0); @endphp
+                                <span class="rating-static-star" style="--star-fill:{{ $starFill }}%;" aria-hidden="true">★</span>
+                            @endfor
+                        </div>
+                    </div>
+                    <div class="rating-summary-score">{{ \App\Models\DesignTaskBdReview::formatRating($overallRatingValue) }} / 5</div>
+                </div>
+                <div class="rating-compact-grid">
+                    @foreach([
+                        'Designer Attitude' => $taskRating->designer_attitude,
+                        'Design Satisfaction' => $taskRating->design_satisfaction,
+                        'Rework Iteration' => $taskRating->rework_iteration,
+                        'Meeting Deadline' => $taskRating->meeting_deadline,
+                        'Client Satisfaction' => $taskRating->client_satisfaction,
+                        'Overall Rating' => $taskRating->overall_rating,
+                    ] as $label => $value)
+                        @php $ratingValue = max(0, min(5, (float) $value)); @endphp
+                        <div class="rating-compact-item {{ $label === 'Overall Rating' ? 'rating-overall-item' : '' }}">
+                            <div class="rating-compact-head">
+                                <span class="rating-compact-label">{{ $label }}</span>
+                                <span class="rating-compact-score">{{ \App\Models\DesignTaskBdReview::formatRating($ratingValue) }} / 5</span>
+                            </div>
+                            <div class="rating-compact-stars" aria-label="{{ number_format($ratingValue, 1) }} out of 5 stars">
+                                @for($starIndex = 1; $starIndex <= 5; $starIndex++)
+                                    @php $starFill = $ratingValue >= $starIndex ? 100 : ($ratingValue >= ($starIndex - 0.5) ? 50 : 0); @endphp
+                                    <span class="rating-static-star" style="--star-fill:{{ $starFill }}%;" aria-hidden="true">★</span>
+                                @endfor
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="rating-meta-row">
+                    <div class="rating-comment-compact"><strong>Comments</strong><br>{{ $taskRating->comment ?: 'No comments added.' }}</div>
+                    <div class="rating-submitted-compact">Submitted by <strong>{{ $taskRating->submitter?->name ?? 'BD' }}</strong><br><span>{{ $taskRating->created_at?->format('d M Y') }}</span></div>
+                </div>
+            </div>
+        @endif
+    </div></div></section>
     @endif
 </div>
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
@@ -186,6 +187,13 @@ class TaskMonitoringController extends Controller
             $editHistory
         );
 
+        $taskRating = DesignTaskBdReview::query()
+            ->with('submitter:id,name,role')
+            ->where('design_task_id', $task->id)
+            ->where('action', 'completed')
+            ->latest()
+            ->first();
+
         return view('admin.tasks.show', compact(
             'task',
             'history',
@@ -204,6 +212,7 @@ class TaskMonitoringController extends Controller
             'eodCompletedTotal',
             'eodRemaining',
             'progressPercentage',
+            'taskRating',
             'progressColorKey',
             'reworkCount',
             'pipelineEvents'

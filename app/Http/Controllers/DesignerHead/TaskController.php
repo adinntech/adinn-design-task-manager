@@ -4,6 +4,7 @@ namespace App\Http\Controllers\DesignerHead;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskCommentAttachment;
 use App\Models\DesignTaskEditHistory;
@@ -126,11 +127,19 @@ class TaskController extends Controller
             $editHistory
         );
 
+        $taskRating = DesignTaskBdReview::query()
+            ->with('submitter:id,name,role')
+            ->where('design_task_id', $task->id)
+            ->where('action', 'completed')
+            ->latest()
+            ->first();
+
         return view('designer-head.tasks.show', [
             'task' => $task,
             'statuses' => DesignTaskStatusService::STATUSES,
             'comments' => $comments,
             'pipelineEvents' => $pipelineEvents,
+            'taskRating' => $taskRating,
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,
             'declineRequests' => $declineRequests,

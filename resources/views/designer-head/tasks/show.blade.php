@@ -17,7 +17,7 @@
     @media(max-width:750px){.bd-request-grid{grid-template-columns:1fr}.bd-edit-values{grid-template-columns:1fr}.bd-arrow{transform:rotate(90deg)}.bd-eod-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.bd-eod-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:560px){.bd-eod-summary{grid-template-columns:1fr}}
 
-        .progress-card{padding:13px;border:1px solid #e7e9ef;border-radius:12px;background:#fff;margin-top:12px}.progress-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.progress-title{font-size:10px;font-weight:900;color:#344054}.progress-value{font-size:11px;font-weight:950}.progress-track{height:9px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:8px}.progress-fill{height:100%;border-radius:999px;transition:width .25s}.progress-summary{margin-top:8px;font-size:9px;font-weight:750;color:#667085;text-align:left}.progress-start .progress-fill{background:#94a3b8}.progress-low .progress-fill{background:#f59e0b}.progress-mid .progress-fill{background:#3b82f6}.progress-high .progress-fill{background:#8b5cf6}.progress-complete .progress-fill{background:#16a34a}.progress-start .progress-value{color:#64748b}.progress-low .progress-value{color:#b45309}.progress-mid .progress-value{color:#1d4ed8}.progress-high .progress-value{color:#7c3aed}.progress-complete .progress-value{color:#15803d}.collapse-panel{border:1px solid #e7e9ef;border-radius:12px;background:#fff;margin-bottom:14px;overflow:hidden}.collapse-panel summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:11px;font-weight:900;color:#1d2939;display:flex;justify-content:space-between;align-items:center}.collapse-panel summary::-webkit-details-marker{display:none}.collapse-panel summary:after{content:'+';font-size:17px;color:#667085}.collapse-panel[open] summary:after{content:'−'}.collapse-panel .collapse-body{border-top:1px solid #eef0f3;padding:14px}.task-update-note{padding:10px 12px;border-radius:10px;background:#fffaeb;border:1px solid #fedf89;color:#93370d;font-size:10px;margin-bottom:12px}.rework-box{padding:13px;border:1px solid #fecaca;background:#fff7f7;border-radius:12px;margin-bottom:14px}.update-file{margin-top:8px;font-size:9px}.history-section-title{font-size:11px;font-weight:900;margin:18px 0 9px;color:#1d2939}.history-section-title:first-child{margin-top:0}
+        .progress-card{padding:13px;border:1px solid #e7e9ef;border-radius:12px;background:#fff;margin-top:12px}.progress-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.progress-title{font-size:10px;font-weight:900;color:#344054}.progress-value{font-size:11px;font-weight:950}.progress-track{height:9px;background:#eef0f3;border-radius:999px;overflow:hidden;margin-top:8px}.progress-fill{height:100%;border-radius:999px;transition:width .25s}.progress-summary{margin-top:8px;font-size:9px;font-weight:750;color:#667085;text-align:left}.progress-start .progress-fill{background:#94a3b8}.progress-low .progress-fill{background:#f59e0b}.progress-mid .progress-fill{background:#3b82f6}.progress-high .progress-fill{background:#8b5cf6}.progress-complete .progress-fill{background:#16a34a}.progress-start .progress-value{color:#64748b}.progress-low .progress-value{color:#b45309}.progress-mid .progress-value{color:#1d4ed8}.progress-high .progress-value{color:#7c3aed}.progress-complete .progress-value{color:#15803d}.collapse-panel{border:1px solid #e7e9ef;border-radius:12px;background:#fff;margin-bottom:14px;overflow:hidden}.collapse-panel summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:11px;font-weight:900;color:#1d2939;display:flex;justify-content:space-between;align-items:center}.collapse-panel summary::-webkit-details-marker{display:none}.collapse-panel summary:after{content:'+';font-size:17px;color:#667085}.collapse-panel[open] summary:after{content:'−'}.collapse-panel .collapse-body{border-top:1px solid #eef0f3;padding:14px}.task-update-note{padding:10px 12px;border-radius:10px;background:#fffaeb;border:1px solid #fedf89;color:#93370d;font-size:10px;margin-bottom:12px}.rework-box{padding:13px;border:1px solid #fecaca;background:#fff7f7;border-radius:12px;margin-bottom:14px}.update-file{margin-top:8px;font-size:9px}.history-section-title{font-size:11px;font-weight:900;margin:18px 0 9px;color:#1d2939}.history-section-title:first-child{margin-top:0}.rating-summary-shell{border:1px solid #f1d07a;border-radius:14px;background:linear-gradient(180deg,#fffdf7 0%,#fff9e9 100%);padding:14px;box-shadow:0 4px 14px rgba(245,179,1,.06)}.rating-summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.rating-summary-kicker{font-size:8px;font-weight:950;letter-spacing:.045em;text-transform:uppercase;color:#8a6200}.rating-summary-score{font-size:14px;font-weight:950;color:#624600;white-space:nowrap}.rating-summary-stars{display:flex;align-items:center;gap:4px;margin-top:7px;line-height:1}.rating-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.rating-compact-item{border:1px solid #eee3bd;border-radius:11px;background:rgba(255,255,255,.74);padding:10px 11px;min-width:0}.rating-compact-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.rating-compact-label{font-size:8px;font-weight:950;color:#5f6470;text-transform:uppercase;letter-spacing:.025em;line-height:1.35}.rating-compact-score{font-size:10px;font-weight:950;color:#5d4300;white-space:nowrap}.rating-compact-stars{display:flex;align-items:center;gap:3px;margin-top:7px;line-height:1}.rating-static-star{--star-fill:0%;display:inline-block;width:17px;height:17px;flex:0 0 17px;font-size:17px;line-height:17px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}.rating-overall-item{border-color:#efcc69;background:#fffaf0}.rating-meta-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:10px}.rating-comment-compact,.rating-submitted-compact{border:1px solid #e8e2cf;border-radius:10px;background:#fff;padding:10px 11px;font-size:9px;line-height:1.5;color:#475467}.rating-comment-compact strong,.rating-submitted-compact strong{color:#101828;font-weight:900}.rating-submitted-compact{min-width:220px}@media(max-width:760px){.rating-compact-grid{grid-template-columns:1fr}.rating-meta-row{grid-template-columns:1fr}.rating-submitted-compact{min-width:0}}
 
         .history-switcher{display:flex;gap:6px;padding:6px;background:#f4f5f7;border:1px solid #e4e7ec;border-radius:12px;margin-bottom:14px;width:max-content}
         .history-switch-btn{border:0;background:transparent;color:#667085;border-radius:8px;padding:8px 13px;font-size:10px;font-weight:900;cursor:pointer;transition:.16s ease}
@@ -131,6 +131,7 @@
         @if($declineRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='decline-details'}" @click="tab='decline-details'">Decline Request Details</button>@endif
         <button class="bd-detail-tab" :class="{active:tab==='history'}" @click="tab='history'">History</button>
         <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates</button>
+        @if($task->status === 'completed')<button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings</button>@endif
     </div>
 
     <section class="bd-tab-panel" x-show="tab==='overview'">
@@ -620,5 +621,57 @@
             <div class="empty-state">No Progress Updates records have been submitted yet.</div>
         @endforelse
     </div></div></section>
+
+    @if($task->status === 'completed')
+    <section class="bd-tab-panel" x-show="tab==='ratings'" x-cloak><div class="panel"><div class="panel-header"><div><div class="panel-title">Ratings</div><div style="font-size:9px;color:#667085;margin-top:3px">Final BD rating submitted when the task was completed.</div></div></div><div class="panel-body">
+        @if(! $taskRating)
+            <div class="empty-state">No rating available.</div>
+        @else
+            @php $overallRatingValue = max(0, min(5, (float) $taskRating->overall_rating)); @endphp
+            <div class="rating-summary-shell">
+                <div class="rating-summary-top">
+                    <div>
+                        <div class="rating-summary-kicker">Overall Rating</div>
+                        <div class="rating-summary-stars" aria-label="{{ number_format($overallRatingValue, 2) }} out of 5 stars">
+                            @for($starIndex = 1; $starIndex <= 5; $starIndex++)
+                                @php $starFill = $overallRatingValue >= $starIndex ? 100 : ($overallRatingValue >= ($starIndex - 0.5) ? 50 : 0); @endphp
+                                <span class="rating-static-star" style="--star-fill:{{ $starFill }}%;" aria-hidden="true">★</span>
+                            @endfor
+                        </div>
+                    </div>
+                    <div class="rating-summary-score">{{ \App\Models\DesignTaskBdReview::formatRating($overallRatingValue) }} / 5</div>
+                </div>
+                <div class="rating-compact-grid">
+                    @foreach([
+                        'Designer Attitude' => $taskRating->designer_attitude,
+                        'Design Satisfaction' => $taskRating->design_satisfaction,
+                        'Rework Iteration' => $taskRating->rework_iteration,
+                        'Meeting Deadline' => $taskRating->meeting_deadline,
+                        'Client Satisfaction' => $taskRating->client_satisfaction,
+                        'Overall Rating' => $taskRating->overall_rating,
+                    ] as $label => $value)
+                        @php $ratingValue = max(0, min(5, (float) $value)); @endphp
+                        <div class="rating-compact-item {{ $label === 'Overall Rating' ? 'rating-overall-item' : '' }}">
+                            <div class="rating-compact-head">
+                                <span class="rating-compact-label">{{ $label }}</span>
+                                <span class="rating-compact-score">{{ \App\Models\DesignTaskBdReview::formatRating($ratingValue) }} / 5</span>
+                            </div>
+                            <div class="rating-compact-stars" aria-label="{{ number_format($ratingValue, 1) }} out of 5 stars">
+                                @for($starIndex = 1; $starIndex <= 5; $starIndex++)
+                                    @php $starFill = $ratingValue >= $starIndex ? 100 : ($ratingValue >= ($starIndex - 0.5) ? 50 : 0); @endphp
+                                    <span class="rating-static-star" style="--star-fill:{{ $starFill }}%;" aria-hidden="true">★</span>
+                                @endfor
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="rating-meta-row">
+                    <div class="rating-comment-compact"><strong>Comments</strong><br>{{ $taskRating->comment ?: 'No comments added.' }}</div>
+                    <div class="rating-submitted-compact">Submitted by <strong>{{ $taskRating->submitter?->name ?? 'BD' }}</strong><br><span>{{ $taskRating->created_at?->format('d M Y') }}</span></div>
+                </div>
+            </div>
+        @endif
+    </div></div></section>
+    @endif
 </div>
 @endsection

@@ -679,6 +679,12 @@ class TaskDetail extends Component
                 ->where('action', 'rework')
                 ->latest()
                 ->first(),
+            'taskRating' => DesignTaskBdReview::query()
+                ->with('submitter:id,name,role')
+                ->where('design_task_id', $this->task->id)
+                ->where('action', 'completed')
+                ->latest()
+                ->first(),
             'isCommentOnlySwap' => $this->isSwapShadowTask(),
             'requests' => $requests = DesignTaskRequest::query()
                 ->with([
