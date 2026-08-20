@@ -53,6 +53,10 @@ class AssignedTaskController extends Controller
             ->sortBy('created_at')
             ->values();
 
+        $generalComments = $comments
+            ->reject(fn ($c) => $c->status_at_comment === 'need_clarification')
+            ->values();
+
         $history = DesignTaskStatusHistory::query()
             ->with('changedBy:id,name,role')
             ->where('design_task_id', $task->id)
@@ -143,6 +147,7 @@ class AssignedTaskController extends Controller
             'task' => $task,
             'statuses' => DesignTaskStatusService::STATUSES,
             'comments' => $comments,
+            'generalComments' => $generalComments,
             'clarificationComments' => $clarificationComments,
             'pipelineEvents' => $pipelineEvents,
             'splitRequests' => $splitRequests,

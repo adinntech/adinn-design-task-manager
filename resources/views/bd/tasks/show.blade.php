@@ -290,6 +290,7 @@
         @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Split Details</button>@endif
         @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Swap Details</button>@endif
         <button class="bd-detail-tab" :class="{active:tab==='history'}" @click="tab='history'">History</button>
+        @if($clarificationComments->isNotEmpty())<button class="bd-detail-tab" @click="tab='overview'; $nextTick(() => { $refs.clarificationSection.open = true; $refs.clarificationSection.scrollIntoView({behavior:'smooth'}); })">Clarification</button>@endif
         @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
             <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates</button>
         @endif
@@ -341,7 +342,7 @@
                     $showClarification = $task->status === 'need_clarification' || $clarificationComments->isNotEmpty();
                 @endphp
                 @if($showClarification)
-                <details class="collapse-panel" open>
+                <details class="collapse-panel" open x-ref="clarificationSection">
                     <summary><span class="collapse-summary-title">Clarification <span class="bd-tab-count">{{ $clarificationComments->count() }}</span></span></summary>
                     <div class="collapse-body">
                         <div class="bd-comment-feed">
@@ -434,13 +435,13 @@
                     <div class="panel-title">Comments</div>
                     <div style="font-size:9px;color:#667085;margin-top:4px">Shared communication between BD and Designer.</div>
                 </div>
-                <span class="bd-tab-count">{{ $comments->count() }}</span>
+                <span class="bd-tab-count">{{ $generalComments->count() }}</span>
             </div>
 
             <div class="panel-body">
                 <div class="bd-comments-shell">
                     <div class="bd-comment-feed">
-                        @forelse($comments as $comment)
+                        @forelse($generalComments as $comment)
                             @php
                                 $bdCommentName = $comment->user?->name ?? 'User';
                                 $bdCommentInitial = strtoupper(mb_substr($bdCommentName, 0, 1));

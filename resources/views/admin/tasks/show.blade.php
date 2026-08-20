@@ -72,28 +72,20 @@
             <div class="panel-body">
                 <div class="requirement-list">
                     @forelse(($task->requirements ?? []) as $key=>$value)
-                        @continue(str_starts_with((string)$key,'_'))
+                        @php
+                            $isRequirementFile = (is_string($value) && str_contains($value,'/') && !filter_var($value,FILTER_VALIDATE_URL))
+                                || (is_array($value) && collect($value)->contains(fn($item) => is_string($item) && str_contains($item,'/') && !filter_var($item,FILTER_VALIDATE_URL)));
+                        @endphp
+                        @continue(str_starts_with((string)$key,'_') || $isRequirementFile)
                         <div class="requirement-row">
                             <div class="requirement-key">{{ ucwords(str_replace('_',' ',$key)) }}</div>
                             <div>
                                 @if($key === 'board_details' && is_array($value))
                                     @include('partials.board-details-table',['rows'=>$value])
-                                @elseif(is_array($value))
-                                    @if(isset($value['square_feet']))
-                                        {{ $value['width'] ?? '' }} × {{ $value['height'] ?? '' }} feet = {{ $value['square_feet'] }} sq.ft
-                                    @else
-                                        @foreach($value as $item)
-                                            @if(is_string($item) && str_contains($item,'/'))
-                                                <div><a class="file-link" href="{{ Storage::disk('spaces')->url($item) }}" target="_blank">{{ basename($item) }}</a></div>
-                                            @else
-                                                <div>{{ is_scalar($item) ? $item : json_encode($item) }}</div>
-                                            @endif
-                                        @endforeach
-                                    @endif
-                                @elseif(is_string($value) && str_contains($value,'/'))
-                                    <a class="file-link" href="{{ Storage::disk('spaces')->url($value) }}" target="_blank">{{ basename($value) }}</a>
+                                @elseif(is_array($value) && isset($value['square_feet']))
+                                    {{ $value['width'] ?? '' }} × {{ $value['height'] ?? '' }} feet = {{ $value['square_feet'] }} sq.ft
                                 @else
-                                    {{ $value }}
+                                    {{ is_array($value) ? json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) : $value }}
                                 @endif
                             </div>
                         </div>
@@ -101,6 +93,30 @@
                         <div class="empty-state">No requirement data available.</div>
                     @endforelse
                 </div>
+            </div>
+        </section>
+
+        <section class="panel" style="margin-top:14px">
+            <div class="panel-header"><div class="panel-title">Attachments <span class="bd-tab-count">{{ $requirementAttachmentCount }}</span></div></div>
+            <div class="panel-body">
+                @forelse($requirementAttachmentGroups as $group)
+                    <div class="bd-attachment-group">
+                        <div class="bd-attachment-title">{{ $group['label'] }}</div>
+                        @foreach($group['files'] as $file)
+                            <div class="bd-file">
+                                <div class="bd-file-main">
+                                    <div class="bd-file-name" title="{{ $file['name'] }}">{{ $file['name'] }}</div>
+                                </div>
+                                <div class="bd-file-actions">
+                                    <a class="bd-file-btn bd-file-open" target="_blank" href="{{ $file['url'] }}">Open</a>
+                                    <a class="bd-file-btn bd-file-download" href="{{ $file['url'] }}" download>Download</a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @empty
+                    <div class="empty-state">No task creation/edit attachments.</div>
+                @endforelse
             </div>
         </section>
 

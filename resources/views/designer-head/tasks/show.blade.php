@@ -148,8 +148,25 @@
                         <div class="requirement-row"><div class="requirement-key">{{ ucwords(str_replace('_',' ',$key)) }}</div><div>{{ is_array($value) ? json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) : $value }}</div></div>
                     @empty<div class="empty-state">No requirement data available.</div>@endforelse
                 </div></div></details>
-                <details class="collapse-panel"><summary>Attachments <span class="bd-tab-count">{{ $requirementAttachmentCount }}</span></summary><div class="collapse-body">
-                    @forelse($requirementAttachmentGroups as $group)<div class="bd-attachment-group"><div class="bd-attachment-title">{{ $group['label'] }}</div>@foreach($group['files'] as $file)<div class="bd-file"><div class="bd-file-name">{{ $file['name'] }}</div><a class="btn btn-secondary" target="_blank" href="{{ $file['url'] }}">Open</a></div>@endforeach</div>@empty<div class="empty-state">No task creation/edit attachments.</div>@endforelse
+                <details class="collapse-panel"><summary><span class="collapse-summary-title">Attachments <span class="bd-tab-count">{{ $requirementAttachmentCount }}</span></span></summary><div class="collapse-body">
+                    @forelse($requirementAttachmentGroups as $group)
+                        <div class="bd-attachment-group">
+                            <div class="bd-attachment-title">{{ $group['label'] }}</div>
+                            @foreach($group['files'] as $file)
+                                <div class="bd-file">
+                                    <div class="bd-file-main">
+                                        <div class="bd-file-name" title="{{ $file['name'] }}">{{ $file['name'] }}</div>
+                                    </div>
+                                    <div class="bd-file-actions">
+                                        <a class="bd-file-btn bd-file-open" target="_blank" href="{{ $file['url'] }}">Open</a>
+                                        <a class="bd-file-btn bd-file-download" href="{{ $file['url'] }}" download>Download</a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @empty
+                        <div class="empty-state">No task creation/edit attachments.</div>
+                    @endforelse
                 </div></details>
             </div>
             <aside><section class="panel"><div class="panel-header"><div class="panel-title">Current Status</div></div><div class="panel-body"><span class="badge badge-red">{{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</span><div class="progress-card progress-{{ $progressColorKey }}"><div class="progress-head"><span class="progress-title">Creative Progress</span><span class="progress-value">{{ $eodCompletedTotal }} / {{ $task->total_creatives }} · {{ $progressPercentage }}%</span></div><div class="progress-track"><div class="progress-fill" style="width:{{ $progressPercentage }}%"></div></div></div><div class="activity-item" style="margin-top:12px"><strong>Assigned Designer</strong><p>{{ $task->designer?->name ?? '—' }}</p></div><div class="activity-item" style="margin-top:8px"><strong>Due Date</strong><p>{{ $task->due_at?->format('d M Y, h:i A') }}</p></div></div></section></aside>

@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -104,13 +105,70 @@ class TaskMonitoringController extends Controller
                 ->groupBy('edit_batch_id');
         }
 
+        $requirementAttachmentGroups = $this->collectRequirementAttachments($task->requirements ?? []);
+        $requirementAttachmentCount = collect($requirementAttachmentGroups)
+            ->sum(fn ($group) => count($group['files']));
+
         return view('admin.tasks.show', compact(
             'task',
             'history',
             'comments',
             'statuses',
-            'editHistory'
+            'editHistory',
+            'requirementAttachmentGroups',
+            'requirementAttachmentCount'
         ));
+    }
+
+    private function collectRequirementAttachments(array $requirements): array
+    {
+        $groups = [];
+        foreach ($requirements as $key => $value) {
+            if (str_starts_with((string) $key, '_')) {
+                continue;
+            }
+            $files = [];
+            $this->extractStoredFiles($value, $files);
+            if ($files === []) {
+                continue;
+            }
+            $groups[] = [
+                'key' => (string) $key,
+                'label' => Str::headline((string) $key),
+                'files' => $files,
+            ];
+        }
+        return $groups;
+    }
+
+    private function extractStoredFiles(mixed $value, array &$files): void
+    {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                $this->extractStoredFiles($item, $files);
+            }
+            return;
+        }
+
+        if (! is_string($value) || ! $this->looksLikeStoredFilePath($value)) {
+            return;
+        }
+
+        $files[] = [
+            'path' => $value,
+            'name' => basename($value),
+            'extension' => strtoupper(pathinfo($value, PATHINFO_EXTENSION) ?: 'FILE'),
+            'url' => Storage::disk('spaces')->url($value),
+        ];
+    }
+
+    private function looksLikeStoredFilePath(string $value): bool
+    {
+        $value = trim($value);
+        return $value !== ''
+            && ! filter_var($value, FILTER_VALIDATE_URL)
+            && str_contains($value, '/')
+            && pathinfo($value, PATHINFO_EXTENSION) !== '';
     }
 
     public function edit(DesignTask $task): View

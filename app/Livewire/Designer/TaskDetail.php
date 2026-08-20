@@ -550,6 +550,10 @@ class TaskDetail extends Component
             ->sortBy('created_at')
             ->values();
 
+        $generalComments = $comments
+            ->reject(fn ($c) => $c->status_at_comment === 'need_clarification')
+            ->values();
+
         $requirementAttachmentGroups = $this->collectRequirementAttachments(
             $this->task->requirements ?? []
         );
@@ -638,6 +642,7 @@ class TaskDetail extends Component
                 ? null
                 : app(DesignTaskStatusService::class)->nextDesignerStatus($this->task->status),
             'comments' => $comments,
+            'generalComments' => $generalComments,
             'clarificationComments' => $clarificationComments,
             'history' => $history = DesignTaskStatusHistory::query()
                 ->with('changedBy:id,name,role')

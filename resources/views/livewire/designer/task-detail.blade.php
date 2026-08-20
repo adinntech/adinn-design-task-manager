@@ -310,6 +310,7 @@
             <button class="detail-tab" :class="{ active: tab === 'swap-details' }" @click="tab = 'swap-details'">Task Transfer Details</button>
         @endif
         <button class="detail-tab" :class="{ active: tab === 'history' }" @click="tab = 'history'">History</button>
+        @if($clarificationComments->isNotEmpty())<button class="detail-tab" @click="tab = 'overview'; $nextTick(() => { $refs.clarificationSection.open = true; $refs.clarificationSection.scrollIntoView({behavior:'smooth'}); })">Clarification</button>@endif
         @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
             <button class="detail-tab" :class="{ active: tab === 'eod' }" @click="tab = 'eod'">Progress Updates</button>
         @endif
@@ -397,14 +398,16 @@
                     <summary>Attachments <span class="tab-count">{{ $requirementAttachmentCount }}</span></summary>
                     <div class="collapse-body">
                         @forelse($requirementAttachmentGroups as $group)
-                            <div class="attachment-group">
-                                <h3>{{ $group['label'] }}</h3>
+                            <div class="bd-attachment-group">
+                                <div class="bd-attachment-title">{{ $group['label'] }}</div>
                                 @foreach($group['files'] as $file)
-                                    <div class="attachment-file">
-                                        <span>{{ $file['name'] }}</span>
-                                        <div class="attachment-actions">
-                                            <a class="file-link" href="#" @click.prevent="openAttachment('{{ $file['url'] }}', '{{ $file['name'] }}', '{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($file['path'])]) }}')">Open</a>
-                                            <a class="attachment-download" href="{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($file['path'])]) }}">Download</a>
+                                    <div class="bd-file">
+                                        <div class="bd-file-main">
+                                            <div class="bd-file-name" title="{{ $file['name'] }}">{{ $file['name'] }}</div>
+                                        </div>
+                                        <div class="bd-file-actions">
+                                            <a class="bd-file-btn bd-file-open" target="_blank" href="{{ $file['url'] }}">Open</a>
+                                            <a class="bd-file-btn bd-file-download" href="{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($file['path'])]) }}">Download</a>
                                         </div>
                                     </div>
                                 @endforeach
@@ -419,7 +422,7 @@
                     $showClarification = $task->status === 'need_clarification' || $clarificationComments->isNotEmpty();
                 @endphp
                 @if($showClarification)
-                <details class="collapse-panel" open>
+                <details class="collapse-panel" open x-ref="clarificationSection">
                     <summary>Clarification <span class="tab-count">{{ $clarificationComments->count() }}</span></summary>
                     <div class="collapse-body">
                         <div class="comment-feed">
@@ -654,11 +657,11 @@
             <div>
                 <div class="comment-list-head">
                     <div class="comment-list-title">Conversation</div>
-                    <span class="comment-count">{{ $comments->count() }}</span>
+                    <span class="comment-count">{{ $generalComments->count() }}</span>
                 </div>
 
                 <div class="comment-feed">
-                    @forelse($comments as $item)
+                    @forelse($generalComments as $item)
                         @php
                             $commentRole = $item->user?->role ?? 'default';
                             $commentName = $item->user?->name ?? 'User';
