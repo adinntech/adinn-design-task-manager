@@ -414,6 +414,125 @@
                         @endforelse
                     </div>
                 </details>
+
+                @php
+                    $showClarification = $task->status === 'need_clarification' || $clarificationComments->isNotEmpty();
+                @endphp
+                @if($showClarification)
+                <details class="collapse-panel" open>
+                    <summary>Clarification <span class="tab-count">{{ $clarificationComments->count() }}</span></summary>
+                    <div class="collapse-body">
+                        <div class="comment-feed">
+                            @forelse($clarificationComments as $item)
+                                @php
+                                    $clarificationRole = $item->user?->role ?? 'default';
+                                    $clarificationName = $item->user?->name ?? 'User';
+                                    $clarificationInitial = strtoupper(mb_substr($clarificationName, 0, 1));
+                                @endphp
+
+                                <article class="comment-item role-{{ $clarificationRole }}">
+                                    <div class="comment-card-head">
+                                        <div class="comment-user-wrap">
+                                            <div class="comment-avatar">{{ $clarificationInitial }}</div>
+                                            <div class="comment-user-meta">
+                                                <div class="comment-user-name">{{ $clarificationName }}</div>
+                                                <div class="comment-meta-row">
+                                                    <span class="role-pill role-{{ $clarificationRole }}">{{ ucwords(str_replace('_', ' ', $clarificationRole)) }}</span>
+                                                    <span class="comment-date">{{ $item->created_at->format('d M Y \\• g:i A') }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="comment-card-body">
+                                        <p class="comment-message">{{ $item->comment }}</p>
+
+                                        @if($item->attachments->isNotEmpty())
+                                            <div class="comment-attachments">
+                                                @foreach($item->attachments as $attachment)
+                                                    <div class="comment-attachment">
+                                                        <div class="comment-attachment-main">
+                                                            <div class="comment-file-icon">↗</div>
+                                                            <div class="comment-file-name" title="{{ $attachment->original_name }}">{{ $attachment->original_name }}</div>
+                                                        </div>
+
+                                                        <div class="comment-file-actions">
+                                                            <a
+                                                                class="comment-file-btn"
+                                                                href="#"
+                                                                @click.prevent="openAttachment('{{ $attachment->url }}', '{{ $attachment->original_name }}', '{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($attachment->path)]) }}')"
+                                                            >
+                                                                Open
+                                                            </a>
+                                                            <a
+                                                                class="comment-file-btn"
+                                                                href="{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($attachment->path)]) }}"
+                                                            >
+                                                                Download
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                </article>
+                            @empty
+                                <div class="comment-empty">
+                                    <div class="comment-empty-icon">✦</div>
+                                    <strong>No clarification messages yet</strong>
+                                    <span>Send a clarification message to start the conversation with the BD.</span>
+                                </div>
+                            @endforelse
+                        </div>
+
+                        @if($task->status === 'need_clarification')
+                            <div class="comment-compose" style="margin-top:14px">
+                                <div class="comment-compose-head">
+                                    <div>
+                                        <div class="comment-compose-title">Clarification</div>
+                                        <div class="muted" style="margin-top:3px;font-size:9px">Ask the BD for the information you need before continuing.</div>
+                                    </div>
+                                </div>
+
+                                <div class="comment-compose-body">
+                                    <textarea
+                                        class="comment-textarea"
+                                        wire:model="clarificationMessage"
+                                        placeholder="Type your clarification here..."
+                                    ></textarea>
+
+                                    @error('clarificationMessage')
+                                        <div class="error" style="margin-top:6px">{{ $message }}</div>
+                                    @enderror
+
+                                    <div class="comment-upload-row">
+                                        <div class="comment-upload-box">
+                                            <label class="label" style="font-size:9px;margin-bottom:5px">Attach File (Optional)</label>
+                                            <input type="file" wire:model="clarificationAttachments" multiple data-accumulate-files>
+                                            <div class="comment-upload-note">Up to 10 files · Maximum 100 MB each</div>
+                                            <div class="comment-upload-note" wire:loading wire:target="clarificationAttachments">Preparing attachment...</div>
+                                            @error('clarificationAttachments.*')
+                                                <div class="error" style="margin-top:5px">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <button
+                                            class="btn btn-primary comment-submit"
+                                            wire:click="addClarification"
+                                            wire:loading.attr="disabled"
+                                            wire:target="addClarification,clarificationAttachments"
+                                            wire:loading.class="is-loading"
+                                        >
+                                            Send Clarification
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </details>
+                @endif
             </div>
 
             <aside>

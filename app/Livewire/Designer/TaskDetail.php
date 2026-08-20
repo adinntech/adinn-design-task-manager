@@ -30,6 +30,8 @@ class TaskDetail extends Component
     public DesignTask $task;
     public string $comment = '';
     public array $attachments = [];
+    public string $clarificationMessage = '';
+    public array $clarificationAttachments = [];
 
     protected $listeners = ['request-created' => '$refresh'];
 
@@ -218,15 +220,42 @@ class TaskDetail extends Component
             'attachments.*' => ['file', 'max:102400'],
         ]);
 
-        DB::transaction(function () {
+        $this->persistComment($this->comment, $this->attachments);
+
+        $this->reset(['comment', 'attachments']);
+        $this->dispatch('comment-added', message: 'Comment added successfully.');
+    }
+
+    public function addClarification(): void
+    {
+        if ($this->task->status !== 'need_clarification') {
+            $this->addError('clarificationMessage', 'Clarification can only be sent while the task is in Clarification Needed status.');
+            return;
+        }
+
+        $this->validate([
+            'clarificationMessage' => ['required', 'string', 'max:10000'],
+            'clarificationAttachments' => ['array', 'max:10'],
+            'clarificationAttachments.*' => ['file', 'max:102400'],
+        ]);
+
+        $this->persistComment($this->clarificationMessage, $this->clarificationAttachments);
+
+        $this->reset(['clarificationMessage', 'clarificationAttachments']);
+        $this->dispatch('comment-added', message: 'Clarification sent successfully.');
+    }
+
+    private function persistComment(string $message, array $files): void
+    {
+        DB::transaction(function () use ($message, $files) {
             $newComment = DesignTaskComment::create([
                 'design_task_id' => $this->task->id,
                 'user_id' => Auth::id(),
                 'status_at_comment' => $this->task->status,
-                'comment' => trim($this->comment),
+                'comment' => trim($message),
             ]);
 
-            foreach ($this->attachments as $index => $file) {
+            foreach ($files as $index => $file) {
                 if (! $file instanceof UploadedFile) {
                     continue;
                 }
@@ -268,9 +297,6 @@ class TaskDetail extends Component
                 ]);
             }
         });
-
-        $this->reset(['comment', 'attachments']);
-        $this->dispatch('comment-added', message: 'Comment added successfully.');
     }
 
     public function submitEod(): void
@@ -519,6 +545,11 @@ class TaskDetail extends Component
             ->latest()
             ->get();
 
+        $clarificationComments = $comments
+            ->where('status_at_comment', 'need_clarification')
+            ->sortBy('created_at')
+            ->values();
+
         $requirementAttachmentGroups = $this->collectRequirementAttachments(
             $this->task->requirements ?? []
         );
@@ -607,6 +638,7 @@ class TaskDetail extends Component
                 ? null
                 : app(DesignTaskStatusService::class)->nextDesignerStatus($this->task->status),
             'comments' => $comments,
+            'clarificationComments' => $clarificationComments,
             'history' => $history = DesignTaskStatusHistory::query()
                 ->with('changedBy:id,name,role')
                 ->where('design_task_id', $this->task->id)

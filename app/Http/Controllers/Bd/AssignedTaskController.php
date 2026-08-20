@@ -48,6 +48,11 @@ class AssignedTaskController extends Controller
             ->latest()
             ->get();
 
+        $clarificationComments = $comments
+            ->where('status_at_comment', 'need_clarification')
+            ->sortBy('created_at')
+            ->values();
+
         $history = DesignTaskStatusHistory::query()
             ->with('changedBy:id,name,role')
             ->where('design_task_id', $task->id)
@@ -138,6 +143,7 @@ class AssignedTaskController extends Controller
             'task' => $task,
             'statuses' => DesignTaskStatusService::STATUSES,
             'comments' => $comments,
+            'clarificationComments' => $clarificationComments,
             'pipelineEvents' => $pipelineEvents,
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,
@@ -369,8 +375,12 @@ class AssignedTaskController extends Controller
             }
         });
 
+        $redirectTab = in_array($request->input('redirect_tab'), ['overview', 'comments'], true)
+            ? $request->input('redirect_tab')
+            : 'comments';
+
         return redirect()
-            ->route('bd.tasks.show', ['task' => $task, 'tab' => 'comments'])
+            ->route('bd.tasks.show', ['task' => $task, 'tab' => $redirectTab])
             ->with('success', 'Comment added successfully.');
     }
 

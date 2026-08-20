@@ -275,7 +275,7 @@
             <p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('bd.tasks.index') }}" class="btn btn-secondary">Back to Kanban</a>
+            <a href="{{ route('bd.tasks.index') }}" class="btn btn-secondary">Back to My Tasks</a>
             @if(!in_array($task->status, ['waiting_confirmation','rework','completed'], true))
                 <a href="{{ route('bd.tasks.edit',$task) }}" class="btn btn-primary">Edit Task</a>
             @endif
@@ -336,6 +336,92 @@
                         <div class="empty-state">No task creation/edit attachments.</div>
                     @endforelse
                 </div></details>
+
+                @php
+                    $showClarification = $task->status === 'need_clarification' || $clarificationComments->isNotEmpty();
+                @endphp
+                @if($showClarification)
+                <details class="collapse-panel" open>
+                    <summary><span class="collapse-summary-title">Clarification <span class="bd-tab-count">{{ $clarificationComments->count() }}</span></span></summary>
+                    <div class="collapse-body">
+                        <div class="bd-comment-feed">
+                            @forelse($clarificationComments as $comment)
+                                @php
+                                    $clarificationName = $comment->user?->name ?? 'User';
+                                    $clarificationInitial = strtoupper(mb_substr($clarificationName, 0, 1));
+                                @endphp
+                                <article class="bd-comment role-{{ $comment->user?->role ?? 'default' }}">
+                                    <div class="bd-comment-head">
+                                        <div class="bd-comment-person">
+                                            <div class="bd-comment-avatar">{{ $clarificationInitial }}</div>
+                                            <div>
+                                                <div class="bd-comment-name">{{ $clarificationName }}</div>
+                                                <div class="bd-comment-date">{{ $comment->created_at?->format('d M Y \\• g:i A') }}</div>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$comment->user?->role ?? 'user')) }}</span>
+                                    </div>
+
+                                    <div class="bd-comment-message">{{ $comment->comment }}</div>
+
+                                    @if($comment->attachments->isNotEmpty())
+                                        <div class="bd-comment-files">
+                                            @foreach($comment->attachments as $attachment)
+                                                <div class="bd-comment-file">
+                                                    <div class="bd-comment-file-primary">
+                                                        <span class="bd-comment-file-name" title="{{ $attachment->original_name }}">{{ $attachment->original_name }}</span>
+                                                        <a target="_blank" class="bd-comment-open" href="{{ $attachment->url }}">Open</a>
+                                                    </div>
+                                                    <a class="bd-comment-download" href="{{ $attachment->url }}" download>Download</a>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </article>
+                            @empty
+                                <div class="empty-state">No clarification messages yet.</div>
+                            @endforelse
+                        </div>
+
+                        @if($task->status === 'need_clarification')
+                            <form
+                                method="POST"
+                                action="{{ route('bd.tasks.comments.store', $task) }}"
+                                enctype="multipart/form-data"
+                                style="margin-top:14px;padding-top:14px;border-top:1px solid #eef0f3"
+                                onsubmit="const b=this.querySelector('button[type=submit]');b.disabled=true;b.innerText='Sending...';"
+                            >
+                                @csrf
+                                <input type="hidden" name="redirect_tab" value="overview">
+                                <label class="label">Reply to Designer</label>
+                                <textarea
+                                    class="premium-input"
+                                    name="comment"
+                                    rows="4"
+                                    maxlength="10000"
+                                    placeholder="Reply to Designer..."
+                                    required
+                                >{{ old('comment') }}</textarea>
+
+                                @error('comment')
+                                    <div style="font-size:9px;color:#b42318;margin-top:5px">{{ $message }}</div>
+                                @enderror
+
+                                <div style="margin-top:11px">
+                                    <label class="label">Attach File (Optional)</label>
+                                    <input class="premium-input" type="file" name="attachments[]" multiple data-accumulate-files>
+                                    <div style="font-size:8px;color:#98a2b3;margin-top:5px">Up to 10 files · Maximum 100 MB each</div>
+                                    @error('attachments.*')
+                                        <div style="font-size:9px;color:#b42318;margin-top:5px">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:12px">Send Reply</button>
+                            </form>
+                        @endif
+                    </div>
+                </details>
+                @endif
             </div>
             <aside><section class="panel"><div class="panel-header"><div class="panel-title">Current Status</div></div><div class="panel-body"><span class="badge badge-red">{{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</span>@if(in_array($task->status,['in_progress','waiting_confirmation','rework'],true))<div class="progress-card progress-{{ $progressColorKey }}"><div class="progress-head"><span class="progress-title">Creative Progress</span><span class="progress-value">{{ $eodCompletedTotal }} / {{ $task->total_creatives }} · {{ $progressPercentage }}%</span></div><div class="progress-track"><div class="progress-fill" style="width:{{ $progressPercentage }}%"></div></div></div>@endif<div class="activity-item" style="margin-top:12px"><strong>Assigned Designer</strong><p>{{ $task->designer?->name ?? '—' }}</p></div><div class="activity-item" style="margin-top:8px"><strong>Due Date</strong><p>{{ $task->due_at?->format('d M Y') }}</p></div>@if(!in_array($task->status, ['waiting_confirmation','rework','completed'], true))<a href="{{ route('bd.tasks.edit',$task) }}" class="btn btn-primary" style="width:100%;margin-top:12px">Edit Task</a>@endif</div></section></aside>
         </div>
