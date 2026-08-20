@@ -135,6 +135,20 @@ td{line-height:1.45}
 .attachment-file,.bd-file{min-height:42px}
 .attachment-actions,.bd-file-actions{gap:6px}
 .attachment-download{font-size:8px}
+.bd-attachment-group{border:1px solid #e4e7ec;border-radius:12px;background:#fff;overflow:hidden;margin-bottom:10px;padding:0}
+.bd-attachment-title{font-size:9px;font-weight:900;color:#344054;background:#f8fafc;padding:9px 11px;border-bottom:1px solid #eaecf0;margin:0}
+.bd-file{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 11px;background:#fff;border-radius:0;margin:0;border-bottom:1px solid #f2f4f7}
+.bd-file:last-child{border-bottom:0}
+.bd-file-main{min-width:0}
+.bd-file-name{font-size:9px;font-weight:650;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bd-file-actions{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+.bd-file-btn{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:6px 10px;border-radius:8px;text-decoration:none;font-size:8px;font-weight:850;white-space:nowrap}
+.bd-file-open{background:#e30613;color:#fff;border:1px solid #e30613}
+.bd-file-download{background:#fff;color:#344054;border:1px solid #d0d5dd}
+@media(max-width:700px){
+    .bd-file{grid-template-columns:1fr}
+    .bd-file-actions{justify-content:flex-start}
+}
 .sidebar-nav a{min-height:42px}
 .workspace-topbar{min-height:66px}
 .topbar-title{font-weight:900;letter-spacing:-.015em}
