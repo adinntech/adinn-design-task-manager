@@ -401,7 +401,7 @@
                                 <div class="kanban-rating">
                                     <div class="kanban-rating-head">
                                         <span class="kanban-rating-label">Overall Rating</span>
-                                        <span class="kanban-rating-value">{{ number_format($kanbanRating, 2) }} / 5</span>
+                                        <span class="kanban-rating-value">{{ \App\Models\DesignTaskBdReview::formatRating($kanbanRating) }} / 5</span>
                                     </div>
                                     <div class="kanban-rating-stars" aria-label="{{ number_format($kanbanRating, 1) }} out of 5 stars">
                                         @for($ratingStarIndex = 1; $ratingStarIndex <= 5; $ratingStarIndex++)

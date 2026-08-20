@@ -42,4 +42,9 @@ class DesignTaskBdReview extends Model
     {
         return $this->belongsTo(User::class, 'submitted_by');
     }
+
+    public static function formatRating(float|int|string|null $value): string
+    {
+        return rtrim(rtrim(number_format((float) $value, 2), '0'), '.');
+    }
 }
