@@ -242,8 +242,8 @@ class TaskDetail extends Component
     {
         abort_if($this->selfDeclinedReadOnly, 403);
 
-        if ($this->task->status !== 'need_clarification') {
-            $this->addError('clarificationMessage', 'Clarification can only be sent while the task is in Clarification Needed status.');
+        if ($this->task->status === 'completed') {
+            $this->addError('clarificationMessage', 'Clarification is read-only once the task is completed.');
             return;
         }
 
@@ -253,19 +253,19 @@ class TaskDetail extends Component
             'clarificationAttachments.*' => ['file', 'max:102400'],
         ]);
 
-        $this->persistComment($this->clarificationMessage, $this->clarificationAttachments);
+        $this->persistComment($this->clarificationMessage, $this->clarificationAttachments, 'need_clarification');
 
         $this->reset(['clarificationMessage', 'clarificationAttachments']);
         $this->dispatch('comment-added', message: 'Clarification sent successfully.');
     }
 
-    private function persistComment(string $message, array $files): void
+    private function persistComment(string $message, array $files, ?string $statusAtComment = null): void
     {
-        DB::transaction(function () use ($message, $files) {
+        DB::transaction(function () use ($message, $files, $statusAtComment) {
             $newComment = DesignTaskComment::create([
                 'design_task_id' => $this->task->id,
                 'user_id' => Auth::id(),
-                'status_at_comment' => $this->task->status,
+                'status_at_comment' => $statusAtComment ?? $this->task->status,
                 'comment' => trim($message),
             ]);
 

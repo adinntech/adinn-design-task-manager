@@ -387,7 +387,7 @@
                             @endforelse
                         </div>
 
-                        @if($task->status === 'need_clarification')
+                        @if($task->status !== 'completed')
                             <form
                                 method="POST"
                                 action="{{ route('bd.tasks.comments.store', $task) }}"

@@ -334,17 +334,21 @@ class AssignedTaskController extends Controller
             403
         );
 
+        $isClarificationReply = $request->input('redirect_tab') === 'overview';
+
+        abort_if($isClarificationReply && $task->status === 'completed', 403, 'Clarification is read-only once the task is completed.');
+
         $data = $request->validate([
             'comment' => ['required', 'string', 'max:10000'],
             'attachments' => ['nullable', 'array', 'max:10'],
             'attachments.*' => ['file', 'max:102400'],
         ]);
 
-        DB::transaction(function () use ($request, $task, $data) {
+        DB::transaction(function () use ($request, $task, $data, $isClarificationReply) {
             $newComment = DesignTaskComment::create([
                 'design_task_id' => $task->id,
                 'user_id' => $request->user()->id,
-                'status_at_comment' => $task->status,
+                'status_at_comment' => $isClarificationReply ? 'need_clarification' : $task->status,
                 'comment' => trim($data['comment']),
             ]);
 

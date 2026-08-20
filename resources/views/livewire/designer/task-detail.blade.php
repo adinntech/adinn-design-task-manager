@@ -498,7 +498,7 @@
                             @endforelse
                         </div>
 
-                        @if($task->status === 'need_clarification' && ! $selfDeclinedReadOnly)
+                        @if($task->status !== 'completed' && ! $selfDeclinedReadOnly)
                             <div class="comment-compose" style="margin-top:14px">
                                 <div class="comment-compose-head">
                                     <div>
