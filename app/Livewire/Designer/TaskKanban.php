@@ -139,6 +139,16 @@ class TaskKanban extends Component
 
             $isDecline = $latestRequest->request_type === 'decline';
 
+            if ($isDecline && $latestRequest->overall_status === 'approved' && (int) $latestRequest->requested_by !== (int) Auth::id()) {
+                return [
+                    $task->id => [[
+                        'key' => 'latest-request',
+                        'label' => 'Transferred',
+                        'class' => 'task-request-status task-request-approved',
+                    ]],
+                ];
+            }
+
             $statusLabel = $isPending
                 ? 'Pending'
                 : ($latestRequest->overall_status === 'approved' ? 'Approved' : ($isDecline ? 'Rejected' : 'Declined'));
@@ -149,7 +159,7 @@ class TaskKanban extends Component
                     ? 'task-request-approved'
                     : 'task-request-declined');
 
-            $separator = ($isDecline && ! $isPending) ? ' - ' : ' · ';
+            $separator = ($isDecline && ! $isPending) ? ' ' : ' · ';
 
             return [
                 $task->id => [[

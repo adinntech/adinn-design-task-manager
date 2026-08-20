@@ -151,6 +151,16 @@ class TaskKanban extends Component
                 true
             );
 
+            if ($latestRequest->request_type === 'decline' && $latestRequest->overall_status === 'approved') {
+                return [
+                    $task->id => [[
+                        'key' => 'latest-request',
+                        'label' => 'Task Transferred',
+                        'class' => 'task-request-status task-request-approved',
+                    ]],
+                ];
+            }
+
             $statusLabel = $isPending
                 ? 'Pending'
                 : ($latestRequest->overall_status === 'approved' ? 'Approved' : 'Declined');

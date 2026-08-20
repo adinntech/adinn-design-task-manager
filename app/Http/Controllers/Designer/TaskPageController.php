@@ -60,7 +60,14 @@ class TaskPageController extends Controller
                 ->exists();
         }
 
-        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator, 403);
+        $isSelfDeclinedViewer = ! $isCurrentDesigner && DesignTaskRequest::query()
+            ->where('design_task_id', $task->id)
+            ->where('request_type', 'decline')
+            ->where('requested_by', $user->id)
+            ->where('overall_status', 'approved')
+            ->exists();
+
+        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer, 403);
 
         return view('designer.tasks.show', compact('task'));
     }

@@ -99,6 +99,13 @@ class AssignedTaskController extends Controller
             ->latest()
             ->get();
 
+        $declineRequests = DesignTaskRequest::query()
+            ->with($requestRelations)
+            ->where('request_type', 'decline')
+            ->where('design_task_id', $task->id)
+            ->latest()
+            ->get();
+
         $eodRecords = DesignTaskEodRecord::query()
             ->with('designer:id,name,role')
             ->where('design_task_id', $task->id)
@@ -152,6 +159,7 @@ class AssignedTaskController extends Controller
             'pipelineEvents' => $pipelineEvents,
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,
+            'declineRequests' => $declineRequests,
             'eodRecords' => $eodRecords,
             'eodCompletedTotal' => $eodCompletedTotal,
             'eodRemaining' => $eodRemaining,
