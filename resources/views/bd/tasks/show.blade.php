@@ -272,7 +272,9 @@
     <div class="page-head">
         <div>
             <h1>{{ $task->display_task_name ?? $task->task_name }}</h1>
-            <p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</p>
+            <p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}
+                @if($task->decline_outcome_label)<span class="badge {{ str_contains($task->decline_outcome_label,'Rejected') ? 'badge-danger' : 'badge-success' }}" style="margin-left:6px">{{ $task->decline_outcome_label }}</span>@endif
+            </p>
         </div>
         <div class="page-actions">
             <a href="{{ route('bd.tasks.index') }}" class="btn btn-secondary">Back to My Tasks</a>

@@ -35,6 +35,20 @@ class DesignTask extends Model
         return trim((string) preg_replace('/\s*\((?:split|swap|swapped)\)\s*$/i', '', (string) $this->task_name));
     }
 
+    public function getDeclineOutcomeLabelAttribute(): ?string
+    {
+        $latest = $this->requests
+            ->where('request_type', 'decline')
+            ->sortByDesc('id')
+            ->first();
+
+        if (! $latest || ! in_array($latest->overall_status, ['approved', 'rejected'], true)) {
+            return null;
+        }
+
+        return 'Decline - '.ucfirst($latest->overall_status);
+    }
+
     public function getOperationPillsAttribute(): array
     {
         $pills = [];

@@ -32,7 +32,7 @@
     <div class="panel-header">
         <div>
             <div class="panel-title">Designer Request Approvals</div>
-            <div class="metric-note">Admin and Designer Head have equal approval authority. The first decision finalizes the request.</div>
+            <div class="metric-note">Admin and Designer Head have equal approval authority for Split/Transfer. Decline requests are decided by Designer Head only.</div>
         </div>
         <span class="badge {{ $requestStats['pending'] > 0 ? 'badge-warning' : 'badge-success' }}">{{ $requestStats['pending'] }} Pending</span>
     </div>

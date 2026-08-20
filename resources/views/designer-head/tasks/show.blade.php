@@ -111,7 +111,9 @@
     <div class="page-head">
         <div>
             <h1>{{ $task->display_task_name ?? $task->task_name }}</h1>
-            <p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</p>
+            <p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}
+                @if($task->decline_outcome_label)<span class="badge {{ str_contains($task->decline_outcome_label,'Rejected') ? 'badge-danger' : 'badge-success' }}" style="margin-left:6px">{{ $task->decline_outcome_label }}</span>@endif
+            </p>
         </div>
         <div class="page-actions">
             <a href="{{ route('designer-head.dashboard') }}" class="btn btn-secondary">Back to All Tasks</a>
@@ -435,10 +437,19 @@
                                     <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
                                         @csrf
                                         <div class="head-decision-title">Accept Decline Request</div>
+                                        <label class="head-label">Reassign To *</label>
+                                        <select class="head-field" name="approved_designer_id" required>
+                                            <option value="">Select Designer</option>
+                                            @foreach($designers as $designer)
+                                                @if((int)$designer->id !== (int)$task->designer_id)
+                                                    <option value="{{ $designer->id }}" @selected((int)old('approved_designer_id') === (int)$designer->id)>{{ $designer->name }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
                                         <label class="head-label">Comment</label>
                                         <textarea class="head-field" name="decision_comment" placeholder="Optional approval comment">{{ old('decision_comment') }}</textarea>
-                                        <div class="head-hint">Optional</div>
-                                        <div class="head-btn-row"><button class="head-btn head-btn-accept" type="submit">Accept</button></div>
+                                        <div class="head-hint">Reassigning immediately moves the ticket to the selected Designer's Assigned Tasks.</div>
+                                        <div class="head-btn-row"><button class="head-btn head-btn-accept" type="submit">Accept &amp; Reassign</button></div>
                                     </form>
 
                                     <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">

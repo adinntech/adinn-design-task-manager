@@ -59,6 +59,7 @@ class DashboardController extends Controller
 
         $pendingRequests = DesignTaskRequest::query()
             ->pending()
+            ->where('request_type', '!=', 'decline')
             ->with([
                 'task:id,task_id,task_name,vertical,status,total_creatives,designer_id',
                 'requester:id,name',

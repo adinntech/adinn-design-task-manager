@@ -106,7 +106,7 @@ class DesignTaskRequestService
 
     public function approve(DesignTaskRequest $request, User $approver, ?int $approvedDesignerId = null, ?int $approvedSplitCount = null): DesignTaskRequest
     {
-        $this->guardApprover($approver);
+        $this->guardApprover($approver, $request->request_type);
 
         return DB::transaction(function () use ($request, $approver, $approvedDesignerId, $approvedSplitCount) {
             $lockedRequest = DesignTaskRequest::query()->lockForUpdate()->findOrFail($request->id);
@@ -171,7 +171,7 @@ class DesignTaskRequestService
 
     public function reject(DesignTaskRequest $request, User $approver, string $reason): DesignTaskRequest
     {
-        $this->guardApprover($approver);
+        $this->guardApprover($approver, $request->request_type);
         $reason = trim($reason);
 
         if ($reason === '') {
@@ -342,8 +342,15 @@ class DesignTaskRequestService
         }
     }
 
-    private function guardApprover(User $approver): void
+    private function guardApprover(User $approver, string $requestType): void
     {
+        if ($requestType === 'decline') {
+            if ($approver->role !== 'designer_head') {
+                throw new AuthorizationException('Only Designer Head can decide Decline requests.');
+            }
+            return;
+        }
+
         if (! in_array($approver->role, ['admin', 'designer_head'], true)) {
             throw new AuthorizationException('Only Admin or Designer Head can decide Designer requests.');
         }

@@ -225,6 +225,9 @@
                 @if($swapInitiatorReadOnly)
                     <span class="badge badge-dark">Comment Only</span>
                 @endif
+                @if($task->decline_outcome_label)
+                    <span class="badge {{ str_contains($task->decline_outcome_label,'Rejected') ? 'badge-danger' : 'badge-success' }}">{{ $task->decline_outcome_label }}</span>
+                @endif
             </div>
             <p>{{ $task->task_id }} · {{ $statuses[$task->status] ?? $task->status }}</p>
         </div>
