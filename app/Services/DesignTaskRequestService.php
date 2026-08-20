@@ -104,11 +104,11 @@ class DesignTaskRequestService
         });
     }
 
-    public function approve(DesignTaskRequest $request, User $approver, ?int $approvedDesignerId = null, ?int $approvedSplitCount = null): DesignTaskRequest
+    public function approve(DesignTaskRequest $request, User $approver, ?int $approvedDesignerId = null, ?int $approvedSplitCount = null, ?string $decisionComment = null): DesignTaskRequest
     {
         $this->guardApprover($approver, $request->request_type);
 
-        return DB::transaction(function () use ($request, $approver, $approvedDesignerId, $approvedSplitCount) {
+        return DB::transaction(function () use ($request, $approver, $approvedDesignerId, $approvedSplitCount, $decisionComment) {
             $lockedRequest = DesignTaskRequest::query()->lockForUpdate()->findOrFail($request->id);
             $this->guardPending($lockedRequest);
 
@@ -155,7 +155,7 @@ class DesignTaskRequestService
 
             $lockedRequest->update(array_merge($this->decisionAuditFields($approver, 'approved'), [
                 'overall_status' => 'approved',
-                'decision_reason' => null,
+                'decision_reason' => $decisionComment !== null && trim($decisionComment) !== '' ? trim($decisionComment) : null,
             ]));
 
             $this->recordHistory(

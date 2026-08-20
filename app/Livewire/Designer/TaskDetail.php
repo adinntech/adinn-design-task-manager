@@ -40,6 +40,7 @@ class TaskDetail extends Component
     public $reworkAttachment = null;
     public ?int $reworkCompletedCount = null;
     public bool $swapInitiatorReadOnly = false;
+    public bool $selfDeclinedReadOnly = false;
 
     private function isSwapShadowTask(?DesignTask $task = null): bool
     {
@@ -135,13 +136,22 @@ class TaskDetail extends Component
                 ->exists();
         }
 
-        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator, 403);
+        $isSelfDeclinedViewer = ! $isCurrentDesigner && DesignTaskRequest::query()
+            ->where('design_task_id', $task->id)
+            ->where('request_type', 'decline')
+            ->where('requested_by', $user->id)
+            ->where('overall_status', 'approved')
+            ->exists();
+
+        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer, 403);
 
         $this->swapInitiatorReadOnly = $isApprovedSwapInitiator
             && (
                 ! $isCurrentDesigner
                 || (bool) data_get($requirements, '_swap_shadow', false)
             );
+
+        $this->selfDeclinedReadOnly = $isSelfDeclinedViewer;
 
         $this->task = $task;
 
@@ -150,7 +160,7 @@ class TaskDetail extends Component
 
     private function reconcileCompletedRework(): void
     {
-        if ($this->swapInitiatorReadOnly || $this->task->status !== 'rework') {
+        if ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly || $this->task->status !== 'rework') {
             return;
         }
 
@@ -214,6 +224,8 @@ class TaskDetail extends Component
 
     public function addComment(): void
     {
+        abort_if($this->selfDeclinedReadOnly, 403);
+
         $this->validate([
             'comment' => ['required', 'string', 'max:10000'],
             'attachments' => ['array', 'max:10'],
@@ -228,6 +240,8 @@ class TaskDetail extends Component
 
     public function addClarification(): void
     {
+        abort_if($this->selfDeclinedReadOnly, 403);
+
         if ($this->task->status !== 'need_clarification') {
             $this->addError('clarificationMessage', 'Clarification can only be sent while the task is in Clarification Needed status.');
             return;
@@ -638,7 +652,7 @@ class TaskDetail extends Component
 
         return view('livewire.designer.task-detail', [
             'statuses' => DesignTaskStatusService::STATUSES,
-            'nextStatus' => $this->swapInitiatorReadOnly
+            'nextStatus' => ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly)
                 ? null
                 : app(DesignTaskStatusService::class)->nextDesignerStatus($this->task->status),
             'comments' => $comments,
@@ -683,10 +697,11 @@ class TaskDetail extends Component
                 ->unique()
                 ->values()
                 ->all(),
-            'allowedRequestTypes' => $this->swapInitiatorReadOnly
+            'allowedRequestTypes' => ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly)
                 ? []
                 : app(DesignTaskRequestService::class)->allowedTypesForTask($this->task),
             'swapInitiatorReadOnly' => $this->swapInitiatorReadOnly,
+            'selfDeclinedReadOnly' => $this->selfDeclinedReadOnly,
             'showTaskUpdation' => $this->canViewTaskUpdation(),
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,

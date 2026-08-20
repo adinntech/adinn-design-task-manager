@@ -225,6 +225,9 @@
                 @if($swapInitiatorReadOnly)
                     <span class="badge badge-dark">Comment Only</span>
                 @endif
+                @if($selfDeclinedReadOnly)
+                    <span class="badge badge-dark">Self Declined · Read Only</span>
+                @endif
                 @if($task->decline_outcome_label)
                     <span class="badge {{ str_contains($task->decline_outcome_label,'Rejected') ? 'badge-danger' : 'badge-success' }}">{{ $task->decline_outcome_label }}</span>
                 @endif
@@ -235,7 +238,7 @@
         <div class="page-actions">
             <a class="btn btn-secondary" href="{{ route('designer.tasks.index') }}">Back to My Tasks</a>
 
-            @unless($swapInitiatorReadOnly)
+            @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly)
 
             @if(in_array('decline', $allowedRequestTypes, true))
                 @if(in_array('decline', $pendingRequestTypes, true))
@@ -495,7 +498,7 @@
                             @endforelse
                         </div>
 
-                        @if($task->status === 'need_clarification')
+                        @if($task->status === 'need_clarification' && ! $selfDeclinedReadOnly)
                             <div class="comment-compose" style="margin-top:14px">
                                 <div class="comment-compose-head">
                                     <div>
@@ -618,6 +621,7 @@
 
     <section x-show="tab === 'comments'" style="display:none">
         <div class="comment-shell">
+            @unless($selfDeclinedReadOnly)
             <div class="comment-compose">
                 <div class="comment-compose-head">
                     <div>
@@ -661,6 +665,7 @@
                     </div>
                 </div>
             </div>
+            @endunless
 
             <div>
                 <div class="comment-list-head">
@@ -816,7 +821,7 @@
                                 </div>
                             @endif
 
-                            @if($currentReworkPending > 0 && $progressPercentage < 100)
+                            @if($currentReworkPending > 0 && $progressPercentage < 100 && ! $selfDeclinedReadOnly)
                             <div class="rework-upload-wrap">
                                 <div style="display:grid;grid-template-columns:minmax(150px,.55fr) minmax(240px,1fr);gap:10px;align-items:end">
                                     <div>
@@ -854,9 +859,9 @@
                             @endif
                         </div>
                     @endif
-                    @if($swapInitiatorReadOnly)
+                    @if($swapInitiatorReadOnly || $selfDeclinedReadOnly)
                         <div class="empty-state" style="margin-bottom:14px">
-                            Progress Updates history is view-only after an approved swap.
+                            Progress Updates history is view-only.
                         </div>
                     @elseif($task->status === 'in_progress' && $eodRemaining > 0)
                         <div class="eod-entry-form">
@@ -1014,6 +1019,11 @@
                                 <div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#fff5f5;color:#991b1b">
                                     <strong>Decline Reason</strong>
                                     <p style="margin:4px 0 0;white-space:pre-wrap">{{ $declineRequest->decision_reason }}</p>
+                                </div>
+                            @elseif($declineRequest->overall_status === 'approved')
+                                <div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#f0fdf4;color:#08784b">
+                                    <strong>Approval Reason</strong>
+                                    <p style="margin:4px 0 0;white-space:pre-wrap">{{ $declineRequest->decision_reason ?: '—' }}</p>
                                 </div>
                             @endif
                         </div>
@@ -1252,7 +1262,7 @@
 
     <div class="toast" x-show="toast" x-transition x-text="toast" style="display:none"></div>
 
-    @unless($swapInitiatorReadOnly)
+    @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly)
         <livewire:designer.task-request-modal :task="$task" :key="'task-request-modal-'.$task->id" />
     @endunless
 </div>

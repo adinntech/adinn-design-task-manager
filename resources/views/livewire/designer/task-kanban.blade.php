@@ -4,7 +4,7 @@
 .kanban-shell{position:relative}
 body[data-kanban-dragging="1"] .kanban-shell::before,
 body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z-index:50;top:0;width:34px;height:100%;pointer-events:none;opacity:.2}
-.kanban-shell .task-card,.kanban-shell input,.kanban-shell select,.kanban-shell button,.kanban-shell a{user-select:auto}.kanban-board{display:grid;grid-template-columns:repeat(9,270px);gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}.kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}
+.kanban-shell .task-card,.kanban-shell input,.kanban-shell select,.kanban-shell button,.kanban-shell a{user-select:auto}.kanban-board{display:grid;grid-template-columns:repeat(10,270px);gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}.kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}
 
 .kanban-column.status-assigned_tasks .kanban-column-header{border-top-color:#667085;background:#f9fafb}
 .kanban-column.status-review_analysis .kanban-column-header{border-top-color:#2563eb;background:#eff6ff}
@@ -15,6 +15,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 .kanban-column.status-rework .kanban-column-header{border-top-color:#ea580c;background:#fff7ed}
 .kanban-column.status-completed .kanban-column-header{border-top-color:#16a34a;background:#f0fdf4}
 .kanban-column.status-swap_tasks .kanban-column-header{border-top-color:#0f766e;background:#f0fdfa}
+.kanban-column.status-self_declined .kanban-column-header{border-top-color:#6b7280;background:#f9fafb}
 
 .kanban-column.status-assigned_tasks .kanban-count{background:#eaecf0;color:#475467}
 .kanban-column.status-review_analysis .kanban-count{background:#dbeafe;color:#1d4ed8}
@@ -25,6 +26,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 .kanban-column.status-rework .kanban-count{background:#ffedd5;color:#c2410c}
 .kanban-column.status-completed .kanban-count{background:#dcfce7;color:#15803d}
 .kanban-column.status-swap_tasks .kanban-count{background:#ccfbf1;color:#0f766e}
+.kanban-column.status-self_declined .kanban-count{background:#e5e7eb;color:#4b5563}
 
 .task-card{display:block;border:1px solid #e3e6ec;border-left:5px solid #cbd5e1;border-radius:11px;background:#fff;padding:11px;margin-bottom:8px;color:inherit;text-decoration:none;box-shadow:0 4px 12px rgba(16,24,40,.04);cursor:grab;transition:.16s}
 .task-card:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,24,40,.08);border-color:#d7dbe3}
@@ -291,6 +293,9 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                         @endif
                                     </div>
                                 <div class="task-card-client">{{ ucfirst($task->party_type) }} · {{ $task->party_name }}</div>
+                                    @if($statusKey === 'self_declined')
+                                        <div class="task-card-client">Now with: {{ $task->designer?->name ?? '—' }}</div>
+                                    @endif
                                     @include('partials.kanban-task-progress', ['task' => $task])
 
                                 
@@ -377,8 +382,11 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         this.sortables = [];
 
                         document.querySelectorAll('[data-kanban-list]').forEach(list => {
+                            const isSelfDeclined = list.dataset.status === 'self_declined';
+
                             this.sortables.push(new Sortable(list, {
-                                group: 'designer-kanban',
+                                group: isSelfDeclined ? { name: 'designer-kanban', pull: false, put: false } : 'designer-kanban',
+                                sort: !isSelfDeclined,
                                 animation: 180,
                                 ghostClass: 'sortable-ghost',
                                 chosenClass: 'sortable-chosen',

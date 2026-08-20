@@ -60,6 +60,39 @@ class TaskKanban extends Component
     }
 
     /**
+     * Tasks this Designer declined that Designer Head approved for reassignment.
+     * Shown as a read-only "Self Declined" column; the real designer_id no
+     * longer points at this Designer, so status is overridden in-memory only.
+     */
+    public function getSelfDeclinedTasksProperty(): Collection
+    {
+        return DesignTask::query()
+            ->with(['designer:id,name'])
+            ->where('designer_id', '!=', Auth::id())
+            ->whereHas('requests', function ($query) {
+                $query->where('request_type', 'decline')
+                    ->where('requested_by', Auth::id())
+                    ->where('overall_status', 'approved');
+            })
+            ->when($this->search !== '', function ($query) {
+                $term = '%'.trim($this->search).'%';
+
+                $query->where(function ($query) use ($term) {
+                    $query->where('task_id', 'like', $term)
+                        ->orWhere('task_name', 'like', $term)
+                        ->orWhere('party_name', 'like', $term)
+                        ->orWhere('vertical', 'like', $term)
+                        ->orWhere('task_nature', 'like', $term);
+                });
+            })
+            ->when($this->vertical !== '', fn ($query) => $query->where('vertical', $this->vertical))
+            ->when($this->priority !== '', fn ($query) => $query->where('priority', $this->priority))
+            ->orderBy('due_at')
+            ->get()
+            ->each(fn (DesignTask $task) => $task->status = 'self_declined');
+    }
+
+    /**
      * Build compact request/history tags for the visible cards.
      *
      * The original task keeps its SPLIT tag after an approved split request,
@@ -130,11 +163,12 @@ class TaskKanban extends Component
 
     public function render()
     {
-        $tasks = $this->tasks;
+        $tasks = $this->tasks->concat($this->selfDeclinedTasks);
         $statuses = DesignTaskStatusService::STATUSES;
 
         unset($statuses['swap_tasks']);
         $statuses['swap_tasks'] = 'Swapped Tasks';
+        $statuses['self_declined'] = 'Self Declined';
 
         return view('livewire.designer.task-kanban', [
             'statuses' => $statuses,

@@ -426,9 +426,9 @@
                             </div>
                             <span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$request->overall_status)) }}</span>
                         </div>
-                        <div class="bd-request-grid"><div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded At</strong>{{ $isPendingRequest ? 'Pending Response' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded By</strong>{{ $isPendingRequest ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div>
+                        <div class="bd-request-grid"><div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Requested By</strong>{{ $request->requester?->name ?? '—' }}</div><div class="bd-request-field"><strong>Responded At</strong>{{ $isPendingRequest ? 'Pending Response' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded By</strong>{{ $isPendingRequest ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div><div class="bd-request-field"><strong>Approved Designer</strong>{{ $request->approvedDesigner?->name ?? '—' }}</div>
                             <div class="bd-request-field" style="grid-column:1/-1"><strong>Request Reason</strong>{{ $request->reason }}</div>
-                            @if($request->decision_reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>Decision Comment</strong>{{ $request->decision_reason }}</div>@endif
+                            @if($request->decision_reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>{{ $request->overall_status === 'approved' ? 'Approval Reason' : 'Decline Reason' }}</strong>{{ $request->decision_reason }}</div>@endif
                         </div>
 
                         @if($isPendingRequest)
