@@ -4,10 +4,12 @@ namespace App\Livewire\Designer;
 
 use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
+use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 class TaskKanban extends Component
@@ -28,8 +30,28 @@ class TaskKanban extends Component
             ->where('designer_id', Auth::id())
             ->firstOrFail();
 
-        app(DesignTaskStatusService::class)
-            ->moveAsDesigner($task, Auth::user(), $targetStatus, 'kanban_drag');
+        try {
+            app(DesignTaskStatusService::class)
+                ->moveAsDesigner($task, Auth::user(), $targetStatus, 'kanban_drag');
+        } catch (ValidationException $e) {
+            $progressService = app(DesignTaskProgressService::class);
+
+            if (
+                $task->status === 'in_progress'
+                && $targetStatus === 'waiting_confirmation'
+                && $progressService->percentage($task) < 100
+            ) {
+                $completed = $progressService->completed($task);
+                $remaining = $progressService->remaining($task);
+
+                $this->dispatch('task-move-blocked', message: 'Creative Work Incomplete: Complete all creatives before BD Review. '
+                    .$completed.' of '.$task->total_creatives.' completed • '.$remaining.' remaining.');
+
+                return;
+            }
+
+            throw $e;
+        }
 
         $this->dispatch('kanban-updated');
         $this->dispatch('task-status-changed', message: 'Task status updated successfully.');

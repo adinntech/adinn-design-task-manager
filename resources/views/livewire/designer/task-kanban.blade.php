@@ -1,4 +1,4 @@
-<div x-data="designerKanban()" x-init="init()" x-on:task-status-changed.window="showToast($event.detail.message)">
+<div x-data="designerKanban()" x-init="init()" x-on:task-status-changed.window="showToast($event.detail.message)" x-on:task-move-blocked.window="showToast($event.detail.message)">
     <style>
         .designer-toolbar{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(160px,.65fr) minmax(150px,.55fr);gap:9px;margin-bottom:14px}.kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none}.kanban-shell::-webkit-scrollbar{display:none}.kanban-shell.is-panning{cursor:grabbing}
 .kanban-shell{position:relative}
