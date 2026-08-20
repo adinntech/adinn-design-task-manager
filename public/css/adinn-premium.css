@@ -131,6 +131,7 @@ td{line-height:1.45}
 .detail-tab,.bd-detail-tab{min-height:38px;font-size:10px!important;font-weight:850!important}
 .progress-card{box-shadow:none}
 .progress-track{height:8px}
+.error{color:#b42318;font-size:9px;font-weight:700;margin-top:5px}
 .attachment-group,.bd-attachment-group{box-shadow:none}
 .attachment-file,.bd-file{min-height:42px}
 .attachment-actions,.bd-file-actions{gap:6px}

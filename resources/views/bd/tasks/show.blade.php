@@ -721,7 +721,7 @@
                         <h3>BD Confirmation</h3>
                         <p>Choose Rework if corrections are required, or complete the task after submitting the Designer rating.</p>
 
-                        <form method="POST" action="{{ route('bd.tasks.rework', $task) }}">
+                        <form method="POST" action="{{ route('bd.tasks.rework', $task) }}" onsubmit="const c=this.querySelector('[name=comment]'); if(!c.value.trim()){ c.nextElementSibling.style.display='block'; c.focus(); return false; }">
                             @csrf
                             <div class="bd-review-grid">
                                 <div>
@@ -731,8 +731,8 @@
                                 </div>
                                 <div>
                                     <label class="label">Comments</label>
-                                    <textarea class="premium-input" name="comment" rows="3" maxlength="10000" placeholder="Describe the corrections required...">{{ old('comment') }}</textarea>
-                                    @error('comment')<div class="error">{{ $message }}</div>@enderror
+                                    <textarea class="premium-input" name="comment" rows="3" maxlength="10000" placeholder="Describe the corrections required..." oninput="this.nextElementSibling.style.display='none'">{{ old('comment') }}</textarea>
+                                    <div class="error" style="{{ $errors->has('comment') ? '' : 'display:none' }}">Please enter rework comments.</div>
                                 </div>
                             </div>
                             <div class="bd-review-actions">
