@@ -117,7 +117,7 @@
             </p>
         </div>
         <div class="page-actions">
-            <a href="{{ route('designer-head.dashboard') }}" class="btn btn-secondary">Back to All Tasks</a>
+            <a href="{{ route('designer-head.assigned-tasks') }}" class="btn btn-secondary">Back to All Tasks</a>
         </div>
     </div>
 
