@@ -1,15 +1,18 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DesignerHead\DashboardController;
 use App\Http\Controllers\DesignerHead\RequestActionController;
 use App\Http\Controllers\DesignerHead\TaskController;
-use App\Http\Controllers\DesignerHead\DashboardController;
+use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth','role:designer_head'])
+Route::middleware(['auth', 'role:designer_head'])
     ->prefix('designer-head')
     ->name('designer-head.')
     ->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+        Route::get('/dashboard/partial', [DashboardController::class, 'fragment'])
+            ->name('dashboard.partial');
 
         Route::view('/assigned-tasks', 'designer-head.assigned-tasks')
             ->name('assigned-tasks');

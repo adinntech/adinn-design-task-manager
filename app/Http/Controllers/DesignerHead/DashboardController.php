@@ -4,103 +4,415 @@ namespace App\Http\Controllers\DesignerHead;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
+use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    private const PENDING_STATUSES = ['assigned_tasks', 'review_analysis', 'need_clarification', 'yet_to_start'];
+
+    private const REQUEST_PENDING = ['pending_approval', 'pending_designer_head', 'pending_admin'];
+
     public function index(Request $request): View
     {
         abort_unless($request->user()?->role === 'designer_head', 403);
 
+        return view('designer-head.dashboard', $this->analytics($request));
+    }
+
+    public function fragment(Request $request): View
+    {
+        abort_unless($request->user()?->role === 'designer_head', 403);
+
+        return view('designer-head.dashboard-partial', $this->analytics($request));
+    }
+
+    private function analytics(Request $request): array
+    {
         $now = now();
 
-        $tasks = DesignTask::query()
-            ->with(['designer:id,name'])
-            ->get()
-            ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
-            ->values();
-
-        $pendingStatuses = ['pending_approval', 'pending_designer_head', 'pending_admin'];
-
-        $requests = DesignTaskRequest::query()
-            ->with([
-                'task:id,task_id,task_name,designer_id,status,priority',
-                'task.designer:id,name',
-                'requester:id,name',
-                'targetDesigner:id,name',
-                'approvedDesigner:id,name',
-            ])
-            ->latest()
-            ->get();
-
-        $pendingRequests = $requests
-            ->whereIn('overall_status', $pendingStatuses)
-            ->values();
-
-        $submittedToday = DesignTaskEodRecord::query()
-            ->whereDate('submitted_at', $now->toDateString())
-            ->distinct('design_task_id')
-            ->count('design_task_id');
-
-        $stats = [
-            'total' => $tasks->count(),
-            'new_assignments' => $tasks->where('status', 'assigned_tasks')->count(),
-            'in_progress' => $tasks->where('status', 'in_progress')->count(),
-            'submitted_today' => $submittedToday,
-            'pending_review' => $tasks->where('status', 'waiting_confirmation')->count(),
-            'overdue' => $tasks
-                ->filter(fn (DesignTask $task) =>
-                    $task->status !== 'completed'
-                    && $task->due_at
-                    && $task->due_at->lt($now)
-                )
-                ->count(),
-            'approval_pending' => $pendingRequests->count(),
-        ];
-
+        $totalDesigners = (int) User::query()->where('role', 'designer')->count();
         $designers = User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
+        $activeIds = $designers->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        $workload = $designers->map(function (User $designer) use ($tasks, $now) {
+        $selectedDesigner = $request->query('designer', 'all');
+        if ($selectedDesigner !== 'all' && ! in_array((int) $selectedDesigner, $activeIds, true)) {
+            $selectedDesigner = 'all';
+        }
+        $designerId = $selectedDesigner === 'all' ? null : (int) $selectedDesigner;
+
+        $selectedMonth = $request->query('month', $now->format('Y-m'));
+        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $selectedMonth)) {
+            $selectedMonth = $now->format('Y-m');
+        }
+        $month = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
+        $monthEnd = $month->copy()->endOfMonth();
+
+        /* ---- Tasks scoped to current assignee (split/swap shadow rows removed) ---- */
+        $tasks = DesignTask::query()
+            ->with(['designer:id,name', 'assigner:id,name,role'])
+            ->when($designerId, fn ($query) => $query->where('designer_id', $designerId))
+            ->get()
+            ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
+            ->values();
+        $taskIds = $tasks->pluck('id');
+        $taskKeyById = $tasks->keyBy('id');
+
+        /* ---- Batched record aggregates (same arithmetic as DesignTaskProgressService) ---- */
+        $eodProgress = $this->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'progress'), $taskIds, 'SUM(completed_count)');
+        $eodRework = $this->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'rework'), $taskIds, 'SUM(completed_count)');
+        $reworkSentBack = $this->mapByTask(DesignTaskBdReview::query()->where('action', 'rework'), $taskIds, 'SUM(number_of_creatives)');
+        $reworkReviewCount = $this->mapByTask(DesignTaskBdReview::query()->where('action', 'rework'), $taskIds, 'COUNT(*)');
+        $reworkHistoryCount = $this->mapByTask(
+            DesignTaskStatusHistory::query()->where('to_status', 'rework')->where('change_source', 'bd_rework'),
+            $taskIds,
+            'COUNT(*)'
+        );
+
+        /* ---- Completion timestamps come from the immutable status-history log, not UI text ---- */
+        $completions = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskStatusHistory::query()
+                ->where('to_status', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->get(['design_task_id', 'created_at']);
+        $completedAtByTask = collect();
+        foreach ($completions as $row) {
+            $completedAtByTask[(int) $row->design_task_id] = $row->created_at;
+        }
+        $completedInMonthIds = $completedAtByTask
+            ->filter(fn (Carbon $ts) => $ts->betweenIncluded($month, $monthEnd))
+            ->keys()
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        /* ---- Completed-task ratings (one per task, guarded at creation) ---- */
+        $reviews = DesignTaskBdReview::query()
+            ->with('submitter:id,name,role')
+            ->where('action', 'completed')
+            ->orderByDesc('created_at')
+            ->get();
+        $reviewByTaskId = $reviews->keyBy(fn ($review) => (int) $review->design_task_id);
+
+        /* ---- Rework reviews/submissions: counts, month scope and last-event date ---- */
+        $reworkReviews = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->where('action', 'rework')
+                ->whereIn('design_task_id', $taskIds)
+                ->get(['design_task_id', 'created_at']);
+        $reworkMonthIds = collect();
+        $lastReworkAtByTask = collect();
+        foreach ($reworkReviews as $row) {
+            $tid = (int) $row->design_task_id;
+            if (! isset($lastReworkAtByTask[$tid]) || $row->created_at->gt($lastReworkAtByTask[$tid])) {
+                $lastReworkAtByTask[$tid] = $row->created_at;
+            }
+            if ($row->created_at->betweenIncluded($month, $monthEnd)) {
+                $reworkMonthIds[] = $tid;
+            }
+        }
+        $reworkMonthIds = $reworkMonthIds->unique()->values();
+
+        $reworkEod = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskEodRecord::query()
+                ->where('update_type', 'rework')
+                ->whereIn('design_task_id', $taskIds)
+                ->get(['design_task_id', 'submitted_at']);
+        foreach ($reworkEod as $row) {
+            $tid = (int) $row->design_task_id;
+            if (! isset($lastReworkAtByTask[$tid]) || $row->submitted_at->gt($lastReworkAtByTask[$tid])) {
+                $lastReworkAtByTask[$tid] = $row->submitted_at;
+            }
+        }
+
+        /* ---- All requests in one pass (approvals stay global, not filter-scoped) ---- */
+        $allRequests = DesignTaskRequest::query()
+            ->with([
+                'task:id,task_id,task_name,designer_id,status,priority,due_at,total_creatives',
+                'task.designer:id,name',
+                'requester:id,name,role',
+                'targetDesigner:id,name',
+                'approvedDesigner:id,name',
+                'designerHeadActor:id,name,role',
+                'adminActor:id,name,role',
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        $pendingRequests = $allRequests->whereIn('overall_status', self::REQUEST_PENDING)->values();
+
+        $recentDecisions = $allRequests
+            ->reject(fn ($request) => in_array($request->overall_status, self::REQUEST_PENDING, true))
+            ->filter(fn ($request) => $request->responded_at !== null)
+            ->sortByDesc(fn ($request) => $request->responded_at->timestamp)
+            ->take(12)
+            ->values();
+
+        $approvedFor = function (string $type) use ($allRequests, $designerId): int {
+            return $allRequests
+                ->filter(fn ($request) => $request->request_type === $type
+                    && $request->overall_status === 'approved'
+                    && ($designerId === null || (int) $request->requested_by === $designerId))
+                ->count();
+        };
+
+        $approvedInMonthFor = function (string $type) use ($allRequests, $designerId, $month, $monthEnd): int {
+            return $allRequests
+                ->filter(fn ($request) => $request->request_type === $type
+                    && $request->overall_status === 'approved'
+                    && ($designerId === null || (int) $request->requested_by === $designerId)
+                    && $request->responded_at !== null
+                    && $request->responded_at->betweenIncluded($month, $monthEnd))
+                ->count();
+        };
+
+        $isOverdue = fn (DesignTask $task) => $task->status !== 'completed'
+            && $task->due_at
+            && $task->due_at->lt(now());
+
+        /* ---- "Tasks Worked" in the selected month = any recorded activity ---- */
+        $workedIds = $completedInMonthIds->concat(
+            DesignTaskEodRecord::query()
+                ->whereBetween('submitted_at', [$month, $monthEnd])
+                ->when($designerId, fn ($query) => $query->where('designer_id', $designerId))
+                ->pluck('design_task_id')
+                ->map(fn ($id) => (int) $id)
+        );
+        if ($taskIds->isNotEmpty()) {
+            $workedIds = $workedIds->concat(
+                DesignTaskStatusHistory::query()
+                    ->whereIn('design_task_id', $taskIds)
+                    ->whereBetween('created_at', [$month, $monthEnd])
+                    ->pluck('design_task_id')
+                    ->map(fn ($id) => (int) $id)
+            );
+        }
+        $workedIds = $workedIds->concat($reworkMonthIds)->unique()->values();
+
+        /* ---- Monthly bar chart (selected designer + month) ---- */
+        $bar = [
+            ['key' => 'worked', 'label' => 'Tasks Worked', 'value' => $workedIds->count(), 'color' => '#2970ff'],
+            ['key' => 'completed', 'label' => 'Tasks Completed', 'value' => $completedInMonthIds->count(), 'color' => '#027a48'],
+            ['key' => 'rework', 'label' => 'Rework Tasks', 'value' => $reworkMonthIds->count(), 'color' => '#f79009'],
+            ['key' => 'split', 'label' => 'Split Tasks', 'value' => $approvedInMonthFor('split'), 'color' => '#7c3aed'],
+            ['key' => 'swapped', 'label' => 'Swapped Tasks', 'value' => $approvedInMonthFor('swap'), 'color' => '#12b76a'],
+            ['key' => 'declined', 'label' => 'Declined Tasks', 'value' => $approvedInMonthFor('decline'), 'color' => '#c01048'],
+        ];
+
+        /* ---- Six-month trend ending at the selected month ---- */
+        $line = collect(range(5, 0))->map(function (int $offset) use ($month, $completedAtByTask, $reviewByTaskId) {
+            $start = $month->copy()->subMonths($offset)->startOfMonth();
+            $end = $start->copy()->endOfMonth();
+            $ids = $completedAtByTask
+                ->filter(fn (Carbon $ts) => $ts->betweenIncluded($start, $end))
+                ->keys();
+            $ratings = $ids
+                ->map(fn ($id) => $reviewByTaskId->get((int) $id)?->overall_rating)
+                ->filter(fn ($value) => $value !== null)
+                ->values();
+
+            return [
+                'label' => $start->format('M y'),
+                'completed' => $ids->count(),
+                'rating' => $ratings->count() ? round((float) $ratings->avg(), 1) : null,
+            ];
+        })->values();
+
+        /* ---- Per-designer workload (always all active designers) ---- */
+        $workload = $designers->map(function (User $designer) use ($tasks, $allRequests, $reviewByTaskId, $reworkSentBack, $reworkReviewCount, $reworkHistoryCount, $isOverdue) {
             $designerTasks = $tasks->where('designer_id', $designer->id);
-            $active = $designerTasks->whereNotIn('status', ['completed'])->count();
-            $completed = $designerTasks->where('status', 'completed')->count();
-            $overdue = $designerTasks->filter(fn (DesignTask $task) =>
-                $task->status !== 'completed'
-                && $task->due_at
-                && $task->due_at->lt($now)
-            )->count();
-
-            // Compact visual indicator, capped at 100%.
-            $loadPercent = min(100, $active * 10);
+            $ratings = $designerTasks
+                ->map(fn (DesignTask $task) => $reviewByTaskId->get((int) $task->id)?->overall_rating)
+                ->filter(fn ($value) => $value !== null);
+            $countRequest = fn (string $type) => $allRequests
+                ->filter(fn ($request) => $request->request_type === $type
+                    && $request->overall_status === 'approved'
+                    && (int) $request->requested_by === (int) $designer->id)
+                ->count();
 
             return [
                 'designer' => $designer,
-                'active' => $active,
-                'completed' => $completed,
-                'overdue' => $overdue,
-                'load_percent' => $loadPercent,
-                'status' => match (true) {
-                    $loadPercent >= 80 => 'Busy',
-                    $loadPercent >= 50 => 'Working',
-                    default => 'Available',
-                },
+                'assigned' => $designerTasks->count(),
+                'in_progress' => $designerTasks->where('status', 'in_progress')->count(),
+                'pending' => $designerTasks->whereIn('status', self::PENDING_STATUSES)->count(),
+                'overdue' => $designerTasks->filter($isOverdue)->count(),
+                'completed' => $designerTasks->where('status', 'completed')->count(),
+                'rework_count' => $designerTasks->sum(fn (DesignTask $task) => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount)),
+                'rework_creatives' => $designerTasks->sum(fn (DesignTask $task) => (int) ($reworkSentBack[$task->id] ?? 0)),
+                'split' => $countRequest('split'),
+                'swap' => $countRequest('swap'),
+                'decline' => $countRequest('decline'),
+                'rating' => $ratings->count() ? $ratings->avg() : null,
             ];
-        })->sortByDesc('active')->values();
+        })->sortByDesc('assigned')->values();
 
-        return view('designer-head.dashboard', [
+        /* ---- Task details table committed to the current assignee ---- */
+        $taskRows = $tasks
+            ->sortByDesc('assigned_at')
+            ->values()
+            ->map(fn (DesignTask $task) => [
+                'task' => $task,
+                'done' => $this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack),
+                'remaining' => max(0, (int) $task->total_creatives - $this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack)),
+                'percentage' => min(100, (int) round(($this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack) / max(1, (int) $task->total_creatives)) * 100)),
+                'overdue' => $isOverdue($task),
+                'days_overdue' => $isOverdue($task) && $task->due_at ? (int) $task->due_at->diffInDays(now()) : 0,
+                'rework_count' => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
+                'rework_creatives' => (int) ($reworkSentBack[$task->id] ?? 0),
+                'completed_at' => $completedAtByTask->get($task->id),
+                'rating' => $reviewByTaskId->get($task->id)?->overall_rating,
+            ])
+            ->take(200);
+
+        /* ---- Rework analytics from rework records ---- */
+        $reworkRows = $tasks
+            ->filter(fn (DesignTask $task) => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount) > 0)
+            ->map(fn (DesignTask $task) => [
+                'task' => $task,
+                'rework_count' => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
+                'rework_creatives' => (int) ($reworkSentBack[$task->id] ?? 0),
+                'last_rework_at' => $lastReworkAtByTask->get($task->id),
+            ])
+            ->sortByDesc(fn (array $row) => $row['last_rework_at']?->timestamp ?? 0)
+            ->values();
+
+        /* ---- Ratings scoped to the visible tasks ---- */
+        $ratings = $reviews
+            ->filter(fn ($review) => $taskKeyById->has((int) $review->design_task_id))
+            ->values();
+
+        /* ---- Recent completion activity (latest first) ---- */
+        $completionsList = $completedAtByTask
+            ->filter(fn (Carbon $ts, $taskId) => $taskKeyById->has((int) $taskId))
+            ->sortByDesc(fn (Carbon $ts) => $ts->timestamp)
+            ->map(function (Carbon $ts, $taskId) use ($taskKeyById, $reviewByTaskId, $reworkReviewCount, $reworkHistoryCount) {
+                /** @var DesignTask $task */
+                $task = $taskKeyById->get((int) $taskId);
+
+                return [
+                    'task' => $task,
+                    'completed_at' => $ts,
+                    'rating' => $reviewByTaskId->get((int) $taskId)?->overall_rating,
+                    'rework_count' => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
+                    'duration_text' => $this->durationText($task->assigned_at, $ts),
+                ];
+            })
+            ->values()
+            ->take(12);
+
+        /* ---- Overdue tracking ---- */
+        $overdue = $tasks
+            ->filter($isOverdue)
+            ->map(fn (DesignTask $task) => [
+                'task' => $task,
+                'days' => (int) $task->due_at->diffInDays(now()),
+                'done' => $this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack),
+                'total' => (int) $task->total_creatives,
+                'percentage' => min(100, (int) round(($this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack) / max(1, (int) $task->total_creatives)) * 100)),
+            ])
+            ->sortByDesc('days')
+            ->values()
+            ->take(20);
+
+        $stats = [
+            'total_designers' => $totalDesigners,
+            'active_designers' => $designers->count(),
+            'total_tasks' => $tasks->count(),
+            'in_progress' => $tasks->where('status', 'in_progress')->count(),
+            'pending' => $tasks->whereIn('status', self::PENDING_STATUSES)->count(),
+            'waiting' => $tasks->where('status', 'waiting_confirmation')->count(),
+            'completed' => $tasks->where('status', 'completed')->count(),
+            'overdue' => $tasks->filter($isOverdue)->count(),
+            'declined' => $approvedFor('decline'),
+            'split' => $approvedFor('split'),
+            'swapped' => $approvedFor('swap'),
+            'rework_tasks' => $tasks->where('status', 'rework')->count(),
+            'approval_pending' => $pendingRequests->count(),
+        ];
+
+        $months = collect(range(11, 0))->map(fn (int $offset) => [
+            'value' => $now->copy()->subMonths($offset)->format('Y-m'),
+            'label' => $now->copy()->subMonths($offset)->format('F Y'),
+        ])->values();
+
+        return [
             'stats' => $stats,
+            'designers' => $designers,
+            'months' => $months,
+            'selectedDesigner' => $designerId,
+            'selectedMonth' => $selectedMonth,
+            'selectedDesignerName' => $designerId ? $designers->firstWhere('id', $designerId)?->name : null,
+            'selectedMonthLabel' => $month->format('F Y'),
             'workload' => $workload,
-            'swapRequests' => $requests->where('request_type', 'swap')->take(6)->values(),
-            'splitRequests' => $requests->where('request_type', 'split')->take(6)->values(),
-        ]);
+            'bar' => $bar,
+            'line' => $line,
+            'taskRows' => $taskRows,
+            'reworkRows' => $reworkRows,
+            'ratings' => $ratings,
+            'completions' => $completionsList,
+            'overdue' => $overdue,
+            'pendingRequests' => $pendingRequests,
+            'recentDecisions' => $recentDecisions,
+        ];
+    }
+
+    private function mapByTask($query, Collection $taskIds, string $expression): Collection
+    {
+        if ($taskIds->isEmpty()) {
+            return collect();
+        }
+
+        return $query
+            ->whereIn('design_task_id', $taskIds)
+            ->groupBy('design_task_id')
+            ->selectRaw('design_task_id, '.$expression.' AS total')
+            ->pluck('total', 'design_task_id')
+            ->mapWithKeys(fn ($value, $key) => [(int) $key => (int) $value]);
+    }
+
+    private function completedFor(DesignTask $task, Collection $eodProgress, Collection $eodRework, Collection $reworkSentBack): int
+    {
+        $completed = (int) ($eodProgress[$task->id] ?? 0)
+            + (int) ($eodRework[$task->id] ?? 0)
+            - (int) ($reworkSentBack[$task->id] ?? 0);
+
+        return max(0, min((int) $task->total_creatives, $completed));
+    }
+
+    private function reworkCountFor(DesignTask $task, Collection $reworkReviewCount, Collection $reworkHistoryCount): int
+    {
+        $reviewCount = (int) ($reworkReviewCount[$task->id] ?? 0);
+
+        return $reviewCount > 0
+            ? $reviewCount
+            : (int) ($reworkHistoryCount[$task->id] ?? 0);
+    }
+
+    private function durationText(?Carbon $from, ?Carbon $to): ?string
+    {
+        if (! $from || ! $to || $to->lt($from)) {
+            return null;
+        }
+
+        $diff = $from->diff($to);
+
+        if ($diff->d > 0) {
+            return $diff->d.'d '.$diff->h.'h';
+        }
+
+        return $diff->h > 0 || $diff->i > 0 ? $diff->h.'h '.$diff->i.'m' : '0m';
     }
 }
