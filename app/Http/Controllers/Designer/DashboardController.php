@@ -47,6 +47,7 @@ class DashboardController extends Controller
         $stats = [
             'total' => $tasks->count(),
             'assigned' => $tasks->where('status', 'assigned_tasks')->count(),
+            'ready_to_start' => $tasks->where('status', 'yet_to_start')->count(),
             'in_progress' => $tasks->where('status', 'in_progress')->count(),
             'completed' => $tasks->where('status', 'completed')->count(),
             'pending_approval' => $pendingRequests->count(),

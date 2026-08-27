@@ -17,6 +17,7 @@
 
     .bd-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
     .bd-kpis.bd-kpis-8{grid-template-columns:repeat(8,minmax(0,1fr))}
+    .bd-kpis.bd-kpis-9{grid-template-columns:repeat(9,minmax(0,1fr))}
     .bd-kpi{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:12px 13px}
     .bd-kpi-label{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.045em;color:#667085}
     .bd-kpi-value{font-size:22px;font-weight:950;color:#101828;margin-top:5px}
@@ -118,8 +119,8 @@
     .bd-review-comment{font-size:9px;color:#344054;line-height:1.5;margin-bottom:8px;min-height:36px}
     .bd-review-meta{font-size:7px;color:#98a2b3;margin-top:2px}
 
-    @media(max-width:1200px){.bd-kpis,.bd-kpis.bd-kpis-8{grid-template-columns:repeat(3,1fr)}.bd-lower{grid-template-columns:1fr 1fr}}
-    @media(max-width:760px){.bd-dash-head{align-items:flex-start;flex-direction:column}.bd-kpis,.bd-kpis.bd-kpis-8{grid-template-columns:repeat(2,1fr)}.bd-lower{grid-template-columns:1fr}}
+    @media(max-width:1200px){.bd-kpis,.bd-kpis.bd-kpis-8,.bd-kpis.bd-kpis-9{grid-template-columns:repeat(3,1fr)}.bd-lower{grid-template-columns:1fr 1fr}}
+    @media(max-width:760px){.bd-dash-head{align-items:flex-start;flex-direction:column}.bd-kpis,.bd-kpis.bd-kpis-8,.bd-kpis.bd-kpis-9{grid-template-columns:repeat(2,1fr)}.bd-lower{grid-template-columns:1fr}}
 </style>
 
 <div class="bd-dashboard">
@@ -133,9 +134,10 @@
         </div>
     </div>
 
-    <div class="bd-kpis bd-kpis-8">
+    <div class="bd-kpis bd-kpis-9">
         <div class="bd-kpi"><div class="bd-kpi-label">Total Tasks</div><div class="bd-kpi-value">{{ $stats['total'] }}</div><div class="bd-kpi-note">Tasks assigned to you</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Assigned</div><div class="bd-kpi-value">{{ $stats['assigned'] }}</div><div class="bd-kpi-note">Awaiting your action</div></div>
+        <div class="bd-kpi"><div class="bd-kpi-label">Ready to Start</div><div class="bd-kpi-value">{{ $stats['ready_to_start'] }}</div><div class="bd-kpi-note">Ready to begin work</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">In Progress</div><div class="bd-kpi-value">{{ $stats['in_progress'] }}</div><div class="bd-kpi-note">Currently being worked on</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Rework</div><div class="bd-kpi-value">{{ $stats['rework'] }}</div><div class="bd-kpi-note">Tasks currently in rework</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Rework Creatives</div><div class="bd-kpi-value">{{ $stats['rework_creatives'] }}</div><div class="bd-kpi-note">Creatives pending resubmission</div></div>

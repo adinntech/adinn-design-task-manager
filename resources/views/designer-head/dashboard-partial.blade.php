@@ -61,6 +61,7 @@
         <div class="dh-kpi"><div class="dh-kpi-icon">▦</div><div class="dh-kpi-label">Assigned Tasks</div><div class="dh-kpi-value">{{ $stats['total_tasks'] }}</div><div class="dh-kpi-note">{{ $selectedDesignerName ?? 'Across all Designers' }}</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">➤</div><div class="dh-kpi-label">In Progress</div><div class="dh-kpi-value">{{ $stats['in_progress'] }}</div><div class="dh-kpi-note">Being worked now</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">◷</div><div class="dh-kpi-label">Pending</div><div class="dh-kpi-value">{{ $stats['pending'] }}</div><div class="dh-kpi-note">Not yet started</div></div>
+        <div class="dh-kpi"><div class="dh-kpi-icon">◔</div><div class="dh-kpi-label">Ready to Start</div><div class="dh-kpi-value">{{ $stats['ready_to_start'] }}</div><div class="dh-kpi-note">{{ $selectedDesignerName ?? 'Across all Designers' }}</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">↗</div><div class="dh-kpi-label">Waiting BD Review</div><div class="dh-kpi-value">{{ $stats['waiting'] }}</div><div class="dh-kpi-note">Waiting for confirmation</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">✓</div><div class="dh-kpi-label">Completed</div><div class="dh-kpi-value">{{ $stats['completed'] }}</div><div class="dh-kpi-note">Finished tasks</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">!</div><div class="dh-kpi-label">Overdue</div><div class="dh-kpi-value">{{ $stats['overdue'] }}</div><div class="dh-kpi-note">Past deadline</div></div>
@@ -83,7 +84,7 @@
             <table class="dh-table">
                 <thead>
                 <tr>
-                    <th>Designer</th><th>Current Tasks</th><th>In Progress</th><th>Pending</th><th>Overdue</th><th>Completed</th>
+                    <th>Designer</th><th>Current Tasks</th><th>In Progress</th><th>Pending</th><th>Ready to Start</th><th>Overdue</th><th>Completed</th>
                     <th>Rework</th><th>Rework Creatives</th><th>Split</th><th>Swap</th><th>Decline</th><th>Avg Rating</th>
                 </tr>
                 </thead>
@@ -94,6 +95,7 @@
                         <td class="dh-strong">{{ $row['assigned'] }}</td>
                         <td>{{ $row['in_progress'] }}</td>
                         <td>{{ $row['pending'] }}</td>
+                        <td>{{ $row['ready_to_start'] }}</td>
                         <td class="{{ $row['overdue'] ? 'dh-danger' : '' }}">{{ $row['overdue'] }}</td>
                         <td>{{ $row['completed'] }}</td>
                         <td>{{ $row['rework_count'] }}</td>
@@ -104,7 +106,7 @@
                         <td class="dh-strong">{{ $row['rating'] !== null ? $fmt($row['rating']).' / 5' : '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="12"><div class="dh-empty">No active Designers found.</div></td></tr>
+                    <tr><td colspan="13"><div class="dh-empty">No active Designers found.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
