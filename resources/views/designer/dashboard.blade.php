@@ -47,7 +47,7 @@
     .pill-rejected{background:#fff1f3;color:#c01048}
     .pill-default{background:#f9fafb;color:#475467;border:1px solid #eaecf0}
 
-    .bd-lower{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .bd-lower{display:grid;grid-template-columns:.8fr 1fr 1.1fr;gap:10px}
     .bd-req-history{padding:11px 0;border-bottom:1px solid #f2f4f7}
     .bd-req-history:last-child{border-bottom:0}
     .bd-req-history-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
@@ -77,6 +77,34 @@
 
     .bd-empty{text-align:center;color:#98a2b3;font-size:9px;padding:20px 8px}
 
+    .bd-progress-card{display:flex;align-items:center;gap:14px;padding:14px 16px}
+    .bd-progress-label{font-size:9px;font-weight:900;color:#344054;white-space:nowrap}
+    .bd-progress-track{flex:1;height:10px;border-radius:999px;background:#f2f4f7;overflow:hidden}
+    .bd-progress-track > span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#e30613,#ff6b7d)}
+    .bd-progress-value{font-size:13px;font-weight:950;color:#101828;min-width:34px;text-align:right}
+
+    .bd-donut-wrap{display:flex;align-items:center;gap:14px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f2f4f7;flex-wrap:wrap}
+    .bd-donut-legend{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px}
+    .bd-donut-legend-row{display:flex;align-items:center;gap:6px;font-size:8px;color:#475467}
+    .bd-donut-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .bd-donut-legend-count{margin-left:auto;font-weight:900;color:#101828}
+
+    .bd-line-chart{width:100%;height:auto;display:block}
+    .bd-line-chart .grid-line{stroke:#f1f2f4;stroke-width:1}
+    .bd-line-chart .trend-line{fill:none;stroke:#e30613;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .bd-line-chart .trend-point{fill:#e30613;stroke:#fff;stroke-width:1.5}
+    .bd-line-chart .trend-label{font-size:7px;fill:#98a2b3;font-weight:700}
+    .bd-line-chart .trend-value{font-size:7px;fill:#344054;font-weight:900}
+
+    .bd-hist-row{margin-bottom:10px}
+    .bd-hist-row:last-child{margin-bottom:0}
+    .bd-hist-top{display:flex;justify-content:space-between;font-size:8px;font-weight:850;color:#344054;margin-bottom:4px}
+    .bd-hist-track{display:flex;height:10px;border-radius:999px;overflow:hidden;background:#f2f4f7}
+    .bd-hist-track span{height:100%}
+    .bd-hist-legend{display:flex;gap:10px;margin-top:10px;font-size:7px;color:#667085}
+    .bd-hist-legend span{display:inline-flex;align-items:center;gap:4px}
+    .bd-hist-legend i{width:7px;height:7px;border-radius:2px;display:inline-block}
+
     @media(max-width:1200px){.bd-kpis{grid-template-columns:repeat(3,1fr)}.bd-lower{grid-template-columns:1fr 1fr}}
     @media(max-width:760px){.bd-dash-head{align-items:flex-start;flex-direction:column}.bd-kpis{grid-template-columns:repeat(2,1fr)}.bd-lower{grid-template-columns:1fr}}
 </style>
@@ -100,6 +128,14 @@
         <div class="bd-kpi"><div class="bd-kpi-label">Pending Requests</div><div class="bd-kpi-value">{{ $stats['pending_approval'] }}</div><div class="bd-kpi-note">Your open requests</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Overdue</div><div class="bd-kpi-value">{{ $stats['overdue'] }}</div><div class="bd-kpi-note">Past due date</div></div>
     </div>
+
+    <section class="bd-card">
+        <div class="bd-card-body bd-progress-card">
+            <div class="bd-progress-label">Completion Rate</div>
+            <div class="bd-progress-track"><span style="width:{{ $completionRate }}%"></span></div>
+            <div class="bd-progress-value">{{ $completionRate }}%</div>
+        </div>
+    </section>
 
     <div class="bd-kpis bd-kpis-4">
         <div class="bd-kpi"><div class="bd-kpi-label">Swapped Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['swap'] }}</div><div class="bd-kpi-note">Swap requests raised by you</div></div>
@@ -165,6 +201,38 @@
         </div>
     </section>
 
+    <section class="bd-card">
+        <div class="bd-card-head"><div class="bd-card-title">Monthly Completed Tasks Trend</div></div>
+        <div class="bd-card-body">
+            @php
+                $trendMax = max(1, $monthlyTrend->max('count'));
+                $chartW = 600; $chartH = 90; $padX = 22; $padY = 16;
+                $stepX = $monthlyTrend->count() > 1 ? ($chartW - $padX * 2) / ($monthlyTrend->count() - 1) : 0;
+                $trendPoints = $monthlyTrend->values()->map(function (array $m, int $i) use ($trendMax, $chartH, $padY, $padX, $stepX) {
+                    return [
+                        'x' => $padX + $i * $stepX,
+                        'y' => $chartH - $padY - (($m['count'] / $trendMax) * ($chartH - $padY * 2)),
+                        'label' => $m['label'],
+                        'count' => $m['count'],
+                    ];
+                });
+                $trendPolyline = $trendPoints->map(fn ($p) => round($p['x'], 1).','.round($p['y'], 1))->implode(' ');
+            @endphp
+            <svg class="bd-line-chart" viewBox="0 0 {{ $chartW }} {{ $chartH + 14 }}" preserveAspectRatio="xMidYMid meet">
+                @foreach([0.25, 0.5, 0.75] as $frac)
+                    @php $gy = $chartH - $padY - $frac * ($chartH - $padY * 2); @endphp
+                    <line class="grid-line" x1="{{ $padX }}" x2="{{ $chartW - $padX }}" y1="{{ $gy }}" y2="{{ $gy }}"/>
+                @endforeach
+                <polyline class="trend-line" points="{{ $trendPolyline }}"/>
+                @foreach($trendPoints as $p)
+                    <circle class="trend-point" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"/>
+                    <text class="trend-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 8 }}" text-anchor="middle">{{ $p['count'] }}</text>
+                    <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
+                @endforeach
+            </svg>
+        </div>
+    </section>
+
     <div class="bd-lower">
         <section class="bd-card">
             <div class="bd-card-head"><div class="bd-card-title">Requests Overview</div></div>
@@ -177,8 +245,69 @@
         </section>
 
         <section class="bd-card">
+            <div class="bd-card-head"><div class="bd-card-title">Request Outcomes</div></div>
+            <div class="bd-card-body">
+                @php $outcomeColors = ['approved' => '#027a48', 'rejected' => '#c01048', 'pending' => '#6938ef']; @endphp
+                @foreach($requestOutcomes as $row)
+                    @php $rowTotal = $row['approved'] + $row['rejected'] + $row['pending']; @endphp
+                    <div class="bd-hist-row">
+                        <div class="bd-hist-top"><span>{{ $row['label'] }}</span><span>{{ $rowTotal }} total</span></div>
+                        <div class="bd-hist-track">
+                            @if($rowTotal > 0)
+                                <span style="width:{{ $row['approved'] / $rowTotal * 100 }}%;background:{{ $outcomeColors['approved'] }}"></span>
+                                <span style="width:{{ $row['rejected'] / $rowTotal * 100 }}%;background:{{ $outcomeColors['rejected'] }}"></span>
+                                <span style="width:{{ $row['pending'] / $rowTotal * 100 }}%;background:{{ $outcomeColors['pending'] }}"></span>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+                <div class="bd-hist-legend">
+                    <span><i style="background:{{ $outcomeColors['approved'] }}"></i>Approved</span>
+                    <span><i style="background:{{ $outcomeColors['rejected'] }}"></i>Rejected</span>
+                    <span><i style="background:{{ $outcomeColors['pending'] }}"></i>Pending</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="bd-card">
             <div class="bd-card-head"><div class="bd-card-title">Task Status Summary</div></div>
             <div class="bd-card-body">
+                @php
+                    $donutColors = [
+                        'assigned_tasks' => '#475467', 'review_analysis' => '#2970ff',
+                        'need_clarification' => '#f79009', 'yet_to_start' => '#06aed4',
+                        'in_progress' => '#3538cd', 'waiting_confirmation' => '#6938ef',
+                        'rework' => '#b54708', 'completed' => '#027a48', 'swap_tasks' => '#c01048',
+                    ];
+                    $donutSegments = $statusSummary->filter(fn ($row) => $row['count'] > 0)->values();
+                    $donutCircumference = 2 * M_PI * 26;
+                    $donutCursor = 0;
+                @endphp
+                @if($stats['total'] > 0)
+                    <div class="bd-donut-wrap">
+                        <svg width="64" height="64" viewBox="0 0 64 64" style="flex-shrink:0">
+                            <circle cx="32" cy="32" r="26" fill="none" stroke="#f2f4f7" stroke-width="10"/>
+                            @foreach($donutSegments as $seg)
+                                @php
+                                    $segLen = ($seg['count'] / $stats['total']) * $donutCircumference;
+                                @endphp
+                                <circle cx="32" cy="32" r="26" fill="none" stroke="{{ $donutColors[$seg['key']] ?? '#98a2b3' }}"
+                                        stroke-width="10" stroke-dasharray="{{ $segLen }} {{ $donutCircumference - $segLen }}"
+                                        stroke-dashoffset="{{ -$donutCursor }}" transform="rotate(-90 32 32)"/>
+                                @php $donutCursor += $segLen; @endphp
+                            @endforeach
+                        </svg>
+                        <div class="bd-donut-legend">
+                            @foreach($donutSegments as $seg)
+                                <div class="bd-donut-legend-row">
+                                    <span class="bd-donut-dot" style="background:{{ $donutColors[$seg['key']] ?? '#98a2b3' }}"></span>
+                                    {{ $seg['label'] }}
+                                    <span class="bd-donut-legend-count">{{ $seg['count'] }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
                 @foreach($statusSummary as $row)
                     @php
                         $percentage = $stats['total'] > 0 ? round(($row['count'] / $stats['total']) * 100) : 0;

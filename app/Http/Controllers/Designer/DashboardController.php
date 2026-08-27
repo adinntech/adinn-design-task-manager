@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Designer;
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
+use App\Models\DesignTaskStatusHistory;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -75,6 +76,50 @@ class DashboardController extends Controller
             'approved' => $ownRequests->where('overall_status', 'approved')->count(),
         ];
 
+        $completionRate = $stats['total'] > 0 ? (int) round(($stats['completed'] / $stats['total']) * 100) : 0;
+
+        // Monthly completed-task trend for the last 6 months, driven by the task's own
+        // "-> completed" history event (not who clicked it — the final confirmation is
+        // often recorded as the BD via bd_completion_rating, not the designer).
+        $taskIds = $tasks->pluck('id');
+
+        $completions = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskStatusHistory::query()
+                ->where('to_status', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->get(['design_task_id', 'created_at']);
+
+        $monthlyTrend = collect(range(5, 0))
+            ->map(function (int $offset) use ($completions) {
+                $month = now()->startOfMonth()->subMonths($offset);
+                $monthEnd = $month->copy()->endOfMonth();
+
+                return [
+                    'label' => $month->format('M'),
+                    'count' => $completions
+                        ->filter(fn ($row) => $row->created_at->betweenIncluded($month, $monthEnd))
+                        ->pluck('design_task_id')
+                        ->unique()
+                        ->count(),
+                ];
+            })
+            ->values();
+
+        $requestOutcomes = collect(['swap' => 'Swap', 'decline' => 'Decline', 'split' => 'Split'])
+            ->map(function (string $label, string $type) use ($ownRequests, $pendingStatuses) {
+                $group = $ownRequests->where('request_type', $type);
+
+                return [
+                    'type' => $type,
+                    'label' => $label,
+                    'approved' => $group->where('overall_status', 'approved')->count(),
+                    'rejected' => $group->where('overall_status', 'rejected')->count(),
+                    'pending' => $group->whereIn('overall_status', $pendingStatuses)->count(),
+                ];
+            })
+            ->values();
+
         return view('designer.dashboard', [
             'stats' => $stats,
             'recentTasks' => $tasks->take(12),
@@ -82,6 +127,9 @@ class DashboardController extends Controller
             'requestSummary' => $requestSummary,
             'requestTypeCounts' => $requestTypeCounts,
             'statusSummary' => $statusSummary,
+            'completionRate' => $completionRate,
+            'monthlyTrend' => $monthlyTrend,
+            'requestOutcomes' => $requestOutcomes,
         ]);
     }
 }
