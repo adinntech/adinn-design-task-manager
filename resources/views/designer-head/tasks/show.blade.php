@@ -318,6 +318,7 @@
                                         <label class="head-label">Final Split Quantity *</label>
                                         <input class="head-field" type="number" name="approved_creative_count" min="1" max="{{ max(1,((int)$task->total_creatives)-1) }}" value="{{ old('approved_creative_count',$requestedSplit ?: 1) }}" required>
                                         <div class="head-hint">At least 1 creative must remain with the original task.</div>
+                                        <div class="head-hint">Overall Creative Count: {{ (int) $task->total_creatives }}</div>
 
                                         <label class="head-label">Comment</label>
                                         <textarea class="head-field" name="decision_comment" placeholder="Optional approval comment">{{ old('decision_comment') }}</textarea>

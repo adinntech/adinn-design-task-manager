@@ -221,6 +221,11 @@
                         $typeLabel = ucfirst($request->request_type);
                         $isSwap = $request->request_type === 'swap';
                         $isSplit = $request->request_type === 'split';
+                        // Same fallback chain as the Split Details tab (designer-head/tasks/show.blade.php)
+                        // so both places always agree on the Designer-requested quantity.
+                        $requestedSplit = data_get($request, 'split_count')
+                            ?? data_get($request, 'split_details.requested_count')
+                            ?? data_get($request, 'split_details.creative_count');
                     @endphp
                     <div class="dh-req">
                         <div class="dh-req-top">
@@ -251,8 +256,9 @@
                                 </select>
                                 @if($isSplit)
                                     <label class="dh-label">Split Quantity *</label>
-                                    <input class="dh-select-field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ((int) ($request->task?->total_creatives ?? 1)) - 1) }}" value="{{ old('approved_creative_count', 1) }}" required>
-                                    <div class="dh-hint">At least 1 creative must remain with the original task.</div>
+                                    <input class="dh-select-field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ((int) ($request->task?->total_creatives ?? 1)) - 1) }}" value="{{ old('approved_creative_count', $requestedSplit ?: 1) }}" required>
+                                    <div class="dh-hint">Designer requested {{ $requestedSplit ?? '—' }} · at least 1 creative must remain with the original task.</div>
+                                    <div class="dh-hint">Overall Creative Count: {{ (int) ($request->task?->total_creatives ?? 0) }}</div>
                                 @endif
                                 <label class="dh-label" style="margin-top:8px">Comment</label>
                                 <textarea class="dh-select-field" name="decision_comment" placeholder="Optional approval comment">{{ old('decision_comment') }}</textarea>
