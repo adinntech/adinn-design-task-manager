@@ -128,7 +128,8 @@
                 <a href="{{ route('bd.tasks.index') }}" class="{{ request()->routeIs('bd.tasks.index','bd.tasks.show','bd.tasks.edit') ? 'active' : '' }}"><span>▤</span>Assigned Tasks</a>
                 <a href="{{ route('bd.tasks.create') }}" class="{{ request()->routeIs('bd.tasks.create') ? 'active' : '' }}"><span>＋</span>Create Task</a>
             @elseif($role === 'designer')
-                <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.*') ? 'active' : '' }}"><span>▦</span>My Tasks</a>
+                <a href="{{ route('designer.dashboard') }}" class="{{ request()->routeIs('designer.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
+                <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.*') ? 'active' : '' }}"><span>▤</span>My Tasks</a>
             @elseif($role === 'designer_head')
                 <a href="{{ route('designer-head.dashboard') }}" class="{{ request()->routeIs('designer-head.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
                 <a href="{{ route('designer-head.assigned-tasks') }}" class="{{ request()->routeIs('designer-head.assigned-tasks','designer-head.tasks.*') ? 'active' : '' }}"><span>▤</span>Assigned Tasks</a>
