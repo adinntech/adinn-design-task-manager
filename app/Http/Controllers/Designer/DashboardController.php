@@ -145,7 +145,7 @@ class DashboardController extends Controller
         $ratedCount = $completedReviews->count();
 
         $overallRating = [
-            'average' => $ratedCount > 0 ? round((float) $completedReviews->avg('overall_rating'), 1) : null,
+            'average' => $ratedCount > 0 ? DesignTaskBdReview::roundToHalfStar($completedReviews->avg('overall_rating')) : null,
             'rated' => $ratedCount,
             'total' => $stats['completed'],
         ];
@@ -156,7 +156,7 @@ class DashboardController extends Controller
                 $task = $tasks->firstWhere('id', $review->design_task_id);
 
                 return [
-                    'rating' => (float) $review->overall_rating,
+                    'rating' => DesignTaskBdReview::roundToHalfStar($review->overall_rating),
                     'comment' => $review->comment,
                     'task_id' => $task?->task_id,
                     'task_name' => $task?->display_task_name ?? $task?->task_name,

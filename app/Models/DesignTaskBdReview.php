@@ -43,8 +43,17 @@ class DesignTaskBdReview extends Model
         return $this->belongsTo(User::class, 'submitted_by');
     }
 
+    /**
+     * Snap any rating value to the nearest 0.5, so display never shows a raw
+     * average like 4.7 — only 0.5/1/1.5.../5.
+     */
+    public static function roundToHalfStar(float|int|string|null $value): float
+    {
+        return round(((float) $value) * 2) / 2;
+    }
+
     public static function formatRating(float|int|string|null $value): string
     {
-        return rtrim(rtrim(number_format((float) $value, 2), '0'), '.');
+        return rtrim(rtrim(number_format(self::roundToHalfStar($value), 2), '0'), '.');
     }
 }

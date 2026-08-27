@@ -706,7 +706,8 @@
 
                 @if($task->status === 'waiting_confirmation')
                     <div class="bd-review-box" x-data="{
-                        showRating: {{ ($errors->has('designer_attitude') || $errors->has('design_satisfaction') || $errors->has('rework_iteration') || $errors->has('meeting_deadline') || $errors->has('client_satisfaction') || $errors->has('rating_comment')) ? 'true' : 'false' }},
+                        panel: {!! ($errors->has('number_of_creatives') || $errors->has('comment')) ? "'rework'" : (($errors->has('designer_attitude') || $errors->has('design_satisfaction') || $errors->has('rework_iteration') || $errors->has('meeting_deadline') || $errors->has('client_satisfaction') || $errors->has('rating_comment')) ? "'rating'" : 'null') !!},
+                        submitting: false,
                         designerAttitude: {{ (float) old('designer_attitude', 0) }},
                         designSatisfaction: {{ (float) old('design_satisfaction', 0) }},
                         reworkIteration: {{ (float) old('rework_iteration', 0) }},
@@ -715,19 +716,45 @@
                         overall(){
                             const values=[this.designerAttitude,this.designSatisfaction,this.reworkIteration,this.meetingDeadline,this.clientSatisfaction].map(Number);
                             if(values.some(v => !v)) return 0;
-                            return Math.round((values.reduce((a,b)=>a+b,0)/5)*100)/100;
+                            // Snap to the nearest 0.5 star — matches the server-side rounding in
+                            // AssignedTaskController::completeWithRating(), so the live preview
+                            // never shows a value the backend wouldn't also store (e.g. 4.7).
+                            return Math.round((values.reduce((a,b)=>a+b,0)/5)*2)/2;
+                        },
+                        onReworkSubmit(event){
+                            if(this.submitting){ event.preventDefault(); return; }
+                            const form = event.target;
+                            const countInput = form.querySelector('[name=number_of_creatives]');
+                            const countError = countInput.nextElementSibling;
+                            const comment = form.querySelector('[name=comment]');
+                            const commentError = comment.nextElementSibling;
+                            const count = parseInt(countInput.value, 10);
+                            let blocked = false;
+                            if(!Number.isInteger(count) || count < 1){ countError.style.display='block'; blocked = true; } else { countError.style.display='none'; }
+                            if(!comment.value.trim()){ commentError.style.display='block'; blocked = true; } else { commentError.style.display='none'; }
+                            if(blocked){ event.preventDefault(); return; }
+                            this.submitting = true;
+                        },
+                        onCompleteSubmit(event){
+                            if(this.submitting){ event.preventDefault(); return; }
+                            this.submitting = true;
                         }
                     }">
                         <h3>BD Confirmation</h3>
                         <p>Choose Rework if corrections are required, or complete the task after submitting the Designer rating.</p>
 
-                        <form method="POST" action="{{ route('bd.tasks.rework', $task) }}" onsubmit="const c=this.querySelector('[name=comment]'); if(!c.value.trim()){ c.nextElementSibling.style.display='block'; c.focus(); return false; }">
+                        <div class="bd-review-actions">
+                            <button type="button" class="btn bd-danger-btn" @click="panel = (panel === 'rework' ? null : 'rework')">Move to Rework</button>
+                            <button type="button" class="btn bd-complete-btn" @click="panel = (panel === 'rating' ? null : 'rating')">Mark As Completed</button>
+                        </div>
+
+                        <form method="POST" action="{{ route('bd.tasks.rework', $task) }}" style="margin-top:12px" x-show="panel === 'rework'" x-cloak @submit="onReworkSubmit($event)">
                             @csrf
                             <div class="bd-review-grid">
                                 <div>
                                     <label class="label">Number of Creatives</label>
-                                    <input class="premium-input" type="number" name="number_of_creatives" min="1" max="{{ $task->total_creatives }}" value="{{ old('number_of_creatives') }}" placeholder="e.g. 2">
-                                    @error('number_of_creatives')<div class="error">{{ $message }}</div>@enderror
+                                    <input class="premium-input" type="number" name="number_of_creatives" min="1" step="1" max="{{ $task->total_creatives }}" value="{{ old('number_of_creatives') }}" placeholder="e.g. 2" oninput="this.nextElementSibling.style.display='none'">
+                                    <div class="error" style="{{ $errors->has('number_of_creatives') ? '' : 'display:none' }}">{{ $errors->first('number_of_creatives') ?: 'Enter a valid number of creatives.' }}</div>
                                 </div>
                                 <div>
                                     <label class="label">Comments</label>
@@ -736,13 +763,13 @@
                                 </div>
                             </div>
                             <div class="bd-review-actions">
-                                <button type="submit" class="btn bd-danger-btn">Rework</button>
-                                <button type="button" class="btn bd-complete-btn" @click="showRating = !showRating">Mark As Completed</button>
+                                <button type="submit" class="btn bd-danger-btn" :disabled="submitting">Confirm Rework</button>
+                                <button type="button" class="btn btn-secondary" @click="panel = null">Cancel</button>
                             </div>
                         </form>
 
-                        <div class="bd-rating-panel" x-show="showRating" x-cloak>
-                            <form method="POST" action="{{ route('bd.tasks.complete-with-rating', $task) }}">
+                        <div class="bd-rating-panel" style="margin-top:12px" x-show="panel === 'rating'" x-cloak>
+                            <form method="POST" action="{{ route('bd.tasks.complete-with-rating', $task) }}" @submit="onCompleteSubmit($event)">
                                 @csrf
 
                                 @php
@@ -785,9 +812,11 @@
                                     @error('rating_comment')<div class="error">{{ $message }}</div>@enderror
                                 </div>
 
+                                <div class="error" x-show="overall() === 0" style="display:none">Please provide a star rating before completing this task.</div>
+
                                 <div class="bd-review-actions">
-                                    <button type="submit" class="btn bd-complete-btn" :disabled="overall() === 0">Submit Rating & Complete Task</button>
-                                    <button type="button" class="btn btn-secondary" @click="showRating=false">Cancel</button>
+                                    <button type="submit" class="btn bd-complete-btn" :disabled="submitting || overall() === 0">Submit Rating & Complete Task</button>
+                                    <button type="button" class="btn btn-secondary" @click="panel = null">Cancel</button>
                                 </div>
                             </form>
                         </div>
@@ -813,7 +842,7 @@
                     <div class="empty-state">No rating available.</div>
                 @else
                 @php
-                    $overallRatingValue = max(0, min(5, (float) $taskRating->overall_rating));
+                    $overallRatingValue = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($taskRating->overall_rating)));
                 @endphp
 
                 <div class="rating-summary-shell">
@@ -847,7 +876,7 @@
                             'Overall Rating' => $taskRating->overall_rating,
                         ] as $label => $value)
                             @php
-                                $ratingValue = max(0, min(5, (float) $value));
+                                $ratingValue = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($value)));
                             @endphp
 
                             <div class="rating-compact-item {{ $label === 'Overall Rating' ? 'rating-overall-item' : '' }}">

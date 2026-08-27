@@ -627,7 +627,7 @@
         @if(! $taskRating)
             <div class="empty-state">No rating available.</div>
         @else
-            @php $overallRatingValue = max(0, min(5, (float) $taskRating->overall_rating)); @endphp
+            @php $overallRatingValue = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($taskRating->overall_rating))); @endphp
             <div class="rating-summary-shell">
                 <div class="rating-summary-top">
                     <div>
@@ -650,7 +650,7 @@
                         'Client Satisfaction' => $taskRating->client_satisfaction,
                         'Overall Rating' => $taskRating->overall_rating,
                     ] as $label => $value)
-                        @php $ratingValue = max(0, min(5, (float) $value)); @endphp
+                        @php $ratingValue = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($value))); @endphp
                         <div class="rating-compact-item {{ $label === 'Overall Rating' ? 'rating-overall-item' : '' }}">
                             <div class="rating-compact-head">
                                 <span class="rating-compact-label">{{ $label }}</span>

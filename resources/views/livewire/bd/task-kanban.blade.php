@@ -396,7 +396,7 @@
 
                             @if($task->status === 'completed' && $task->bdReview && $task->bdReview->overall_rating !== null)
                                 @php
-                                    $kanbanRating = max(0, min(5, (float) $task->bdReview->overall_rating));
+                                    $kanbanRating = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($task->bdReview->overall_rating)));
                                 @endphp
                                 <div class="kanban-rating">
                                     <div class="kanban-rating-head">

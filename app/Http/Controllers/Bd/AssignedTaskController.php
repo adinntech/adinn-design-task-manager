@@ -246,6 +246,8 @@ class AssignedTaskController extends Controller
             }
         };
 
+        $missingRatingMessage = 'Please provide a star rating before completing this task.';
+
         $data = $request->validate([
             'designer_attitude' => ['required', 'numeric', $halfStarRule],
             'design_satisfaction' => ['required', 'numeric', $halfStarRule],
@@ -253,15 +255,24 @@ class AssignedTaskController extends Controller
             'meeting_deadline' => ['required', 'numeric', $halfStarRule],
             'client_satisfaction' => ['required', 'numeric', $halfStarRule],
             'rating_comment' => ['nullable', 'string', 'max:10000'],
+        ], [
+            'designer_attitude.required' => $missingRatingMessage,
+            'design_satisfaction.required' => $missingRatingMessage,
+            'rework_iteration.required' => $missingRatingMessage,
+            'meeting_deadline.required' => $missingRatingMessage,
+            'client_satisfaction.required' => $missingRatingMessage,
         ]);
 
-        $overall = round((
+        // Snap the average to the nearest 0.5 so the stored overall rating is always
+        // a valid half-star value (0.5, 1, 1.5 ... 5) — averaging five independently
+        // valid half-star numbers can otherwise land on 4.7, 4.4, etc.
+        $overall = DesignTaskBdReview::roundToHalfStar((
             (float) $data['designer_attitude']
             + (float) $data['design_satisfaction']
             + (float) $data['rework_iteration']
             + (float) $data['meeting_deadline']
             + (float) $data['client_satisfaction']
-        ) / 5, 2);
+        ) / 5);
 
         if ($overall < 3 && trim((string) ($data['rating_comment'] ?? '')) === '') {
             return back()
