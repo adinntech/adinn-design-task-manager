@@ -144,6 +144,11 @@ class DashboardController extends Controller
 
         $ratedCount = $completedReviews->count();
 
+        // A task can only ever be completed-with-rating once (guarded in
+        // AssignedTaskController::completeWithRating), so there's exactly one
+        // to_status='completed' history row per task — safe to key by task id.
+        $completedAtByTask = $completions->keyBy('design_task_id')->map(fn ($row) => $row->created_at);
+
         $overallRating = [
             'average' => $ratedCount > 0 ? DesignTaskBdReview::roundToHalfStar($completedReviews->avg('overall_rating')) : null,
             'rated' => $ratedCount,
@@ -152,7 +157,7 @@ class DashboardController extends Controller
 
         $reviewCards = $completedReviews
             ->filter(fn (DesignTaskBdReview $review) => filled($review->comment))
-            ->map(function (DesignTaskBdReview $review) use ($tasks) {
+            ->map(function (DesignTaskBdReview $review) use ($tasks, $completedAtByTask) {
                 $task = $tasks->firstWhere('id', $review->design_task_id);
 
                 return [
@@ -161,7 +166,8 @@ class DashboardController extends Controller
                     'task_id' => $task?->task_id,
                     'task_name' => $task?->display_task_name ?? $task?->task_name,
                     'reviewer' => $review->submitter?->name ?? 'BD',
-                    'date' => $review->created_at,
+                    'reviewed_at' => $review->created_at,
+                    'completed_at' => $completedAtByTask->get($review->design_task_id),
                 ];
             })
             ->values();
@@ -180,10 +186,18 @@ class DashboardController extends Controller
             })
             ->values();
 
+        // Latest activity first: a request that was just approved/rejected should
+        // surface above an older one that's still merely pending, even if the
+        // pending one was technically created more recently.
+        $myRequests = $ownRequests
+            ->sortByDesc(fn (DesignTaskRequest $request) => ($request->responded_at ?? $request->created_at)?->timestamp ?? 0)
+            ->values()
+            ->take(100);
+
         return view('designer.dashboard', [
             'stats' => $stats,
             'recentTasks' => $tasks->take(12),
-            'myRequests' => $ownRequests->take(20),
+            'myRequests' => $myRequests,
             'requestSummary' => $requestSummary,
             'requestTypeCounts' => $requestTypeCounts,
             'statusSummary' => $statusSummary,

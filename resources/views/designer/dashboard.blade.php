@@ -77,6 +77,8 @@
 
     .bd-empty{text-align:center;color:#98a2b3;font-size:9px;padding:20px 8px}
 
+    .bd-scroll-y{max-height:520px;overflow-y:auto}
+
     .bd-progress-card{display:flex;align-items:center;gap:14px;padding:14px 16px}
     .bd-progress-label{font-size:9px;font-weight:900;color:#344054;white-space:nowrap}
     .bd-progress-track{flex:1;height:10px;border-radius:999px;background:#f2f4f7;overflow:hidden}
@@ -114,7 +116,7 @@
     .bd-review-stars{display:flex;gap:2px;margin-bottom:6px}
     .bd-review-star{--star-fill:0%;display:inline-block;width:13px;height:13px;flex:0 0 13px;font-size:13px;line-height:13px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
     .bd-review-comment{font-size:9px;color:#344054;line-height:1.5;margin-bottom:8px;min-height:36px}
-    .bd-review-meta{font-size:7px;color:#98a2b3}
+    .bd-review-meta{font-size:7px;color:#98a2b3;margin-top:2px}
 
     @media(max-width:1200px){.bd-kpis,.bd-kpis.bd-kpis-8{grid-template-columns:repeat(3,1fr)}.bd-lower{grid-template-columns:1fr 1fr}}
     @media(max-width:760px){.bd-dash-head{align-items:flex-start;flex-direction:column}.bd-kpis,.bd-kpis.bd-kpis-8{grid-template-columns:repeat(2,1fr)}.bd-lower{grid-template-columns:1fr}}
@@ -279,7 +281,9 @@
                                 </div>
                                 <div class="bd-review-comment">&ldquo;{{ $review['comment'] }}&rdquo;</div>
                                 <div class="bd-review-meta">{{ $review['task_id'] }} · {{ $review['task_name'] }}</div>
-                                <div class="bd-review-meta">{{ $review['reviewer'] }} · {{ $review['date']?->format('d M Y') }}</div>
+                                <div class="bd-review-meta">{{ $review['reviewer'] }}</div>
+                                <div class="bd-review-meta">Reviewed: {{ $review['reviewed_at']?->format('d M Y, g:i A') ?? '—' }}</div>
+                                <div class="bd-review-meta">Completed: {{ $review['completed_at']?->format('d M Y, g:i A') ?? '—' }}</div>
                             </div>
                         @endforeach
                     </div>
@@ -381,7 +385,7 @@
         <div class="bd-card-head">
             <div class="bd-card-title">My Requests — Swap, Decline &amp; Split</div>
         </div>
-        <div class="bd-card-body">
+        <div class="bd-card-body bd-scroll-y">
             @forelse($myRequests as $req)
                 @php
                     $pending = in_array($req->overall_status, ['pending_approval','pending_designer_head','pending_admin'], true);
