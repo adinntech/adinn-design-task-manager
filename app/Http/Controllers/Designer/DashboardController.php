@@ -78,7 +78,6 @@ class DashboardController extends Controller
         return view('designer.dashboard', [
             'stats' => $stats,
             'recentTasks' => $tasks->take(12),
-            'recentRequests' => $ownRequests->take(8),
             'myRequests' => $ownRequests->take(20),
             'requestSummary' => $requestSummary,
             'requestTypeCounts' => $requestTypeCounts,

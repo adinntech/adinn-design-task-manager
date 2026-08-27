@@ -83,4 +83,9 @@ class DesignTaskRequest extends Model
     {
         return $this->adminActor ?: $this->designerHeadActor;
     }
+
+    public function getRespondedAtAttribute(): ?\Illuminate\Support\Carbon
+    {
+        return $this->adminActor ? $this->admin_action_at : $this->designer_head_action_at;
+    }
 }

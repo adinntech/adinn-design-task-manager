@@ -47,7 +47,15 @@
     .pill-rejected{background:#fff1f3;color:#c01048}
     .pill-default{background:#f9fafb;color:#475467;border:1px solid #eaecf0}
 
-    .bd-lower{display:grid;grid-template-columns:.8fr 1.2fr 1fr;gap:10px}
+    .bd-lower{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .bd-req-history{padding:11px 0;border-bottom:1px solid #f2f4f7}
+    .bd-req-history:last-child{border-bottom:0}
+    .bd-req-history-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .bd-req-history-title{font-size:10px;font-weight:900;color:#101828}
+    .bd-req-history-type{font-size:8px;color:#667085;margin-top:2px}
+    .bd-req-history-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 14px;margin-top:7px}
+    .bd-req-history-line{font-size:8px;color:#667085}
+    .bd-req-history-line b{color:#344054;font-weight:800}
     .bd-request-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f2f4f7}
     .bd-request-row:last-child{border-bottom:0}
     .bd-request-name{font-size:9px;font-weight:850;color:#344054}
@@ -169,26 +177,6 @@
         </section>
 
         <section class="bd-card">
-            <div class="bd-card-head"><div class="bd-card-title">Recent Requests</div></div>
-            <div class="bd-card-body">
-                @forelse($recentRequests as $request)
-                    <div class="bd-recent-request">
-                        <div class="bd-recent-request-top">
-                            <div class="bd-recent-request-title">{{ ucfirst($request->request_type) }} Request · {{ $request->task?->task_id ?? 'Task' }}</div>
-                            <span class="bd-request-state">{{ $request->status_label }}</span>
-                        </div>
-                        <div class="bd-recent-request-sub">
-                            {{ $request->task?->task_name ?? 'Task unavailable' }}
-                            · {{ $request->created_at?->diffForHumans() }}
-                        </div>
-                    </div>
-                @empty
-                    <div class="bd-empty">No request activity yet.</div>
-                @endforelse
-            </div>
-        </section>
-
-        <section class="bd-card">
             <div class="bd-card-head"><div class="bd-card-title">Task Status Summary</div></div>
             <div class="bd-card-body">
                 @foreach($statusSummary as $row)
@@ -209,47 +197,46 @@
         <div class="bd-card-head">
             <div class="bd-card-title">My Requests — Swap, Decline &amp; Split</div>
         </div>
-        <div class="bd-table-wrap">
-            <table class="bd-table">
-                <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Task</th>
-                    <th>Status</th>
-                    <th>Current Handler</th>
-                    <th>Requested On</th>
-                </tr>
-                </thead>
-                <tbody>
-                @forelse($myRequests as $req)
-                    @php
-                        $pillClass = match($req->overall_status) {
-                            'approved' => 'pill-approved',
-                            'rejected' => 'pill-rejected',
-                            default => 'pill-waiting',
-                        };
-                        $currentHandler = ($req->overall_status === 'approved' && in_array($req->request_type, ['swap','split'], true))
-                            ? ($req->approvedDesigner?->name ?? '—')
-                            : ($req->task?->designer?->name ?? '—');
-                    @endphp
-                    <tr>
-                        <td>{{ ucfirst($req->request_type) }}</td>
-                        <td>
-                            @if($req->task)
-                                <a class="bd-task-link" href="{{ route('designer.tasks.show',$req->task) }}">{{ $req->task->task_id }}</a>
-                            @else
-                                —
-                            @endif
-                        </td>
-                        <td><span class="bd-pill {{ $pillClass }}">{{ $req->status_label }}</span></td>
-                        <td>{{ $currentHandler }}</td>
-                        <td>{{ $req->created_at?->format('d M Y') }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="5"><div class="bd-empty">No swap, decline or split requests yet.</div></td></tr>
-                @endforelse
-                </tbody>
-            </table>
+        <div class="bd-card-body">
+            @forelse($myRequests as $req)
+                @php
+                    $pending = in_array($req->overall_status, ['pending_approval','pending_designer_head','pending_admin'], true);
+                    $pillClass = match(true) {
+                        $req->overall_status === 'approved' => 'pill-approved',
+                        $req->overall_status === 'rejected' => 'pill-rejected',
+                        default => 'pill-waiting',
+                    };
+                    $resultLabel = $pending ? 'Pending' : ucfirst($req->overall_status);
+                    $currentHandler = ($req->overall_status === 'approved' && in_array($req->request_type, ['swap','split'], true))
+                        ? ($req->approvedDesigner?->name ?? '—')
+                        : ($req->task?->designer?->name ?? '—');
+                @endphp
+                <div class="bd-req-history">
+                    <div class="bd-req-history-top">
+                        <div>
+                            <div class="bd-req-history-title">
+                                @if($req->task)
+                                    <a class="bd-task-link" href="{{ route('designer.tasks.show',$req->task) }}">{{ $req->task->task_id }}</a>
+                                @else
+                                    Task
+                                @endif
+                                — {{ $req->task?->display_task_name ?? $req->task?->task_name ?? 'Task unavailable' }}
+                            </div>
+                            <div class="bd-req-history-type">{{ ucfirst($req->request_type) }} Request</div>
+                        </div>
+                        <span class="bd-pill {{ $pillClass }}">{{ $resultLabel }}</span>
+                    </div>
+                    <div class="bd-req-history-grid">
+                        <div class="bd-req-history-line">Requested by: <b>{{ $req->requester?->name ?? '—' }}</b></div>
+                        <div class="bd-req-history-line">Requested at: <b>{{ $req->created_at?->format('d M Y \a\t h:i A') ?? '—' }}</b></div>
+                        <div class="bd-req-history-line">Responded by: <b>{{ $req->decided_by?->name ?? '—' }}</b></div>
+                        <div class="bd-req-history-line">Responded at: <b>{{ $req->responded_at?->format('d M Y \a\t h:i A') ?? '—' }}</b></div>
+                        <div class="bd-req-history-line">Current handler: <b>{{ $currentHandler }}</b></div>
+                    </div>
+                </div>
+            @empty
+                <div class="bd-empty">No swap, decline or split requests yet.</div>
+            @endforelse
         </div>
     </section>
 </div>
