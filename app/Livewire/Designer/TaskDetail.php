@@ -332,8 +332,9 @@ class TaskDetail extends Component
         ]);
 
         $file = $this->taskUpdateAttachment;
+        $autoCompleted = false;
 
-        DB::transaction(function () use ($file): void {
+        DB::transaction(function () use ($file, &$autoCompleted): void {
             $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
             if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'in_progress') {
@@ -389,11 +390,41 @@ class TaskDetail extends Component
                 'change_source' => 'task_updation',
                 'note' => 'Task Updation submitted: '.$progressAdded.' progress added, '.$remainingAfter.' remaining.',
             ]);
+
+            // Auto-advance only when creatives reach the exact total — never before.
+            // Re-derived from the just-created record via isComplete(), not the locally
+            // computed $cumulativeCompleted, so this stays correct if completion math
+            // ever changes (e.g. rework send-backs already netted in via EOD sums).
+            if ($progressService->isComplete($task)) {
+                $fromStatus = $task->status;
+                $task->update(['status' => 'waiting_confirmation']);
+
+                app(DesignTaskRequestService::class)->autoRejectPendingForStatus(
+                    $task,
+                    'waiting_confirmation',
+                    Auth::user()
+                );
+
+                DesignTaskStatusHistory::create([
+                    'design_task_id' => $task->id,
+                    'from_status' => $fromStatus,
+                    'to_status' => 'waiting_confirmation',
+                    'changed_by' => Auth::id(),
+                    'change_source' => 'progress_completed',
+                    'note' => 'All '.$task->total_creatives.' creative(s) completed. Automatically moved to Waiting for BD Review.',
+                ]);
+
+                $autoCompleted = true;
+            }
         });
 
         $this->task = $this->task->fresh();
         $this->reset(['eodCompletedCount', 'taskUpdateAttachment']);
         $this->dispatch('eod-updated', message: 'Task Updation submitted successfully.');
+
+        if ($autoCompleted) {
+            $this->dispatch('task-status-changed', message: 'All creatives completed. Ticket moved to Waiting for BD Review.');
+        }
     }
 
     public function submitReworkUpdate(): void
