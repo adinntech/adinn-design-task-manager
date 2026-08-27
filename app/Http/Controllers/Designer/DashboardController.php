@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Designer;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Services\DesignTaskStatusService;
@@ -46,6 +47,11 @@ class DashboardController extends Controller
             'in_progress' => $tasks->where('status', 'in_progress')->count(),
             'completed' => $tasks->where('status', 'completed')->count(),
             'pending_approval' => $pendingRequests->count(),
+            // "Waiting for BD Review" = designer's own work is done and sitting in
+            // waiting_confirmation; every task only reaches 'completed' once BD rates
+            // it (same DB transaction in Bd\AssignedTaskController::completeWithRating),
+            // so there is no "completed but unrated" state to detect separately.
+            'waiting_bd_review' => $tasks->where('status', 'waiting_confirmation')->count(),
             'overdue' => $tasks
                 ->filter(fn (DesignTask $task) => $task->status !== 'completed' && $task->due_at && $task->due_at->lt($now))
                 ->count(),
@@ -106,6 +112,41 @@ class DashboardController extends Controller
             })
             ->values();
 
+        // Only 'completed'-action rows carry a rating; 'rework' rows are BD's earlier
+        // send-backs on the same task and are excluded so they never skew the average.
+        $completedReviews = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->with('submitter:id,name')
+                ->where('action', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->latest()
+                ->get();
+
+        $ratedCount = $completedReviews->count();
+
+        $overallRating = [
+            'average' => $ratedCount > 0 ? round((float) $completedReviews->avg('overall_rating'), 1) : null,
+            'rated' => $ratedCount,
+            'total' => $stats['completed'],
+        ];
+
+        $reviewCards = $completedReviews
+            ->filter(fn (DesignTaskBdReview $review) => filled($review->comment))
+            ->map(function (DesignTaskBdReview $review) use ($tasks) {
+                $task = $tasks->firstWhere('id', $review->design_task_id);
+
+                return [
+                    'rating' => (float) $review->overall_rating,
+                    'comment' => $review->comment,
+                    'task_id' => $task?->task_id,
+                    'task_name' => $task?->display_task_name ?? $task?->task_name,
+                    'reviewer' => $review->submitter?->name ?? 'BD',
+                    'date' => $review->created_at,
+                ];
+            })
+            ->values();
+
         $requestOutcomes = collect(['swap' => 'Swap', 'decline' => 'Decline', 'split' => 'Split'])
             ->map(function (string $label, string $type) use ($ownRequests, $pendingStatuses) {
                 $group = $ownRequests->where('request_type', $type);
@@ -130,6 +171,8 @@ class DashboardController extends Controller
             'completionRate' => $completionRate,
             'monthlyTrend' => $monthlyTrend,
             'requestOutcomes' => $requestOutcomes,
+            'overallRating' => $overallRating,
+            'reviewCards' => $reviewCards,
         ]);
     }
 }

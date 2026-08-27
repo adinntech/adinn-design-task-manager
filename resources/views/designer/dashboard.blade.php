@@ -105,6 +105,17 @@
     .bd-hist-legend span{display:inline-flex;align-items:center;gap:4px}
     .bd-hist-legend i{width:7px;height:7px;border-radius:2px;display:inline-block}
 
+    .bd-reviews-wrap{overflow:hidden}
+    .bd-reviews-track{display:flex;gap:12px;width:max-content;animation:bd-reviews-scroll linear infinite}
+    .bd-reviews-track.bd-reviews-static{animation:none}
+    .bd-reviews-wrap:hover .bd-reviews-track{animation-play-state:paused}
+    @keyframes bd-reviews-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .bd-review-card{flex:0 0 260px;background:#fcfcfd;border:1px solid #eaecf0;border-radius:10px;padding:12px}
+    .bd-review-stars{display:flex;gap:2px;margin-bottom:6px}
+    .bd-review-star{--star-fill:0%;display:inline-block;width:13px;height:13px;flex:0 0 13px;font-size:13px;line-height:13px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+    .bd-review-comment{font-size:9px;color:#344054;line-height:1.5;margin-bottom:8px;min-height:36px}
+    .bd-review-meta{font-size:7px;color:#98a2b3}
+
     @media(max-width:1200px){.bd-kpis{grid-template-columns:repeat(3,1fr)}.bd-lower{grid-template-columns:1fr 1fr}}
     @media(max-width:760px){.bd-dash-head{align-items:flex-start;flex-direction:column}.bd-kpis{grid-template-columns:repeat(2,1fr)}.bd-lower{grid-template-columns:1fr}}
 </style>
@@ -125,8 +136,18 @@
         <div class="bd-kpi"><div class="bd-kpi-label">Assigned</div><div class="bd-kpi-value">{{ $stats['assigned'] }}</div><div class="bd-kpi-note">Awaiting your action</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">In Progress</div><div class="bd-kpi-value">{{ $stats['in_progress'] }}</div><div class="bd-kpi-note">Currently being worked on</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Completed</div><div class="bd-kpi-value">{{ $stats['completed'] }}</div><div class="bd-kpi-note">Finished tasks</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Pending Requests</div><div class="bd-kpi-value">{{ $stats['pending_approval'] }}</div><div class="bd-kpi-note">Your open requests</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Overdue</div><div class="bd-kpi-value">{{ $stats['overdue'] }}</div><div class="bd-kpi-note">Past due date</div></div>
+        <div class="bd-kpi"><div class="bd-kpi-label">Waiting for BD Review</div><div class="bd-kpi-value">{{ $stats['waiting_bd_review'] }}</div><div class="bd-kpi-note">Completed by you, awaiting BD</div></div>
+        <div class="bd-kpi">
+            <div class="bd-kpi-label">Overall Rating</div>
+            <div class="bd-kpi-value">{{ $overallRating['average'] !== null ? '★ '.$overallRating['average'] : '—' }}</div>
+            <div class="bd-kpi-note">
+                @if($overallRating['average'] !== null)
+                    Rated {{ $overallRating['rated'] }} / {{ $overallRating['total'] }} completed
+                @else
+                    No ratings yet
+                @endif
+            </div>
+        </div>
     </div>
 
     <section class="bd-card">
@@ -230,6 +251,36 @@
                     <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
                 @endforeach
             </svg>
+        </div>
+    </section>
+
+    <section class="bd-card">
+        <div class="bd-card-head"><div class="bd-card-title">Designer Reviews</div></div>
+        <div class="bd-card-body">
+            @php $reviewCount = $reviewCards->count(); @endphp
+            @if($reviewCount === 0)
+                <div class="bd-empty">No BD comments yet on your completed tasks.</div>
+            @else
+                <div class="bd-reviews-wrap">
+                    <div class="bd-reviews-track {{ $reviewCount <= 1 ? 'bd-reviews-static' : '' }}"
+                         @if($reviewCount > 1) style="animation-duration:{{ $reviewCount * 6 }}s" @endif>
+                        @foreach(($reviewCount > 1 ? $reviewCards->concat($reviewCards) : $reviewCards) as $review)
+                            @php $ratingValue = max(0, min(5, $review['rating'])); @endphp
+                            <div class="bd-review-card">
+                                <div class="bd-review-stars" aria-label="{{ number_format($ratingValue, 1) }} out of 5 stars">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        @php $fill = $ratingValue >= $i ? 100 : ($ratingValue >= $i - 0.5 ? 50 : 0); @endphp
+                                        <span class="bd-review-star" style="--star-fill:{{ $fill }}%">★</span>
+                                    @endfor
+                                </div>
+                                <div class="bd-review-comment">&ldquo;{{ $review['comment'] }}&rdquo;</div>
+                                <div class="bd-review-meta">{{ $review['task_id'] }} · {{ $review['task_name'] }}</div>
+                                <div class="bd-review-meta">{{ $review['reviewer'] }} · {{ $review['date']?->format('d M Y') }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
     </section>
 
