@@ -7,6 +7,7 @@ use App\Models\DesignTask;
 use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -24,6 +25,8 @@ class DashboardController extends Controller
             ->where('designer_id', $designerId)
             ->latest('assigned_at')
             ->get();
+
+        $taskIds = $tasks->pluck('id');
 
         $ownRequests = DesignTaskRequest::query()
             ->with([
@@ -57,6 +60,24 @@ class DashboardController extends Controller
                 ->count(),
         ];
 
+        // Rework counters reuse DesignTaskProgressService — the same source that
+        // already drives the per-task rework tab — instead of a fresh calculation,
+        // so "current" vs "overall" semantics stay identical everywhere in the app.
+        $progressService = app(DesignTaskProgressService::class);
+        $reworkTasks = $tasks->where('status', 'rework');
+
+        $stats['rework'] = $reworkTasks->count();
+        $stats['rework_creatives'] = $reworkTasks->sum(fn (DesignTask $task) => $progressService->currentReworkPending($task));
+
+        // Cumulative, all-time — never decreases when a task leaves Rework.
+        $overallRework = [
+            'cycles' => $tasks->sum(fn (DesignTask $task) => $progressService->reworkCount($task)),
+            'creatives' => $taskIds->isEmpty() ? 0 : (int) DesignTaskBdReview::query()
+                ->where('action', 'rework')
+                ->whereIn('design_task_id', $taskIds)
+                ->sum('number_of_creatives'),
+        ];
+
         $statusLabels = DesignTaskStatusService::STATUSES;
         unset($statusLabels['swap_tasks']);
         $statusLabels['swap_tasks'] = 'Swapped Tasks';
@@ -87,8 +108,6 @@ class DashboardController extends Controller
         // Monthly completed-task trend for the last 6 months, driven by the task's own
         // "-> completed" history event (not who clicked it — the final confirmation is
         // often recorded as the BD via bd_completion_rating, not the designer).
-        $taskIds = $tasks->pluck('id');
-
         $completions = $taskIds->isEmpty()
             ? collect()
             : DesignTaskStatusHistory::query()
@@ -173,6 +192,7 @@ class DashboardController extends Controller
             'requestOutcomes' => $requestOutcomes,
             'overallRating' => $overallRating,
             'reviewCards' => $reviewCards,
+            'overallRework' => $overallRework,
         ]);
     }
 }

@@ -16,7 +16,7 @@
     .bd-dash-btn.secondary{background:#fff;color:#344054;border:1px solid #d0d5dd}
 
     .bd-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
-    .bd-kpis.bd-kpis-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .bd-kpis.bd-kpis-8{grid-template-columns:repeat(8,minmax(0,1fr))}
     .bd-kpi{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:12px 13px}
     .bd-kpi-label{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.045em;color:#667085}
     .bd-kpi-value{font-size:22px;font-weight:950;color:#101828;margin-top:5px}
@@ -116,8 +116,8 @@
     .bd-review-comment{font-size:9px;color:#344054;line-height:1.5;margin-bottom:8px;min-height:36px}
     .bd-review-meta{font-size:7px;color:#98a2b3}
 
-    @media(max-width:1200px){.bd-kpis{grid-template-columns:repeat(3,1fr)}.bd-lower{grid-template-columns:1fr 1fr}}
-    @media(max-width:760px){.bd-dash-head{align-items:flex-start;flex-direction:column}.bd-kpis{grid-template-columns:repeat(2,1fr)}.bd-lower{grid-template-columns:1fr}}
+    @media(max-width:1200px){.bd-kpis,.bd-kpis.bd-kpis-8{grid-template-columns:repeat(3,1fr)}.bd-lower{grid-template-columns:1fr 1fr}}
+    @media(max-width:760px){.bd-dash-head{align-items:flex-start;flex-direction:column}.bd-kpis,.bd-kpis.bd-kpis-8{grid-template-columns:repeat(2,1fr)}.bd-lower{grid-template-columns:1fr}}
 </style>
 
 <div class="bd-dashboard">
@@ -131,10 +131,12 @@
         </div>
     </div>
 
-    <div class="bd-kpis">
+    <div class="bd-kpis bd-kpis-8">
         <div class="bd-kpi"><div class="bd-kpi-label">Total Tasks</div><div class="bd-kpi-value">{{ $stats['total'] }}</div><div class="bd-kpi-note">Tasks assigned to you</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Assigned</div><div class="bd-kpi-value">{{ $stats['assigned'] }}</div><div class="bd-kpi-note">Awaiting your action</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">In Progress</div><div class="bd-kpi-value">{{ $stats['in_progress'] }}</div><div class="bd-kpi-note">Currently being worked on</div></div>
+        <div class="bd-kpi"><div class="bd-kpi-label">Rework</div><div class="bd-kpi-value">{{ $stats['rework'] }}</div><div class="bd-kpi-note">Tasks currently in rework</div></div>
+        <div class="bd-kpi"><div class="bd-kpi-label">Rework Creatives</div><div class="bd-kpi-value">{{ $stats['rework_creatives'] }}</div><div class="bd-kpi-note">Creatives pending resubmission</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Completed</div><div class="bd-kpi-value">{{ $stats['completed'] }}</div><div class="bd-kpi-note">Finished tasks</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Waiting for BD Review</div><div class="bd-kpi-value">{{ $stats['waiting_bd_review'] }}</div><div class="bd-kpi-note">Completed by you, awaiting BD</div></div>
         <div class="bd-kpi">
@@ -158,11 +160,13 @@
         </div>
     </section>
 
-    <div class="bd-kpis bd-kpis-4">
+    <div class="bd-kpis">
         <div class="bd-kpi"><div class="bd-kpi-label">Swapped Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['swap'] }}</div><div class="bd-kpi-note">Swap requests raised by you</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Declined Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['decline'] }}</div><div class="bd-kpi-note">Decline requests raised by you</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Split Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['split'] }}</div><div class="bd-kpi-note">Split requests raised by you</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Approved Requests</div><div class="bd-kpi-value">{{ $requestTypeCounts['approved'] }}</div><div class="bd-kpi-note">Across swap/split/decline</div></div>
+        <div class="bd-kpi"><div class="bd-kpi-label">Overall Rework</div><div class="bd-kpi-value">{{ $overallRework['cycles'] }}</div><div class="bd-kpi-note">All-time rework cycles</div></div>
+        <div class="bd-kpi"><div class="bd-kpi-label">Overall Rework Creatives</div><div class="bd-kpi-value">{{ $overallRework['creatives'] }}</div><div class="bd-kpi-note">All-time creatives sent for rework</div></div>
     </div>
 
     <section class="bd-card">
