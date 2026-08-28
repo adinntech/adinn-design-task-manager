@@ -335,7 +335,7 @@
 
     <div class="kanban-shell" data-designer-head-kanban-shell>
         <div class="kanban-board">
-            <section class="kanban-column request-column" wire:key="designer-head-requests">
+            <section class="kanban-column request-column" data-status="requests" wire:key="designer-head-requests">
                 <header class="kanban-column-header">
                     <span class="kanban-column-title">Requests</span>
                     <span class="kanban-count">{{ $pendingRequests->count() }}</span>
@@ -386,7 +386,7 @@
                     $columnTasks = $tasks->where('status', $statusKey);
                 @endphp
 
-                <section class="kanban-column status-{{ $statusKey }}" wire:key="designer-head-column-{{ $statusKey }}">
+                <section class="kanban-column status-{{ $statusKey }}" data-status="{{ $statusKey }}" wire:key="designer-head-column-{{ $statusKey }}">
                     <header class="kanban-column-header">
                         <span class="kanban-column-title">{{ $statusLabel }}</span>
                         <span class="kanban-count">{{ $columnTasks->count() }}</span>
@@ -526,6 +526,7 @@
                             this.enablePan();
                             this.enablePointerEdgeScroll();
                             this.refreshSortable();
+                            this.focusRequestedColumn();
                         });
 
                         document.addEventListener('livewire:init', () => {
@@ -537,6 +538,20 @@
                                 });
                             });
                         });
+                    },
+
+                    // Dashboard KPI cards link here with ?focus=<status>; scroll the
+                    // board horizontally to that column once, on initial page load only
+                    // (never on Livewire re-renders, so it can't fight the user's scroll).
+                    focusRequestedColumn(){
+                        const focus = new URLSearchParams(window.location.search).get('focus');
+                        if (!focus) return;
+
+                        const shell = this.$root.querySelector('[data-designer-head-kanban-shell]');
+                        const column = this.$root.querySelector('.kanban-column[data-status="' + focus + '"]');
+                        if (!shell || !column) return;
+
+                        shell.scrollTo({ left: Math.max(0, column.offsetLeft - 12), behavior: 'smooth' });
                     },
 
                     refreshSortable(){

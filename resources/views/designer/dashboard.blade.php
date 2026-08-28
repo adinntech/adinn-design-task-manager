@@ -19,6 +19,8 @@
     .bd-kpis.bd-kpis-8{grid-template-columns:repeat(8,minmax(0,1fr))}
     .bd-kpis.bd-kpis-9{grid-template-columns:repeat(9,minmax(0,1fr))}
     .bd-kpi{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:12px 13px}
+    .bd-kpi-link{display:block;text-decoration:none;color:inherit;cursor:pointer;transition:.15s}
+    .bd-kpi-link:hover{border-color:#e30613;box-shadow:0 4px 14px rgba(227,6,19,.1);transform:translateY(-1px)}
     .bd-kpi-label{font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.045em;color:#667085}
     .bd-kpi-value{font-size:22px;font-weight:950;color:#101828;margin-top:5px}
     .bd-kpi-note{font-size:8px;color:#98a2b3;margin-top:3px}
@@ -136,13 +138,13 @@
 
     <div class="bd-kpis bd-kpis-9">
         <div class="bd-kpi"><div class="bd-kpi-label">Total Tasks</div><div class="bd-kpi-value">{{ $stats['total'] }}</div><div class="bd-kpi-note">Tasks assigned to you</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Assigned</div><div class="bd-kpi-value">{{ $stats['assigned'] }}</div><div class="bd-kpi-note">Awaiting your action</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Ready to Start</div><div class="bd-kpi-value">{{ $stats['ready_to_start'] }}</div><div class="bd-kpi-note">Ready to begin work</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">In Progress</div><div class="bd-kpi-value">{{ $stats['in_progress'] }}</div><div class="bd-kpi-note">Currently being worked on</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Rework</div><div class="bd-kpi-value">{{ $stats['rework'] }}</div><div class="bd-kpi-note">Tasks currently in rework</div></div>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'assigned_tasks']) }}"><div class="bd-kpi-label">Assigned</div><div class="bd-kpi-value">{{ $stats['assigned'] }}</div><div class="bd-kpi-note">Awaiting your action</div></a>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'yet_to_start']) }}"><div class="bd-kpi-label">Ready to Start</div><div class="bd-kpi-value">{{ $stats['ready_to_start'] }}</div><div class="bd-kpi-note">Ready to begin work</div></a>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'in_progress']) }}"><div class="bd-kpi-label">In Progress</div><div class="bd-kpi-value">{{ $stats['in_progress'] }}</div><div class="bd-kpi-note">Currently being worked on</div></a>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'rework']) }}"><div class="bd-kpi-label">Rework</div><div class="bd-kpi-value">{{ $stats['rework'] }}</div><div class="bd-kpi-note">Tasks currently in rework</div></a>
         <div class="bd-kpi"><div class="bd-kpi-label">Rework Creatives</div><div class="bd-kpi-value">{{ $stats['rework_creatives'] }}</div><div class="bd-kpi-note">Creatives pending resubmission</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Completed</div><div class="bd-kpi-value">{{ $stats['completed'] }}</div><div class="bd-kpi-note">Finished tasks</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Waiting for BD Review</div><div class="bd-kpi-value">{{ $stats['waiting_bd_review'] }}</div><div class="bd-kpi-note">Completed by you, awaiting BD</div></div>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'completed']) }}"><div class="bd-kpi-label">Completed</div><div class="bd-kpi-value">{{ $stats['completed'] }}</div><div class="bd-kpi-note">Finished tasks</div></a>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'waiting_confirmation']) }}"><div class="bd-kpi-label">Waiting for BD Review</div><div class="bd-kpi-value">{{ $stats['waiting_bd_review'] }}</div><div class="bd-kpi-note">Completed by you, awaiting BD</div></a>
         <div class="bd-kpi">
             <div class="bd-kpi-label">Overall Rating</div>
             <div class="bd-kpi-value">{{ $overallRating['average'] !== null ? '★ '.$overallRating['average'] : '—' }}</div>
@@ -165,8 +167,8 @@
     </section>
 
     <div class="bd-kpis">
-        <div class="bd-kpi"><div class="bd-kpi-label">Swapped Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['swap'] }}</div><div class="bd-kpi-note">Swap requests raised by you</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Declined Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['decline'] }}</div><div class="bd-kpi-note">Decline requests raised by you</div></div>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'swap_tasks']) }}"><div class="bd-kpi-label">Swapped Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['swap'] }}</div><div class="bd-kpi-note">Swap requests raised by you</div></a>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'self_declined']) }}"><div class="bd-kpi-label">Declined Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['decline'] }}</div><div class="bd-kpi-note">Decline requests raised by you</div></a>
         <div class="bd-kpi"><div class="bd-kpi-label">Split Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['split'] }}</div><div class="bd-kpi-note">Split requests raised by you</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Approved Requests</div><div class="bd-kpi-value">{{ $requestTypeCounts['approved'] }}</div><div class="bd-kpi-note">Across swap/split/decline</div></div>
         <div class="bd-kpi"><div class="bd-kpi-label">Overall Rework</div><div class="bd-kpi-value">{{ $overallRework['cycles'] }}</div><div class="bd-kpi-note">All-time rework cycles</div></div>

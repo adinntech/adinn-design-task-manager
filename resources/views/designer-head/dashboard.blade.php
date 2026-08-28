@@ -21,6 +21,8 @@
     .dh-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px}
     .dh-kpi{border:1px solid #e4e7ec;border-radius:12px;background:#fff;padding:12px;min-height:96px;box-shadow:0 1px 2px rgba(16,24,40,.03)}
     .dh-kpi-accent{border-color:#f1d0d3;background:linear-gradient(180deg,#fff,#fff7f7)}
+    .dh-kpi-link{display:block;text-decoration:none;color:inherit;cursor:pointer;transition:.15s}
+    .dh-kpi-link:hover{border-color:#e30613;box-shadow:0 4px 14px rgba(227,6,19,.1);transform:translateY(-1px)}
     .dh-kpi-icon{width:30px;height:30px;border-radius:9px;background:#f4f5f7;display:grid;place-items:center;font-size:14px;margin-bottom:8px;color:#475467}
     .dh-kpi-accent .dh-kpi-icon{background:#fff0f1;color:#e30613}
     .dh-kpi-label{font-size:8px;font-weight:900;color:#667085;text-transform:uppercase;letter-spacing:.04em;line-height:1.35}

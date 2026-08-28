@@ -243,7 +243,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                 @php
                     $columnTasks = $tasks->where('status', $statusKey);
                 @endphp
-                <section class="kanban-column status-{{ $statusKey }}" wire:key="column-{{ $statusKey }}">
+                <section class="kanban-column status-{{ $statusKey }}" data-status="{{ $statusKey }}" wire:key="column-{{ $statusKey }}">
                     <header class="kanban-column-header"><span class="kanban-column-title">{{ $statusLabel }}</span><span class="kanban-count">{{ $columnTasks->count() }}</span></header>
                     <div class="kanban-list" data-kanban-list data-status="{{ $statusKey }}">
                         @forelse($columnTasks as $task)
@@ -364,6 +364,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                             this.refreshSortable();
                             this.enableBoardPan();
                             this.enablePointerEdgeScroll();
+                            this.focusRequestedColumn();
                         });
 
                         document.addEventListener('livewire:init', () => {
@@ -375,6 +376,20 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                 });
                             });
                         });
+                    },
+
+                    // Dashboard KPI cards link here with ?focus=<status>; scroll the
+                    // board horizontally to that column once, on initial page load only
+                    // (never on Livewire re-renders, so it can't fight the user's scroll).
+                    focusRequestedColumn(){
+                        const focus = new URLSearchParams(window.location.search).get('focus');
+                        if (!focus) return;
+
+                        const shell = this.$root.querySelector('[data-kanban-shell]');
+                        const column = this.$root.querySelector('.kanban-column[data-status="' + focus + '"]');
+                        if (!shell || !column) return;
+
+                        shell.scrollTo({ left: Math.max(0, column.offsetLeft - 12), behavior: 'smooth' });
                     },
 
                     refreshSortable(){
