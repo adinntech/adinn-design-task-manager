@@ -349,7 +349,7 @@ class DashboardController extends Controller
 
         $bdReviewRows = $reviewHistory
             ->groupBy('design_task_id')
-            ->flatMap(function (Collection $rows, $taskId) use ($taskKeyById) {
+            ->flatMap(function (Collection $historyRows, $taskId) use ($taskKeyById, $reworkCyclesByTask, $reworkReviewCount, $reworkHistoryCount) {
                 $task = $taskKeyById->get((int) $taskId);
                 if (! $task) {
                     return [];
@@ -359,7 +359,7 @@ class DashboardController extends Controller
                 // an unmatched trailing submission means BD hasn't decided yet (pending).
                 $cycles = [];
                 $submittedAt = null;
-                foreach ($rows as $row) {
+                foreach ($historyRows as $row) {
                     if ($row->to_status === 'waiting_confirmation') {
                         $submittedAt = $row->created_at;
                     } elseif ($submittedAt !== null) {
@@ -371,7 +371,17 @@ class DashboardController extends Controller
                     $cycles[] = ['submitted_at' => $submittedAt, 'decision_at' => null, 'decision_status' => 'pending'];
                 }
 
-                return collect($cycles)->values()->map(function (array $cycle, int $index) use ($task) {
+                // Floor of "how many reworks" is the app-wide reworkCountFor(); some legacy
+                // rows only exist in status-history with no matching DesignTaskBdReview, so
+                // the total is bumped to whichever count is actually higher — this way the
+                // per-row "Rework X of Y" label can never show X greater than Y.
+                $reworkCyclesDetected = count(array_filter($cycles, fn ($c) => $c['decision_status'] === 'rework'));
+                $totalReworks = max($this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount), $reworkCyclesDetected);
+                $reworkCreativesByOrdinal = $reworkCyclesByTask->get($task->id, collect())->values();
+
+                $rows = [];
+                $reworkOrdinal = 0;
+                foreach ($cycles as $index => $cycle) {
                     $dueAt = $task->due_at;
                     $onTimeText = $dueAt === null
                         ? '—'
@@ -379,16 +389,35 @@ class DashboardController extends Controller
                             ? 'On Time'
                             : 'Late • '.$this->durationText($dueAt, $cycle['submitted_at']));
 
-                    return [
+                    // When BD sends this cycle to Rework, the Designer's rework window runs
+                    // from that decision until the NEXT cycle's submission (moved back to
+                    // BD review) — or is still open/pending if there's no next cycle yet.
+                    $rework = null;
+                    if ($cycle['decision_status'] === 'rework') {
+                        $reworkOrdinal++;
+                        $movedBackAt = $cycles[$index + 1]['submitted_at'] ?? null;
+                        $rework = [
+                            'ordinal' => $reworkOrdinal,
+                            'total' => $totalReworks,
+                            'creatives' => (int) ($reworkCreativesByOrdinal->get($reworkOrdinal - 1)?->number_of_creatives ?? 0),
+                            'started_at' => $cycle['decision_at'],
+                            'moved_back_at' => $movedBackAt,
+                            'duration_text' => $this->durationText($cycle['decision_at'], $movedBackAt ?? now()),
+                        ];
+                    }
+
+                    $rows[] = [
                         'task' => $task,
-                        'cycle_number' => $index + 1,
                         'submitted_at' => $cycle['submitted_at'],
                         'decision_at' => $cycle['decision_at'],
                         'decision_status' => $cycle['decision_status'],
                         'duration_text' => $this->durationText($cycle['submitted_at'], $cycle['decision_at'] ?? now()),
                         'designer_on_time_text' => $onTimeText,
+                        'rework' => $rework,
                     ];
-                });
+                }
+
+                return $rows;
             })
             ->sortByDesc(fn (array $row) => $row['submitted_at']->timestamp)
             ->values()

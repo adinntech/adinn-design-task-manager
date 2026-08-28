@@ -491,8 +491,8 @@
             <table class="dh-table">
                 <thead>
                 <tr>
-                    <th>Task</th><th>Designer</th><th>BD</th><th>Task Created At</th><th>Moved to BD Review At</th>
-                    <th>BD Decision</th><th>BD Decision At</th><th>BD Review Duration</th><th>Designer Submission</th>
+                    <th>Task</th><th>Task Created At</th><th>Task Deadline</th><th>Moved to BD Review At</th>
+                    <th>BD Review Duration</th><th>BD Decision</th><th>Designer Submission</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -501,23 +501,36 @@
                     <tr>
                         <td>
                             <a class="dh-task-link" href="{{ route('designer-head.tasks.show', $task) }}">{{ $task->task_id }}</a>
-                            <div class="dh-cell-sub">{{ $task->display_task_name ?? $task->task_name }} · Review {{ $row['cycle_number'] }}</div>
+                            <div class="dh-cell-sub">{{ $task->display_task_name ?? $task->task_name }}</div>
+                            <div class="dh-cell-sub">{{ $task->designer?->name ?? '—' }} · {{ $task->assigner?->name ?? '—' }}</div>
                         </td>
-                        <td>{{ $task->designer?->name ?? '—' }}</td>
-                        <td>{{ $task->assigner?->name ?? '—' }}</td>
                         <td>{{ optional($task->created_at)->format('d M Y · h:i A') ?? '—' }}</td>
+                        <td>{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
                         <td>{{ $row['submitted_at']->format('d M Y · h:i A') }}</td>
+                        <td class="{{ $row['decision_status'] === 'pending' ? 'dh-danger' : '' }}">{{ $row['duration_text'] ?? '—' }}</td>
                         <td>
                             @if($row['decision_status'] === 'completed')
                                 <span class="dh-pill dh-pill-completed">Completed</span>
+                                <div class="dh-cell-sub">{{ optional($row['decision_at'])->format('d M Y, h:i A') }}</div>
                             @elseif($row['decision_status'] === 'rework')
                                 <span class="dh-pill dh-pill-rework">Rework</span>
+                                <div class="dh-cell-sub">{{ optional($row['decision_at'])->format('d M Y, h:i A') }}</div>
+                                @if($row['rework'])
+                                    <div class="dh-cell-sub dh-strong" style="margin-top:5px">Rework {{ $row['rework']['ordinal'] }} of {{ $row['rework']['total'] }} · {{ $row['rework']['creatives'] }} creatives</div>
+                                    <div class="dh-cell-sub">Started {{ $row['rework']['started_at']->format('d M Y, h:i A') }}</div>
+                                    <div class="dh-cell-sub">
+                                        @if($row['rework']['moved_back_at'])
+                                            Back to review {{ $row['rework']['moved_back_at']->format('d M Y, h:i A') }}
+                                        @else
+                                            Still in rework
+                                        @endif
+                                    </div>
+                                    <div class="dh-cell-sub dh-strong">Designer rework duration: {{ $row['rework']['duration_text'] }}</div>
+                                @endif
                             @else
                                 <span class="dh-pill dh-pill-waiting">Pending</span>
                             @endif
                         </td>
-                        <td>{{ optional($row['decision_at'])->format('d M Y · h:i A') ?? '—' }}</td>
-                        <td class="{{ $row['decision_status'] === 'pending' ? 'dh-danger' : '' }}">{{ $row['duration_text'] ?? '—' }}</td>
                         <td>
                             @if($row['designer_on_time_text'] === 'On Time')
                                 <span class="dh-pill dh-pill-completed">On Time</span>
@@ -529,7 +542,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="9"><div class="dh-empty">No BD review activity recorded yet.</div></td></tr>
+                    <tr><td colspan="7"><div class="dh-empty">No BD review activity recorded yet.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
