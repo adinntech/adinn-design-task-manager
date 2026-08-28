@@ -12,6 +12,10 @@
         .bd-period-viewing{font-size:9px;font-weight:900;color:#101828;white-space:nowrap}
         .bd-period-chip{font-size:8px;font-weight:850;color:#344054;background:#f7f8fa;border-radius:999px;padding:4px 10px;white-space:nowrap}
         .bd-period-chip strong{color:#101828;margin-left:3px}
+        .applied-filters{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid #eef0f3}
+        .applied-filters-label{font-size:9px;font-weight:900;color:#475467;text-transform:uppercase;letter-spacing:.04em}
+        .applied-filter-chip{font-size:9px;font-weight:850;color:#101828;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:999px;padding:5px 10px;white-space:nowrap}
+        .applied-filters-clear{margin-left:auto;padding:6px 12px;font-size:10px;min-height:auto}
 
         .kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;position:relative}
         .kanban-shell::-webkit-scrollbar{display:none}
@@ -374,8 +378,18 @@
                     'search' => $search, 'vertical' => $vertical, 'priority' => $priority,
                     'designer_id' => $designerId, 'bd_id' => $bdId, 'period' => $period,
                     'date_from' => $dateFrom, 'date_to' => $dateTo,
-                ]) }}">Export CSV</a>
+                ]) }}">Export Report</a>
             </div>
+
+            @if($appliedFilters->isNotEmpty())
+                <div class="applied-filters">
+                    <span class="applied-filters-label">Applied Filters:</span>
+                    @foreach($appliedFilters as $chip)
+                        <span class="applied-filter-chip">{{ $chip['label'] }}: {{ $chip['value'] }}</span>
+                    @endforeach
+                    <button type="button" class="btn btn-secondary applied-filters-clear" wire:click="clearFilters">Clear Filters</button>
+                </div>
+            @endif
         </div>
     </div>
 

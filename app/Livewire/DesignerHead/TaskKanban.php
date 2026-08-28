@@ -52,6 +52,49 @@ class TaskKanban extends Component
         ];
     }
 
+    public function clearFilters(): void
+    {
+        $this->search = '';
+        $this->vertical = '';
+        $this->priority = '';
+        $this->designerId = '';
+        $this->bdId = '';
+        $this->period = 'current_month';
+        $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
+        $this->dateTo = now()->endOfMonth()->format('Y-m-d');
+    }
+
+    /**
+     * Human-readable "Filter: value" chips for whichever filters are
+     * currently non-default, so the Designer Head always sees what's
+     * narrowing the board without having to re-open every dropdown.
+     */
+    private function appliedFilters(SupportCollection $designers, SupportCollection $bds, string $periodLabel): SupportCollection
+    {
+        $chips = collect();
+
+        if ($this->search !== '') {
+            $chips->push(['label' => 'Search', 'value' => $this->search]);
+        }
+        if ($this->designerId !== '') {
+            $chips->push(['label' => 'Designer', 'value' => $designers->firstWhere('id', (int) $this->designerId)?->name ?? '—']);
+        }
+        if ($this->bdId !== '') {
+            $chips->push(['label' => 'BD', 'value' => $bds->firstWhere('id', (int) $this->bdId)?->name ?? '—']);
+        }
+        if ($this->vertical !== '') {
+            $chips->push(['label' => 'Vertical', 'value' => ucwords(str_replace('_', ' ', $this->vertical))]);
+        }
+        if ($this->priority !== '') {
+            $chips->push(['label' => 'Priority', 'value' => ucfirst($this->priority)]);
+        }
+        if ($this->period !== 'current_month') {
+            $chips->push(['label' => 'Period', 'value' => $periodLabel]);
+        }
+
+        return $chips;
+    }
+
     public function getPendingRequestsProperty()
     {
         return DesignTaskRequest::query()
@@ -165,6 +208,9 @@ class TaskKanban extends Component
             ->map(fn ($label, $key) => ['label' => $label, 'count' => $tasks->where('status', $key)->count()])
             ->values();
 
+        $designers = User::query()->where('role', 'designer')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $bds = User::query()->where('role', 'bd')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
         return view('livewire.designer-head.task-kanban', [
             'statuses' => $statuses,
             'tasks' => $visibleTasks,
@@ -174,8 +220,9 @@ class TaskKanban extends Component
             'periodStats' => $periodStats,
             'periodLabel' => $periodLabel,
             'activeBreakdown' => $activeBreakdown,
-            'designers' => User::query()->where('role', 'designer')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'bds' => User::query()->where('role', 'bd')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'designers' => $designers,
+            'bds' => $bds,
+            'appliedFilters' => $this->appliedFilters($designers, $bds, $periodLabel),
             'stats' => [
                 'total' => $tasks->count(),
                 'active' => $tasks->whereNotIn('status', ['completed'])->count(),

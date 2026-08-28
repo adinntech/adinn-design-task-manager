@@ -12,22 +12,34 @@ use App\Services\DesignerHeadTaskBoardService;
 use App\Services\DesignTaskReportingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TaskExportController extends Controller
 {
+    private const HEADER_FILL = 'E30613';
+
+    private const HEADER_TEXT = 'FFFFFF';
+
+    private const BODY_TEXT = '15171C';
+
+    private const BORDER_COLOR = 'E5E7EB';
+
     private const HEADER = [
-        'Task ID', 'Task Name', 'Task Created At', 'Vertical', 'Task Nature', 'Party Type', 'Party Name',
-        'Contact Person', 'Mobile Number', 'Priority', 'Designer', 'BD', 'Assigned Date', 'Due Date',
-        'Total Creatives', 'Status',
-        'Completed Creative Count', 'Remaining Creative Count', 'Progress %',
-        'Submission Label (Single/Multiple)', 'Progress Submission Breakdown',
-        'Rework Count', 'Rework Creatives Total', 'Rework Cycle Breakdown', 'Rework Time Spent',
-        'Completion Status', 'Completion Days',
-        'Split Requests', 'Swap Requests', 'Decline Requests',
-        'Designer Attitude', 'Design Satisfaction', 'Rework Iteration', 'Meeting Deadline',
-        'Client Satisfaction', 'Overall Rating', 'BD Rating Comment', 'Rated By', 'Rated At',
-        'Report Month', 'Cross-Month Task', 'Started Month', 'Completed Month',
+        'Task ID', 'Task Name', 'Designer', 'BD', 'Vertical', 'Task Type',
+        'Created At', 'Assigned At', 'Due Date', 'Completed At', 'Status',
+        'Creatives', 'Progress Details', 'Rework Details',
+        'Split/Swap/Decline Details', 'Ratings', 'Deadline Result', 'Cross-Month Info',
+    ];
+
+    private const COLUMN_WIDTHS = [
+        14, 28, 18, 18, 14, 24, 12, 12, 12, 12, 18, 18, 28, 24, 22, 32, 24, 22,
     ];
 
     public function export(
@@ -154,10 +166,6 @@ class TaskExportController extends Controller
             $remaining = max(0, $totalCreatives - $completedCreatives);
             $percentage = min(100, (int) round(($completedCreatives / max(1, $totalCreatives)) * 100));
 
-            [$submissionLabel, $submissionBreakdown] = $this->submissionBreakdown($progressByTask->get($task->id, collect()));
-            $reworkBreakdown = $this->reworkBreakdown($reworkReviewsByTask->get($task->id, collect()));
-            $reworkTimeText = $reworkMinutes > 0 ? $reporting->minutesToText((int) $reworkMinutes) : '';
-
             $terminalAt = match ($task->status) {
                 'completed' => $completedAt,
                 'swap_tasks' => $swapRespondedAtByTask->get($task->id),
@@ -165,55 +173,25 @@ class TaskExportController extends Controller
                 default => null,
             };
 
-            $startedMonth = $task->assigned_at?->format('M Y');
-            $completedMonth = $terminalAt?->format('M Y');
-            $reportMonth = $completedMonth ?? $startedMonth;
-            $crossMonth = ($completedMonth !== null && $completedMonth !== $startedMonth) ? 'Yes' : 'No';
-
             $rows[] = [
                 $task->task_id,
                 $task->display_task_name ?? $task->task_name,
-                optional($task->created_at)->format('d M Y'),
-                ucwords(str_replace('_', ' ', (string) $task->vertical)),
-                $task->task_nature,
-                ucfirst((string) $task->party_type),
-                $task->party_name,
-                $task->contact_person,
-                $task->mobile_number,
-                ucfirst((string) $task->priority),
                 $task->designer?->name ?? '—',
                 $task->assigner?->name ?? '—',
+                ucwords(str_replace('_', ' ', (string) $task->vertical)),
+                $task->task_nature,
+                optional($task->created_at)->format('d M Y'),
                 optional($task->assigned_at)->format('d M Y'),
                 optional($task->due_at)->format('d M Y'),
-                $totalCreatives,
+                optional($completedAt)->format('d M Y'),
                 $statuses[$task->status] ?? ucwords(str_replace('_', ' ', (string) $task->status)),
-                $completedCreatives,
-                $remaining,
-                $percentage,
-                $submissionLabel,
-                $submissionBreakdown,
-                $reworkCount,
-                $reworkCreatives,
-                $reworkBreakdown,
-                $reworkTimeText,
+                "Total: {$totalCreatives}\nDone: {$completedCreatives}\nRemaining: {$remaining}\nProgress: {$percentage}%",
+                $this->progressCell($progressByTask->get($task->id, collect())),
+                $this->reworkCell($reworkCount, $reworkCreatives, $reworkMinutes > 0 ? $reporting->minutesToText((int) $reworkMinutes) : null, $reworkReviewsByTask->get($task->id, collect())),
+                $this->requestCell($splitCount, $swapCount, $declineCount),
+                $this->ratingCell($rating),
                 $this->completionText($completion),
-                $completion['days'],
-                $splitCount,
-                $swapCount,
-                $declineCount,
-                $rating ? DesignTaskBdReview::formatRating($rating->designer_attitude) : '',
-                $rating ? DesignTaskBdReview::formatRating($rating->design_satisfaction) : '',
-                $rating ? DesignTaskBdReview::formatRating($rating->rework_iteration) : '',
-                $rating ? DesignTaskBdReview::formatRating($rating->meeting_deadline) : '',
-                $rating ? DesignTaskBdReview::formatRating($rating->client_satisfaction) : '',
-                $rating ? DesignTaskBdReview::formatRating($rating->overall_rating) : '',
-                $rating?->comment ?? '',
-                $rating?->submitter?->name ?? '',
-                $rating ? $rating->created_at->format('d M Y') : '',
-                $reportMonth,
-                $crossMonth,
-                $startedMonth,
-                $completedMonth ?? '',
+                $this->crossMonthCell($task->assigned_at?->format('M Y'), $terminalAt?->format('M Y')),
             ];
 
             $totals['total']++;
@@ -234,42 +212,89 @@ class TaskExportController extends Controller
 
         $summary = [
             ['Total Tasks', $totals['total']],
+            ['Active Tasks', $totals['active']],
             ['Completed', $totals['completed']],
-            ['Active', $totals['active']],
             ['Overdue', $totals['overdue']],
             ['Split Requests', $totals['split']],
             ['Swap Requests', $totals['swap']],
             ['Decline Requests', $totals['decline']],
-            ['Total Reworks', $totals['reworks']],
-            ['Total Rework Creatives', $totals['reworkCreatives']],
-            ['Average Rating', $ratingCount > 0 ? DesignTaskBdReview::formatRating($ratingSum / $ratingCount) : ''],
+            ['Rework Count', $totals['reworks']],
+            ['Rework Creative Count', $totals['reworkCreatives']],
+            ['Average Rating', $ratingCount > 0 ? DesignTaskBdReview::formatRating($ratingSum / $ratingCount) : '—'],
         ];
 
-        $filename = 'designer-head-tasks-'.now()->format('Y-m-d-His').'.csv';
+        $spreadsheet = $this->buildSpreadsheet($rows, $summary);
+        $filename = 'designer-head-tasks-'.now()->format('Y-m-d-His').'.xlsx';
 
-        return response()->streamDownload(function () use ($rows, $summary) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, self::HEADER, ',', '"', '\\');
+        return response()->streamDownload(function () use ($spreadsheet) {
+            (new Xlsx($spreadsheet))->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
 
-            if (empty($rows)) {
-                fputcsv($out, ['No matching tasks for the selected filters'], ',', '"', '\\');
-                fclose($out);
+    private function buildSpreadsheet(array $rows, array $summary): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet;
 
-                return;
-            }
+        $tasksSheet = $spreadsheet->getActiveSheet();
+        $tasksSheet->setTitle('Tasks');
+        $tasksSheet->fromArray(self::HEADER, null, 'A1');
+        $this->styleHeaderRow($tasksSheet, count(self::HEADER), 1);
 
-            foreach ($rows as $row) {
-                fputcsv($out, $row, ',', '"', '\\');
-            }
+        if (empty($rows)) {
+            $tasksSheet->setCellValue('A2', 'No matching tasks for the selected filters');
+            $tasksSheet->mergeCells('A2:'.$this->columnLetter(count(self::HEADER)).'2');
+        } else {
+            $tasksSheet->fromArray($rows, null, 'A2');
+            $this->styleBodyRows($tasksSheet, count(self::HEADER), 2, count($rows) + 1, true);
+        }
 
-            fputcsv($out, [], ',', '"', '\\');
-            fputcsv($out, ['SUMMARY'], ',', '"', '\\');
-            foreach ($summary as $row) {
-                fputcsv($out, $row, ',', '"', '\\');
-            }
+        foreach (self::COLUMN_WIDTHS as $index => $width) {
+            $tasksSheet->getColumnDimension($this->columnLetter($index + 1))->setWidth($width);
+        }
+        $tasksSheet->freezePane('A2');
 
-            fclose($out);
-        }, $filename, ['Content-Type' => 'text/csv']);
+        $summarySheet = $spreadsheet->createSheet();
+        $summarySheet->setTitle('Summary');
+        $summarySheet->fromArray(['Metric', 'Value'], null, 'A1');
+        $this->styleHeaderRow($summarySheet, 2, 1);
+        $summarySheet->fromArray($summary, null, 'A2');
+        $this->styleBodyRows($summarySheet, 2, 2, count($summary) + 1, false);
+        $summarySheet->getColumnDimension('A')->setWidth(26);
+        $summarySheet->getColumnDimension('B')->setWidth(16);
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        return $spreadsheet;
+    }
+
+    private function styleHeaderRow(Worksheet $sheet, int $columnCount, int $row): void
+    {
+        $range = 'A'.$row.':'.$this->columnLetter($columnCount).$row;
+        $sheet->getStyle($range)->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => self::HEADER_TEXT], 'size' => 11],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::HEADER_FILL]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::HEADER_FILL]]],
+        ]);
+        $sheet->getRowDimension($row)->setRowHeight(22);
+    }
+
+    private function styleBodyRows(Worksheet $sheet, int $columnCount, int $startRow, int $endRow, bool $wrap): void
+    {
+        $range = 'A'.$startRow.':'.$this->columnLetter($columnCount).$endRow;
+        $sheet->getStyle($range)->applyFromArray([
+            'font' => ['color' => ['rgb' => self::BODY_TEXT]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::BORDER_COLOR]]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_TOP, 'wrapText' => $wrap],
+        ]);
+    }
+
+    private function columnLetter(int $oneBasedIndex): string
+    {
+        return Coordinate::stringFromColumnIndex($oneBasedIndex);
     }
 
     private function completionText(array $completion): string
@@ -283,29 +308,97 @@ class TaskExportController extends Controller
     }
 
     /**
-     * @return array{0:string,1:string} [Single/Multiple label, "d M: n | d M: n" breakdown]
+     * "Single Submission" / "3 submissions", one "d M: n" line per submission date.
      */
-    private function submissionBreakdown(Collection $records): array
+    private function progressCell(Collection $records): string
     {
         if ($records->isEmpty()) {
-            return ['', ''];
+            return 'No submissions yet';
         }
 
         $byDate = $records
             ->groupBy(fn ($record) => $record->submitted_at->format('d M'))
             ->map(fn (Collection $rows) => $rows->sum('completed_count'));
 
-        $breakdown = $byDate->map(fn ($count, $date) => "{$date}: {$count}")->implode(' | ');
-        $label = $byDate->count() > 1 ? 'Multiple Submissions ('.$byDate->count().')' : 'Single Submission';
+        $label = $byDate->count() > 1 ? $byDate->count().' submissions' : 'Single Submission';
+        $lines = $byDate->map(fn ($count, $date) => "{$date}: {$count}")->values()->all();
 
-        return [$label, $breakdown];
+        return implode("\n", array_merge([$label], $lines));
     }
 
-    private function reworkBreakdown(Collection $records): string
+    private function reworkCell(int $count, int $creatives, ?string $timeSpentText, Collection $records): string
     {
-        return $records
-            ->map(fn ($record) => $record->created_at->format('d M').': '.(int) $record->number_of_creatives)
-            ->implode(' | ');
+        if ($count === 0) {
+            return 'No rework';
+        }
+
+        $lines = [
+            $count.' '.($count === 1 ? 'rework' : 'reworks'),
+            $creatives.' creatives',
+        ];
+
+        if ($timeSpentText !== null) {
+            $lines[] = $timeSpentText.' spent';
+        }
+
+        foreach ($records as $record) {
+            $lines[] = $record->created_at->format('d M').': '.(int) $record->number_of_creatives;
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function requestCell(int $split, int $swap, int $decline): string
+    {
+        if ($split === 0 && $swap === 0 && $decline === 0) {
+            return 'No requests';
+        }
+
+        return "Split: {$split}\nSwap: {$swap}\nDecline: {$decline}";
+    }
+
+    private function ratingCell(?DesignTaskBdReview $rating): string
+    {
+        if (! $rating) {
+            return 'Not rated yet';
+        }
+
+        $lines = [];
+
+        if ($rating->overall_rating !== null) {
+            $lines[] = 'Overall: '.DesignTaskBdReview::formatRating($rating->overall_rating).' / 5';
+        }
+
+        $lines[] = sprintf(
+            'DA: %s | DS: %s | RI: %s | MD: %s | CS: %s',
+            DesignTaskBdReview::formatRating($rating->designer_attitude),
+            DesignTaskBdReview::formatRating($rating->design_satisfaction),
+            DesignTaskBdReview::formatRating($rating->rework_iteration),
+            DesignTaskBdReview::formatRating($rating->meeting_deadline),
+            DesignTaskBdReview::formatRating($rating->client_satisfaction)
+        );
+
+        if (! empty($rating->comment)) {
+            $lines[] = 'Comment: '.$rating->comment;
+        }
+
+        $lines[] = 'Rated by: '.($rating->submitter?->name ?? '—').' on '.$rating->created_at->format('d M Y');
+
+        return implode("\n", $lines);
+    }
+
+    private function crossMonthCell(?string $startedMonth, ?string $completedMonth): string
+    {
+        $lines = ['Started: '.($startedMonth ?? '—')];
+
+        if ($completedMonth !== null) {
+            $lines[] = 'Completed: '.$completedMonth;
+            $lines[] = 'Cross-Month: '.($completedMonth !== $startedMonth ? 'Yes' : 'No');
+        } else {
+            $lines[] = 'Cross-Month: No';
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
