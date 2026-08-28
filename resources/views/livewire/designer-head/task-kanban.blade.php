@@ -4,8 +4,14 @@
     x-on:designer-head-task-updated.window="showToast($event.detail.message)"
 >
     <style>
-        .bd-toolbar{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(160px,.65fr) minmax(150px,.55fr);gap:9px;margin-bottom:14px}
+        .bd-toolbar{display:grid;grid-template-columns:minmax(220px,1.3fr) repeat(auto-fit,minmax(140px,.6fr));gap:9px;margin-bottom:14px}
         .bd-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+        .metric-active-breakdown{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
+        .metric-active-chip{font-size:8px;font-weight:800;color:#475467;background:#f2f4f7;border-radius:999px;padding:2px 7px;white-space:nowrap}
+        .bd-period-strip{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 13px;background:#fff;border:1px solid #eaecf0;border-radius:12px;margin-bottom:14px}
+        .bd-period-viewing{font-size:9px;font-weight:900;color:#101828;white-space:nowrap}
+        .bd-period-chip{font-size:8px;font-weight:850;color:#344054;background:#f7f8fa;border-radius:999px;padding:4px 10px;white-space:nowrap}
+        .bd-period-chip strong{color:#101828;margin-left:3px}
 
         .kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;position:relative}
         .kanban-shell::-webkit-scrollbar{display:none}
@@ -292,6 +298,13 @@
         <div class="metric-card">
             <div class="metric-label">Active</div>
             <div class="metric-value">{{ $stats['active'] }}</div>
+            <div class="metric-active-breakdown">
+                @foreach($activeBreakdown as $row)
+                    @if($row['count'] > 0)
+                        <span class="metric-active-chip">{{ $row['label'] }}: {{ $row['count'] }}</span>
+                    @endif
+                @endforeach
+            </div>
         </div>
         <div class="metric-card">
             <div class="metric-label">Waiting Confirmation</div>
@@ -331,8 +344,27 @@
                     <option value="medium">Medium</option>
                     <option value="low">Low</option>
                 </select>
+
+                <select class="premium-select" wire:model.live="period">
+                    <option value="current_month">Current Month</option>
+                    <option value="last_month">Last Month</option>
+                    <option value="custom">Custom Month</option>
+                </select>
+
+                @if($period === 'custom')
+                    <input class="premium-input" type="month" wire:model.live="customMonth">
+                @endif
             </div>
         </div>
+    </div>
+
+    <div class="bd-period-strip">
+        <span class="bd-period-viewing">Viewing: {{ $periodLabel }}</span>
+        <span class="bd-period-chip">Total in period<strong>{{ $periodStats['total'] }}</strong></span>
+        <span class="bd-period-chip">Completed<strong>{{ $periodStats['completed'] }}</strong></span>
+        <span class="bd-period-chip">Swapped<strong>{{ $periodStats['swapped'] }}</strong></span>
+        <span class="bd-period-chip">Split<strong>{{ $periodStats['split'] }}</strong></span>
+        <span class="bd-period-chip">Declined<strong>{{ $periodStats['declined'] }}</strong></span>
     </div>
 
     <div class="kanban-shell" data-designer-head-kanban-shell>
@@ -379,6 +411,40 @@
                         @endif
                     @empty
                         <div class="empty-state">No pending requests.</div>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="kanban-column request-column" data-status="split_log" wire:key="designer-head-split-log">
+                <header class="kanban-column-header">
+                    <span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span>
+                    <span class="kanban-count">{{ $splitLogRows->count() }}</span>
+                </header>
+
+                <div class="kanban-list">
+                    @forelse($splitLogRows as $row)
+                        @php $childTask = $row['childTask']; $request = $row['request']; @endphp
+                        <article class="task-card request-card">
+                            <a class="task-card-link" href="{{ route('designer-head.tasks.show', $childTask) }}" draggable="false">
+                                <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                                    <div class="task-card-id">{{ $childTask->task_id }}</div>
+                                    <span class="request-type-pill request-type-split">Split</span>
+                                </div>
+
+                                <div class="task-card-name">{{ $childTask->display_task_name ?? $childTask->task_name }}</div>
+
+                                <div class="task-card-meta">
+                                    <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
+                                    <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
+                                    <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
+                                    <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
+                                </div>
+
+                                <div class="request-open-label">Open task</div>
+                            </a>
+                        </article>
+                    @empty
+                        <div class="empty-state">No splits approved in {{ $periodLabel }}.</div>
                     @endforelse
                 </div>
             </section>
