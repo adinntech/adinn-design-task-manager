@@ -9,6 +9,7 @@ use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
+use App\Services\DesignTaskReportingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,6 +20,8 @@ class DashboardController extends Controller
     private const PENDING_STATUSES = ['assigned_tasks', 'review_analysis', 'need_clarification', 'yet_to_start'];
 
     private const REQUEST_PENDING = ['pending_approval', 'pending_designer_head', 'pending_admin'];
+
+    public function __construct(private DesignTaskReportingService $reporting) {}
 
     public function index(Request $request): View
     {
@@ -114,11 +117,11 @@ class DashboardController extends Controller
         $scopedTaskIds = $scopedTasks->pluck('id');
 
         /* ---- Batched record aggregates (same arithmetic as DesignTaskProgressService) ---- */
-        $eodProgress = $this->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'progress'), $taskIds, 'SUM(completed_count)');
-        $eodRework = $this->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'rework'), $taskIds, 'SUM(completed_count)');
-        $reworkSentBack = $this->mapByTask(DesignTaskBdReview::query()->where('action', 'rework'), $taskIds, 'SUM(number_of_creatives)');
-        $reworkReviewCount = $this->mapByTask(DesignTaskBdReview::query()->where('action', 'rework'), $taskIds, 'COUNT(*)');
-        $reworkHistoryCount = $this->mapByTask(
+        $eodProgress = $this->reporting->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'progress'), $taskIds, 'SUM(completed_count)');
+        $eodRework = $this->reporting->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'rework'), $taskIds, 'SUM(completed_count)');
+        $reworkSentBack = $this->reporting->mapByTask(DesignTaskBdReview::query()->where('action', 'rework'), $taskIds, 'SUM(number_of_creatives)');
+        $reworkReviewCount = $this->reporting->mapByTask(DesignTaskBdReview::query()->where('action', 'rework'), $taskIds, 'COUNT(*)');
+        $reworkHistoryCount = $this->reporting->mapByTask(
             DesignTaskStatusHistory::query()->where('to_status', 'rework')->where('change_source', 'bd_rework'),
             $taskIds,
             'COUNT(*)'
@@ -201,7 +204,7 @@ class DashboardController extends Controller
         $reviewCyclesByTask = $reviewHistory
             ->groupBy('design_task_id')
             ->map(fn (Collection $historyRows, $taskId) => $taskKeyById->has((int) $taskId)
-                ? $this->reviewCyclesFor($taskKeyById->get((int) $taskId), $historyRows, $reworkCyclesByTask, $reworkReviewCount, $reworkHistoryCount)
+                ? $this->reporting->reviewCyclesFor($taskKeyById->get((int) $taskId), $historyRows, $reworkCyclesByTask, $reworkReviewCount, $reworkHistoryCount)
                 : []);
 
         /* ---- All requests in one pass (approvals stay global, not filter-scoped) ---- */
@@ -311,7 +314,7 @@ class DashboardController extends Controller
                 'ready_to_start' => $designerTasks->where('status', 'yet_to_start')->count(),
                 'overdue' => $designerTasks->filter($isOverdue)->count(),
                 'completed' => $designerTasks->where('status', 'completed')->count(),
-                'rework_count' => $designerTasks->sum(fn (DesignTask $task) => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount)),
+                'rework_count' => $designerTasks->sum(fn (DesignTask $task) => $this->reporting->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount)),
                 'rework_creatives' => $designerTasks->sum(fn (DesignTask $task) => (int) ($reworkSentBack[$task->id] ?? 0)),
                 'split' => $countRequest('split'),
                 'swap' => $countRequest('swap'),
@@ -334,15 +337,15 @@ class DashboardController extends Controller
 
                 return [
                     'task' => $task,
-                    'done' => $this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack),
-                    'remaining' => max(0, (int) $task->total_creatives - $this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack)),
-                    'percentage' => min(100, (int) round(($this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack) / max(1, (int) $task->total_creatives)) * 100)),
+                    'done' => $this->reporting->completedFor($task, $eodProgress, $eodRework, $reworkSentBack),
+                    'remaining' => max(0, (int) $task->total_creatives - $this->reporting->completedFor($task, $eodProgress, $eodRework, $reworkSentBack)),
+                    'percentage' => min(100, (int) round(($this->reporting->completedFor($task, $eodProgress, $eodRework, $reworkSentBack) / max(1, (int) $task->total_creatives)) * 100)),
                     'overdue' => $isOverdue($task),
                     'days_overdue' => $isOverdue($task) && $task->due_at ? (int) $task->due_at->diffInDays(now()) : 0,
-                    'completion' => $this->completionInfo($task, $completedAtByTask->get($task->id)),
-                    'rework_count' => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
+                    'completion' => $this->reporting->completionInfo($task, $completedAtByTask->get($task->id)),
+                    'rework_count' => $this->reporting->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
                     'rework_creatives' => (int) ($reworkSentBack[$task->id] ?? 0),
-                    'rework_spent_text' => $reworkMinutes > 0 ? $this->minutesToText((int) $reworkMinutes) : null,
+                    'rework_spent_text' => $reworkMinutes > 0 ? $this->reporting->minutesToText((int) $reworkMinutes) : null,
                     'completed_at' => $completedAtByTask->get($task->id),
                     'rating' => $reviewByTaskId->get($task->id)?->overall_rating,
                 ];
@@ -353,7 +356,7 @@ class DashboardController extends Controller
          * with its own date/creative-count/BD — never collapsed into a single aggregate,
          * so Designer Head can see exactly how many times and when a task was reworked. ---- */
         $reworkRows = $scopedTasks
-            ->filter(fn (DesignTask $task) => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount) > 0)
+            ->filter(fn (DesignTask $task) => $this->reporting->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount) > 0)
             ->flatMap(function (DesignTask $task) use ($reworkCyclesByTask) {
                 $cycles = $reworkCyclesByTask->get($task->id, collect());
 
@@ -409,8 +412,8 @@ class DashboardController extends Controller
                     'task' => $task,
                     'completed_at' => $ts,
                     'rating' => $reviewByTaskId->get((int) $taskId)?->overall_rating,
-                    'rework_count' => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
-                    'duration_text' => $this->durationText($task->assigned_at, $ts),
+                    'rework_count' => $this->reporting->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
+                    'duration_text' => $this->reporting->durationText($task->assigned_at, $ts),
                 ];
             })
             ->values()
@@ -422,9 +425,9 @@ class DashboardController extends Controller
             ->map(fn (DesignTask $task) => [
                 'task' => $task,
                 'days' => (int) $task->due_at->diffInDays(now()),
-                'done' => $this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack),
+                'done' => $this->reporting->completedFor($task, $eodProgress, $eodRework, $reworkSentBack),
                 'total' => (int) $task->total_creatives,
-                'percentage' => min(100, (int) round(($this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack) / max(1, (int) $task->total_creatives)) * 100)),
+                'percentage' => min(100, (int) round(($this->reporting->completedFor($task, $eodProgress, $eodRework, $reworkSentBack) / max(1, (int) $task->total_creatives)) * 100)),
             ])
             ->sortByDesc('days')
             ->values()
@@ -513,163 +516,5 @@ class DashboardController extends Controller
             'page' => $page,
             'perPage' => $perPage,
         ];
-    }
-
-    private function mapByTask($query, Collection $taskIds, string $expression): Collection
-    {
-        if ($taskIds->isEmpty()) {
-            return collect();
-        }
-
-        return $query
-            ->whereIn('design_task_id', $taskIds)
-            ->groupBy('design_task_id')
-            ->selectRaw('design_task_id, '.$expression.' AS total')
-            ->pluck('total', 'design_task_id')
-            ->mapWithKeys(fn ($value, $key) => [(int) $key => (int) $value]);
-    }
-
-    private function completedFor(DesignTask $task, Collection $eodProgress, Collection $eodRework, Collection $reworkSentBack): int
-    {
-        $completed = (int) ($eodProgress[$task->id] ?? 0)
-            + (int) ($eodRework[$task->id] ?? 0)
-            - (int) ($reworkSentBack[$task->id] ?? 0);
-
-        return max(0, min((int) $task->total_creatives, $completed));
-    }
-
-    /**
-     * Timeliness against the ORIGINAL due date, using the actual completion timestamp —
-     * never derived from rework/status text. A task completed after its due date is
-     * "late" (with days-late), not "overdue" (which only applies while still incomplete).
-     */
-    private function completionInfo(DesignTask $task, ?Carbon $completedAt): array
-    {
-        if ($completedAt) {
-            $daysLate = $task->due_at && $completedAt->gt($task->due_at)
-                ? (int) $task->due_at->diffInDays($completedAt)
-                : 0;
-
-            return ['status' => $daysLate > 0 ? 'late' : 'on_time', 'days' => $daysLate];
-        }
-
-        if ($task->status !== 'completed' && $task->due_at && $task->due_at->lt(now())) {
-            return ['status' => 'overdue', 'days' => (int) $task->due_at->diffInDays(now())];
-        }
-
-        return ['status' => 'in_progress', 'days' => 0];
-    }
-
-    private function reworkCountFor(DesignTask $task, Collection $reworkReviewCount, Collection $reworkHistoryCount): int
-    {
-        $reviewCount = (int) ($reworkReviewCount[$task->id] ?? 0);
-
-        return $reviewCount > 0
-            ? $reviewCount
-            : (int) ($reworkHistoryCount[$task->id] ?? 0);
-    }
-
-    private function durationText(?Carbon $from, ?Carbon $to): ?string
-    {
-        if (! $from || ! $to || $to->lt($from)) {
-            return null;
-        }
-
-        $diff = $from->diff($to);
-
-        if ($diff->d > 0) {
-            return $diff->d.'d '.$diff->h.'h';
-        }
-
-        return $diff->h > 0 || $diff->i > 0 ? $diff->h.'h '.$diff->i.'m' : '0m';
-    }
-
-    private function minutesToText(int $minutes): string
-    {
-        $days = intdiv($minutes, 1440);
-        $hours = intdiv($minutes % 1440, 60);
-        $mins = $minutes % 60;
-
-        if ($days > 0) {
-            return $days.'d '.$hours.'h';
-        }
-
-        return $hours > 0 || $mins > 0 ? $hours.'h '.$mins.'m' : '0m';
-    }
-
-    /**
-     * One task's BD-review cycles (submission -> decision pairs), from the immutable
-     * status-history log. When a cycle's decision is Rework, it also carries that
-     * rework's own count/creatives/start/return timestamps and Designer's rework
-     * duration — shared by the Task Details "rework spent time" total and the BD
-     * Review Turnaround table, so both agree on timing.
-     */
-    private function reviewCyclesFor(DesignTask $task, Collection $historyRows, Collection $reworkCyclesByTask, Collection $reworkReviewCount, Collection $reworkHistoryCount): array
-    {
-        // Pair each "moved to BD review" event with the next decision after it;
-        // an unmatched trailing submission means BD hasn't decided yet (pending).
-        $cycles = [];
-        $submittedAt = null;
-        foreach ($historyRows as $row) {
-            if ($row->to_status === 'waiting_confirmation') {
-                $submittedAt = $row->created_at;
-            } elseif ($submittedAt !== null) {
-                $cycles[] = ['submitted_at' => $submittedAt, 'decision_at' => $row->created_at, 'decision_status' => $row->to_status];
-                $submittedAt = null;
-            }
-        }
-        if ($submittedAt !== null) {
-            $cycles[] = ['submitted_at' => $submittedAt, 'decision_at' => null, 'decision_status' => 'pending'];
-        }
-
-        // Floor of "how many reworks" is the app-wide reworkCountFor(); some legacy
-        // rows only exist in status-history with no matching DesignTaskBdReview, so
-        // the total is bumped to whichever count is actually higher — this way the
-        // per-row "Rework X of Y" label can never show X greater than Y.
-        $reworkCyclesDetected = count(array_filter($cycles, fn ($c) => $c['decision_status'] === 'rework'));
-        $totalReworks = max($this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount), $reworkCyclesDetected);
-        $reworkCreativesByOrdinal = $reworkCyclesByTask->get($task->id, collect())->values();
-
-        $rows = [];
-        $reworkOrdinal = 0;
-        foreach ($cycles as $index => $cycle) {
-            $dueAt = $task->due_at;
-            $onTimeText = $dueAt === null
-                ? '—'
-                : ($cycle['submitted_at']->lte($dueAt)
-                    ? 'On Time'
-                    : 'Late • '.$this->durationText($dueAt, $cycle['submitted_at']));
-
-            // When BD sends this cycle to Rework, the Designer's rework window runs
-            // from that decision until the NEXT cycle's submission (moved back to
-            // BD review) — or is still open/pending if there's no next cycle yet.
-            $rework = null;
-            if ($cycle['decision_status'] === 'rework') {
-                $reworkOrdinal++;
-                $movedBackAt = $cycles[$index + 1]['submitted_at'] ?? null;
-                $reworkEnd = $movedBackAt ?? now();
-                $rework = [
-                    'ordinal' => $reworkOrdinal,
-                    'total' => $totalReworks,
-                    'creatives' => (int) ($reworkCreativesByOrdinal->get($reworkOrdinal - 1)?->number_of_creatives ?? 0),
-                    'started_at' => $cycle['decision_at'],
-                    'moved_back_at' => $movedBackAt,
-                    'duration_text' => $this->durationText($cycle['decision_at'], $reworkEnd),
-                    'duration_minutes' => $cycle['decision_at']->diffInMinutes($reworkEnd),
-                ];
-            }
-
-            $rows[] = [
-                'task' => $task,
-                'submitted_at' => $cycle['submitted_at'],
-                'decision_at' => $cycle['decision_at'],
-                'decision_status' => $cycle['decision_status'],
-                'duration_text' => $this->durationText($cycle['submitted_at'], $cycle['decision_at'] ?? now()),
-                'designer_on_time_text' => $onTimeText,
-                'rework' => $rework,
-            ];
-        }
-
-        return $rows;
     }
 }

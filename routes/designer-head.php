@@ -3,6 +3,7 @@
 use App\Http\Controllers\DesignerHead\DashboardController;
 use App\Http\Controllers\DesignerHead\RequestActionController;
 use App\Http\Controllers\DesignerHead\TaskController;
+use App\Http\Controllers\DesignerHead\TaskExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:designer_head'])
@@ -23,6 +24,9 @@ Route::middleware(['auth', 'role:designer_head'])
         // Backward compatibility for older dashboard/bookmarked links.
         Route::redirect('/all-tasks', '/designer-head/assigned-tasks')
             ->name('all-tasks');
+
+        Route::get('/tasks/export', [TaskExportController::class, 'export'])
+            ->name('tasks.export');
 
         Route::get('/tasks/{task}', [TaskController::class, 'show'])
             ->name('tasks.show');

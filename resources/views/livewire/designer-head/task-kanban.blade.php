@@ -345,15 +345,36 @@
                     <option value="low">Low</option>
                 </select>
 
+                <select class="premium-select" wire:model.live="designerId">
+                    <option value="">All Designers</option>
+                    @foreach($designers as $designerOption)
+                        <option value="{{ $designerOption->id }}">{{ $designerOption->name }}</option>
+                    @endforeach
+                </select>
+
+                <select class="premium-select" wire:model.live="bdId">
+                    <option value="">All BDs</option>
+                    @foreach($bds as $bdOption)
+                        <option value="{{ $bdOption->id }}">{{ $bdOption->name }}</option>
+                    @endforeach
+                </select>
+
                 <select class="premium-select" wire:model.live="period">
                     <option value="current_month">Current Month</option>
                     <option value="last_month">Last Month</option>
-                    <option value="custom">Custom Month</option>
+                    <option value="custom">Custom Period</option>
                 </select>
 
                 @if($period === 'custom')
-                    <input class="premium-input" type="month" wire:model.live="customMonth">
+                    <input class="premium-input" type="date" wire:model.live="dateFrom" max="{{ $dateTo ?: '' }}">
+                    <input class="premium-input" type="date" wire:model.live="dateTo" min="{{ $dateFrom ?: '' }}">
                 @endif
+
+                <a class="btn btn-secondary" href="{{ route('designer-head.tasks.export', [
+                    'search' => $search, 'vertical' => $vertical, 'priority' => $priority,
+                    'designer_id' => $designerId, 'bd_id' => $bdId, 'period' => $period,
+                    'date_from' => $dateFrom, 'date_to' => $dateTo,
+                ]) }}">Export CSV</a>
             </div>
         </div>
     </div>
