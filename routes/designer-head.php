@@ -14,6 +14,9 @@ Route::middleware(['auth', 'role:designer_head'])
         Route::get('/dashboard/partial', [DashboardController::class, 'fragment'])
             ->name('dashboard.partial');
 
+        Route::get('/dashboard/ratings', [DashboardController::class, 'ratings'])
+            ->name('dashboard.ratings');
+
         Route::view('/assigned-tasks', 'designer-head.assigned-tasks')
             ->name('assigned-tasks');
 

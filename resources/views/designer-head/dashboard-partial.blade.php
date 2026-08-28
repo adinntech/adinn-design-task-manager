@@ -429,51 +429,15 @@
                 <div class="dh-card-title">Completed Task Ratings</div>
                 <div class="dh-card-sub">BD feedback on completed work</div>
             </div>
-            @if($ratings->isNotEmpty())<div class="dh-card-badge">{{ $ratings->count() }}</div>@endif
+            <select class="dh-select" id="dhr-designer" aria-label="Filter ratings by Designer">
+                <option value="all">All Designers</option>
+                @foreach($designers as $designer)
+                    <option value="{{ $designer->id }}">{{ $designer->name }}</option>
+                @endforeach
+            </select>
         </div>
-        <div class="dh-card-body dh-scroll" style="max-height:560px">
-            @forelse($ratings as $rating)
-                @php
-                    $task = $taskRows->firstWhere('task.id', (int) $rating->design_task_id) ?? null;
-                    $sub = [
-                        'Designer Attitude' => $rating->designer_attitude,
-                        'Design Satisfaction' => $rating->design_satisfaction,
-                        'Rework Iteration' => $rating->rework_iteration,
-                        'Meeting Deadline' => $rating->meeting_deadline,
-                        'Client Satisfaction' => $rating->client_satisfaction,
-                        'Overall Rating' => $rating->overall_rating,
-                    ];
-                @endphp
-                <div class="dh-rating">
-                    <div class="dh-rating-head">
-                        <div>
-                            <strong>
-                                @if($task)
-                                    <a class="dh-task-link" href="{{ route('designer-head.tasks.show', $task['task']) }}">{{ $task['task']->task_id }}</a>
-                                @else Task @endif
-                                — {{ $task['task']->display_task_name ?? $task['task']->task_name ?? 'Unavailable' }}
-                            </strong>
-                            <div class="dh-cell-sub">{{ $task['task']->designer?->name ?? 'Designer' }} · completed {{ optional($task['completed_at'])->format('d M Y') ?? '—' }}</div>
-                        </div>
-                        <div class="dh-rating-score">{!! $star($rating->overall_rating) !!}<span class="dh-strong">{{ $fmt($rating->overall_rating) }} / 5</span></div>
-                    </div>
-                    <div class="dh-sub-grid">
-                        @foreach($sub as $label => $value)
-                            <div class="dh-sub-item {{ $label === 'Overall Rating' ? 'dh-sub-overall' : '' }}">
-                                <span>{{ $label }}</span>
-                                <strong>{{ $fmt($value) }} / 5</strong>
-                                {!! $star($value) !!}
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="dh-rating-meta">
-                        <div><strong>BD Comments</strong><br>{{ $rating->comment ?: 'No comments added.' }}</div>
-                        <div class="dh-rating-meta-end"><strong>Rated By</strong><br>{{ $rating->submitter?->name ?? 'BD' }}<br><span>{{ optional($rating->created_at)->format('d M Y · h:i A') }}</span></div>
-                    </div>
-                </div>
-            @empty
-                <div class="dh-empty">No completed-task ratings available.</div>
-            @endforelse
+        <div id="dhr-root">
+            @include('designer-head.ratings-rows', $completedRatings)
         </div>
     </section>
 

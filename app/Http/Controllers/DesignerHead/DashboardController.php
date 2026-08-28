@@ -34,6 +34,27 @@ class DashboardController extends Controller
         return view('designer-head.dashboard-partial', $this->analytics($request));
     }
 
+    /**
+     * Completed Task Ratings section has its own Designer filter + pagination,
+     * independent of the page-wide Designer/Month filter above it.
+     */
+    public function ratings(Request $request): View
+    {
+        abort_unless($request->user()?->role === 'designer_head', 403);
+
+        $activeIds = User::query()->where('role', 'designer')->where('is_active', true)->pluck('id')
+            ->map(fn ($id) => (int) $id)->all();
+
+        $selectedDesigner = $request->query('designer', 'all');
+        if ($selectedDesigner !== 'all' && ! in_array((int) $selectedDesigner, $activeIds, true)) {
+            $selectedDesigner = 'all';
+        }
+        $designerId = $selectedDesigner === 'all' ? null : (int) $selectedDesigner;
+        $page = max(1, (int) $request->query('page', 1));
+
+        return view('designer-head.ratings-rows', $this->completedRatings($designerId, $page, 10));
+    }
+
     private function analytics(Request $request): array
     {
         $now = now();
@@ -313,10 +334,9 @@ class DashboardController extends Controller
             ->sortByDesc(fn (array $row) => $row['rework_assigned_at']?->timestamp ?? 0)
             ->values();
 
-        /* ---- Ratings scoped to the visible tasks ---- */
-        $ratings = $reviews
-            ->filter(fn ($review) => $taskKeyById->has((int) $review->design_task_id))
-            ->values();
+        /* ---- Completed Task Ratings section: own filter/pagination, always starts
+         * at "All Designers" page 1, independent of the page-wide filter above. ---- */
+        $completedRatings = $this->completedRatings(null, 1, 10);
 
         /* ---- Recent completion activity (latest first) ---- */
         $completionsList = $completedAtByTask
@@ -386,11 +406,51 @@ class DashboardController extends Controller
             'line' => $line,
             'taskRows' => $taskRows,
             'reworkRows' => $reworkRows,
-            'ratings' => $ratings,
+            'completedRatings' => $completedRatings,
             'completions' => $completionsList,
             'overdue' => $overdue,
             'pendingRequests' => $pendingRequests,
             'recentDecisions' => $recentDecisions,
+        ];
+    }
+
+    /**
+     * Completed-task ratings, optionally scoped to one Designer and paginated —
+     * shared by the initial dashboard render and the AJAX ratings endpoint so
+     * both agree on data/ordering/exclusions.
+     */
+    private function completedRatings(?int $designerId, int $page, int $perPage): array
+    {
+        $reviews = DesignTaskBdReview::query()
+            ->with(['submitter:id,name', 'task:id,task_id,task_name,designer_id,requirements', 'task.designer:id,name'])
+            ->where('action', 'completed')
+            ->when($designerId, fn ($query) => $query->whereHas('task', fn ($q) => $q->where('designer_id', $designerId)))
+            ->orderByDesc('created_at')
+            ->get()
+            ->filter(fn (DesignTaskBdReview $review) => $review->task !== null
+                && ! (bool) data_get($review->task->requirements, '_swap_shadow', false))
+            ->values();
+
+        $total = $reviews->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = min(max(1, $page), $lastPage);
+
+        $rows = $reviews->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $taskIds = $rows->pluck('task.id')->filter()->unique()->values();
+        $completedAtByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskStatusHistory::query()
+                ->where('to_status', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->pluck('created_at', 'design_task_id');
+
+        return [
+            'rows' => $rows,
+            'completedAtByTask' => $completedAtByTask,
+            'total' => $total,
+            'page' => $page,
+            'perPage' => $perPage,
         ];
     }
 

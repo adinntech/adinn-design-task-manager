@@ -113,27 +113,45 @@
     .dh-btn-accept{background:#101828;color:#fff}
     .dh-btn-decline{background:#e30613;color:#fff}
 
-    .dh-rating{border:1px solid #e6e9ef;border-radius:12px;padding:12px;margin-bottom:9px}
-    .dh-rating:last-child{margin-bottom:0}
-    .dh-rating-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
-    .dh-rating-head strong{font-size:10px;font-weight:900;color:#101828}
-    .dh-rating-score{display:flex;align-items:center;gap:8px}
-    .dh-sub-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-    .dh-sub-item{border:1px solid #eef0f3;border-radius:9px;background:#fbfbfc;padding:9px 10px;min-width:0}
-    .dh-sub-item span{display:block;font-size:8px;font-weight:850;color:#667085;text-transform:uppercase;letter-spacing:.02em}
-    .dh-sub-item strong{display:block;font-size:11px;color:#101828;margin:3px 0 5px}
-    .dh-sub-overall{border-color:#e7cdc0;background:#fffaf7}
-    .dh-rating-meta{display:grid;grid-template-columns:1fr auto;gap:14px;margin-top:11px;padding-top:11px;border-top:1px solid #eaecf0}
-    .dh-rating-meta div{font-size:9px;color:#475467;line-height:1.5}
-    .dh-rating-meta strong{font-size:8px;font-weight:900;text-transform:uppercase;color:#667085}
-    .dh-rating-meta-end{text-align:right;font-size:8px;color:#98a2b3}
     .dh-stars{display:inline-flex;gap:2px;line-height:1}
     .dh-star{--star-fill:0%;display:inline-block;width:13px;height:13px;flex:0 0 13px;font-size:13px;line-height:13px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
 
     .dh-scroll{overflow-y:auto;overscroll-behavior:contain}
 
+    .dhr-scroll{max-height:560px;overflow-y:auto;overscroll-behavior:contain}
+    .dhr-list{display:flex;flex-direction:column;gap:9px;padding:12px 13px}
+    .dhr-row{border:1px solid #e6e9ef;border-radius:12px;padding:12px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+    .dhr-col{min-width:0}
+    .dhr-col-task{flex:1.1 1 190px}
+    .dhr-task-name{font-size:10px;font-weight:900;color:#101828;line-height:1.4}
+    .dhr-designer-name{font-size:9px;color:#475467;margin-top:4px;font-weight:750}
+    .dhr-completed-date{font-size:8px;color:#98a2b3;margin-top:5px}
+    .dhr-col-ratings{flex:1.7 1 300px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+    .dhr-overall{flex:0 0 auto}
+    .dhr-overall-value{font-size:16px;font-weight:950;color:#101828;line-height:1.2}
+    .dhr-overall-value span{font-size:9px;font-weight:800;color:#98a2b3}
+    .dhr-chips{display:grid;grid-template-columns:repeat(3,minmax(50px,1fr));gap:6px;flex:1 1 180px}
+    .dhr-chip{border:1px solid #eef0f3;background:#fbfbfc;border-radius:8px;padding:5px 7px;text-align:center;cursor:default}
+    .dhr-chip-label{display:block;font-size:7px;font-weight:900;color:#98a2b3;text-transform:uppercase;letter-spacing:.03em}
+    .dhr-chip-value{display:block;font-size:10px;font-weight:900;color:#101828;margin-top:2px}
+    .dhr-col-comment{flex:1.2 1 210px}
+    .dhr-comment-label{font-size:8px;font-weight:900;color:#667085;text-transform:uppercase;margin-bottom:3px}
+    .dhr-comment-text{font-size:9px;color:#475467;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .dhr-row.dhr-expanded .dhr-comment-text{-webkit-line-clamp:unset;overflow:visible}
+    .dhr-comment-toggle{margin-top:5px;border:1px solid #d0d5dd;background:#fff;border-radius:7px;padding:3px 8px;font-size:8px;font-weight:850;color:#344054;cursor:pointer}
+    .dhr-col-by{flex:0 0 130px;text-align:right}
+    .dhr-by-name{font-size:9px;font-weight:900;color:#101828}
+    .dhr-by-date{font-size:8px;color:#98a2b3;margin-top:3px}
+    .dhr-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-top:1px solid #eaecf0;flex-wrap:wrap}
+    .dhr-foot-info{font-size:8px;color:#667085;font-weight:800}
+    .dhr-pager{display:flex;align-items:center;gap:4px}
+    .dhr-pager button{border:1px solid #d0d5dd;background:#fff;border-radius:7px;min-width:24px;height:24px;font-size:9px;font-weight:850;color:#344054;cursor:pointer}
+    .dhr-pager button[disabled]{opacity:.4;cursor:not-allowed}
+    .dhr-pager button.dhr-page-active{background:#101828;color:#fff;border-color:#101828}
+    .dhr-page-ellipsis{font-size:9px;color:#98a2b3;padding:0 2px}
+
     @media(max-width:1280px){.dh-grid-2{grid-template-columns:1fr}}
-    @media(max-width:760px){.dh-top{align-items:flex-start;flex-direction:column}.dh-sub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dh-decision{grid-template-columns:1fr}.dh-rating-meta{grid-template-columns:1fr}.dh-rating-meta-end{text-align:left}.dh-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:760px){.dh-top{align-items:flex-start;flex-direction:column}.dh-decision{grid-template-columns:1fr}.dh-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dhr-row{flex-direction:column}.dhr-col-by{text-align:left}}
 </style>
 
 <div class="dh-dash">
@@ -169,7 +187,7 @@
             'line' => $line,
             'taskRows' => $taskRows,
             'reworkRows' => $reworkRows,
-            'ratings' => $ratings,
+            'completedRatings' => $completedRatings,
             'completions' => $completions,
             'overdue' => $overdue,
             'pendingRequests' => $pendingRequests,
@@ -206,6 +224,48 @@
         if (!el) return;
         document.getElementById('dh-designer').value = el.dataset.dhDesign;
         reload();
+    });
+
+    // Completed Task Ratings: its own Designer filter + pagination, independent
+    // of the page-wide filters above — bound on the persistent `root` element
+    // via delegation so it keeps working after either swap replaces its children.
+    var ratingsBase = "{{ route('designer-head.dashboard.ratings') }}";
+
+    function loadRatings(designer, page) {
+        var body = document.getElementById('dhr-root');
+        if (!body) return;
+        body.classList.add('dh-loading');
+        fetch(ratingsBase + '?designer=' + encodeURIComponent(designer) + '&page=' + encodeURIComponent(page), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (res) { return res.text(); })
+            .then(function (html) {
+                var tmp = document.createElement('div');
+                tmp.innerHTML = html;
+                body.replaceChildren.apply(body, Array.prototype.slice.call(tmp.childNodes));
+                body.classList.remove('dh-loading');
+            })
+            .catch(function () { body.classList.remove('dh-loading'); });
+    }
+
+    root.addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'dhr-designer') {
+            loadRatings(e.target.value, 1);
+        }
+    });
+
+    root.addEventListener('click', function (e) {
+        var pageBtn = e.target.closest('[data-dhr-page]');
+        if (pageBtn && !pageBtn.disabled) {
+            var designerSelect = document.getElementById('dhr-designer');
+            loadRatings(designerSelect ? designerSelect.value : 'all', pageBtn.dataset.dhrPage);
+            return;
+        }
+        var commentBtn = e.target.closest('[data-dhr-comment-toggle]');
+        if (commentBtn) {
+            var row = commentBtn.closest('.dhr-row');
+            if (!row) return;
+            var expanded = row.classList.toggle('dhr-expanded');
+            commentBtn.textContent = expanded ? 'Show less' : 'View full comment';
+        }
     });
 })();
 </script>
