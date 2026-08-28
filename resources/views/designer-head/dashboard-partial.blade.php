@@ -454,7 +454,7 @@
         <div class="dh-table-wrap">
             <table class="dh-table">
                 <thead>
-                <tr><th>Task</th><th>Designer</th><th>Assigned BD</th><th>Completed At</th><th>Duration</th><th>Rating</th><th>Rework</th></tr>
+                <tr><th>Task</th><th>Designer</th><th>Assigned BD</th><th>Assigned At</th><th>Due Date</th><th>Completed At</th><th>Duration</th><th>Rating</th><th>Rework</th></tr>
                 </thead>
                 <tbody>
                 @forelse($completions as $row)
@@ -462,6 +462,8 @@
                         <td><a class="dh-task-link" href="{{ route('designer-head.tasks.show', $row['task']) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td>{{ $row['task']->assigner?->name ?? '—' }}</td>
+                        <td>{{ $row['task']->assigned_at?->format('d M Y · h:i A') ?? '—' }}</td>
+                        <td>{{ $row['task']->due_at?->format('d M Y') ?? '—' }}</td>
                         <td>{{ $row['completed_at']->format('d M Y · h:i A') }}</td>
                         <td>{{ $row['duration_text'] ?? '—' }}</td>
                         <td>
@@ -472,7 +474,7 @@
                         <td>{{ $row['rework_count'] }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7"><div class="dh-empty">No completions recorded yet.</div></td></tr>
+                    <tr><td colspan="9"><div class="dh-empty">No completions recorded yet.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
