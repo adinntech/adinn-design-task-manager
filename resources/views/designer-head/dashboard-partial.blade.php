@@ -289,7 +289,7 @@
             <div class="dh-table-wrap">
                 <table class="dh-table">
                     <thead>
-                    <tr><th>Type</th><th>Task</th><th>Requested By</th><th>Result</th><th>Response By</th><th>Responded</th><th>Current Designer</th></tr>
+                    <tr><th>Type</th><th>Task</th><th>Requested By</th><th>Requested At</th><th>Result</th><th>Response By</th><th>Responded</th><th>Current Designer</th></tr>
                     </thead>
                     <tbody>
                     @forelse($recentDecisions as $request)
@@ -307,13 +307,14 @@
                                 @else — @endif
                             </td>
                             <td>{{ $request->requester?->name ?? '—' }}</td>
+                            <td>{{ optional($request->created_at)->format('d M, h:i A') }}</td>
                             <td><span class="dh-pill {{ $approved ? 'dh-pill-completed' : 'dh-pill-overdue' }}">{{ $approved ? 'Approved' : 'Rejected' }}</span></td>
                             <td>{{ ($request->adminActor ?: $request->designerHeadActor)?->name ?? 'System' }}</td>
                             <td>{{ optional($request->responded_at)->format('d M, h:i A') }}</td>
                             <td>{{ $finalDesigner }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="7"><div class="dh-empty">No decisions recorded yet.</div></td></tr>
+                        <tr><td colspan="8"><div class="dh-empty">No decisions recorded yet.</div></td></tr>
                     @endforelse
                     </tbody>
                 </table>
