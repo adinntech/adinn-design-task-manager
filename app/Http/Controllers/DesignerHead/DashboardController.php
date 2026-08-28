@@ -334,6 +334,66 @@ class DashboardController extends Controller
             ->sortByDesc(fn (array $row) => $row['rework_assigned_at']?->timestamp ?? 0)
             ->values();
 
+        /* ---- BD review turnaround: how long BD takes to act once Designer submits.
+         * One row per review cycle (a task can cycle waiting_confirmation -> rework ->
+         * ... -> waiting_confirmation several times), paired up from the immutable
+         * status-history log — never from updated_at, never collapsed/overwritten. ---- */
+        $reviewHistory = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskStatusHistory::query()
+                ->whereIn('design_task_id', $taskIds)
+                ->whereIn('to_status', ['waiting_confirmation', 'rework', 'completed'])
+                ->orderBy('design_task_id')
+                ->orderBy('created_at')
+                ->get(['design_task_id', 'to_status', 'created_at']);
+
+        $bdReviewRows = $reviewHistory
+            ->groupBy('design_task_id')
+            ->flatMap(function (Collection $rows, $taskId) use ($taskKeyById) {
+                $task = $taskKeyById->get((int) $taskId);
+                if (! $task) {
+                    return [];
+                }
+
+                // Pair each "moved to BD review" event with the next decision after it;
+                // an unmatched trailing submission means BD hasn't decided yet (pending).
+                $cycles = [];
+                $submittedAt = null;
+                foreach ($rows as $row) {
+                    if ($row->to_status === 'waiting_confirmation') {
+                        $submittedAt = $row->created_at;
+                    } elseif ($submittedAt !== null) {
+                        $cycles[] = ['submitted_at' => $submittedAt, 'decision_at' => $row->created_at, 'decision_status' => $row->to_status];
+                        $submittedAt = null;
+                    }
+                }
+                if ($submittedAt !== null) {
+                    $cycles[] = ['submitted_at' => $submittedAt, 'decision_at' => null, 'decision_status' => 'pending'];
+                }
+
+                return collect($cycles)->values()->map(function (array $cycle, int $index) use ($task) {
+                    $dueAt = $task->due_at;
+                    $onTimeText = $dueAt === null
+                        ? '—'
+                        : ($cycle['submitted_at']->lte($dueAt)
+                            ? 'On Time'
+                            : 'Late • '.$this->durationText($dueAt, $cycle['submitted_at']));
+
+                    return [
+                        'task' => $task,
+                        'cycle_number' => $index + 1,
+                        'submitted_at' => $cycle['submitted_at'],
+                        'decision_at' => $cycle['decision_at'],
+                        'decision_status' => $cycle['decision_status'],
+                        'duration_text' => $this->durationText($cycle['submitted_at'], $cycle['decision_at'] ?? now()),
+                        'designer_on_time_text' => $onTimeText,
+                    ];
+                });
+            })
+            ->sortByDesc(fn (array $row) => $row['submitted_at']->timestamp)
+            ->values()
+            ->take(200);
+
         /* ---- Completed Task Ratings section: own filter/pagination, always starts
          * at "All Designers" page 1, independent of the page-wide filter above. ---- */
         $completedRatings = $this->completedRatings(null, 1, 10);
@@ -406,6 +466,7 @@ class DashboardController extends Controller
             'line' => $line,
             'taskRows' => $taskRows,
             'reworkRows' => $reworkRows,
+            'bdReviewRows' => $bdReviewRows,
             'completedRatings' => $completedRatings,
             'completions' => $completionsList,
             'overdue' => $overdue,

@@ -187,6 +187,7 @@
             'line' => $line,
             'taskRows' => $taskRows,
             'reworkRows' => $reworkRows,
+            'bdReviewRows' => $bdReviewRows,
             'completedRatings' => $completedRatings,
             'completions' => $completions,
             'overdue' => $overdue,

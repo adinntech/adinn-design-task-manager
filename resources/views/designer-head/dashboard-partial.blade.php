@@ -477,4 +477,62 @@
             </table>
         </div>
     </section>
+
+    {{-- 9. BD review turnaround --}}
+    <section class="dh-card">
+        <div class="dh-card-head">
+            <div>
+                <div class="dh-card-title">BD Review Turnaround</div>
+                <div class="dh-card-sub">Time BD takes to review each submission — kept separate from Designer's own timeliness</div>
+            </div>
+            @if($bdReviewRows->isNotEmpty())<div class="dh-card-badge">{{ $bdReviewRows->count() }}</div>@endif
+        </div>
+        <div class="dh-table-wrap dh-scroll" style="max-height:560px">
+            <table class="dh-table">
+                <thead>
+                <tr>
+                    <th>Task</th><th>Designer</th><th>BD</th><th>Task Created At</th><th>Moved to BD Review At</th>
+                    <th>BD Decision</th><th>BD Decision At</th><th>BD Review Duration</th><th>Designer Submission</th>
+                </tr>
+                </thead>
+                <tbody>
+                @forelse($bdReviewRows as $row)
+                    @php $task = $row['task']; @endphp
+                    <tr>
+                        <td>
+                            <a class="dh-task-link" href="{{ route('designer-head.tasks.show', $task) }}">{{ $task->task_id }}</a>
+                            <div class="dh-cell-sub">{{ $task->display_task_name ?? $task->task_name }} · Review {{ $row['cycle_number'] }}</div>
+                        </td>
+                        <td>{{ $task->designer?->name ?? '—' }}</td>
+                        <td>{{ $task->assigner?->name ?? '—' }}</td>
+                        <td>{{ optional($task->created_at)->format('d M Y · h:i A') ?? '—' }}</td>
+                        <td>{{ $row['submitted_at']->format('d M Y · h:i A') }}</td>
+                        <td>
+                            @if($row['decision_status'] === 'completed')
+                                <span class="dh-pill dh-pill-completed">Completed</span>
+                            @elseif($row['decision_status'] === 'rework')
+                                <span class="dh-pill dh-pill-rework">Rework</span>
+                            @else
+                                <span class="dh-pill dh-pill-waiting">Pending</span>
+                            @endif
+                        </td>
+                        <td>{{ optional($row['decision_at'])->format('d M Y · h:i A') ?? '—' }}</td>
+                        <td class="{{ $row['decision_status'] === 'pending' ? 'dh-danger' : '' }}">{{ $row['duration_text'] ?? '—' }}</td>
+                        <td>
+                            @if($row['designer_on_time_text'] === 'On Time')
+                                <span class="dh-pill dh-pill-completed">On Time</span>
+                            @elseif(str_starts_with($row['designer_on_time_text'], 'Late'))
+                                <span class="dh-pill dh-pill-overdue">{{ $row['designer_on_time_text'] }}</span>
+                            @else
+                                <span class="dh-muted">—</span>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="9"><div class="dh-empty">No BD review activity recorded yet.</div></td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
