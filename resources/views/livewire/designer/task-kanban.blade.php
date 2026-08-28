@@ -334,6 +334,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                     <div class="task-meta-item"><strong>Creatives</strong>{{ $task->total_creatives }}</div>
                                     <div class="task-meta-item"><strong>Due</strong>{{ \Illuminate\Support\Carbon::parse($task->due_at)->format('d M, h:i A') }}</div>
                                     <div class="task-meta-item"><strong>Assigned by</strong>{{ $task->assigner?->name ?? 'BD' }}</div>
+                                    <div class="task-meta-item"><strong>Created</strong>{{ $task->created_at->format('d M Y') }}</div>
                                 </div>
                             </a>
                         @empty

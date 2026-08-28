@@ -441,6 +441,11 @@
                                             <strong>Due</strong>
                                             {{ $dueAt->format('d M Y') }}
                                         </div>
+
+                                        <div class="task-meta-item">
+                                            <strong>Created</strong>
+                                            {{ $task->created_at->format('d M Y') }}
+                                        </div>
                                     </div>
                                 </a>
 

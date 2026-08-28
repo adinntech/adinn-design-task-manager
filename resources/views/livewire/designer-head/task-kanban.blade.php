@@ -562,10 +562,15 @@
                                             <strong>Due</strong>
                                             {{ $dueAt->format('d M, h:i A') }}
                                         </div>
+
+                                        <div class="task-meta-item">
+                                            <strong>Created</strong>
+                                            {{ $task->created_at->format('d M Y') }}
+                                        </div>
                                     </div>
                                 </a>
 
-                                
+
                             </article>
                         @empty
                             <div class="kanban-empty">No matching tasks</div>
