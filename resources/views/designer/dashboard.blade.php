@@ -236,8 +236,8 @@
             <table class="bd-table">
                 <thead>
                 <tr>
-                    <th>Task ID</th><th>Task Name</th><th>Assigned At</th><th>Due Date</th><th>Status</th>
-                    <th>Progress</th><th>Rework</th><th>Completed At</th><th>Overdue / Timeliness</th><th>Rating</th>
+                    <th>Task ID</th><th>Task Name</th><th>Assigned At</th><th>Status</th><th>Progress</th>
+                    <th>Creatives</th><th>Deadline</th><th>Completed At</th><th>Overdue</th><th>Rework</th><th>Rating</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -250,10 +250,16 @@
                         <td><a class="bd-task-link" href="{{ route('designer.tasks.show',$task) }}">{{ $task->task_id }}</a></td>
                         <td>{{ $task->display_task_name ?? $task->task_name }}</td>
                         <td>{{ $task->assigned_at?->format('d M Y') ?? '—' }}</td>
-                        <td>{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
-                        <td><span class="bd-pill pill-{{ $task->status === 'rework' ? 'rework' : ($task->status === 'completed' ? 'completed' : ($task->status === 'waiting_confirmation' ? 'waiting' : ($task->status === 'in_progress' ? 'progress' : 'default'))) }}">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td>
+                        <td>
+                            @if($row['overdue'])
+                                <span class="bd-pill pill-overdue">Overdue</span>
+                            @else
+                                <span class="bd-pill pill-{{ $task->status === 'rework' ? 'rework' : ($task->status === 'completed' ? 'completed' : ($task->status === 'waiting_confirmation' ? 'waiting' : ($task->status === 'in_progress' ? 'progress' : 'default'))) }}">{{ ucwords(str_replace('_',' ',$task->status)) }}</span>
+                            @endif
+                        </td>
                         <td>{{ $row['percentage'] }}%</td>
-                        <td>{{ $row['rework_count'] }}@if($row['rework_count'] > 0)<span style="color:#98a2b3"> · {{ $row['rework_creatives'] }} creatives</span>@endif</td>
+                        <td><span style="font-weight:850">{{ $row['done'] }} / {{ $task->total_creatives }}</span><div style="color:#98a2b3">{{ $row['remaining'] }} remaining</div></td>
+                        <td style="{{ $row['overdue'] ? 'color:#c01048;font-weight:850' : '' }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
                         <td>{{ $row['completed_at']?->format('d M Y') ?? '—' }}</td>
                         <td>
                             @if($row['completion']['status'] === 'overdue')
@@ -266,6 +272,7 @@
                                 <span style="color:#98a2b3">—</span>
                             @endif
                         </td>
+                        <td>{{ $row['rework_count'] }}@if($row['rework_count'] > 0)<span style="color:#98a2b3"> · {{ $row['rework_creatives'] }} creatives</span>@endif</td>
                         <td>
                             @if($rowRatingValue !== null)
                                 <span aria-label="{{ number_format($rowRatingValue, 1) }} out of 5 stars">
@@ -280,7 +287,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="10"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
+                    <tr><td colspan="11"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>

@@ -175,10 +175,13 @@ class DashboardController extends Controller
         $taskRows = $tasks
             ->map(fn (DesignTask $task) => [
                 'task' => $task,
+                'done' => $progressService->completed($task),
+                'remaining' => $progressService->remaining($task),
                 'percentage' => $progressService->percentage($task),
                 'rework_count' => $progressService->reworkCount($task),
                 'rework_creatives' => (int) ($reworkCreativesByTask[$task->id] ?? 0),
                 'completed_at' => $completedAtByTask->get($task->id),
+                'overdue' => $task->status !== 'completed' && $task->due_at && $task->due_at->lt($now),
                 'completion' => $this->completionInfo($task, $completedAtByTask->get($task->id), $now),
                 'rating' => $reviewByTask->get($task->id)?->overall_rating,
             ])
