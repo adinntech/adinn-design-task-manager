@@ -482,7 +482,7 @@ class DashboardController extends Controller
     private function completedRatings(?int $designerId, int $page, int $perPage, ?Carbon $monthStart = null, ?Carbon $monthEnd = null): array
     {
         $reviews = DesignTaskBdReview::query()
-            ->with(['submitter:id,name', 'task:id,task_id,task_name,designer_id,requirements', 'task.designer:id,name'])
+            ->with(['submitter:id,name', 'task:id,task_id,task_name,designer_id,status,requirements', 'task.designer:id,name'])
             ->where('action', 'completed')
             ->when($designerId, fn ($query) => $query->whereHas('task', fn ($q) => $q->where('designer_id', $designerId)))
             ->when($monthStart && $monthEnd, fn ($query) => $query->whereBetween('created_at', [$monthStart, $monthEnd]))

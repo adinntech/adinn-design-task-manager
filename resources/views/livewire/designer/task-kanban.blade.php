@@ -30,6 +30,8 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 
 .task-card{display:block;border:1px solid #e3e6ec;border-left:5px solid #cbd5e1;border-radius:11px;background:#fff;padding:11px;margin-bottom:8px;color:inherit;text-decoration:none;box-shadow:0 4px 12px rgba(16,24,40,.04);cursor:grab;transition:.16s}
 .task-card:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,24,40,.08);border-color:#d7dbe3}
+.task-card-highlight{animation:taskCardHighlightPulse .7s ease-in-out 3}
+@keyframes taskCardHighlightPulse{0%,100%{box-shadow:0 4px 12px rgba(16,24,40,.04);border-color:#e3e6ec}50%{box-shadow:0 0 0 4px rgba(227,6,19,.35);border-color:#e30613}}
 .task-card.due-overdue{border-left-color:#dc2626;background:linear-gradient(90deg,#fff1f2 0,#fff 22%)}
 .task-card.due-today{border-left-color:#ea580c;background:linear-gradient(90deg,#fff7ed 0,#fff 22%)}
 .task-card.due-soon{border-left-color:#d97706;background:linear-gradient(90deg,#fffbeb 0,#fff 22%)}
@@ -268,7 +270,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                     $dueLabel = 'On Track';
                                 }
                             @endphp
-                            <a href="{{ route('designer.tasks.show', $task) }}" class="task-card {{ $dueClass }}" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="task-{{ $task->id }}">
+                            <a href="{{ route('designer.tasks.show', $task) }}" class="task-card {{ $dueClass }}" data-task-id="{{ $task->id }}" data-task-code="{{ $task->task_id }}" data-task-status="{{ $task->status }}" wire:key="task-{{ $task->id }}">
                                 <div class="task-card-head-row">
                                         <span class="task-card-id">{{ $task->task_id }}</span>
 
@@ -378,18 +380,49 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         });
                     },
 
-                    // Dashboard KPI cards link here with ?focus=<status>; scroll the
-                    // board horizontally to that column once, on initial page load only
-                    // (never on Livewire re-renders, so it can't fight the user's scroll).
+                    // Dashboard cards link here with ?focus=<status>[&task=<task_id>];
+                    // scroll the board horizontally to the right column once, on initial
+                    // page load only (never on Livewire re-renders, so it can't fight the
+                    // user's scroll or re-fire the highlight pulse on every drag/update).
+                    // When a task id is present, its own column (found via the DOM) takes
+                    // priority over ?focus, so a task shown under a synthetic column
+                    // (e.g. Self Declined) still scrolls to where it actually renders. The
+                    // lookup retries briefly (bounded, not a blind delay) in case the
+                    // card isn't in the DOM on the very first tick, then gives up safely
+                    // if the task truly isn't on this board.
                     focusRequestedColumn(){
-                        const focus = new URLSearchParams(window.location.search).get('focus');
-                        if (!focus) return;
+                        const params = new URLSearchParams(window.location.search);
+                        const focus = params.get('focus');
+                        const taskCode = params.get('task');
+                        if (!focus && !taskCode) return;
 
-                        const shell = this.$root.querySelector('[data-kanban-shell]');
-                        const column = this.$root.querySelector('.kanban-column[data-status="' + focus + '"]');
-                        if (!shell || !column) return;
+                        const attempt = (tries) => {
+                            const shell = this.$root.querySelector('[data-kanban-shell]');
+                            const target = taskCode ? this.$root.querySelector('[data-task-code="' + CSS.escape(taskCode) + '"]') : null;
 
-                        shell.scrollTo({ left: Math.max(0, column.offsetLeft - 12), behavior: 'smooth' });
+                            if (taskCode && !target && tries < 20) {
+                                setTimeout(() => attempt(tries + 1), 100);
+                                return;
+                            }
+
+                            const column = target ? target.closest('.kanban-column')
+                                : (focus ? this.$root.querySelector('.kanban-column[data-status="' + focus + '"]') : null);
+
+                            if (shell && column) {
+                                shell.scrollTo({ left: Math.max(0, column.offsetLeft - 12), behavior: 'smooth' });
+                            }
+
+                            if (target) {
+                                target.classList.add('task-card-highlight');
+                                target.addEventListener('animationend', function onPulseEnd(event) {
+                                    if (event.animationName !== 'taskCardHighlightPulse') return;
+                                    target.classList.remove('task-card-highlight');
+                                    target.removeEventListener('animationend', onPulseEnd);
+                                });
+                            }
+                        };
+
+                        attempt(0);
                     },
 
                     refreshSortable(){

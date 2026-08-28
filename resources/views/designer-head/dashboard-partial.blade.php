@@ -187,7 +187,7 @@
                 <tbody>
                 @forelse($overdue as $row)
                     <tr>
-                        <td><a class="dh-task-link" href="{{ route('designer-head.tasks.show', ['task' => $row['task']]) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
+                        <td><a class="dh-task-link" href="{{ route('designer-head.assigned-tasks', ['focus' => $row['task']->status, 'task' => $row['task']->task_id]) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td>{{ $row['task']->assigner?->name ?? '—' }}</td>
                         <td class="dh-danger">{{ $row['task']->due_at?->format('d M Y') ?? '—' }}</td>
@@ -303,7 +303,7 @@
                             <td>{{ ucfirst($request->request_type) }}</td>
                             <td>
                                 @if($request->task)
-                                    <a class="dh-task-link" href="{{ route('designer-head.tasks.show', $request->task) }}">{{ $request->task->task_id }}</a>
+                                    <a class="dh-task-link" href="{{ route('designer-head.assigned-tasks', ['focus' => $request->task->status, 'task' => $request->task->task_id]) }}">{{ $request->task->task_id }}</a>
                                 @else — @endif
                             </td>
                             <td>{{ $request->requester?->name ?? '—' }}</td>
@@ -343,7 +343,7 @@
                 @forelse($taskRows as $row)
                     @php $task = $row['task']; @endphp
                     <tr>
-                        <td><a class="dh-task-link" href="{{ route('designer-head.tasks.show', $task) }}">{{ $task->task_id }}</a></td>
+                        <td><a class="dh-task-link" href="{{ route('designer-head.assigned-tasks', ['focus' => $task->status, 'task' => $task->task_id]) }}">{{ $task->task_id }}</a></td>
                         <td class="dh-cell-main">{{ $task->display_task_name ?? $task->task_name }}</td>
                         <td>{{ $task->designer?->name ?? '—' }}</td>
                         <td>{{ $task->assigner?->name ?? '—' }}</td>
@@ -459,7 +459,7 @@
                 <tbody>
                 @forelse($completions as $row)
                     <tr>
-                        <td><a class="dh-task-link" href="{{ route('designer-head.tasks.show', $row['task']) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
+                        <td><a class="dh-task-link" href="{{ route('designer-head.assigned-tasks', ['focus' => $row['task']->status, 'task' => $row['task']->task_id]) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td>{{ $row['task']->assigner?->name ?? '—' }}</td>
                         <td>{{ $row['task']->assigned_at?->format('d M Y · h:i A') ?? '—' }}</td>
@@ -503,7 +503,7 @@
                     @php $task = $row['task']; @endphp
                     <tr>
                         <td>
-                            <a class="dh-task-link" href="{{ route('designer-head.tasks.show', $task) }}">{{ $task->task_id }}</a>
+                            <a class="dh-task-link" href="{{ route('designer-head.assigned-tasks', ['focus' => $task->status, 'task' => $task->task_id]) }}">{{ $task->task_id }}</a>
                             <div class="dh-cell-sub">{{ $task->display_task_name ?? $task->task_name }}</div>
                             <div class="dh-cell-sub">{{ $task->designer?->name ?? '—' }} · {{ $task->assigner?->name ?? '—' }}</div>
                         </td>

@@ -210,7 +210,7 @@
                         };
                     @endphp
                     <tr>
-                        <td><a class="bd-task-link" href="{{ route('designer.tasks.show',$task) }}">{{ $task->task_id }}</a></td>
+                        <td><a class="bd-task-link" href="{{ route('designer.tasks.index', ['focus' => $task->status, 'task' => $task->task_id]) }}">{{ $task->task_id }}</a></td>
                         <td>{{ $task->display_task_name ?? $task->task_name }}</td>
                         <td>{{ $task->party_name }}</td>
                         <td>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</td>
@@ -249,7 +249,7 @@
                         $rowRatingValue = $row['rating'] !== null ? max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($row['rating']))) : null;
                     @endphp
                     <tr>
-                        <td><a class="bd-task-link" href="{{ route('designer.tasks.show',$task) }}">{{ $task->task_id }}</a></td>
+                        <td><a class="bd-task-link" href="{{ route('designer.tasks.index', ['focus' => $task->status, 'task' => $task->task_id]) }}">{{ $task->task_id }}</a></td>
                         <td>{{ $task->display_task_name ?? $task->task_name }}</td>
                         <td>{{ $task->assigned_at?->format('d M Y') ?? '—' }}</td>
                         <td>
@@ -350,7 +350,7 @@
                                 <div class="bd-review-comment">&ldquo;{{ $review['comment'] }}&rdquo;</div>
                                 <div class="bd-review-meta">
                                     @if($review['task'])
-                                        <a class="bd-task-link" href="{{ route('designer.tasks.show', $review['task']) }}">{{ $review['task_id'] }}</a>
+                                        <a class="bd-task-link" href="{{ route('designer.tasks.index', ['focus' => $review['task']->status, 'task' => $review['task_id']]) }}">{{ $review['task_id'] }}</a>
                                     @else
                                         {{ $review['task_id'] }}
                                     @endif
@@ -479,7 +479,7 @@
                         <div>
                             <div class="bd-req-history-title">
                                 @if($req->task)
-                                    <a class="bd-task-link" href="{{ route('designer.tasks.show',$req->task) }}">{{ $req->task->task_id }}</a>
+                                    <a class="bd-task-link" href="{{ route('designer.tasks.index', ['focus' => $req->task->status, 'task' => $req->task->task_id]) }}">{{ $req->task->task_id }}</a>
                                 @else
                                     Task
                                 @endif

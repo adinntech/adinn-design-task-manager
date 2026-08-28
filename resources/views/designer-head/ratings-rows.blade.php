@@ -48,7 +48,7 @@
                 <div class="dhr-col dhr-col-task">
                     <div class="dhr-task-name">
                         @if($task)
-                            <a class="dh-task-link" href="{{ route('designer-head.tasks.show', $task) }}">{{ $task->task_id }}</a> — {{ $task->display_task_name ?? $task->task_name }}
+                            <a class="dh-task-link" href="{{ route('designer-head.assigned-tasks', ['focus' => $task->status, 'task' => $task->task_id]) }}">{{ $task->task_id }}</a> — {{ $task->display_task_name ?? $task->task_name }}
                         @else
                             Task unavailable
                         @endif

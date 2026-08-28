@@ -31,7 +31,7 @@ class DashboardController extends Controller
 
         $ownRequests = DesignTaskRequest::query()
             ->with([
-                'task:id,task_id,task_name,designer_id',
+                'task:id,task_id,task_name,designer_id,status',
                 'task.designer:id,name',
                 'approvedDesigner:id,name',
                 'targetDesigner:id,name',
