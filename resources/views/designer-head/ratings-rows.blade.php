@@ -26,6 +26,7 @@
     $shown = $shown->unique()->sort()->values();
 @endphp
 
+<div class="dh-card-sub" style="padding:0 13px 10px">Data for {{ $monthLabel }} • {{ $designerName ?? 'All Designers' }}</div>
 <div class="dhr-scroll">
     <div class="dhr-list">
         @forelse($rows as $rating)

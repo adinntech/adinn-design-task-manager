@@ -76,8 +76,8 @@
     <section class="dh-card">
         <div class="dh-card-head">
             <div>
-                <div class="dh-card-title">Designer Workload</div>
-                <div class="dh-card-sub">Click a Designer to filter the dashboard analytics.</div>
+                <div class="dh-card-title">Designer Analytics</div>
+                <div class="dh-card-sub">Click a Designer to filter the dashboard · <span class="dh-strong">Viewing: {{ $selectedDesignerName ?? 'All Designers' }} • {{ $selectedMonthLabel }}</span></div>
             </div>
         </div>
         <div class="dh-table-wrap">
@@ -175,7 +175,7 @@
         <div class="dh-card-head">
             <div>
                 <div class="dh-card-title">Overdue Tasks</div>
-                <div class="dh-card-sub">Not completed and past the deadline</div>
+                <div class="dh-card-sub">Not completed and past the deadline · Data for {{ $selectedMonthLabel }} • {{ $selectedDesignerName ?? 'All Designers' }}</div>
             </div>
             @if($overdue->isNotEmpty())<div class="dh-card-badge">{{ $overdue->count() }}</div>@endif
         </div>
@@ -198,7 +198,7 @@
                         <td>{!! $statusPill($row['task']->status) !!}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7"><div class="dh-empty">No overdue tasks.</div></td></tr>
+                    <tr><td colspan="7"><div class="dh-empty">{{ $selectedDesignerName ?? 'All Designers' }} — {{ $selectedMonthLabel }}: No overdue tasks.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -327,7 +327,7 @@
         <div class="dh-card-head">
             <div>
                 <div class="dh-card-title">Designer Task Details</div>
-                <div class="dh-card-sub">Current assignment, progress, rework and rating per task</div>
+                <div class="dh-card-sub">Current assignment, progress, rework and rating per task · Data for {{ $selectedMonthLabel }} • {{ $selectedDesignerName ?? 'All Designers' }}</div>
             </div>
             <div class="dh-card-badge">{{ $taskRows->count() }}</div>
         </div>
@@ -396,7 +396,7 @@
         <div class="dh-card-head">
             <div>
                 <div class="dh-card-title">Rework Analytics</div>
-                <div class="dh-card-sub">Every task that entered rework, from the recorded rework history</div>
+                <div class="dh-card-sub">Every task that entered rework, from the recorded rework history · Data for {{ $selectedMonthLabel }} • {{ $selectedDesignerName ?? 'All Designers' }}</div>
             </div>
             @if($reworkRows->isNotEmpty())<div class="dh-card-badge">{{ $reworkRows->count() }}</div>@endif
         </div>
@@ -432,9 +432,9 @@
                 <div class="dh-card-sub">BD feedback on completed work</div>
             </div>
             <select class="dh-select" id="dhr-designer" aria-label="Filter ratings by Designer">
-                <option value="all">All Designers</option>
+                <option value="all" @selected($selectedDesigner === null)>All Designers</option>
                 @foreach($designers as $designer)
-                    <option value="{{ $designer->id }}">{{ $designer->name }}</option>
+                    <option value="{{ $designer->id }}" @selected((int) $selectedDesigner === (int) $designer->id)>{{ $designer->name }}</option>
                 @endforeach
             </select>
         </div>
@@ -484,7 +484,7 @@
         <div class="dh-card-head">
             <div>
                 <div class="dh-card-title">BD Review Turnaround</div>
-                <div class="dh-card-sub">Time BD takes to review each submission — kept separate from Designer's own timeliness</div>
+                <div class="dh-card-sub">Time BD takes to review each submission — kept separate from Designer's own timeliness · Data for {{ $selectedMonthLabel }} • {{ $selectedDesignerName ?? 'All Designers' }}</div>
             </div>
             @if($bdReviewRows->isNotEmpty())<div class="dh-card-badge">{{ $bdReviewRows->count() }}</div>@endif
         </div>

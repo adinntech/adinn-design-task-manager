@@ -52,6 +52,8 @@
     .dh-click{cursor:pointer}
     .dh-click:hover td{background:#fafafa}
     .dh-row-selected td{background:#fff5f5}
+    .dh-row-selected td:first-child{border-left:3px solid #e30613}
+    .dh-row-selected .dh-designer-link{color:#e30613}
     .dh-designer-link{font-weight:900;color:#101828;text-decoration:underline dotted #c1c7d0}
     .dh-now{display:inline-flex;margin-left:6px;padding:2px 6px;border-radius:999px;background:#e30613;color:#fff;font-size:7px;font-weight:900;vertical-align:middle}
     .dh-empty{padding:26px 10px;text-align:center;color:#98a2b3;font-size:9px}
@@ -227,16 +229,18 @@
         reload();
     });
 
-    // Completed Task Ratings: its own Designer filter + pagination, independent
-    // of the page-wide filters above — bound on the persistent `root` element
-    // via delegation so it keeps working after either swap replaces its children.
+    // Completed Task Ratings: its own Designer filter + pagination on top of
+    // whatever Month is active on the page-wide filter above — bound on the
+    // persistent `root` element via delegation so it keeps working after
+    // either swap replaces its children.
     var ratingsBase = "{{ route('designer-head.dashboard.ratings') }}";
 
     function loadRatings(designer, page) {
         var body = document.getElementById('dhr-root');
         if (!body) return;
+        var month = document.getElementById('dh-month').value;
         body.classList.add('dh-loading');
-        fetch(ratingsBase + '?designer=' + encodeURIComponent(designer) + '&page=' + encodeURIComponent(page), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch(ratingsBase + '?designer=' + encodeURIComponent(designer) + '&page=' + encodeURIComponent(page) + '&month=' + encodeURIComponent(month), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (res) { return res.text(); })
             .then(function (html) {
                 var tmp = document.createElement('div');

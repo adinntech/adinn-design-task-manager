@@ -35,15 +35,16 @@ class DashboardController extends Controller
     }
 
     /**
-     * Completed Task Ratings section has its own Designer filter + pagination,
-     * independent of the page-wide Designer/Month filter above it.
+     * Completed Task Ratings section has its own Designer filter on top of whatever
+     * Month is currently active on the page-wide filter above it, so switching
+     * Designer here never drops back out of the period the Designer Head is viewing.
      */
     public function ratings(Request $request): View
     {
         abort_unless($request->user()?->role === 'designer_head', 403);
 
-        $activeIds = User::query()->where('role', 'designer')->where('is_active', true)->pluck('id')
-            ->map(fn ($id) => (int) $id)->all();
+        $designers = User::query()->where('role', 'designer')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $activeIds = $designers->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $selectedDesigner = $request->query('designer', 'all');
         if ($selectedDesigner !== 'all' && ! in_array((int) $selectedDesigner, $activeIds, true)) {
@@ -52,7 +53,18 @@ class DashboardController extends Controller
         $designerId = $selectedDesigner === 'all' ? null : (int) $selectedDesigner;
         $page = max(1, (int) $request->query('page', 1));
 
-        return view('designer-head.ratings-rows', $this->completedRatings($designerId, $page, 10));
+        $selectedMonth = $request->query('month', now()->format('Y-m'));
+        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $selectedMonth)) {
+            $selectedMonth = now()->format('Y-m');
+        }
+        $month = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
+        $monthEnd = $month->copy()->endOfMonth();
+
+        $data = $this->completedRatings($designerId, $page, 10, $month, $monthEnd);
+        $data['designerName'] = $designerId ? $designers->firstWhere('id', $designerId)?->name : null;
+        $data['monthLabel'] = $month->format('F Y');
+
+        return view('designer-head.ratings-rows', $data);
     }
 
     private function analytics(Request $request): array
@@ -89,6 +101,17 @@ class DashboardController extends Controller
             ->values();
         $taskIds = $tasks->pluck('id');
         $taskKeyById = $tasks->keyBy('id');
+
+        /* ---- Cohort for the selected period: tasks ASSIGNED within the selected month,
+         * on top of the Designer filter above. KPIs, Designer Analytics, Task Details,
+         * Overdue, Rework Analytics and BD Review Turnaround all read from this cohort so
+         * "sk_designer + Jul 2026" never mixes in another Designer or period. The 6-month
+         * trend/"Tasks Worked" bar keep reading from the wider $tasks/$taskIds on purpose —
+         * they are inherently cross-month activity metrics, not an assignment cohort. ---- */
+        $scopedTasks = $tasks
+            ->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($month, $monthEnd))
+            ->values();
+        $scopedTaskIds = $scopedTasks->pluck('id');
 
         /* ---- Batched record aggregates (same arithmetic as DesignTaskProgressService) ---- */
         $eodProgress = $this->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'progress'), $taskIds, 'SUM(completed_count)');
@@ -204,14 +227,6 @@ class DashboardController extends Controller
             ->take(12)
             ->values();
 
-        $approvedFor = function (string $type) use ($allRequests, $designerId): int {
-            return $allRequests
-                ->filter(fn ($request) => $request->request_type === $type
-                    && $request->overall_status === 'approved'
-                    && ($designerId === null || (int) $request->requested_by === $designerId))
-                ->count();
-        };
-
         $approvedInMonthFor = function (string $type) use ($allRequests, $designerId, $month, $monthEnd): int {
             return $allRequests
                 ->filter(fn ($request) => $request->request_type === $type
@@ -274,16 +289,18 @@ class DashboardController extends Controller
             ];
         })->values();
 
-        /* ---- Per-designer workload (always all active designers) ---- */
-        $workload = $designers->map(function (User $designer) use ($tasks, $allRequests, $reviewByTaskId, $reworkSentBack, $reworkReviewCount, $reworkHistoryCount, $isOverdue) {
-            $designerTasks = $tasks->where('designer_id', $designer->id);
+        /* ---- Per-designer workload (always all active designers, scoped to the selected period) ---- */
+        $workload = $designers->map(function (User $designer) use ($scopedTasks, $allRequests, $reviewByTaskId, $reworkSentBack, $reworkReviewCount, $reworkHistoryCount, $isOverdue, $month, $monthEnd) {
+            $designerTasks = $scopedTasks->where('designer_id', $designer->id);
             $ratings = $designerTasks
                 ->map(fn (DesignTask $task) => $reviewByTaskId->get((int) $task->id)?->overall_rating)
                 ->filter(fn ($value) => $value !== null);
             $countRequest = fn (string $type) => $allRequests
                 ->filter(fn ($request) => $request->request_type === $type
                     && $request->overall_status === 'approved'
-                    && (int) $request->requested_by === (int) $designer->id)
+                    && (int) $request->requested_by === (int) $designer->id
+                    && $request->responded_at !== null
+                    && $request->responded_at->betweenIncluded($month, $monthEnd))
                 ->count();
 
             return [
@@ -303,8 +320,8 @@ class DashboardController extends Controller
             ];
         })->sortByDesc('assigned')->values();
 
-        /* ---- Task details table committed to the current assignee ---- */
-        $taskRows = $tasks
+        /* ---- Task details table committed to the current assignee, scoped to the period ---- */
+        $taskRows = $scopedTasks
             ->sortByDesc('assigned_at')
             ->values()
             ->map(function (DesignTask $task) use ($eodProgress, $eodRework, $reworkSentBack, $isOverdue, $completedAtByTask, $reworkReviewCount, $reworkHistoryCount, $reviewByTaskId, $reviewCyclesByTask) {
@@ -335,7 +352,7 @@ class DashboardController extends Controller
         /* ---- Rework analytics: one row per rework cycle (Rework 1, Rework 2, ...), each
          * with its own date/creative-count/BD — never collapsed into a single aggregate,
          * so Designer Head can see exactly how many times and when a task was reworked. ---- */
-        $reworkRows = $tasks
+        $reworkRows = $scopedTasks
             ->filter(fn (DesignTask $task) => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount) > 0)
             ->flatMap(function (DesignTask $task) use ($reworkCyclesByTask) {
                 $cycles = $reworkCyclesByTask->get($task->id, collect());
@@ -364,16 +381,21 @@ class DashboardController extends Controller
             ->values();
 
         /* ---- BD review turnaround: how long BD takes to act once Designer submits.
-         * One row per review cycle, reusing the same $reviewCyclesByTask built above. ---- */
+         * One row per review cycle, reusing the same $reviewCyclesByTask built above,
+         * scoped to tasks assigned within the selected period. ---- */
         $bdReviewRows = $reviewCyclesByTask
+            ->only($scopedTaskIds->all())
             ->flatMap(fn (array $rows) => $rows)
             ->sortByDesc(fn (array $row) => $row['submitted_at']->timestamp)
             ->values()
             ->take(200);
 
-        /* ---- Completed Task Ratings section: own filter/pagination, always starts
-         * at "All Designers" page 1, independent of the page-wide filter above. ---- */
-        $completedRatings = $this->completedRatings(null, 1, 10);
+        /* ---- Completed Task Ratings section: own Designer filter/pagination on top of
+         * the page-wide Designer + Month, so it starts in the same context as the rest
+         * of the dashboard while still letting the user refine it independently. ---- */
+        $completedRatings = $this->completedRatings($designerId, 1, 10, $month, $monthEnd);
+        $completedRatings['designerName'] = $designerId ? $designers->firstWhere('id', $designerId)?->name : null;
+        $completedRatings['monthLabel'] = $month->format('F Y');
 
         /* ---- Recent completion activity (latest first) ---- */
         $completionsList = $completedAtByTask
@@ -394,8 +416,8 @@ class DashboardController extends Controller
             ->values()
             ->take(12);
 
-        /* ---- Overdue tracking ---- */
-        $overdue = $tasks
+        /* ---- Overdue tracking, scoped to the selected period ---- */
+        $overdue = $scopedTasks
             ->filter($isOverdue)
             ->map(fn (DesignTask $task) => [
                 'task' => $task,
@@ -410,18 +432,18 @@ class DashboardController extends Controller
 
         $stats = [
             'total_designers' => $totalDesigners,
-            'active_designers' => $designers->count(),
-            'total_tasks' => $tasks->count(),
-            'in_progress' => $tasks->where('status', 'in_progress')->count(),
-            'pending' => $tasks->whereIn('status', self::PENDING_STATUSES)->count(),
-            'ready_to_start' => $tasks->where('status', 'yet_to_start')->count(),
-            'waiting' => $tasks->where('status', 'waiting_confirmation')->count(),
-            'completed' => $tasks->where('status', 'completed')->count(),
-            'overdue' => $tasks->filter($isOverdue)->count(),
-            'declined' => $approvedFor('decline'),
-            'split' => $approvedFor('split'),
-            'swapped' => $approvedFor('swap'),
-            'rework_tasks' => $tasks->where('status', 'rework')->count(),
+            'active_designers' => $designerId ? 1 : $designers->count(),
+            'total_tasks' => $scopedTasks->count(),
+            'in_progress' => $scopedTasks->where('status', 'in_progress')->count(),
+            'pending' => $scopedTasks->whereIn('status', self::PENDING_STATUSES)->count(),
+            'ready_to_start' => $scopedTasks->where('status', 'yet_to_start')->count(),
+            'waiting' => $scopedTasks->where('status', 'waiting_confirmation')->count(),
+            'completed' => $scopedTasks->where('status', 'completed')->count(),
+            'overdue' => $scopedTasks->filter($isOverdue)->count(),
+            'declined' => $approvedInMonthFor('decline'),
+            'split' => $approvedInMonthFor('split'),
+            'swapped' => $approvedInMonthFor('swap'),
+            'rework_tasks' => $scopedTasks->where('status', 'rework')->count(),
             'approval_pending' => $pendingRequests->count(),
         ];
 
@@ -457,12 +479,13 @@ class DashboardController extends Controller
      * shared by the initial dashboard render and the AJAX ratings endpoint so
      * both agree on data/ordering/exclusions.
      */
-    private function completedRatings(?int $designerId, int $page, int $perPage): array
+    private function completedRatings(?int $designerId, int $page, int $perPage, ?Carbon $monthStart = null, ?Carbon $monthEnd = null): array
     {
         $reviews = DesignTaskBdReview::query()
             ->with(['submitter:id,name', 'task:id,task_id,task_name,designer_id,requirements', 'task.designer:id,name'])
             ->where('action', 'completed')
             ->when($designerId, fn ($query) => $query->whereHas('task', fn ($q) => $q->where('designer_id', $designerId)))
+            ->when($monthStart && $monthEnd, fn ($query) => $query->whereBetween('created_at', [$monthStart, $monthEnd]))
             ->orderByDesc('created_at')
             ->get()
             ->filter(fn (DesignTaskBdReview $review) => $review->task !== null
