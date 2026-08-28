@@ -10,6 +10,7 @@ use App\Models\DesignTaskStatusHistory;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -156,6 +157,33 @@ class DashboardController extends Controller
             'total' => $stats['completed'],
         ];
 
+        // Per-task rework creative totals (grouped in one query — avoids N+1 per task row).
+        $reworkCreativesByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->where('action', 'rework')
+                ->whereIn('design_task_id', $taskIds)
+                ->selectRaw('design_task_id, SUM(number_of_creatives) as total')
+                ->groupBy('design_task_id')
+                ->pluck('total', 'design_task_id')
+                ->map(fn ($value) => (int) $value);
+
+        $reviewByTask = $completedReviews->keyBy('design_task_id');
+
+        // Your own Task Details table — same design/data rules as the Designer Head
+        // dashboard's Designer Task Details table, scoped to this Designer's tasks only.
+        $taskRows = $tasks
+            ->map(fn (DesignTask $task) => [
+                'task' => $task,
+                'percentage' => $progressService->percentage($task),
+                'rework_count' => $progressService->reworkCount($task),
+                'rework_creatives' => (int) ($reworkCreativesByTask[$task->id] ?? 0),
+                'completed_at' => $completedAtByTask->get($task->id),
+                'completion' => $this->completionInfo($task, $completedAtByTask->get($task->id), $now),
+                'rating' => $reviewByTask->get($task->id)?->overall_rating,
+            ])
+            ->values();
+
         $reviewCards = $completedReviews
             ->filter(fn (DesignTaskBdReview $review) => filled($review->comment))
             ->map(function (DesignTaskBdReview $review) use ($tasks, $completedAtByTask) {
@@ -198,6 +226,7 @@ class DashboardController extends Controller
         return view('designer.dashboard', [
             'stats' => $stats,
             'recentTasks' => $tasks->take(12),
+            'taskRows' => $taskRows,
             'myRequests' => $myRequests,
             'requestSummary' => $requestSummary,
             'requestTypeCounts' => $requestTypeCounts,
@@ -209,5 +238,28 @@ class DashboardController extends Controller
             'reviewCards' => $reviewCards,
             'overallRework' => $overallRework,
         ]);
+    }
+
+    /**
+     * Timeliness against the ORIGINAL due date, using the actual completion timestamp —
+     * never derived from rework/status text. A task completed after its due date is
+     * "late" (with days-late), not "overdue" (which only applies while still incomplete).
+     * Mirrors DesignerHead\DashboardController::completionInfo() for identical semantics.
+     */
+    private function completionInfo(DesignTask $task, ?Carbon $completedAt, Carbon $now): array
+    {
+        if ($completedAt) {
+            $daysLate = $task->due_at && $completedAt->gt($task->due_at)
+                ? (int) $task->due_at->diffInDays($completedAt)
+                : 0;
+
+            return ['status' => $daysLate > 0 ? 'late' : 'on_time', 'days' => $daysLate];
+        }
+
+        if ($task->status !== 'completed' && $task->due_at && $task->due_at->lt($now)) {
+            return ['status' => 'overdue', 'days' => (int) $task->due_at->diffInDays($now)];
+        }
+
+        return ['status' => 'in_progress', 'days' => 0];
     }
 }

@@ -355,8 +355,12 @@
                         <td class="{{ $row['overdue'] ? 'dh-danger' : '' }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
                         <td>{{ $row['completed_at']?->format('d M Y') ?? '—' }}</td>
                         <td>
-                            @if($row['overdue'])
-                                <span class="dh-pill dh-pill-overdue">{{ $row['days_overdue'] }}d late</span>
+                            @if($row['completion']['status'] === 'overdue')
+                                <span class="dh-pill dh-pill-overdue">{{ $row['completion']['days'] }}d overdue</span>
+                            @elseif($row['completion']['status'] === 'late')
+                                <span class="dh-pill dh-pill-clarify">Completed {{ $row['completion']['days'] }}d after due</span>
+                            @elseif($row['completion']['status'] === 'on_time')
+                                <span class="dh-pill dh-pill-completed">On time</span>
                             @else
                                 <span class="dh-muted">—</span>
                             @endif
@@ -397,17 +401,17 @@
         <div class="dh-table-wrap">
             <table class="dh-table">
                 <thead>
-                <tr><th>Designer</th><th>Task</th><th>BD</th><th>Rework Count</th><th>Total Rework Creatives</th><th>Last Rework</th><th>Current Status</th></tr>
+                <tr><th>Designer</th><th>Task</th><th>Rework #</th><th>Rework Assigned At</th><th>Rework Creative Count</th><th>Sent By (BD)</th><th>Current Status</th></tr>
                 </thead>
                 <tbody>
                 @forelse($reworkRows as $row)
                     <tr>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td><a class="dh-task-link" href="{{ route('designer-head.tasks.show', ['task' => $row['task'], 'tab' => 'eod']) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
-                        <td>{{ $row['task']->assigner?->name ?? '—' }}</td>
-                        <td><span class="dh-strong">{{ $row['rework_count'] }}</span></td>
-                        <td>{{ $row['rework_creatives'] }}</td>
-                        <td>{{ optional($row['last_rework_at'])->format('d M Y · h:i A') ?? '—' }}</td>
+                        <td><span class="dh-strong">Rework {{ $row['rework_number'] }}</span></td>
+                        <td>{{ optional($row['rework_assigned_at'])->format('d M Y · h:i A') ?? '—' }}</td>
+                        <td>{{ $row['rework_creatives'] ?? '—' }}</td>
+                        <td>{{ $row['bd'] ?? '—' }}</td>
                         <td>{!! $statusPill($row['task']->status) !!}</td>
                     </tr>
                 @empty

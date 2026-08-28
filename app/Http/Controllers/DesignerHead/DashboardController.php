@@ -109,9 +109,11 @@ class DashboardController extends Controller
         $reworkReviews = $taskIds->isEmpty()
             ? collect()
             : DesignTaskBdReview::query()
+                ->with('submitter:id,name')
                 ->where('action', 'rework')
                 ->whereIn('design_task_id', $taskIds)
-                ->get(['design_task_id', 'created_at']);
+                ->orderBy('created_at')
+                ->get(['id', 'design_task_id', 'created_at', 'number_of_creatives', 'submitted_by']);
         $reworkMonthIds = collect();
         $lastReworkAtByTask = collect();
         foreach ($reworkReviews as $row) {
@@ -271,6 +273,7 @@ class DashboardController extends Controller
                 'percentage' => min(100, (int) round(($this->completedFor($task, $eodProgress, $eodRework, $reworkSentBack) / max(1, (int) $task->total_creatives)) * 100)),
                 'overdue' => $isOverdue($task),
                 'days_overdue' => $isOverdue($task) && $task->due_at ? (int) $task->due_at->diffInDays(now()) : 0,
+                'completion' => $this->completionInfo($task, $completedAtByTask->get($task->id)),
                 'rework_count' => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
                 'rework_creatives' => (int) ($reworkSentBack[$task->id] ?? 0),
                 'completed_at' => $completedAtByTask->get($task->id),
@@ -278,16 +281,36 @@ class DashboardController extends Controller
             ])
             ->take(200);
 
-        /* ---- Rework analytics from rework records ---- */
+        /* ---- Rework analytics: one row per rework cycle (Rework 1, Rework 2, ...), each
+         * with its own date/creative-count/BD — never collapsed into a single aggregate,
+         * so Designer Head can see exactly how many times and when a task was reworked. ---- */
+        $reworkCyclesByTask = $reworkReviews->groupBy('design_task_id');
         $reworkRows = $tasks
             ->filter(fn (DesignTask $task) => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount) > 0)
-            ->map(fn (DesignTask $task) => [
-                'task' => $task,
-                'rework_count' => $this->reworkCountFor($task, $reworkReviewCount, $reworkHistoryCount),
-                'rework_creatives' => (int) ($reworkSentBack[$task->id] ?? 0),
-                'last_rework_at' => $lastReworkAtByTask->get($task->id),
-            ])
-            ->sortByDesc(fn (array $row) => $row['last_rework_at']?->timestamp ?? 0)
+            ->flatMap(function (DesignTask $task) use ($reworkCyclesByTask) {
+                $cycles = $reworkCyclesByTask->get($task->id, collect());
+
+                if ($cycles->isEmpty()) {
+                    // Legacy tasks reworked before DesignTaskBdReview existed — no per-cycle
+                    // creative-count/BD data available, still surface one summary row.
+                    return [[
+                        'task' => $task,
+                        'rework_number' => 1,
+                        'rework_assigned_at' => null,
+                        'rework_creatives' => null,
+                        'bd' => null,
+                    ]];
+                }
+
+                return $cycles->values()->map(fn ($review, $index) => [
+                    'task' => $task,
+                    'rework_number' => $index + 1,
+                    'rework_assigned_at' => $review->created_at,
+                    'rework_creatives' => (int) $review->number_of_creatives,
+                    'bd' => $review->submitter?->name,
+                ])->all();
+            })
+            ->sortByDesc(fn (array $row) => $row['rework_assigned_at']?->timestamp ?? 0)
             ->values();
 
         /* ---- Ratings scoped to the visible tasks ---- */
@@ -392,6 +415,28 @@ class DashboardController extends Controller
             - (int) ($reworkSentBack[$task->id] ?? 0);
 
         return max(0, min((int) $task->total_creatives, $completed));
+    }
+
+    /**
+     * Timeliness against the ORIGINAL due date, using the actual completion timestamp —
+     * never derived from rework/status text. A task completed after its due date is
+     * "late" (with days-late), not "overdue" (which only applies while still incomplete).
+     */
+    private function completionInfo(DesignTask $task, ?Carbon $completedAt): array
+    {
+        if ($completedAt) {
+            $daysLate = $task->due_at && $completedAt->gt($task->due_at)
+                ? (int) $task->due_at->diffInDays($completedAt)
+                : 0;
+
+            return ['status' => $daysLate > 0 ? 'late' : 'on_time', 'days' => $daysLate];
+        }
+
+        if ($task->status !== 'completed' && $task->due_at && $task->due_at->lt(now())) {
+            return ['status' => 'overdue', 'days' => (int) $task->due_at->diffInDays(now())];
+        }
+
+        return ['status' => 'in_progress', 'days' => 0];
     }
 
     private function reworkCountFor(DesignTask $task, Collection $reworkReviewCount, Collection $reworkHistoryCount): int
