@@ -37,9 +37,9 @@
     .dh-grid{display:grid;gap:14px;align-items:start}
     .dh-grid-2{grid-template-columns:1fr 1.35fr}
 
-    .dh-table-wrap{overflow-x:auto}
+    .dh-table-wrap{overflow:auto;max-height:480px}
     .dh-table{width:100%;border-collapse:collapse;min-width:840px}
-    .dh-table th{padding:8px 9px;font-size:8px;color:#98a2b3;text-transform:uppercase;letter-spacing:.035em;text-align:left;border-bottom:1px solid #eaecf0;white-space:nowrap;font-weight:900}
+    .dh-table th{padding:8px 9px;font-size:8px;color:#98a2b3;text-transform:uppercase;letter-spacing:.035em;text-align:left;border-bottom:1px solid #eaecf0;white-space:nowrap;font-weight:900;position:sticky;top:0;background:#fff;z-index:1}
     .dh-table td{padding:9px;font-size:9px;color:#344054;border-bottom:1px solid #f2f4f7;vertical-align:middle;line-height:1.45}
     .dh-table tr:last-child td{border-bottom:0}
     .dh-strong{font-weight:900;color:#101828}

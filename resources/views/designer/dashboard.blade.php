@@ -29,9 +29,9 @@
     .bd-card-link{font-size:8px;font-weight:900;text-decoration:none;color:#e30613}
     .bd-card-body{padding:12px}
 
-    .bd-table-wrap{overflow:auto}
+    .bd-table-wrap{overflow:auto;max-height:480px}
     .bd-table{width:100%;border-collapse:collapse;min-width:900px}
-    .bd-table th{padding:8px 9px;text-align:left;border-bottom:1px solid #eaecf0;font-size:8px;color:#667085;text-transform:uppercase;letter-spacing:.035em;font-weight:900}
+    .bd-table th{padding:8px 9px;text-align:left;border-bottom:1px solid #eaecf0;font-size:8px;color:#667085;text-transform:uppercase;letter-spacing:.035em;font-weight:900;position:sticky;top:0;background:#fff;z-index:1}
     .bd-table td{padding:9px;border-bottom:1px solid #f1f2f4;font-size:9px;color:#344054;vertical-align:middle}
     .bd-table tbody tr:last-child td{border-bottom:0}
     .bd-task-link{font-weight:900;color:#101828;text-decoration:none}
@@ -346,7 +346,14 @@
                                     @endfor
                                 </div>
                                 <div class="bd-review-comment">&ldquo;{{ $review['comment'] }}&rdquo;</div>
-                                <div class="bd-review-meta">{{ $review['task_id'] }} · {{ $review['task_name'] }}</div>
+                                <div class="bd-review-meta">
+                                    @if($review['task'])
+                                        <a class="bd-task-link" href="{{ route('designer.tasks.show', $review['task']) }}">{{ $review['task_id'] }}</a>
+                                    @else
+                                        {{ $review['task_id'] }}
+                                    @endif
+                                    · {{ $review['task_name'] }}
+                                </div>
                                 <div class="bd-review-meta">{{ $review['reviewer'] }}</div>
                                 <div class="bd-review-meta">Reviewed: {{ $review['reviewed_at']?->format('d M Y, g:i A') ?? '—' }}</div>
                                 <div class="bd-review-meta">Completed: {{ $review['completed_at']?->format('d M Y, g:i A') ?? '—' }}</div>

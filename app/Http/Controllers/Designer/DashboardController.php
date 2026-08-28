@@ -195,6 +195,7 @@ class DashboardController extends Controller
                 return [
                     'rating' => DesignTaskBdReview::roundToHalfStar($review->overall_rating),
                     'comment' => $review->comment,
+                    'task' => $task,
                     'task_id' => $task?->task_id,
                     'task_name' => $task?->display_task_name ?? $task?->task_name,
                     'reviewer' => $review->submitter?->name ?? 'BD',

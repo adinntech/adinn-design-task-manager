@@ -335,8 +335,8 @@
             <table class="dh-table">
                 <thead>
                 <tr>
-                    <th>Task ID</th><th>Task Name</th><th>Designer</th><th>Assigner / BD</th><th>Assigned At</th><th>Status</th>
-                    <th>Progress</th><th>Creatives</th><th>Deadline</th><th>Completed At</th><th>Overdue</th><th>Rework</th><th>Rating</th>
+                    <th>Task ID</th><th>Task Name</th><th>Designer</th><th>Assigned By (BD)</th><th>Assigned At</th><th>Deadline</th>
+                    <th>Progress</th><th>Creatives</th><th>Status</th><th>Completed At</th><th>Overdue</th><th>Rework</th><th>Rating</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -348,12 +348,12 @@
                         <td>{{ $task->designer?->name ?? '—' }}</td>
                         <td>{{ $task->assigner?->name ?? '—' }}</td>
                         <td>{{ $task->assigned_at?->format('d M Y') ?? '—' }}</td>
-                        <td>{!! $statusPill($task->status, $row['overdue']) !!}</td>
+                        <td class="{{ $row['overdue'] ? 'dh-danger' : '' }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
                         <td>
                             <div class="dh-progress"><div class="dh-progress-track"><div class="dh-progress-fill" style="width:{{ $row['percentage'] }}%"></div></div><div class="dh-progress-note">{{ $row['percentage'] }}%</div></div>
                         </td>
                         <td><span class="dh-strong">{{ $row['done'] }} / {{ $task->total_creatives }}</span><div class="dh-cell-sub">{{ $row['remaining'] }} remaining</div></td>
-                        <td class="{{ $row['overdue'] ? 'dh-danger' : '' }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
+                        <td>{!! $statusPill($task->status, $row['overdue']) !!}</td>
                         <td>{{ $row['completed_at']?->format('d M Y') ?? '—' }}</td>
                         <td>
                             @if($row['completion']['status'] === 'overdue')
@@ -368,7 +368,8 @@
                         </td>
                         <td>
                             @if($row['rework_count'] > 0)
-                                <span class="dh-strong">{{ $row['rework_count'] }}</span><div class="dh-cell-sub">{{ $row['rework_creatives'] }} creatives</div>
+                                <span class="dh-strong">{{ $row['rework_count'] }} Rework{{ $row['rework_count'] > 1 ? 's' : '' }}</span>
+                                <div class="dh-cell-sub">{{ $row['rework_creatives'] }} Creatives @if($row['rework_spent_text']) · {{ $row['rework_spent_text'] }} @endif</div>
                             @else
                                 <span class="dh-muted">—</span>
                             @endif
