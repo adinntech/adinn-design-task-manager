@@ -669,40 +669,7 @@
                     <div class="bd-eod-card rework-stat"><span>Rework Count</span><strong>{{ $reworkCount }}</strong></div>
                 </div>
 
-                @forelse($eodRecords as $record)
-                    @php
-                        $isReworkRecord = ($record->update_type ?? 'progress') === 'rework';
-                    @endphp
-                    <div class="bd-eod-row {{ $isReworkRecord ? 'is-rework' : 'is-progress' }}">
-                        <div class="bd-eod-row-head">
-                            <div class="bd-eod-row-meta">
-                                <span class="bd-eod-type-badge {{ $isReworkRecord ? 'rework' : 'progress' }}">
-                                    {{ $isReworkRecord ? 'Rework Submission' : 'Progress Submission' }}
-                                </span>
-                                <strong>Submitted by {{ $record->designer?->name ?? '—' }}</strong>
-                                <span>{{ $record->submitted_at?->format('d M Y · h:i A') }}</span>
-                            </div>
-                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                @if($isReworkRecord)
-                                    <span class="badge badge-danger">Rework #{{ $record->rework_count_snapshot }}</span>
-                                @endif
-                                @if($record->attachment_url)
-                                    <a class="bd-file-btn bd-file-download" target="_blank" href="{{ $record->attachment_url }}" title="Download">⬇ {{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
-                                @else
-                                    <span class="muted" style="font-size:9px">No file available</span>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="bd-eod-grid">
-                            <div><span>{{ $isReworkRecord ? 'Reworked Creatives' : 'Progress Added' }}</span><strong>{{ $record->completed_count }}</strong></div>
-                            <div><span>Total Creatives</span><strong>{{ $record->total_creatives_snapshot }}</strong></div>
-                            <div><span>Total Completed</span><strong>{{ $record->cumulative_completed }}</strong></div>
-                            <div><span>Remaining</span><strong>{{ $record->remaining_creatives }}</strong></div>
-                        </div>
-                    </div>
-                @empty
-                    <div class="empty-state">No Progress Updates records have been submitted yet.</div>
-                @endforelse
+                @include('partials.progress-timeline', ['timeline' => $progressTimeline, 'task' => $task])
 
                 @if($task->status === 'waiting_confirmation')
                     <div class="bd-review-box" x-data="{

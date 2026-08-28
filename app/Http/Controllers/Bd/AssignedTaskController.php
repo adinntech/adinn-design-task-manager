@@ -4,15 +4,16 @@ namespace App\Http\Controllers\Bd;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskCommentAttachment;
-use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
-use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskPipelineService;
+use App\Services\DesignTaskProgressService;
+use App\Services\DesignTaskReportingService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,8 +21,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class AssignedTaskController extends Controller
 {
@@ -161,6 +162,7 @@ class AssignedTaskController extends Controller
             'swapRequests' => $swapRequests,
             'declineRequests' => $declineRequests,
             'eodRecords' => $eodRecords,
+            'progressTimeline' => app(DesignTaskReportingService::class)->progressTimeline($task),
             'eodCompletedTotal' => $eodCompletedTotal,
             'eodRemaining' => $eodRemaining,
             'progressPercentage' => $progressPercentage,
@@ -415,6 +417,7 @@ class AssignedTaskController extends Controller
     private function statusTitle(?string $from, ?string $to): string
     {
         $statuses = DesignTaskStatusService::STATUSES;
+
         return $from
             ? 'Moved to '.($statuses[$to] ?? Str::headline((string) $to))
             : ($statuses[$to] ?? Str::headline((string) $to));
@@ -438,6 +441,7 @@ class AssignedTaskController extends Controller
                 'files' => $files,
             ];
         }
+
         return $groups;
     }
 
@@ -447,6 +451,7 @@ class AssignedTaskController extends Controller
             foreach ($value as $item) {
                 $this->extractStoredFiles($item, $files);
             }
+
             return;
         }
 
@@ -465,6 +470,7 @@ class AssignedTaskController extends Controller
     private function looksLikeStoredFilePath(string $value): bool
     {
         $value = trim($value);
+
         return $value !== ''
             && ! filter_var($value, FILTER_VALIDATE_URL)
             && str_contains($value, '/')

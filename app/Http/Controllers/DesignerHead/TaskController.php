@@ -11,8 +11,10 @@ use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
-use App\Services\DesignTaskProgressService;
+use App\Models\User;
 use App\Services\DesignTaskPipelineService;
+use App\Services\DesignTaskProgressService;
+use App\Services\DesignTaskReportingService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +26,6 @@ use Illuminate\View\View;
 
 class TaskController extends Controller
 {
-
     public function show(Request $request, DesignTask $task): View
     {
         abort_unless($request->user()?->role === 'designer_head', 403);
@@ -86,7 +87,7 @@ class TaskController extends Controller
             ->latest()
             ->get();
 
-        $designers = \App\Models\User::query()
+        $designers = User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
             ->orderBy('name')
@@ -145,6 +146,7 @@ class TaskController extends Controller
             'declineRequests' => $declineRequests,
             'designers' => $designers,
             'eodRecords' => $eodRecords,
+            'progressTimeline' => app(DesignTaskReportingService::class)->progressTimeline($task),
             'eodCompletedTotal' => $eodCompletedTotal,
             'eodRemaining' => $eodRemaining,
             'progressPercentage' => $progressPercentage,
@@ -224,6 +226,7 @@ class TaskController extends Controller
     private function statusTitle(?string $from, ?string $to): string
     {
         $statuses = DesignTaskStatusService::STATUSES;
+
         return $from
             ? 'Moved to '.($statuses[$to] ?? Str::headline((string) $to))
             : ($statuses[$to] ?? Str::headline((string) $to));
@@ -247,6 +250,7 @@ class TaskController extends Controller
                 'files' => $files,
             ];
         }
+
         return $groups;
     }
 
@@ -256,6 +260,7 @@ class TaskController extends Controller
             foreach ($value as $item) {
                 $this->extractStoredFiles($item, $files);
             }
+
             return;
         }
 
@@ -274,6 +279,7 @@ class TaskController extends Controller
     private function looksLikeStoredFilePath(string $value): bool
     {
         $value = trim($value);
+
         return $value !== ''
             && ! filter_var($value, FILTER_VALIDATE_URL)
             && str_contains($value, '/')

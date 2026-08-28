@@ -926,54 +926,7 @@
                     @endif
     
                     <div class="eod-history">
-                        @forelse($eodRecords as $record)
-                            @php
-                                $isReworkRecord = ($record->update_type ?? 'progress') === 'rework';
-                            @endphp
-                            <div class="eod-record {{ $isReworkRecord ? 'is-rework' : 'is-progress' }}">
-                                <div class="eod-record-head">
-                                    <div class="eod-record-main">
-                                        <span class="eod-kind {{ $isReworkRecord ? 'rework' : 'progress' }}">{{ $isReworkRecord ? 'Rework Submission' : 'Progress Submission' }}</span>
-                                        <strong>Submitted by {{ $record->designer?->name ?? 'Designer' }}</strong>
-                                        <span>{{ $record->submitted_at->format('d M Y · h:i A') }}</span>
-                                    </div>
-                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                        @if(($record->update_type ?? 'progress') === 'rework')
-                                            <span class="badge badge-danger">Rework #{{ $record->rework_count_snapshot }}</span>
-                                        @endif
-                                        @if($record->attachment_url)
-                                            <a class="attachment-download" target="_blank" href="{{ $record->attachment_url }}" title="Download">⬇ {{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
-                                        @else
-                                            <span class="muted" style="font-size:9px">No file available</span>
-                                        @endif
-                                    </div>
-                                </div>
-
-                                <div class="eod-record-grid">
-                                    <div class="eod-record-cell">
-                                        <span>{{ $isReworkRecord ? 'Reworked Creatives' : 'Progress Added' }}</span>
-                                        <strong>{{ $record->completed_count }}</strong>
-                                    </div>
-
-                                    <div class="eod-record-cell">
-                                        <span>Total Creatives</span>
-                                        <strong>{{ $record->total_creatives_snapshot }}</strong>
-                                    </div>
-
-                                    <div class="eod-record-cell">
-                                        <span>Total Completed</span>
-                                        <strong>{{ $record->cumulative_completed }}</strong>
-                                    </div>
-
-                                    <div class="eod-record-cell">
-                                        <span>Remaining</span>
-                                        <strong class="{{ $record->remaining_creatives === 0 ? 'eod-zero' : '' }}">{{ $record->remaining_creatives }}</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="empty-state">No Progress Updates records have been submitted yet.</div>
-                        @endforelse
+                        @include('partials.progress-timeline', ['timeline' => $progressTimeline, 'task' => $task])
                     </div>
                 </div>
             </div>

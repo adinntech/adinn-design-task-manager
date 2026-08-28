@@ -3,23 +3,25 @@
 namespace App\Livewire\Designer;
 
 use App\Models\DesignTask;
-use App\Models\DesignTaskEodRecord;
-use App\Models\DesignTaskEditHistory;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskCommentAttachment;
-use App\Models\DesignTaskBdReview;
+use App\Models\DesignTaskEditHistory;
+use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use App\Services\DesignTaskPipelineService;
+use App\Services\DesignTaskProgressService;
+use App\Services\DesignTaskReportingService;
 use App\Services\DesignTaskRequestService;
 use App\Services\DesignTaskStatusService;
-use App\Services\DesignTaskProgressService;
-use App\Services\DesignTaskPipelineService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -28,18 +30,27 @@ class TaskDetail extends Component
     use WithFileUploads;
 
     public DesignTask $task;
+
     public string $comment = '';
+
     public array $attachments = [];
+
     public string $clarificationMessage = '';
+
     public array $clarificationAttachments = [];
 
     protected $listeners = ['request-created' => '$refresh'];
 
     public ?int $eodCompletedCount = null;
+
     public $taskUpdateAttachment = null;
+
     public $reworkAttachment = null;
+
     public ?int $reworkCompletedCount = null;
+
     public bool $swapInitiatorReadOnly = false;
+
     public bool $selfDeclinedReadOnly = false;
 
     private function isSwapShadowTask(?DesignTask $task = null): bool
@@ -78,7 +89,6 @@ class TaskDetail extends Component
             ->where('overall_status', 'approved')
             ->exists();
     }
-
 
     private function canViewTaskUpdation(?DesignTask $task = null): bool
     {
@@ -213,6 +223,7 @@ class TaskDetail extends Component
 
         if ($nextStatus === null) {
             $this->addError('status', 'No further Designer status movement is available.');
+
             return;
         }
 
@@ -244,6 +255,7 @@ class TaskDetail extends Component
 
         if ($this->task->status === 'completed') {
             $this->addError('clarificationMessage', 'Clarification is read-only once the task is completed.');
+
             return;
         }
 
@@ -319,6 +331,7 @@ class TaskDetail extends Component
 
         if ($this->task->status !== 'in_progress') {
             $this->addError('eodCompletedCount', 'Task Updation is enabled only while the task is In Progress.');
+
             return;
         }
 
@@ -338,7 +351,7 @@ class TaskDetail extends Component
             $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
             if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'in_progress') {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'eodCompletedCount' => 'Task Updation is no longer available for this task.',
                 ]);
             }
@@ -349,13 +362,13 @@ class TaskDetail extends Component
             $progressAdded = (int) $this->eodCompletedCount;
 
             if ($remainingBefore <= 0) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'eodCompletedCount' => 'Creative progress is already 100%.',
                 ]);
             }
 
             if ($progressAdded > $remainingBefore) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'eodCompletedCount' => 'You can add only '.$remainingBefore.' remaining creative'.($remainingBefore === 1 ? '' : 's').'.',
                 ]);
             }
@@ -433,6 +446,7 @@ class TaskDetail extends Component
 
         if ($this->task->status !== 'rework') {
             $this->addError('reworkCompletedCount', 'Rework submission is available only while the task is in Rework.');
+
             return;
         }
 
@@ -458,7 +472,7 @@ class TaskDetail extends Component
             $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
             if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'rework') {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'reworkCompletedCount' => 'Rework submission is no longer available for this task.',
                 ]);
             }
@@ -468,13 +482,13 @@ class TaskDetail extends Component
             $pending = $progressService->currentReworkPending($task);
 
             if ($reworkCount < 1 || $pending < 1) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'reworkCompletedCount' => 'No pending creatives remain in the current Rework cycle.',
                 ]);
             }
 
             if ($submittedCount > $pending) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'reworkCompletedCount' => 'You cannot submit more creatives than the current Rework pending count.',
                 ]);
             }
@@ -696,6 +710,7 @@ class TaskDetail extends Component
                 ->get(),
             'pipelineEvents' => app(DesignTaskPipelineService::class)->build($this->task, $history, $comments, $editHistory),
             'eodRecords' => $eodRecords,
+            'progressTimeline' => app(DesignTaskReportingService::class)->progressTimeline($this->task),
             'eodCompletedTotal' => $eodCompletedTotal,
             'eodRemaining' => $eodRemaining,
             'progressPercentage' => $progressPercentage,
@@ -752,7 +767,6 @@ class TaskDetail extends Component
         ]);
     }
 
-
     private function shortPipelineTitle(string $title, ?string $source = null): string
     {
         $title = trim($title);
@@ -766,6 +780,7 @@ class TaskDetail extends Component
             if (str_contains($lower, 'approv')) {
                 return 'Swap Request Approved';
             }
+
             return 'Swap Request Created';
         }
 
@@ -776,6 +791,7 @@ class TaskDetail extends Component
             if (str_contains($lower, 'approv')) {
                 return 'Split Request Approved';
             }
+
             return 'Split Request Created';
         }
 
@@ -786,6 +802,7 @@ class TaskDetail extends Component
             if (str_contains($lower, 'approv')) {
                 return 'Decline Request Approved';
             }
+
             return 'Decline Request Created';
         }
 

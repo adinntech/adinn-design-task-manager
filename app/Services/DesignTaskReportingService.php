@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\DesignTask;
+use App\Models\DesignTaskBdReview;
+use App\Models\DesignTaskEodRecord;
+use App\Models\DesignTaskStatusHistory;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -170,5 +173,155 @@ class DesignTaskReportingService
         }
 
         return $rows;
+    }
+
+    /**
+     * Groups one task's `design_task_eod_records` into a parent/child tree for
+     * the Progress Updates display: one parent per BD rework cycle (from the
+     * immutable status-history log via reviewCyclesFor(), NOT the per-record
+     * `rework_count_snapshot` column, which has been observed to disagree with
+     * the actual number of BD rework requests on some tasks), plus a single
+     * "initial progress" bucket for every plain progress submission.
+     */
+    public function progressTimeline(DesignTask $task): array
+    {
+        $eodRecords = DesignTaskEodRecord::query()
+            ->with('designer:id,name')
+            ->where('design_task_id', $task->id)
+            ->orderBy('submitted_at')
+            ->get();
+
+        $reworkReviews = DesignTaskBdReview::query()
+            ->where('design_task_id', $task->id)
+            ->where('action', 'rework')
+            ->with('submitter:id,name')
+            ->orderBy('created_at')
+            ->get();
+
+        $reworkReviewCount = collect([$task->id => $reworkReviews->count()]);
+        $reworkHistoryCount = collect([
+            $task->id => DesignTaskStatusHistory::query()
+                ->where('design_task_id', $task->id)
+                ->where('to_status', 'rework')
+                ->where('change_source', 'bd_rework')
+                ->count(),
+        ]);
+
+        $historyRows = DesignTaskStatusHistory::query()
+            ->where('design_task_id', $task->id)
+            ->whereIn('to_status', ['waiting_confirmation', 'rework', 'completed'])
+            ->orderBy('created_at')
+            ->get(['to_status', 'created_at']);
+
+        $cycles = $this->reviewCyclesFor($task, $historyRows, collect([$task->id => $reworkReviews]), $reworkReviewCount, $reworkHistoryCount);
+
+        $reworkParents = [];
+        foreach ($cycles as $cycle) {
+            if ($cycle['rework'] === null) {
+                continue;
+            }
+
+            $ordinal = $cycle['rework']['ordinal'];
+            $reworkParents[$ordinal] = [
+                'ordinal' => $ordinal,
+                'startedAt' => $cycle['rework']['started_at'],
+                'endedAt' => $cycle['rework']['moved_back_at'],
+                'requestedCount' => $cycle['rework']['creatives'],
+                'bdName' => $reworkReviews->get($ordinal - 1)?->submitter?->name,
+                'durationText' => $this->humanDuration((int) $cycle['rework']['duration_minutes']),
+                'children' => collect(),
+            ];
+        }
+
+        $lastOrdinal = empty($reworkParents) ? null : array_key_last($reworkParents);
+
+        foreach ($eodRecords->where('update_type', 'rework') as $record) {
+            $matched = null;
+
+            foreach ($reworkParents as $ordinal => $parent) {
+                $windowEnd = $parent['endedAt'] ?? now();
+                if ($record->submitted_at->betweenIncluded($parent['startedAt'], $windowEnd)) {
+                    $matched = $ordinal;
+                    break;
+                }
+            }
+
+            if ($matched === null) {
+                $snapshot = (int) $record->rework_count_snapshot;
+                $matched = array_key_exists($snapshot, $reworkParents) ? $snapshot : $lastOrdinal;
+            }
+
+            if ($matched !== null) {
+                $reworkParents[$matched]['children']->push($record);
+            }
+        }
+
+        foreach ($reworkParents as $ordinal => &$parent) {
+            $parent['remainingCount'] = max(0, $parent['requestedCount'] - $parent['children']->sum('completed_count'));
+            $parent['children'] = $this->withTimeTaken($parent['children']->sortBy('submitted_at')->values(), $parent['startedAt']);
+        }
+        unset($parent);
+
+        $initial = $this->withTimeTaken(
+            $eodRecords->where('update_type', 'progress')->sortBy('submitted_at')->values(),
+            null
+        );
+
+        return [
+            'initial' => $initial,
+            'reworks' => collect($reworkParents)->sortByDesc('ordinal')->values(),
+        ];
+    }
+
+    /**
+     * Stamps each record (in chronological order) with a `time_taken_text`
+     * attribute — elapsed time since the previous sibling, or since `$startedAt`
+     * for the first child of a rework parent — then reverses to latest-first
+     * for display, so the underlying elapsed-time math is never computed
+     * against the already-reversed display order.
+     */
+    private function withTimeTaken(Collection $chronological, ?Carbon $startedAt): Collection
+    {
+        $previous = $startedAt;
+
+        return $chronological->map(function (DesignTaskEodRecord $record) use (&$previous) {
+            $record->setAttribute(
+                'time_taken_text',
+                $previous ? $this->humanDuration((int) $previous->diffInMinutes($record->submitted_at)) : null
+            );
+            $previous = $record->submitted_at;
+
+            return $record;
+        })->reverse()->values();
+    }
+
+    /**
+     * Verbose duration wording for the Progress Updates tree ("2 hours",
+     * "1 day 10 hours") — deliberately separate from durationText()/
+     * minutesToText() above, which keep their existing abbreviated style
+     * ("2d 4h") used by the Dashboard, so that display is unaffected.
+     */
+    public function humanDuration(int $minutes): string
+    {
+        if ($minutes <= 0) {
+            return '0 min';
+        }
+
+        $days = intdiv($minutes, 1440);
+        $hours = intdiv($minutes % 1440, 60);
+        $mins = $minutes % 60;
+
+        $parts = [];
+        if ($days > 0) {
+            $parts[] = $days.' '.($days === 1 ? 'day' : 'days');
+        }
+        if ($hours > 0) {
+            $parts[] = $hours.' '.($hours === 1 ? 'hour' : 'hours');
+        }
+        if ($days === 0 && $mins > 0) {
+            $parts[] = $mins.' min';
+        }
+
+        return $parts ? implode(' ', $parts) : '0 min';
     }
 }
