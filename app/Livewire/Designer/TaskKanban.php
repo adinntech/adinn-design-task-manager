@@ -4,6 +4,7 @@ namespace App\Livewire\Designer;
 
 use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
+use App\Services\DesignerHeadTaskBoardService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,9 +19,19 @@ class TaskKanban extends Component
     public string $vertical = '';
     public string $priority = '';
 
+    /** current_month | last_month | custom — scopes only the historical/final columns below. */
+    public string $period = 'current_month';
+
+    /** 'Y-m-d', used only when period === 'custom'. */
+    public string $dateFrom = '';
+
+    public string $dateTo = '';
+
     public function mount(): void
     {
         abort_unless(Auth::user()?->role === 'designer', 403);
+        $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
+        $this->dateTo = now()->endOfMonth()->format('Y-m-d');
     }
 
     public function moveTask(int $taskId, string $targetStatus): void
@@ -57,28 +68,52 @@ class TaskKanban extends Component
         $this->dispatch('task-status-changed', message: 'Task status updated successfully.');
     }
 
-    public function getTasksProperty(): Collection
+    private function filterArray(): array
     {
-        return DesignTask::query()
-            ->with([
-                'bdReview','assigner:id,name'])
-            ->where('designer_id', Auth::id())
-            ->when($this->search !== '', function ($query) {
-                $term = '%'.trim($this->search).'%';
+        return [
+            'search' => $this->search,
+            'vertical' => $this->vertical,
+            'priority' => $this->priority,
+            'designerId' => (string) Auth::id(),
+            'bdId' => '',
+            'period' => $this->period,
+            'dateFrom' => $this->dateFrom,
+            'dateTo' => $this->dateTo,
+        ];
+    }
 
-                $query->where(function ($query) use ($term) {
-                    $query->where('task_id', 'like', $term)
-                        ->orWhere('task_name', 'like', $term)
-                        ->orWhere('party_name', 'like', $term)
-                        ->orWhere('vertical', 'like', $term)
-                        ->orWhere('task_nature', 'like', $term);
-                });
-            })
-            ->when($this->vertical !== '', fn ($query) => $query->where('vertical', $this->vertical))
-            ->when($this->priority !== '', fn ($query) => $query->where('priority', $this->priority))
-            ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
-            ->orderBy('due_at')
-            ->get();
+    public function clearFilters(): void
+    {
+        $this->search = '';
+        $this->vertical = '';
+        $this->priority = '';
+        $this->period = 'current_month';
+        $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
+        $this->dateTo = now()->endOfMonth()->format('Y-m-d');
+    }
+
+    /**
+     * Human-readable "Filter: value" chips for whichever filters are
+     * currently non-default, same idea as the Designer Head board.
+     */
+    private function appliedFilters(string $periodLabel): SupportCollection
+    {
+        $chips = collect();
+
+        if ($this->search !== '') {
+            $chips->push(['label' => 'Search', 'value' => $this->search]);
+        }
+        if ($this->vertical !== '') {
+            $chips->push(['label' => 'Vertical', 'value' => ucwords(str_replace('_', ' ', $this->vertical))]);
+        }
+        if ($this->priority !== '') {
+            $chips->push(['label' => 'Priority', 'value' => ucfirst($this->priority)]);
+        }
+        if ($this->period !== 'current_month') {
+            $chips->push(['label' => 'Period', 'value' => $periodLabel]);
+        }
+
+        return $chips;
     }
 
     /**
@@ -114,12 +149,6 @@ class TaskKanban extends Component
             ->each(fn (DesignTask $task) => $task->status = 'self_declined');
     }
 
-    /**
-     * Build compact request/history tags for the visible cards.
-     *
-     * The original task keeps its SPLIT tag after an approved split request,
-     * while any child task created from that request also receives the same tag.
-     */
     /**
      * Build one compact request-status badge for each visible Kanban card.
      *
@@ -211,17 +240,34 @@ class TaskKanban extends Component
 
     public function render()
     {
-        $tasks = $this->tasks->concat($this->selfDeclinedTasks);
-        $statuses = DesignTaskStatusService::STATUSES;
+        $board = app(DesignerHeadTaskBoardService::class)->build($this->filterArray());
 
-        unset($statuses['swap_tasks']);
-        $statuses['swap_tasks'] = 'Swapped Tasks';
+        $ownTasks = $board['tasks'];
+        $visibleOwnTasks = $board['visibleTasks'];
+        $periodStart = $board['periodStart'];
+
+        $periodLabel = $this->period === 'custom'
+            ? $periodStart->format('d M Y').' – '.$board['periodEnd']->format('d M Y')
+            : $periodStart->format('M Y');
+
+        $statuses = $board['statuses'];
+        unset($statuses['decline_tasks']);
         $statuses['self_declined'] = 'Self Declined';
+
+        $tasks = $visibleOwnTasks->concat($this->selfDeclinedTasks);
 
         return view('livewire.designer.task-kanban', [
             'statuses' => $statuses,
             'tasks' => $tasks,
             'taskTags' => $this->buildTaskTags($tasks),
+            'periodLabel' => $periodLabel,
+            'appliedFilters' => $this->appliedFilters($periodLabel),
+            'stats' => [
+                'total' => $ownTasks->count(),
+                'active' => $ownTasks->whereNotIn('status', ['completed'])->count(),
+                'waiting' => $ownTasks->where('status', 'waiting_confirmation')->count(),
+                'completed' => $ownTasks->where('status', 'completed')->count(),
+            ],
         ]);
     }
 }

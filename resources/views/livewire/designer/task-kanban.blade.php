@@ -1,6 +1,6 @@
 <div x-data="designerKanban()" x-init="init()" x-on:task-status-changed.window="showToast($event.detail.message)" x-on:task-move-blocked.window="showToast($event.detail.message)">
     <style>
-        .designer-toolbar{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(160px,.65fr) minmax(150px,.55fr);gap:9px;margin-bottom:14px}.kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none}.kanban-shell::-webkit-scrollbar{display:none}.kanban-shell.is-panning{cursor:grabbing}
+        .designer-toolbar{display:grid;grid-template-columns:minmax(220px,1.3fr) repeat(auto-fit,minmax(140px,.6fr));gap:9px;margin-bottom:14px}.designer-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.applied-filters{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid #eef0f3}.applied-filters-label{font-size:9px;font-weight:900;color:#475467;text-transform:uppercase;letter-spacing:.04em}.applied-filter-chip{font-size:9px;font-weight:850;color:#101828;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:999px;padding:5px 10px;white-space:nowrap}.applied-filters-clear{margin-left:auto;padding:6px 12px;font-size:10px;min-height:auto}@media(max-width:900px){.designer-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}.kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none}.kanban-shell::-webkit-scrollbar{display:none}.kanban-shell.is-panning{cursor:grabbing}
 .kanban-shell{position:relative}
 body[data-kanban-dragging="1"] .kanban-shell::before,
 body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z-index:50;top:0;width:34px;height:100%;pointer-events:none;opacity:.2}
@@ -231,12 +231,57 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
         <div class="page-actions"><span class="badge badge-dark">{{ $tasks->count() }} visible tasks</span></div>
     </div>
 
+    <div class="designer-metrics">
+        <div class="metric-card">
+            <div class="metric-label">Total Tasks</div>
+            <div class="metric-value">{{ $stats['total'] }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Active</div>
+            <div class="metric-value">{{ $stats['active'] }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Waiting Confirmation</div>
+            <div class="metric-value">{{ $stats['waiting'] }}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Completed</div>
+            <div class="metric-value">{{ $stats['completed'] }}</div>
+        </div>
+    </div>
+
     <div class="panel" style="margin-bottom:14px"><div class="panel-body">
         <div class="designer-toolbar">
             <input class="premium-input" type="search" placeholder="Search Task ID, task name, client, vertical..." wire:model.live.debounce.350ms="search">
             <select class="premium-select" wire:model.live="vertical"><option value="">All Verticals</option><option value="outdoor">Outdoor</option><option value="roadshow">RoadShow</option><option value="fixtures">Fixtures</option><option value="signage">Signage</option><option value="pop_offsets">POP and Offsets</option><option value="digital_marketing">Digital Marketing</option><option value="events_activations">Events and Activations</option></select>
             <select class="premium-select" wire:model.live="priority"><option value="">All Priorities</option><option value="urgent">Urgent</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+
+            <select class="premium-select" wire:model.live="period">
+                <option value="current_month">Current Month</option>
+                <option value="last_month">Last Month</option>
+                <option value="custom">Custom Period</option>
+            </select>
+
+            @if($period === 'custom')
+                <input class="premium-input" type="date" wire:model.live="dateFrom" max="{{ $dateTo ?: '' }}">
+                <input class="premium-input" type="date" wire:model.live="dateTo" min="{{ $dateFrom ?: '' }}">
+            @endif
+
+            <a class="btn btn-secondary" href="{{ route('designer.tasks.export', [
+                'search' => $search, 'vertical' => $vertical, 'priority' => $priority,
+                'period' => $period, 'date_from' => $dateFrom, 'date_to' => $dateTo,
+            ]) }}">Export Report</a>
         </div>
+
+        @if($appliedFilters->isNotEmpty())
+            <div class="applied-filters">
+                <span class="applied-filters-label">Applied Filters:</span>
+                @foreach($appliedFilters as $chip)
+                    <span class="applied-filter-chip">{{ $chip['label'] }}: {{ $chip['value'] }}</span>
+                @endforeach
+                <button type="button" class="btn btn-secondary applied-filters-clear" wire:click="clearFilters">Clear Filters</button>
+            </div>
+        @endif
     </div></div>
 
     <div class="kanban-shell" data-kanban-shell>

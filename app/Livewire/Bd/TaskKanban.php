@@ -5,7 +5,8 @@ namespace App\Livewire\Bd;
 use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
-use App\Services\DesignTaskStatusService;
+use App\Models\User;
+use App\Services\DesignerHeadTaskBoardService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
@@ -18,10 +19,21 @@ class TaskKanban extends Component
     public string $search = '';
     public string $vertical = '';
     public string $priority = '';
+    public string $designerId = '';
+
+    /** current_month | last_month | custom — scopes only the historical/final columns below. */
+    public string $period = 'current_month';
+
+    /** 'Y-m-d', used only when period === 'custom'. */
+    public string $dateFrom = '';
+
+    public string $dateTo = '';
 
     public function mount(): void
     {
         abort_unless(Auth::user()?->role === 'bd', 403);
+        $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
+        $this->dateTo = now()->endOfMonth()->format('Y-m-d');
     }
 
     public function markRework(int $taskId): void
@@ -77,39 +89,56 @@ class TaskKanban extends Component
         );
     }
 
-    public function getTasksProperty(): Collection
+    private function filterArray(): array
     {
-        $tasks = DesignTask::query()
-            ->with([
-                'bdReview',
-                'designer:id,name',
-                'assigner:id,name',
-            ])
-            ->where('assigned_by', Auth::id())
-            ->when($this->search !== '', function ($query) {
-                $term = '%'.trim($this->search).'%';
+        return [
+            'search' => $this->search,
+            'vertical' => $this->vertical,
+            'priority' => $this->priority,
+            'designerId' => $this->designerId,
+            'bdId' => (string) Auth::id(),
+            'period' => $this->period,
+            'dateFrom' => $this->dateFrom,
+            'dateTo' => $this->dateTo,
+        ];
+    }
 
-                $query->where(function ($query) use ($term) {
-                    $query->where('task_id', 'like', $term)
-                        ->orWhere('task_name', 'like', $term)
-                        ->orWhere('party_name', 'like', $term)
-                        ->orWhere('vertical', 'like', $term)
-                        ->orWhere('task_nature', 'like', $term)
-                        ->orWhereHas('designer', fn ($designerQuery) => $designerQuery->where('name', 'like', $term));
-                });
-            })
-            ->when($this->vertical !== '', fn ($query) => $query->where('vertical', $this->vertical))
-            ->when($this->priority !== '', fn ($query) => $query->where('priority', $this->priority))
-            ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
-            ->orderBy('due_at')
-            ->get();
+    public function clearFilters(): void
+    {
+        $this->search = '';
+        $this->vertical = '';
+        $this->priority = '';
+        $this->designerId = '';
+        $this->period = 'current_month';
+        $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
+        $this->dateTo = now()->endOfMonth()->format('Y-m-d');
+    }
 
-        // An approved Swap creates a read-only shadow task for the original Designer
-        // and a new active task for the approved Designer. BD should monitor the
-        // active task only, while the Swap remains traceable in task history.
-        return $tasks
-            ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
-            ->values();
+    /**
+     * Human-readable "Filter: value" chips for whichever filters are
+     * currently non-default, same idea as the Designer Head board.
+     */
+    private function appliedFilters(SupportCollection $designers, string $periodLabel): SupportCollection
+    {
+        $chips = collect();
+
+        if ($this->search !== '') {
+            $chips->push(['label' => 'Search', 'value' => $this->search]);
+        }
+        if ($this->designerId !== '') {
+            $chips->push(['label' => 'Designer', 'value' => $designers->firstWhere('id', (int) $this->designerId)?->name ?? '—']);
+        }
+        if ($this->vertical !== '') {
+            $chips->push(['label' => 'Vertical', 'value' => ucwords(str_replace('_', ' ', $this->vertical))]);
+        }
+        if ($this->priority !== '') {
+            $chips->push(['label' => 'Priority', 'value' => ucfirst($this->priority)]);
+        }
+        if ($this->period !== 'current_month') {
+            $chips->push(['label' => 'Period', 'value' => $periodLabel]);
+        }
+
+        return $chips;
     }
 
     /**
@@ -199,26 +228,35 @@ class TaskKanban extends Component
 
     public function render()
     {
-        $tasks = $this->tasks;
+        $board = app(DesignerHeadTaskBoardService::class)->build($this->filterArray());
 
-        $statuses = DesignTaskStatusService::STATUSES;
+        $ownTasks = $board['tasks'];
+        $tasks = $board['visibleTasks'];
+        $periodStart = $board['periodStart'];
 
-        if (! array_key_exists('swap_tasks', $statuses)) {
-            $statuses['swap_tasks'] = 'Swapped Tasks';
-        } else {
-            unset($statuses['swap_tasks']);
-            $statuses['swap_tasks'] = 'Swapped Tasks';
-        }
+        $periodLabel = $this->period === 'custom'
+            ? $periodStart->format('d M Y').' – '.$board['periodEnd']->format('d M Y')
+            : $periodStart->format('M Y');
+
+        $designers = User::query()
+            ->where('role', 'designer')
+            ->where('is_active', true)
+            ->whereHas('assignedTasks', fn ($query) => $query->where('assigned_by', Auth::id()))
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return view('livewire.bd.task-kanban', [
-            'statuses' => $statuses,
+            'statuses' => $board['statuses'],
             'tasks' => $tasks,
             'taskTags' => $this->buildTaskTags($tasks),
+            'designers' => $designers,
+            'periodLabel' => $periodLabel,
+            'appliedFilters' => $this->appliedFilters($designers, $periodLabel),
             'stats' => [
-                'total' => $tasks->count(),
-                'active' => $tasks->whereNotIn('status', ['completed'])->count(),
-                'waiting' => $tasks->where('status', 'waiting_confirmation')->count(),
-                'completed' => $tasks->where('status', 'completed')->count(),
+                'total' => $ownTasks->count(),
+                'active' => $ownTasks->whereNotIn('status', ['completed'])->count(),
+                'waiting' => $ownTasks->where('status', 'waiting_confirmation')->count(),
+                'completed' => $ownTasks->where('status', 'completed')->count(),
             ],
         ]);
     }

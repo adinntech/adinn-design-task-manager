@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Designer\DashboardController;
 use App\Http\Controllers\Designer\TaskAttachmentDownloadController;
+use App\Http\Controllers\Designer\TaskExportController;
 use App\Http\Controllers\Designer\TaskPageController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,8 @@ Route::middleware(['auth', 'role:designer'])
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::get('/tasks', [TaskPageController::class, 'index'])->name('tasks.index');
+
+        Route::get('/tasks/export', [TaskExportController::class, 'export'])->name('tasks.export');
 
         Route::get(
             '/tasks/{task}/attachments/download',

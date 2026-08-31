@@ -4,13 +4,17 @@
     x-on:bd-task-updated.window="showToast($event.detail.message)"
 >
     <style>
-        .bd-toolbar{display:grid;grid-template-columns:minmax(260px,1.5fr) minmax(160px,.65fr) minmax(150px,.55fr);gap:9px;margin-bottom:14px}
+        .bd-toolbar{display:grid;grid-template-columns:minmax(220px,1.3fr) repeat(auto-fit,minmax(140px,.6fr));gap:9px;margin-bottom:14px}
         .bd-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+        .applied-filters{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid #eef0f3}
+        .applied-filters-label{font-size:9px;font-weight:900;color:#475467;text-transform:uppercase;letter-spacing:.04em}
+        .applied-filter-chip{font-size:9px;font-weight:850;color:#101828;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:999px;padding:5px 10px;white-space:nowrap}
+        .applied-filters-clear{margin-left:auto;padding:6px 12px;font-size:10px;min-height:auto}
 
         .kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;position:relative}
         .kanban-shell::-webkit-scrollbar{display:none}
         .kanban-shell.is-panning{cursor:grabbing}
-        .kanban-board{display:grid;grid-template-columns:repeat(9,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}
+        .kanban-board{display:grid;grid-template-columns:repeat(10,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}
         .kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}
         .kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}
         .kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}
@@ -27,6 +31,7 @@
         .kanban-column.status-rework .kanban-column-header{border-top-color:#ea580c;background:#fff7ed}
         .kanban-column.status-completed .kanban-column-header{border-top-color:#16a34a;background:#f0fdf4}
         .kanban-column.status-swap_tasks .kanban-column-header{border-top-color:#0f766e;background:#f0fdfa}
+        .kanban-column.status-decline_tasks .kanban-column-header{border-top-color:#b42318;background:#fff5f5}
 
         .kanban-column.status-assigned_tasks .kanban-count{background:#eaecf0;color:#475467}
         .kanban-column.status-review_analysis .kanban-count{background:#dbeafe;color:#1d4ed8}
@@ -37,6 +42,7 @@
         .kanban-column.status-rework .kanban-count{background:#ffedd5;color:#c2410c}
         .kanban-column.status-completed .kanban-count{background:#dcfce7;color:#15803d}
         .kanban-column.status-swap_tasks .kanban-count{background:#ccfbf1;color:#0f766e}
+        .kanban-column.status-decline_tasks .kanban-count{background:#fee4e2;color:#b42318}
 
         .task-card{border:1px solid #e3e6ec;border-left:5px solid #cbd5e1;border-radius:11px;background:#fff;padding:11px;margin-bottom:8px;color:inherit;box-shadow:0 4px 12px rgba(16,24,40,.04);transition:.16s}
         .task-card:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,24,40,.08);border-color:#d7dbe3}
@@ -322,7 +328,41 @@
                     <option value="medium">Medium</option>
                     <option value="low">Low</option>
                 </select>
+
+                <select class="premium-select" wire:model.live="designerId">
+                    <option value="">All Designers</option>
+                    @foreach($designers as $designerOption)
+                        <option value="{{ $designerOption->id }}">{{ $designerOption->name }}</option>
+                    @endforeach
+                </select>
+
+                <select class="premium-select" wire:model.live="period">
+                    <option value="current_month">Current Month</option>
+                    <option value="last_month">Last Month</option>
+                    <option value="custom">Custom Period</option>
+                </select>
+
+                @if($period === 'custom')
+                    <input class="premium-input" type="date" wire:model.live="dateFrom" max="{{ $dateTo ?: '' }}">
+                    <input class="premium-input" type="date" wire:model.live="dateTo" min="{{ $dateFrom ?: '' }}">
+                @endif
+
+                <a class="btn btn-secondary" href="{{ route('bd.tasks.export', [
+                    'search' => $search, 'vertical' => $vertical, 'priority' => $priority,
+                    'designer_id' => $designerId, 'period' => $period,
+                    'date_from' => $dateFrom, 'date_to' => $dateTo,
+                ]) }}">Export Report</a>
             </div>
+
+            @if($appliedFilters->isNotEmpty())
+                <div class="applied-filters">
+                    <span class="applied-filters-label">Applied Filters:</span>
+                    @foreach($appliedFilters as $chip)
+                        <span class="applied-filter-chip">{{ $chip['label'] }}: {{ $chip['value'] }}</span>
+                    @endforeach
+                    <button type="button" class="btn btn-secondary applied-filters-clear" wire:click="clearFilters">Clear Filters</button>
+                </div>
+            @endif
         </div>
     </div>
 

@@ -13,6 +13,8 @@ Route::middleware(['auth', 'role:bd'])
 
         Route::get('/tasks', [AssignedTaskController::class, 'index'])->name('tasks.index');
 
+        // /tasks/export itself is registered in web.php's bd group, ahead of the
+        // /tasks/{task} wildcard there — see the comment on that route.
         Route::post('/tasks/{task}/comments', [AssignedTaskController::class, 'addComment'])
             ->name('tasks.comments.store');
 
