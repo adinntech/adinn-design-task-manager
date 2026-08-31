@@ -6,13 +6,22 @@ use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 
 /**
- * Filtering + period-scoping for the Designer Head Kanban board, shared by
- * the Kanban Livewire component and the CSV export so both always agree on
- * exactly which tasks are in scope for a given filter combination.
+ * Filtering + period-scoping for the Designer Head / Designer / BD Kanban
+ * boards, shared by all three Kanban Livewire components and the CSV export
+ * so they always agree on exactly which tasks are in scope for a given
+ * filter combination.
+ *
+ * Period is origin-based: a task belongs to the period it was
+ * assigned/created in, and stays there (with its CURRENT status) no matter
+ * when it later completes/swaps/declines. A task whose terminal event lands
+ * in a different period than its origin gets a "Continued to <month>" label;
+ * the later period additionally surfaces it as a read-only "Continued from
+ * <month>" record (never counted in that period's totals, never duplicated).
  */
 class DesignerHeadTaskBoardService
 {
@@ -21,11 +30,12 @@ class DesignerHeadTaskBoardService
      */
     public function build(array $filters): array
     {
-        $tasks = $this->tasksFor($filters);
-        $taskIds = $tasks->pluck('id');
-        $swapShadowTasks = $this->swapShadowTasks($filters);
-        $swapShadowIds = $swapShadowTasks->pluck('id');
         [$periodStart, $periodEnd] = $this->dateRangeBounds($filters['period'], $filters['dateFrom'], $filters['dateTo']);
+
+        $tasks = $this->tasksFor($filters, $periodStart, $periodEnd);
+        $taskIds = $tasks->pluck('id');
+        $swapShadowTasks = $this->swapShadowTasks($filters, $periodStart, $periodEnd);
+        $swapShadowIds = $swapShadowTasks->pluck('id');
 
         /* ---- Event dates for the three terminal statuses that already exist as
          * Kanban columns — from the immutable status-history / request-approval
@@ -42,20 +52,19 @@ class DesignerHeadTaskBoardService
 
         $inPeriod = fn (?Carbon $at) => $at !== null && $at->betweenIncluded($periodStart, $periodEnd);
 
-        /* ---- Hide out-of-period terminal tasks from the board; active/open
-         * columns are untouched regardless of when the task was assigned. The
-         * otherwise-hidden swap-shadow tasks are merged in here, period-filtered,
-         * so the existing "$tasks->where('status','swap_tasks')" column loop in
-         * the view picks them up with no extra view-layer special-casing. ---- */
-        $visibleTasks = $tasks->filter(function (DesignTask $task) use ($inPeriod, $completedAtByTask, $declineRespondedAtByTask) {
-            return match ($task->status) {
-                'completed' => $inPeriod($completedAtByTask->get($task->id)),
-                'decline_tasks' => $inPeriod($declineRespondedAtByTask->get($task->id)),
-                default => true,
-            };
-        })->concat(
-            $swapShadowTasks->filter(fn (DesignTask $task) => $inPeriod($swapRespondedAtByTask->get($task->id)))
-        )->values();
+        // Tasks that originated in-period but finished (completed/swapped/declined)
+        // outside it get a "Continued to <month>" label — still shown here, under
+        // their current status, never hidden for finishing late.
+        $this->annotateContinuationTo($tasks, $completedAtByTask, collect(), $declineRespondedAtByTask, $periodStart, $periodEnd);
+        $this->annotateContinuationTo($swapShadowTasks, collect(), $swapRespondedAtByTask, collect(), $periodStart, $periodEnd);
+
+        // The reverse: tasks that originated in an EARLIER period but completed/
+        // swapped inside this one — surfaced as extra "Continued from <month>"
+        // read-only records so the event stays traceable from this period too,
+        // without duplicating (or being counted as) an origin-period task.
+        $continuationFromTasks = $this->continuationFromTasks($filters, $periodStart, $periodEnd, $taskIds->merge($swapShadowIds));
+
+        $visibleTasks = $tasks->concat($swapShadowTasks)->concat($continuationFromTasks)->values();
 
         /* ---- Split has no terminal task-state of its own (the original keeps
          * working with fewer creatives; the new task starts its own normal
@@ -94,7 +103,9 @@ class DesignerHeadTaskBoardService
 
         /* ---- Period-scoped summary strip: Total is the distinct union of tasks
          * touched by any of the four events in the period, never a plain sum
-         * (a task cannot be double-counted even if it had more than one event). ---- */
+         * (a task cannot be double-counted even if it had more than one event).
+         * This stays event-based (unlike the origin-based totals below) — it
+         * answers "what happened this period", not "what originated in it". ---- */
         $completedIds = $tasks->filter(fn ($t) => $t->status === 'completed' && $inPeriod($completedAtByTask->get($t->id)))->pluck('id');
         $swappedIds = $swapShadowTasks->filter(fn ($t) => $inPeriod($swapRespondedAtByTask->get($t->id)))->pluck('id');
         $declinedIds = $tasks->filter(fn ($t) => $t->status === 'decline_tasks' && $inPeriod($declineRespondedAtByTask->get($t->id)))->pluck('id');
@@ -118,6 +129,13 @@ class DesignerHeadTaskBoardService
         }
         $statuses['decline_tasks'] = 'Decline Tasks';
 
+        // Active Tasks card breakdown: every non-completed status, counted against
+        // the origin-period task set only (never the continuation-from extras).
+        $activeBreakdown = collect($statuses)
+            ->reject(fn ($label, $key) => $key === 'completed')
+            ->map(fn ($label, $key) => ['label' => $label, 'count' => $tasks->where('status', $key)->count()])
+            ->values();
+
         return [
             'tasks' => $tasks,
             'visibleTasks' => $visibleTasks,
@@ -127,6 +145,7 @@ class DesignerHeadTaskBoardService
             'periodEnd' => $periodEnd,
             'periodStats' => $periodStats,
             'statuses' => $statuses,
+            'activeBreakdown' => $activeBreakdown,
         ];
     }
 
@@ -156,11 +175,32 @@ class DesignerHeadTaskBoardService
             ->when($filters['bdId'] !== '', fn ($query) => $query->where('assigned_by', $filters['bdId']));
     }
 
-    private function tasksFor(array $filters): Collection
+    /**
+     * Every task's "origin" is its created_at — deliberately NOT assigned_at,
+     * even though that field is set at the same instant a BD creates+assigns
+     * a task (see Bd\TaskController::store()): the design_tasks.assigned_at
+     * column carries a legacy MySQL/MariaDB "DEFAULT CURRENT_TIMESTAMP ON
+     * UPDATE CURRENT_TIMESTAMP" clause (it's the table's first TIMESTAMP
+     * column under explicit_defaults_for_timestamp=0), so it silently resets
+     * to "now" on every future row update — every status move, decline/swap/
+     * split reassignment, the create-then-rename task_id fixup, etc. created_at
+     * is a plain nullable timestamp with no such clause and Eloquent only ever
+     * writes it once, on insert, so it's the reliable "origin" timestamp.
+     */
+    private function originBetween(Builder $query, Carbon $periodStart, Carbon $periodEnd): Builder
     {
-        $tasks = $this->applyFilters(
-            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
-            $filters
+        return $query->whereBetween('created_at', [$periodStart, $periodEnd]);
+    }
+
+    private function tasksFor(array $filters, Carbon $periodStart, Carbon $periodEnd): Collection
+    {
+        $tasks = $this->originBetween(
+            $this->applyFilters(
+                DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
+                $filters
+            ),
+            $periodStart,
+            $periodEnd
         )
             ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
             ->orderBy('due_at')
@@ -193,23 +233,124 @@ class DesignerHeadTaskBoardService
      * twice for the Designer who no longer owns it. The "Swapped Tasks"
      * column's whole purpose is to surface that otherwise-hidden record as a
      * read-only historical entry, so it queries directly instead — same
-     * Search/Vertical/Priority/Designer/BD filters, shadow reject skipped.
+     * Search/Vertical/Priority/Designer/BD filters (+ origin-period), shadow
+     * reject skipped.
      */
-    private function swapShadowTasks(array $filters): Collection
+    private function swapShadowTasks(array $filters, Carbon $periodStart, Carbon $periodEnd): Collection
     {
-        return $this->applyFilters(
+        return $this->originBetween(
+            $this->applyFilters(
+                DesignTask::query()->with(['designer:id,name', 'assigner:id,name']),
+                $filters
+            )->where('status', 'swap_tasks'),
+            $periodStart,
+            $periodEnd
+        )->get();
+    }
+
+    /**
+     * Stamps a "Continued to <month>" label (+ the event's own date) onto any
+     * task whose terminal event lands outside the selected period — it can
+     * only be LATER than the period, since a task's origin (already inside
+     * the period, by construction of $tasks/$swapShadowTasks) can never be
+     * later than its own terminal event.
+     */
+    private function annotateContinuationTo(
+        Collection $tasks,
+        SupportCollection $completedAt,
+        SupportCollection $swapAt,
+        SupportCollection $declineAt,
+        Carbon $periodStart,
+        Carbon $periodEnd
+    ): void {
+        foreach ($tasks as $task) {
+            $terminalAt = match ($task->status) {
+                'completed' => $completedAt->get($task->id),
+                'swap_tasks' => $swapAt->get($task->id),
+                'decline_tasks' => $declineAt->get($task->id),
+                default => null,
+            };
+
+            if ($terminalAt === null || $terminalAt->betweenIncluded($periodStart, $periodEnd)) {
+                continue;
+            }
+
+            $task->setAttribute('continuation_label', 'Continued to '.$terminalAt->format('M Y'));
+            $task->setAttribute('continuation_event_label', $this->eventLabel($task->status, $terminalAt));
+        }
+    }
+
+    /**
+     * Read-only "Continued from <month>" records for THIS period: tasks that
+     * originated earlier but completed/swapped inside the selected period.
+     * Scoped to completed + swap (the two terminal states with a single,
+     * unambiguous owner); excludes anything already present in the
+     * origin-period sets so nothing is ever shown twice.
+     */
+    private function continuationFromTasks(array $filters, Carbon $periodStart, Carbon $periodEnd, SupportCollection $excludeIds): Collection
+    {
+        $completed = $this->applyFilters(
+            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
+            $filters
+        )
+            ->where('status', 'completed')
+            ->where('created_at', '<', $periodStart)
+            ->whereNotIn('id', $excludeIds)
+            ->get();
+
+        if ($completed->isNotEmpty()) {
+            $completedAtByTask = DesignTaskStatusHistory::query()
+                ->where('to_status', 'completed')
+                ->whereIn('design_task_id', $completed->pluck('id'))
+                ->pluck('created_at', 'design_task_id');
+
+            $completed = $completed
+                ->filter(fn (DesignTask $task) => ($at = $completedAtByTask->get($task->id)) && $at->betweenIncluded($periodStart, $periodEnd))
+                ->each(fn (DesignTask $task) => $this->stampContinuationFrom($task, $completedAtByTask->get($task->id)));
+        }
+
+        $swapped = $this->applyFilters(
             DesignTask::query()->with(['designer:id,name', 'assigner:id,name']),
             $filters
         )
             ->where('status', 'swap_tasks')
+            ->where('created_at', '<', $periodStart)
+            ->whereNotIn('id', $excludeIds)
             ->get();
+
+        if ($swapped->isNotEmpty()) {
+            $swapAtByTask = $this->respondedAtByTask($swapped->pluck('id'), 'swap');
+
+            $swapped = $swapped
+                ->filter(fn (DesignTask $task) => ($at = $swapAtByTask->get($task->id)) && $at->betweenIncluded($periodStart, $periodEnd))
+                ->each(fn (DesignTask $task) => $this->stampContinuationFrom($task, $swapAtByTask->get($task->id)));
+        }
+
+        return $completed->concat($swapped)->values();
+    }
+
+    private function stampContinuationFrom(DesignTask $task, Carbon $eventAt): void
+    {
+        $origin = $task->created_at;
+
+        $task->setAttribute('continuation_label', $origin ? 'Continued from '.$origin->format('M Y') : null);
+        $task->setAttribute('continuation_event_label', $this->eventLabel($task->status, $eventAt));
+        $task->setAttribute('is_continuation_only', true);
+    }
+
+    private function eventLabel(string $status, Carbon $at): ?string
+    {
+        return match ($status) {
+            'completed' => 'Completed '.$at->format('d M Y'),
+            'swap_tasks' => 'Swapped '.$at->format('d M Y'),
+            'decline_tasks' => 'Declined '.$at->format('d M Y'),
+            default => null,
+        };
     }
 
     /**
-     * Start/end of the currently selected period. Only used to scope the
-     * historical/final categories (Completed, Swapped, Declined, Split log) —
-     * never the active/open workflow columns, which always show current state
-     * regardless of when the task was assigned.
+     * Start/end of the currently selected period — the origin (assigned/
+     * created date) window every task list above is scoped to.
      */
     private function dateRangeBounds(string $period, string $dateFrom, string $dateTo): array
     {

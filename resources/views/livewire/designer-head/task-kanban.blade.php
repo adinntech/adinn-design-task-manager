@@ -8,6 +8,7 @@
         .bd-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
         .metric-active-breakdown{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
         .metric-active-chip{font-size:8px;font-weight:800;color:#475467;background:#f2f4f7;border-radius:999px;padding:2px 7px;white-space:nowrap}
+        .continuation-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:8px;font-weight:800;line-height:1.4}
         .bd-period-strip{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 13px;background:#fff;border:1px solid #eaecf0;border-radius:12px;margin-bottom:14px}
         .bd-period-viewing{font-size:9px;font-weight:900;color:#101828;white-space:nowrap}
         .bd-period-chip{font-size:8px;font-weight:850;color:#344054;background:#f7f8fa;border-radius:999px;padding:4px 10px;white-space:nowrap}
@@ -546,6 +547,9 @@
                                         @endif
                                     </div>
                                     <div class="task-card-client">{{ ucfirst($task->party_type) }} · {{ $task->party_name }}</div>
+                                    @if($task->continuation_label ?? null)
+                                        <div class="continuation-badge">{{ $task->continuation_label }}@if($task->continuation_event_label ?? null) · {{ $task->continuation_event_label }}@endif</div>
+                                    @endif
                                     @include('partials.kanban-task-progress', ['task' => $task])
 
                                     

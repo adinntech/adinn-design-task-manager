@@ -55,7 +55,10 @@ class DesignTaskExportService
     public function export(array $filters, string $filenamePrefix): StreamedResponse
     {
         $board = $this->boardService->build($filters);
-        $tasks = $board['visibleTasks'];
+        // Origin-period tasks + their swap-shadow counterparts only — excludes the
+        // board's read-only "continuation from" extras (tasks that originated in an
+        // earlier period) so the report never double-counts a task across two runs.
+        $tasks = $board['tasks']->concat($board['swapShadowTasks'])->values();
         $statuses = $board['statuses'];
         $taskIds = $tasks->pluck('id');
 

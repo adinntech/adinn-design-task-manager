@@ -201,13 +201,6 @@ class TaskKanban extends Component
             ? $periodStart->format('d M Y').' – '.$periodEnd->format('d M Y')
             : $periodStart->format('M Y');
 
-        /* ---- Active Tasks breakdown: same "not completed" definition the
-         * Active card total already uses, just broken down per status. ---- */
-        $activeBreakdown = collect($statuses)
-            ->reject(fn ($label, $key) => $key === 'completed')
-            ->map(fn ($label, $key) => ['label' => $label, 'count' => $tasks->where('status', $key)->count()])
-            ->values();
-
         $designers = User::query()->where('role', 'designer')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $bds = User::query()->where('role', 'bd')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
@@ -219,7 +212,7 @@ class TaskKanban extends Component
             'taskTags' => $this->buildTaskTags($visibleTasks),
             'periodStats' => $periodStats,
             'periodLabel' => $periodLabel,
-            'activeBreakdown' => $activeBreakdown,
+            'activeBreakdown' => $board['activeBreakdown'],
             'designers' => $designers,
             'bds' => $bds,
             'appliedFilters' => $this->appliedFilters($designers, $bds, $periodLabel),

@@ -262,6 +262,7 @@ class TaskKanban extends Component
             'taskTags' => $this->buildTaskTags($tasks),
             'periodLabel' => $periodLabel,
             'appliedFilters' => $this->appliedFilters($periodLabel),
+            'activeBreakdown' => $board['activeBreakdown'],
             'stats' => [
                 'total' => $ownTasks->count(),
                 'active' => $ownTasks->whereNotIn('status', ['completed'])->count(),
