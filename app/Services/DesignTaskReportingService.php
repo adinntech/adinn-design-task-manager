@@ -229,6 +229,7 @@ class DesignTaskReportingService
                 'requestedCount' => $cycle['rework']['creatives'],
                 'bdName' => $reworkReviews->get($ordinal - 1)?->submitter?->name,
                 'durationText' => $this->humanDuration((int) $cycle['rework']['duration_minutes']),
+                'durationMinutes' => (int) $cycle['rework']['duration_minutes'],
                 'children' => collect(),
             ];
         }
@@ -267,10 +268,113 @@ class DesignTaskReportingService
             null
         );
 
+        // ------------------------------------------------------------------
+        // Tree structure used by the shared Progress Updates tree.
+        // The Submission is the single ROOT; every rework cycle (and the final
+        // BD approval, when present) is a DIRECT child/sibling branch of that
+        // root — never nested under another rework. Each rework branch carries
+        // only its own completion submissions as its children. Everything is
+        // derived from the immutable status-history / BD-review / EOD-record
+        // relations above; cycles are never inferred by order only.
+        // ------------------------------------------------------------------
+        $reworkParentsOrdered = collect($reworkParents)->sortBy('ordinal')->values();
+
+        // -- Submission root -------------------------------------------------
+        $firstCycle = $cycles[0] ?? null;
+        $submissionStage = [
+            'type' => 'submission',
+            'title' => 'Submission',
+            'children' => $initial,
+            'submittedBy' => $initial->first()?->designer?->name ?? $task->designer?->name,
+            'submittedAt' => $initial->first()?->submitted_at,
+            'reviewStartedAt' => $firstCycle['submitted_at'] ?? null,
+            'reviewDurationMinutes' => $firstCycle && $firstCycle['submitted_at']
+                ? (int) $firstCycle['submitted_at']->diffInMinutes($firstCycle['decision_at'] ?? now())
+                : null,
+        ];
+
+        // -- Sibling branches under the root (rework cycles, then final) ------
+        $branches = collect();
+
+        foreach ($reworkParentsOrdered as $parent) {
+            $branches->push([
+                'type' => 'rework',
+                'ordinal' => $parent['ordinal'],
+                'startedAt' => $parent['startedAt'],
+                'bdName' => $parent['bdName'],
+                'requestedCount' => $parent['requestedCount'],
+                'remainingCount' => $parent['remainingCount'],
+                'durationText' => $parent['durationText'],
+                'durationMinutes' => $parent['durationMinutes'],
+                'children' => $parent['children'],
+            ]);
+        }
+
+        // -- Final BD Approval (only once the task is completed) -------------
+        $completedDecision = collect($cycles)->last(fn ($c) => $c['decision_status'] === 'completed');
+        $finalReview = DesignTaskBdReview::query()
+            ->with('submitter:id,name')
+            ->where('design_task_id', $task->id)
+            ->where('action', 'completed')
+            ->latest('created_at')
+            ->first();
+
+        if ($task->status === 'completed' && $finalReview !== null) {
+            $branches->push([
+                'type' => 'final',
+                'status' => 'Completed',
+                'approvedBy' => $finalReview->submitter?->name ?? '—',
+                'approvedAt' => $finalReview->created_at,
+                'submittedAt' => $completedDecision['submitted_at'] ?? null,
+                'decisionAt' => $completedDecision['decision_at'] ?? $finalReview->created_at,
+                'reviewDurationMinutes' => $completedDecision && $completedDecision['submitted_at']
+                    ? (int) $completedDecision['submitted_at']->diffInMinutes($completedDecision['decision_at'] ?? now())
+                    : null,
+                'totalReworkCount' => $reworkParentsOrdered->count(),
+                'totalReworkCreatives' => $reworkParentsOrdered->sum('requestedCount'),
+                'totalDesignerReworkTime' => $this->humanDuration($reworkParentsOrdered->sum('durationMinutes')),
+            ]);
+        }
+
         return [
             'initial' => $initial,
             'reworks' => collect($reworkParents)->sortByDesc('ordinal')->values(),
+            'flow' => [
+                'submission' => $submissionStage,
+                'branches' => $branches,
+            ],
         ];
+    }
+
+    /**
+     * Human completion status for the Submission root card. Uses the original
+     * assigned/due timestamps and the ACTUAL completion timestamp so rework
+     * never shifts the original assignment date. Returns a display label:
+     *   "Completed On Time"
+     *   "Completed 10 days after due date"
+     *   "Completed 10 days 2 hours after due date"
+     *   "10 days 2 hours overdue"        (still incomplete & past due)
+     */
+    public function completionStatus(DesignTask $task, ?Carbon $completedAt): string
+    {
+        $due = $task->due_at;
+        if ($completedAt && $due) {
+            if ($completedAt->lte($due)) {
+                return 'Completed On Time';
+            }
+
+            return 'Completed '.$this->humanDuration((int) $due->diffInMinutes($completedAt)).' after due date';
+        }
+
+        if ($completedAt) {
+            return 'Completed On Time';
+        }
+
+        if ($due && $due->lt(now())) {
+            return $this->humanDuration((int) $due->diffInMinutes(now())).' overdue';
+        }
+
+        return 'In Progress';
     }
 
     /**
