@@ -166,7 +166,8 @@ class DesignerHeadTaskBoardService
                         ->orWhere('party_name', 'like', $term)
                         ->orWhere('vertical', 'like', $term)
                         ->orWhere('task_nature', 'like', $term)
-                        ->orWhereHas('designer', fn ($designerQuery) => $designerQuery->where('name', 'like', $term));
+                        ->orWhereHas('designer', fn ($designerQuery) => $designerQuery->where('name', 'like', $term))
+                        ->orWhereHas('assigner', fn ($assignerQuery) => $assignerQuery->where('name', 'like', $term));
                 });
             })
             ->when($filters['vertical'] !== '', fn ($query) => $query->where('vertical', $filters['vertical']))

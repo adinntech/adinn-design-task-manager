@@ -22,7 +22,7 @@ class TaskExportController extends Controller
             'vertical' => (string) $request->query('vertical', ''),
             'priority' => (string) $request->query('priority', ''),
             'designerId' => (string) $request->user()->id,
-            'bdId' => '',
+            'bdId' => (string) $request->query('bd_id', ''),
             'period' => (string) $request->query('period', 'current_month'),
             'dateFrom' => (string) $request->query('date_from', ''),
             'dateTo' => (string) $request->query('date_to', ''),

@@ -259,9 +259,16 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 
     <div class="panel" style="margin-bottom:14px"><div class="panel-body">
         <div class="designer-toolbar">
-            <input class="premium-input" type="search" placeholder="Search Task ID, task name, client, vertical..." wire:model.live.debounce.350ms="search">
+            <input class="premium-input" type="search" placeholder="Search Task ID, task name, client, vertical, BD..." wire:model.live.debounce.350ms="search">
             <select class="premium-select" wire:model.live="vertical"><option value="">All Verticals</option><option value="outdoor">Outdoor</option><option value="roadshow">RoadShow</option><option value="fixtures">Fixtures</option><option value="signage">Signage</option><option value="pop_offsets">POP and Offsets</option><option value="digital_marketing">Digital Marketing</option><option value="events_activations">Events and Activations</option></select>
             <select class="premium-select" wire:model.live="priority"><option value="">All Priorities</option><option value="urgent">Urgent</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+
+            <select class="premium-select" wire:model.live="bdId">
+                <option value="">All BD</option>
+                @foreach($bds as $bdOption)
+                    <option value="{{ $bdOption->id }}">{{ $bdOption->name }}</option>
+                @endforeach
+            </select>
 
             <select class="premium-select" wire:model.live="period">
                 <option value="current_month">Current Month</option>
@@ -276,7 +283,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 
             <a class="btn btn-secondary" href="{{ route('designer.tasks.export', [
                 'search' => $search, 'vertical' => $vertical, 'priority' => $priority,
-                'period' => $period, 'date_from' => $dateFrom, 'date_to' => $dateTo,
+                'bd_id' => $bdId, 'period' => $period, 'date_from' => $dateFrom, 'date_to' => $dateTo,
             ]) }}">Export Report</a>
         </div>
 

@@ -4,6 +4,7 @@ namespace App\Livewire\Designer;
 
 use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
+use App\Models\User;
 use App\Services\DesignerHeadTaskBoardService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
@@ -18,6 +19,7 @@ class TaskKanban extends Component
     public string $search = '';
     public string $vertical = '';
     public string $priority = '';
+    public string $bdId = '';
 
     /** current_month | last_month | custom — scopes only the historical/final columns below. */
     public string $period = 'current_month';
@@ -75,7 +77,7 @@ class TaskKanban extends Component
             'vertical' => $this->vertical,
             'priority' => $this->priority,
             'designerId' => (string) Auth::id(),
-            'bdId' => '',
+            'bdId' => $this->bdId,
             'period' => $this->period,
             'dateFrom' => $this->dateFrom,
             'dateTo' => $this->dateTo,
@@ -87,6 +89,7 @@ class TaskKanban extends Component
         $this->search = '';
         $this->vertical = '';
         $this->priority = '';
+        $this->bdId = '';
         $this->period = 'current_month';
         $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
         $this->dateTo = now()->endOfMonth()->format('Y-m-d');
@@ -96,12 +99,15 @@ class TaskKanban extends Component
      * Human-readable "Filter: value" chips for whichever filters are
      * currently non-default, same idea as the Designer Head board.
      */
-    private function appliedFilters(string $periodLabel): SupportCollection
+    private function appliedFilters(SupportCollection $bds, string $periodLabel): SupportCollection
     {
         $chips = collect();
 
         if ($this->search !== '') {
             $chips->push(['label' => 'Search', 'value' => $this->search]);
+        }
+        if ($this->bdId !== '') {
+            $chips->push(['label' => 'BD', 'value' => $bds->firstWhere('id', (int) $this->bdId)?->name ?? '—']);
         }
         if ($this->vertical !== '') {
             $chips->push(['label' => 'Vertical', 'value' => ucwords(str_replace('_', ' ', $this->vertical))]);
@@ -139,11 +145,14 @@ class TaskKanban extends Component
                         ->orWhere('task_name', 'like', $term)
                         ->orWhere('party_name', 'like', $term)
                         ->orWhere('vertical', 'like', $term)
-                        ->orWhere('task_nature', 'like', $term);
+                        ->orWhere('task_nature', 'like', $term)
+                        ->orWhereHas('designer', fn ($designerQuery) => $designerQuery->where('name', 'like', $term))
+                        ->orWhereHas('assigner', fn ($assignerQuery) => $assignerQuery->where('name', 'like', $term));
                 });
             })
             ->when($this->vertical !== '', fn ($query) => $query->where('vertical', $this->vertical))
             ->when($this->priority !== '', fn ($query) => $query->where('priority', $this->priority))
+            ->when($this->bdId !== '', fn ($query) => $query->where('assigned_by', $this->bdId))
             ->orderBy('due_at')
             ->get()
             ->each(fn (DesignTask $task) => $task->status = 'self_declined');
@@ -238,8 +247,33 @@ class TaskKanban extends Component
         });
     }
 
+    /**
+     * BD users who actually assigned/own a task related to this Designer —
+     * currently assigned to them, or self-declined away from them — never
+     * the full BD user list.
+     */
+    private function relatedBds(): SupportCollection
+    {
+        return User::query()
+            ->where('role', 'bd')
+            ->where('is_active', true)
+            ->where(function ($query) {
+                $query->whereHas('createdTasks', fn ($q) => $q->where('designer_id', Auth::id()))
+                    ->orWhereHas('createdTasks', function ($q) {
+                        $q->whereHas('requests', function ($requestQuery) {
+                            $requestQuery->where('request_type', 'decline')
+                                ->where('requested_by', Auth::id())
+                                ->where('overall_status', 'approved');
+                        });
+                    });
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
     public function render()
     {
+        $bds = $this->relatedBds();
         $board = app(DesignerHeadTaskBoardService::class)->build($this->filterArray());
 
         $ownTasks = $board['tasks'];
@@ -260,8 +294,9 @@ class TaskKanban extends Component
             'statuses' => $statuses,
             'tasks' => $tasks,
             'taskTags' => $this->buildTaskTags($tasks),
+            'bds' => $bds,
             'periodLabel' => $periodLabel,
-            'appliedFilters' => $this->appliedFilters($periodLabel),
+            'appliedFilters' => $this->appliedFilters($bds, $periodLabel),
             'activeBreakdown' => $board['activeBreakdown'],
             'stats' => [
                 'total' => $ownTasks->count(),

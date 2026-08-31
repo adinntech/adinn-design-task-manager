@@ -316,7 +316,7 @@
                 <input
                     class="premium-input"
                     type="search"
-                    placeholder="Search Task ID, task name, client, Designer..."
+                    placeholder="Search Task ID, task name, client, Designer, BD..."
                     wire:model.live.debounce.350ms="search"
                 >
 
