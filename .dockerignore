@@ -1,0 +1,10 @@
+.git
+.gitignore
+.idea
+.vscode
+node_modules
+npm-debug.log
+yarn-error.log
+Dockerfile*
+docker-compose*.yml
+*.zip
