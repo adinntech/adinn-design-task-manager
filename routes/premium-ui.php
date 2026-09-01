@@ -11,6 +11,12 @@ Route::middleware(['auth', 'role:bd'])
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+        Route::get('/dashboard/partial', [DashboardController::class, 'fragment'])
+            ->name('dashboard.partial');
+
+        Route::get('/dashboard/ratings', [DashboardController::class, 'ratings'])
+            ->name('dashboard.ratings');
+
         Route::get('/tasks', [AssignedTaskController::class, 'index'])->name('tasks.index');
 
         // /tasks/export itself is registered in web.php's bd group, ahead of the
