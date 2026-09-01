@@ -530,7 +530,7 @@
 
     @if($splitRequests->isNotEmpty())<section class="bd-tab-panel" x-show="tab==='split-details'" x-cloak><div class="panel"><div class="panel-header"><div class="panel-title">Split Details</div></div><div class="panel-body">
         @foreach($splitRequests as $request)
-            <div style="margin-bottom:16px">@include('partials.split-details-card', ['request' => $request])</div>
+            <div style="margin-bottom:16px">@include('partials.split-details-card', ['request' => $request, 'taskShowRoute' => 'bd.tasks.show'])</div>
         @endforeach
     </div></div></section>@endif
 

@@ -57,6 +57,18 @@ class DesignTaskRequest extends Model
         return $this->belongsTo(User::class, 'approved_designer_id');
     }
 
+    /**
+     * The new task created by an approved 'split' request. Not a DB relation —
+     * only the child's id is stored, in split_details.created_task_id (see
+     * DesignTaskRequestService::executeSplit()).
+     */
+    public function createdSplitTask(): ?DesignTask
+    {
+        $id = data_get($this->split_details, 'created_task_id');
+
+        return $id ? DesignTask::find($id) : null;
+    }
+
     public function designerHeadActor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'designer_head_action_by');

@@ -654,17 +654,6 @@ class TaskDetail extends Component
             ->latest()
             ->get();
 
-        $splitChildIds = $splitRequests
-            ->pluck('split_details.created_task_id')
-            ->filter()
-            ->values();
-
-        $splitChildren = DesignTask::query()
-            ->with('designer:id,name')
-            ->whereIn('id', $splitChildIds)
-            ->get(['id', 'task_id', 'task_name', 'designer_id', 'total_creatives', 'status', 'assigned_at'])
-            ->keyBy('id');
-
         $originTaskCode = data_get($this->task->requirements, '_split_from_task_id');
         $splitOriginTask = $originTaskCode
             ? DesignTask::query()->with('designer:id,name')->where('task_id', $originTaskCode)->first()
@@ -757,7 +746,6 @@ class TaskDetail extends Component
             'showTaskUpdation' => $this->canViewTaskUpdation(),
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,
-            'splitChildren' => $splitChildren,
             'splitOriginTask' => $splitOriginTask,
             'requirementAttachmentGroups' => $requirementAttachmentGroups,
             'requirementAttachmentCount' => $requirementAttachmentCount,

@@ -5,6 +5,8 @@
     $isRejected = $request->overall_status === 'rejected';
     $decisionLabel = $isApproved ? 'Approved' : ($isRejected ? 'Rejected' : 'Pending');
     $fmt = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d M Y · h:i A') : null;
+    $createdSplitTask = $request->createdSplitTask();
+    $splitNotes = data_get($request->split_details, 'details');
 @endphp
 
 @once
@@ -43,6 +45,11 @@
     .split-detail-pill.approved{background:#eaf9f2;color:#08784b}
     .split-detail-pill.rejected{background:#fff0f1;color:#b4232f}
     .split-detail-pill.pending{background:#fff5df;color:#9a6500}
+
+    .split-detail-child-card{border:1px solid #eaecf0;border-radius:14px;background:#fff;padding:14px;margin-bottom:14px}
+    .split-detail-child-link{color:#2563eb;font-weight:850;text-decoration:none}
+    .split-detail-child-link:hover{text-decoration:underline}
+    .split-detail-notes{white-space:pre-wrap;font-size:10px;color:#344054;margin:0}
 
     .split-detail-timeline{border:1px solid #eaecf0;border-radius:14px;background:#fff;padding:16px}
     .split-detail-timeline-title{font-size:11px;font-weight:900;color:#101828;margin-bottom:14px}
@@ -142,6 +149,21 @@
         <div class="split-detail-info-row"><span class="split-detail-info-row-label">Decision comment</span><span class="split-detail-info-row-value">{{ $isPending ? 'Pending' : ($request->decision_reason ?: '—') }}</span></div>
     </div>
 </div>
+
+@if($createdSplitTask)
+    <div class="split-detail-child-card">
+        <div class="split-detail-info-title">Created Split Task</div>
+        <div class="split-detail-info-row"><span class="split-detail-info-row-label">Task ID</span><span class="split-detail-info-row-value"><a class="split-detail-child-link" href="{{ $taskShowRoute ? route($taskShowRoute, $createdSplitTask) : '#' }}">{{ $createdSplitTask->task_id }}</a></span></div>
+        <div class="split-detail-info-row"><span class="split-detail-info-row-label">Task Name</span><span class="split-detail-info-row-value"><a class="split-detail-child-link" href="{{ $taskShowRoute ? route($taskShowRoute, $createdSplitTask) : '#' }}">{{ $createdSplitTask->display_task_name ?? $createdSplitTask->task_name }}</a></span></div>
+    </div>
+@endif
+
+@if($splitNotes)
+    <div class="split-detail-child-card">
+        <div class="split-detail-info-title">Split Notes</div>
+        <p class="split-detail-notes">{{ $splitNotes }}</p>
+    </div>
+@endif
 
 <div class="split-detail-timeline">
     <div class="split-detail-timeline-title">3. Split Request Timeline</div>

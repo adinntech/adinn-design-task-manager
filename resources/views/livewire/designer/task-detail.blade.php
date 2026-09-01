@@ -1087,17 +1087,8 @@
                         </div>
                     @endif
                     @foreach($splitRequests as $splitRequest)
-                        @php
-                            $splitChild = $splitChildren->get($splitRequest->split_details['created_task_id'] ?? null);
-                        @endphp
                         <div style="margin-bottom:16px">
-                            @include('partials.split-details-card', ['request' => $splitRequest])
-                            @if($splitChild)
-                                <div class="activity-item" style="margin-top:10px"><strong>Created Split Task</strong><p>{{ $splitChild->task_id }} · {{ $splitChild->display_task_name ?? $splitChild->task_name }}</p></div>
-                            @endif
-                            @if(!empty($splitRequest->split_details['details']))
-                                <div class="activity-item" style="margin-top:10px"><strong>Split Notes</strong><p style="white-space:pre-wrap">{{ $splitRequest->split_details['details'] }}</p></div>
-                            @endif
+                            @include('partials.split-details-card', ['request' => $splitRequest, 'taskShowRoute' => 'designer.tasks.show'])
                         </div>
                     @endforeach
                 </div>

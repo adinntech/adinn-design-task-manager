@@ -277,7 +277,7 @@
                     @endphp
 
                     <div id="request-{{ $request->id }}">
-                        @include('partials.split-details-card', ['request' => $request])
+                        @include('partials.split-details-card', ['request' => $request, 'taskShowRoute' => 'designer-head.tasks.show'])
 
                         @if($isPendingRequest)
                             <div class="head-decision">
