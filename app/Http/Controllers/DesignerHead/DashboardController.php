@@ -273,22 +273,58 @@ class DashboardController extends Controller
             ['key' => 'declined', 'label' => 'Declined Tasks', 'value' => $approvedInMonthFor('decline'), 'color' => '#c01048'],
         ];
 
-        /* ---- Six-month trend ending at the selected month ---- */
-        $line = collect(range(5, 0))->map(function (int $offset) use ($month, $completedAtByTask, $reviewByTaskId) {
+        /* ---- Performance Trend metric cards (selected-month cohort) ---- */
+        $overdueCompletedCount = $scopedTasks
+            ->filter(fn (DesignTask $task) => $task->status === 'completed'
+                && $task->due_at
+                && ($completedAtByTask->get($task->id) ?? null)
+                && $task->due_at->lt($completedAtByTask->get($task->id)))
+            ->count();
+        $trendCards = [
+            ['label' => 'Assigned Tasks', 'value' => $scopedTasks->count(), 'color' => '#2970ff'],
+            ['label' => 'In Progress', 'value' => $scopedTasks->where('status', 'in_progress')->count(), 'color' => '#7c3aed'],
+            ['label' => 'Completed', 'value' => $scopedTasks->where('status', 'completed')->count(), 'color' => '#027a48'],
+            ['label' => 'Overdue & Completed', 'value' => $overdueCompletedCount, 'color' => '#f79009'],
+            ['label' => 'Declined', 'value' => $approvedInMonthFor('decline'), 'color' => '#c01048'],
+        ];
+        $trendContext = trim(($designerId ? $designers->firstWhere('id', $designerId)?->name : 'All Designers').' • '.$month->format('M Y'));
+
+        /* ---- Six-month trend ending at the selected month (shared shape across all roles) ---- */
+        $line = collect(range(5, 0))->map(function (int $offset) use ($month, $tasks, $allRequests, $completedAtByTask, $designerId) {
             $start = $month->copy()->subMonths($offset)->startOfMonth();
             $end = $start->copy()->endOfMonth();
-            $ids = $completedAtByTask
-                ->filter(fn (Carbon $ts) => $ts->betweenIncluded($start, $end))
-                ->keys();
-            $ratings = $ids
-                ->map(fn ($id) => $reviewByTaskId->get((int) $id)?->overall_rating)
-                ->filter(fn ($value) => $value !== null)
-                ->values();
+            $monthTasks = $tasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($start, $end));
+
+            $completedIds = collect();
+            foreach ($completedAtByTask as $tid => $ts) {
+                if ($ts->betweenIncluded($start, $end)) {
+                    $completedIds->push((int) $tid);
+                }
+            }
+
+            $overdueCompleted = 0;
+            foreach ($completedIds as $tid) {
+                $task = $tasks->firstWhere('id', $tid);
+                if ($task && $task->due_at && $task->due_at->lt($completedAtByTask[$tid])) {
+                    $overdueCompleted++;
+                }
+            }
+
+            $declined = $allRequests
+                ->filter(fn ($r) => $r->request_type === 'decline'
+                    && $r->overall_status === 'approved'
+                    && ($designerId === null || (int) $r->requested_by === $designerId)
+                    && $r->responded_at !== null
+                    && $r->responded_at->betweenIncluded($start, $end))
+                ->count();
 
             return [
                 'label' => $start->format('M y'),
-                'completed' => $ids->count(),
-                'rating' => $ratings->count() ? round((float) $ratings->avg(), 1) : null,
+                'assigned' => $monthTasks->count(),
+                'in_progress' => $monthTasks->where('status', 'in_progress')->count(),
+                'completed' => $completedIds->count(),
+                'overdue_completed' => $overdueCompleted,
+                'declined' => $declined,
             ];
         })->values();
 
@@ -466,6 +502,8 @@ class DashboardController extends Controller
             'workload' => $workload,
             'bar' => $bar,
             'line' => $line,
+            'trendCards' => $trendCards,
+            'trendContext' => $trendContext,
             'taskRows' => $taskRows,
             'reworkRows' => $reworkRows,
             'bdReviewRows' => $bdReviewRows,

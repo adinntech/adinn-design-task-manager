@@ -256,23 +256,42 @@ class DashboardController extends Controller
             ['key' => 'declined', 'label' => 'Declined Tasks', 'value' => $approvedInMonthFor('decline'), 'color' => '#c01048'],
         ];
 
-        /* ---- Six-month performance trend ---- */
-        $line = collect(range(5, 0))->map(function (int $offset) use ($month, $tasks, $reviewByTaskId) {
+        /* ---- Six-month performance trend (shared shape across all roles) ---- */
+        $line = collect(range(5, 0))->map(function (int $offset) use ($month, $filteredTasks, $allRequests, $completedAtByTask, $designerId) {
             $start = $month->copy()->subMonths($offset)->startOfMonth();
             $end = $start->copy()->endOfMonth();
-            $monthTasks = $tasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($start, $end));
-            $completedCount = $monthTasks->where('status', 'completed')->count();
-            $inProgressCount = $monthTasks->where('status', 'in_progress')->count();
-            $ratings = $monthTasks
-                ->map(fn (DesignTask $task) => $reviewByTaskId->get((int) $task->id)?->overall_rating)
-                ->filter(fn ($value) => $value !== null);
+            $monthTasks = $filteredTasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($start, $end));
+
+            $completedIds = collect();
+            foreach ($completedAtByTask as $tid => $ts) {
+                if ($ts->betweenIncluded($start, $end)) {
+                    $completedIds->push((int) $tid);
+                }
+            }
+
+            $overdueCompleted = 0;
+            foreach ($completedIds as $tid) {
+                $task = $filteredTasks->firstWhere('id', $tid);
+                if ($task && $task->due_at && $task->due_at->lt($completedAtByTask[$tid])) {
+                    $overdueCompleted++;
+                }
+            }
+
+            $declined = $allRequests
+                ->filter(fn ($r) => $r->request_type === 'decline'
+                    && $r->overall_status === 'approved'
+                    && ($designerId === null || (int) $r->requested_by === $designerId)
+                    && $r->responded_at !== null
+                    && $r->responded_at->betweenIncluded($start, $end))
+                ->count();
 
             return [
                 'label' => $start->format('M y'),
                 'assigned' => $monthTasks->count(),
-                'completed' => $completedCount,
-                'in_progress' => $inProgressCount,
-                'rating' => $ratings->count() ? round((float) $ratings->avg(), 1) : null,
+                'in_progress' => $monthTasks->where('status', 'in_progress')->count(),
+                'completed' => $completedIds->count(),
+                'overdue_completed' => $overdueCompleted,
+                'declined' => $declined,
             ];
         })->values();
 
@@ -433,6 +452,22 @@ class DashboardController extends Controller
             'label' => $now->copy()->subMonths($offset)->format('F Y'),
         ])->values();
 
+        /* ---- Performance Trend metric cards (selected-month cohort) ---- */
+        $overdueCompletedCount = $scopedTasks
+            ->filter(fn (DesignTask $task) => $task->status === 'completed'
+                && $task->due_at
+                && ($completedAtByTask->get($task->id) ?? null)
+                && $task->due_at->lt($completedAtByTask->get($task->id)))
+            ->count();
+        $trendCards = [
+            ['label' => 'Assigned Tasks', 'value' => $scopedTasks->count(), 'color' => '#2970ff'],
+            ['label' => 'In Progress', 'value' => $scopedTasks->where('status', 'in_progress')->count(), 'color' => '#7c3aed'],
+            ['label' => 'Completed', 'value' => $scopedTasks->where('status', 'completed')->count(), 'color' => '#027a48'],
+            ['label' => 'Overdue & Completed', 'value' => $overdueCompletedCount, 'color' => '#f79009'],
+            ['label' => 'Declined', 'value' => $approvedInMonthFor('decline'), 'color' => '#c01048'],
+        ];
+        $trendContext = trim(($designerId ? $designers->firstWhere('id', $designerId)?->name : 'All Designers').' • '.$month->format('M Y'));
+
         return [
             'stats' => $stats,
             'designers' => $designers,
@@ -444,6 +479,8 @@ class DashboardController extends Controller
             'workload' => $workload,
             'bar' => $bar,
             'line' => $line,
+            'trendCards' => $trendCards,
+            'trendContext' => $trendContext,
             'taskRows' => $taskRows,
             'reworkRows' => $reworkRows,
             'bdReviewRows' => $bdReviewRows,

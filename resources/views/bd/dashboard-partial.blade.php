@@ -28,37 +28,6 @@
         return $html.'</span>';
     };
     $barMax = max(1, collect($bar)->max('value'));
-    $chartW = 640; $chartH = 150; $padX = 44; $padY = 18;
-    $lineCount = $line->count();
-    $stepX = $lineCount > 1 ? ($chartW - $padX * 2) / ($lineCount - 1) : 0;
-    $series = [
-        'assigned' => ['key' => 'assigned', 'color' => 'trend-assigned', 'point' => 'trend-point-assigned', 'label' => 'Assigned'],
-        'completed' => ['key' => 'completed', 'color' => 'trend-completed', 'point' => 'trend-point-completed', 'label' => 'Completed'],
-        'in_progress' => ['key' => 'in_progress', 'color' => 'trend-progress', 'point' => 'trend-point-progress', 'label' => 'In Progress'],
-    ];
-    $countMax = max(1, (int) collect($series)->map(fn ($s) => $line->max($s['key']))->max());
-    $points = collect($series)->map(function ($s) use ($line, $stepX, $padX, $chartH, $padY, $countMax) {
-        return $line->values()->map(function (array $m, int $i) use ($s, $stepX, $padX, $chartH, $padY, $countMax) {
-            return [
-                'x' => round($padX + $i * $stepX, 1),
-                'y' => round($chartH - $padY - (($m[$s['key']] / $countMax) * ($chartH - $padY * 2)), 1),
-                'label' => $m['label'],
-                'series' => $s['label'],
-                'v' => (int) $m[$s['key']],
-            ];
-        });
-    });
-    $rPoints = $line->values()->map(function (array $m, int $i) use ($stepX, $padX, $chartH, $padY) {
-        return [
-            'x' => round($padX + $i * $stepX, 1),
-            'y' => $m['rating'] !== null ? round($chartH - $padY - (($m['rating'] / 5) * ($chartH - $padY * 2)), 1) : null,
-            'label' => $m['label'],
-            'v' => $m['rating'],
-        ];
-    });
-    $poly = $points->map(fn ($pts) => $pts->map(fn ($p) => $p['x'].','.$p['y'])->implode(' '));
-    $rPointsVal = $rPoints->whereNotNull('y')->values();
-    $rPoly = $rPointsVal->map(fn ($p) => $p['x'].','.$p['y'])->implode(' ');
 @endphp
 
 <div class="dh-zone-inner">
@@ -212,71 +181,11 @@
             </div>
         </section>
 
-        <section class="dh-card">
-            <div class="dh-card-head">
-                <div>
-                    <div class="dh-card-title">Performance Trend</div>
-                    <div class="dh-card-sub">Monthly task counts &amp; average rating · last 6 months</div>
-                </div>
-            </div>
-            <div class="dh-card-body">
-                @php
-                    $last = $line->last() ?? ['assigned' => 0, 'completed' => 0, 'rating' => null];
-                    $lastRating = $last['rating'] !== null ? number_format((float) $last['rating'], 1) : '—';
-                    $latestRated = $line->reverse()->first(fn ($m) => $m['rating'] !== null);
-                    $lastRating = $latestRated && $latestRated['rating'] !== null ? number_format((float) $latestRated['rating'], 1) : '—';
-                @endphp
-                <div class="dh-trend-summary">
-                    <div class="dh-trend-stat"><span class="dh-trend-stat-label">Assigned Tasks</span><span class="dh-trend-stat-value">{{ $last['assigned'] }}</span></div>
-                    <div class="dh-trend-stat"><span class="dh-trend-stat-label">Completed Tasks</span><span class="dh-trend-stat-value">{{ $last['completed'] }}</span></div>
-                    <div class="dh-trend-stat"><span class="dh-trend-stat-label">Avg Rating</span><span class="dh-trend-stat-value">{{ $lastRating }} <em>/ 5</em></span></div>
-                </div>
-
-                <svg class="dh-line-chart" viewBox="0 0 {{ $chartW }} {{ $chartH + 24 }}" preserveAspectRatio="xMidYMid meet">
-                    @foreach([0.25, 0.5, 0.75] as $frac)
-                        @php $gy = $chartH - $padY - $frac * ($chartH - $padY * 2); @endphp
-                        <line class="grid-line" x1="{{ $padX }}" x2="{{ $chartW - $padX }}" y1="{{ $gy }}" y2="{{ $gy }}"/>
-                    @endforeach
-                    @foreach($poly as $s => $pts)@if($pts)<polyline class="trend-line {{ $series[$s]['color'] }}" points="{{ $pts }}"/>@endif@endforeach
-                    @foreach($points as $s => $pts)
-                        @foreach($pts as $p)
-                            <circle class="trend-point {{ $series[$s]['point'] }}" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"><title>{{ $p['series'] }} · {{ $p['label'] }}: {{ $p['v'] }}</title></circle>
-                            <text class="trend-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ $p['v'] }}</text>
-                        @endforeach
-                    @endforeach
-                    @foreach($points->first() as $p)
-                        <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
-                    @endforeach
-                    <text class="chart-axis-label" x="8" y="{{ $chartH - $padY }}" text-anchor="middle">Tasks</text>
-                </svg>
-                <div class="dh-chart-legend">
-                    <span><i class="dh-legend-dot" style="background:#2970ff"></i>Assigned</span>
-                    <span><i class="dh-legend-dot" style="background:#027a48"></i>Completed</span>
-                    <span><i class="dh-legend-dot" style="background:#3538cd"></i>In Progress</span>
-                </div>
-
-                <div class="dh-trend-rating-head"><span class="dh-trend-rating-title">Average Rating</span><span class="dh-trend-rating-scale">scale 0 – 5</span></div>
-                <svg class="dh-line-chart dh-rating-chart" viewBox="0 0 {{ $chartW }} {{ $chartH + 24 }}" preserveAspectRatio="xMidYMid meet">
-                    @foreach([0.25, 0.5, 0.75] as $frac)
-                        @php $gy = $chartH - $padY - $frac * ($chartH - $padY * 2); @endphp
-                        <line class="grid-line" x1="{{ $padX }}" x2="{{ $chartW - $padX }}" y1="{{ $gy }}" y2="{{ $gy }}"/>
-                    @endforeach
-                    @if($rPoly)<polyline class="trend-line trend-rating" points="{{ $rPoly }}"/>@endif
-                    @foreach($rPoints as $p)
-                        @if($p['y'] !== null)
-                            <circle class="trend-point trend-point-rating" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"><title>Avg Rating · {{ $p['label'] }}: {{ $fmt($p['v']) }} / 5</title></circle>
-                            <text class="trend-value trend-value-rating" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ number_format((float) $p['v'], 1) }}</text>
-                        @endif
-                    @endforeach
-                    @foreach($points->first() as $p)
-                        <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
-                    @endforeach
-                </svg>
-                <div class="dh-chart-legend">
-                    <span><i class="dh-legend-dot dh-legend-dashed" style="background:#f5b301"></i>Avg Rating / 5</span>
-                </div>
-            </div>
-        </section>
+        @include('shared.performance-trend', [
+            'trendCards' => $trendCards,
+            'trendData' => $line,
+            'trendContext' => $trendContext,
+        ])
     </div>
 
     {{-- 6. Overdue Tasks --}}

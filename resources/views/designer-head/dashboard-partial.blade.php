@@ -28,28 +28,6 @@
         return $html.'</span>';
     };
     $barMax = max(1, collect($bar)->max('value'));
-    $chartW = 640; $chartH = 150; $padX = 34; $padY = 18;
-    $lineCount = $line->count();
-    $stepX = $lineCount > 1 ? ($chartW - $padX * 2) / ($lineCount - 1) : 0;
-    $maxCount = max(1, (int) $line->max('completed'));
-    $cPoints = $line->values()->map(function (array $m, int $i) use ($stepX, $padX, $maxCount, $chartH, $padY) {
-        return [
-            'x' => $padX + $i * $stepX,
-            'y' => $chartH - $padY - (($m['completed'] / $maxCount) * ($chartH - $padY * 2)),
-            'label' => $m['label'],
-            'v' => (int) $m['completed'],
-        ];
-    });
-    $rPoints = $line->values()->map(function (array $m, int $i) use ($stepX, $padX, $chartH, $padY) {
-        return [
-            'x' => $padX + $i * $stepX,
-            'y' => $m['rating'] !== null ? ($chartH - $padY - (($m['rating'] / 5) * ($chartH - $padY * 2))) : null,
-            'v' => $m['rating'],
-        ];
-    });
-    $cPoly = $cPoints->map(fn ($p) => round($p['x'], 1).','.round($p['y'], 1))->implode(' ');
-    $rPointsVal = $rPoints->whereNotNull('y')->values();
-    $rPoly = $rPointsVal->map(fn ($p) => round($p['x'], 1).','.round($p['y'], 1))->implode(' ');
 @endphp
 
 <div class="dh-zone-inner">
@@ -133,41 +111,11 @@
             </div>
         </section>
 
-        <section class="dh-card">
-            <div class="dh-card-head">
-                <div>
-                    <div class="dh-card-title">Performance Trend</div>
-                    <div class="dh-card-sub">Completed tasks &amp; average rating · last 6 months</div>
-                </div>
-            </div>
-            <div class="dh-card-body">
-                <svg class="dh-line-chart" viewBox="0 0 {{ $chartW }} {{ $chartH + 24 }}" preserveAspectRatio="xMidYMid meet">
-                    @foreach([0.25, 0.5, 0.75] as $frac)
-                        @php $gy = $chartH - $padY - $frac * ($chartH - $padY * 2); @endphp
-                        <line class="grid-line" x1="{{ $padX }}" x2="{{ $chartW - $padX }}" y1="{{ $gy }}" y2="{{ $gy }}"/>
-                    @endforeach
-                    @if($cPoly)<polyline class="trend-line trend-completed" points="{{ $cPoly }}"/>@endif
-                    @if($rPoly)<polyline class="trend-line trend-rating" points="{{ $rPoly }}"/>@endif
-                    @foreach($cPoints as $p)
-                        <circle class="trend-point trend-point-completed" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"/>
-                        <text class="trend-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ $p['v'] }}</text>
-                    @endforeach
-                    @foreach($rPoints as $p)
-                        @if($p['y'] !== null)
-                            <circle class="trend-point trend-point-rating" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"/>
-                            <text class="trend-value trend-value-rating" x="{{ $p['x'] }}" y="{{ $p['y'] + 13 }}" text-anchor="middle">{{ $fmt($p['v']) }}</text>
-                        @endif
-                    @endforeach
-                    @foreach($cPoints as $p)
-                        <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
-                    @endforeach
-                </svg>
-                <div class="dh-chart-legend">
-                    <span><i class="dh-legend-dot" style="background:#e30613"></i>Completed</span>
-                    <span><i class="dh-legend-dot" style="background:#f5b301"></i>Avg Rating / 5</span>
-                </div>
-            </div>
-        </section>
+        @include('shared.performance-trend', [
+            'trendCards' => $trendCards,
+            'trendData' => $line,
+            'trendContext' => $trendContext,
+        ])
     </div>
 
     {{-- 10. Overdue tracking --}}

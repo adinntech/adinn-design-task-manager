@@ -227,6 +227,67 @@ class DashboardController extends Controller
             ->values()
             ->take(100);
 
+        /* ---- Performance Trend (shared shape): last 6 months, self-scoped ---- */
+        $today = now();
+        $line = collect(range(5, 0))->map(function (int $offset) use ($today, $tasks, $ownRequests, $completedAtByTask) {
+            $start = $today->copy()->startOfMonth()->subMonths($offset);
+            $end = $start->copy()->endOfMonth();
+            $monthTasks = $tasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($start, $end));
+
+            $completedIds = collect();
+            foreach ($completedAtByTask as $tid => $ts) {
+                if ($ts->betweenIncluded($start, $end)) {
+                    $completedIds->push((int) $tid);
+                }
+            }
+
+            $overdueCompleted = 0;
+            foreach ($completedIds as $tid) {
+                $task = $tasks->firstWhere('id', $tid);
+                if ($task && $task->due_at && $task->due_at->lt($completedAtByTask[$tid])) {
+                    $overdueCompleted++;
+                }
+            }
+
+            $declined = $ownRequests
+                ->filter(fn ($r) => $r->request_type === 'decline'
+                    && $r->overall_status === 'approved'
+                    && $r->responded_at !== null
+                    && $r->responded_at->betweenIncluded($start, $end))
+                ->count();
+
+            return [
+                'label' => $start->format('M y'),
+                'assigned' => $monthTasks->count(),
+                'in_progress' => $monthTasks->where('status', 'in_progress')->count(),
+                'completed' => $completedIds->count(),
+                'overdue_completed' => $overdueCompleted,
+                'declined' => $declined,
+            ];
+        })->values();
+
+        $currentMonthTasks = $tasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($today->copy()->startOfMonth(), $today->copy()->endOfMonth()));
+        $overdueCompletedCount = $currentMonthTasks
+            ->filter(fn (DesignTask $task) => $task->status === 'completed'
+                && $task->due_at
+                && ($completedAtByTask->get($task->id) ?? null)
+                && $task->due_at->lt($completedAtByTask->get($task->id)))
+            ->count();
+        $approvedDeclines = $ownRequests
+            ->filter(fn ($r) => $r->request_type === 'decline'
+                && $r->overall_status === 'approved'
+                && $r->responded_at !== null
+                && $r->responded_at->betweenIncluded($today->copy()->startOfMonth(), $today->copy()->endOfMonth()))
+            ->count();
+        $trendCards = [
+            ['label' => 'Assigned Tasks', 'value' => $currentMonthTasks->count(), 'color' => '#2970ff'],
+            ['label' => 'In Progress', 'value' => $currentMonthTasks->where('status', 'in_progress')->count(), 'color' => '#7c3aed'],
+            ['label' => 'Completed', 'value' => $currentMonthTasks->where('status', 'completed')->count(), 'color' => '#027a48'],
+            ['label' => 'Overdue & Completed', 'value' => $overdueCompletedCount, 'color' => '#f79009'],
+            ['label' => 'Declined', 'value' => $approvedDeclines, 'color' => '#c01048'],
+        ];
+        $trendContext = trim('My Tasks'.' • '.$today->format('M Y'));
+
         return view('designer.dashboard', [
             'stats' => $stats,
             'recentTasks' => $tasks->take(12),
@@ -241,6 +302,9 @@ class DashboardController extends Controller
             'overallRating' => $overallRating,
             'reviewCards' => $reviewCards,
             'overallRework' => $overallRework,
+            'line' => $line,
+            'trendCards' => $trendCards,
+            'trendContext' => $trendContext,
         ]);
     }
 

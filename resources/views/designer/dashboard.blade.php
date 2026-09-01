@@ -297,34 +297,13 @@
     </section>
 
     <section class="bd-card">
-        <div class="bd-card-head"><div class="bd-card-title">Monthly Completed Tasks Trend</div></div>
+        <div class="bd-card-head"><div class="bd-card-title">Performance Trend</div></div>
         <div class="bd-card-body">
-            @php
-                $trendMax = max(1, $monthlyTrend->max('count'));
-                $chartW = 600; $chartH = 90; $padX = 22; $padY = 16;
-                $stepX = $monthlyTrend->count() > 1 ? ($chartW - $padX * 2) / ($monthlyTrend->count() - 1) : 0;
-                $trendPoints = $monthlyTrend->values()->map(function (array $m, int $i) use ($trendMax, $chartH, $padY, $padX, $stepX) {
-                    return [
-                        'x' => $padX + $i * $stepX,
-                        'y' => $chartH - $padY - (($m['count'] / $trendMax) * ($chartH - $padY * 2)),
-                        'label' => $m['label'],
-                        'count' => $m['count'],
-                    ];
-                });
-                $trendPolyline = $trendPoints->map(fn ($p) => round($p['x'], 1).','.round($p['y'], 1))->implode(' ');
-            @endphp
-            <svg class="bd-line-chart" viewBox="0 0 {{ $chartW }} {{ $chartH + 14 }}" preserveAspectRatio="xMidYMid meet">
-                @foreach([0.25, 0.5, 0.75] as $frac)
-                    @php $gy = $chartH - $padY - $frac * ($chartH - $padY * 2); @endphp
-                    <line class="grid-line" x1="{{ $padX }}" x2="{{ $chartW - $padX }}" y1="{{ $gy }}" y2="{{ $gy }}"/>
-                @endforeach
-                <polyline class="trend-line" points="{{ $trendPolyline }}"/>
-                @foreach($trendPoints as $p)
-                    <circle class="trend-point" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"/>
-                    <text class="trend-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 8 }}" text-anchor="middle">{{ $p['count'] }}</text>
-                    <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
-                @endforeach
-            </svg>
+            @include('shared.performance-trend', [
+                'trendCards' => $trendCards,
+                'trendData' => $line,
+                'trendContext' => $trendContext,
+            ])
         </div>
     </section>
 
