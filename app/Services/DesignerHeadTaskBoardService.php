@@ -26,6 +26,18 @@ use Illuminate\Support\Collection as SupportCollection;
 class DesignerHeadTaskBoardService
 {
     /**
+     * Statuses eligible to carry forward into the current month when a task
+     * originated earlier but hasn't reached a terminal state yet. Deliberately
+     * excludes completed/swap_tasks (terminal) — decline is excluded further
+     * down via the approved-decline-request check, matching how tasksFor()
+     * already treats declined tasks as a terminal/historical event.
+     */
+    private const CARRY_FORWARD_STATUSES = [
+        'assigned_tasks', 'review_analysis', 'need_clarification',
+        'yet_to_start', 'in_progress', 'waiting_confirmation', 'rework',
+    ];
+
+    /**
      * @param  array{search:string,vertical:string,priority:string,designerId:string,bdId:string,period:string,dateFrom:string,dateTo:string}  $filters
      */
     public function build(array $filters): array
@@ -211,6 +223,10 @@ class DesignerHeadTaskBoardService
             ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
             ->values();
 
+        if ($filters['period'] === 'current_month') {
+            $tasks = $tasks->concat($this->carryForwardTasks($filters, $periodStart))->values();
+        }
+
         $declinedTaskIds = DesignTaskRequest::query()
             ->where('request_type', 'decline')
             ->where('overall_status', 'approved')
@@ -224,6 +240,38 @@ class DesignerHeadTaskBoardService
                 $task->status = 'decline_tasks';
             }
         });
+    }
+
+    /**
+     * Still-open tasks that originated before the current month but haven't
+     * reached a terminal state — carried into the current-month board (under
+     * their real status/column) so open work never silently disappears just
+     * because the calendar rolled over. Excludes any task with an approved
+     * decline request (declines are a terminal/historical event, same as
+     * tasksFor()'s 'decline_tasks' override — see CARRY_FORWARD_STATUSES).
+     */
+    private function carryForwardTasks(array $filters, Carbon $periodStart): Collection
+    {
+        $declinedTaskIds = DesignTaskRequest::query()
+            ->where('request_type', 'decline')
+            ->where('overall_status', 'approved')
+            ->whereNotNull('approved_designer_id')
+            ->pluck('design_task_id');
+
+        return $this->applyFilters(
+            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
+            $filters
+        )
+            ->whereIn('status', self::CARRY_FORWARD_STATUSES)
+            ->where('created_at', '<', $periodStart)
+            ->whereNotIn('id', $declinedTaskIds)
+            ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
+            ->orderBy('due_at')
+            ->get()
+            ->each(function (DesignTask $task) {
+                $task->setAttribute('is_previous_month_task', true);
+                $task->setAttribute('previous_month_label', 'Previous Month Task • '.$task->created_at->format('M Y'));
+            });
     }
 
     /**

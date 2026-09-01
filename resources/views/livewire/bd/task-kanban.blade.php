@@ -9,6 +9,7 @@
         .metric-active-breakdown{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
         .metric-active-chip{font-size:8px;font-weight:800;color:#475467;background:#f2f4f7;border-radius:999px;padding:2px 7px;white-space:nowrap}
         .continuation-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:8px;font-weight:800;line-height:1.4}
+        .previous-month-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:8px;font-weight:800;line-height:1.4}
         .applied-filters{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid #eef0f3}
         .applied-filters-label{font-size:9px;font-weight:900;color:#475467;text-transform:uppercase;letter-spacing:.04em}
         .applied-filter-chip{font-size:9px;font-weight:850;color:#101828;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:999px;padding:5px 10px;white-space:nowrap}
@@ -442,6 +443,9 @@
                                     <div class="task-card-client">{{ ucfirst($task->party_type) }} · {{ $task->party_name }}</div>
                                     @if($task->continuation_label ?? null)
                                         <div class="continuation-badge">{{ $task->continuation_label }}@if($task->continuation_event_label ?? null) · {{ $task->continuation_event_label }}@endif</div>
+                                    @endif
+                                    @if($task->is_previous_month_task ?? false)
+                                        <div class="previous-month-badge">{{ $task->previous_month_label }}</div>
                                     @endif
                                     @include('partials.kanban-task-progress', ['task' => $task])
 
