@@ -248,6 +248,7 @@ class TaskKanban extends Component
         return view('livewire.bd.task-kanban', [
             'statuses' => $board['statuses'],
             'tasks' => $tasks,
+            'splitLogRows' => $board['splitLogRows'],
             'taskTags' => $this->buildTaskTags($tasks),
             'designers' => $designers,
             'periodLabel' => $periodLabel,

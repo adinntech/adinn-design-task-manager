@@ -452,40 +452,6 @@
                 </div>
             </section>
 
-            <section class="kanban-column request-column" data-status="split_log" wire:key="designer-head-split-log">
-                <header class="kanban-column-header">
-                    <span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span>
-                    <span class="kanban-count">{{ $splitLogRows->count() }}</span>
-                </header>
-
-                <div class="kanban-list">
-                    @forelse($splitLogRows as $row)
-                        @php $childTask = $row['childTask']; $request = $row['request']; @endphp
-                        <article class="task-card request-card">
-                            <a class="task-card-link" href="{{ route('designer-head.tasks.show', $childTask) }}" draggable="false">
-                                <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-                                    <div class="task-card-id">{{ $childTask->task_id }}</div>
-                                    <span class="request-type-pill request-type-split">Split</span>
-                                </div>
-
-                                <div class="task-card-name">{{ $childTask->display_task_name ?? $childTask->task_name }}</div>
-
-                                <div class="task-card-meta">
-                                    <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
-                                    <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
-                                    <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
-                                    <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
-                                </div>
-
-                                <div class="request-open-label">Open task</div>
-                            </a>
-                        </article>
-                    @empty
-                        <div class="empty-state">No splits approved in {{ $periodLabel }}.</div>
-                    @endforelse
-                </div>
-            </section>
-
             @foreach($statuses as $statusKey => $statusLabel)
                 @php
                     $columnTasks = $tasks->where('status', $statusKey);
@@ -620,6 +586,42 @@
                         @endforelse
                     </div>
                 </section>
+
+                @if($statusKey === 'completed')
+                    <section class="kanban-column request-column" data-status="split_log" wire:key="designer-head-split-log">
+                        <header class="kanban-column-header">
+                            <span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span>
+                            <span class="kanban-count">{{ $splitLogRows->count() }}</span>
+                        </header>
+
+                        <div class="kanban-list">
+                            @forelse($splitLogRows as $row)
+                                @php $childTask = $row['childTask']; $request = $row['request']; @endphp
+                                <article class="task-card request-card">
+                                    <a class="task-card-link" href="{{ route('designer-head.tasks.show', $childTask) }}" draggable="false">
+                                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                                            <div class="task-card-id">{{ $childTask->task_id }}</div>
+                                            <span class="request-type-pill request-type-split">Split</span>
+                                        </div>
+
+                                        <div class="task-card-name">{{ $childTask->display_task_name ?? $childTask->task_name }}</div>
+
+                                        <div class="task-card-meta">
+                                            <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
+                                            <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
+                                        </div>
+
+                                        <div class="request-open-label">Open task</div>
+                                    </a>
+                                </article>
+                            @empty
+                                <div class="empty-state">No splits approved in {{ $periodLabel }}.</div>
+                            @endforelse
+                        </div>
+                    </section>
+                @endif
             @endforeach
         </div>
     </div>

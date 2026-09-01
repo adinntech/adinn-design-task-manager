@@ -1089,33 +1089,15 @@
                     @foreach($splitRequests as $splitRequest)
                         @php
                             $splitChild = $splitChildren->get($splitRequest->split_details['created_task_id'] ?? null);
-                            $splitDecider = $splitRequest->adminActor ?: $splitRequest->designerHeadActor;
-                            $splitPending = in_array($splitRequest->overall_status, ['pending_approval','pending_designer_head','pending_admin'], true);
-                            $splitBadge = $splitRequest->overall_status === 'approved' ? 'badge-success' : ($splitRequest->overall_status === 'rejected' ? 'badge-danger' : 'badge-warning');
-                            $requestedSplit = $splitRequest->split_details['requested_creative_count'] ?? $splitRequest->split_details['creative_count'] ?? '—';
-                            $approvedSplit = $splitRequest->split_details['approved_creative_count'] ?? '—';
                         @endphp
-                        <div class="activity-item" style="margin-bottom:12px">
-                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-                                <strong>Split Request</strong>
-                                <span class="badge {{ $splitBadge }}">{{ $splitPending ? 'Pending' : ($splitRequest->overall_status === 'rejected' ? 'Declined' : 'Approved') }}</span>
-                            </div>
-                            <div class="special-detail-grid" style="margin-top:10px">
-                                <div class="special-detail-card"><span>Requested By</span><strong>{{ $splitRequest->requester?->name ?? 'Designer' }}</strong></div>
-                                <div class="special-detail-card"><span>Requested At</span><strong>{{ $splitRequest->created_at?->format('d M Y · h:i A') }}</strong></div>
-                                <div class="special-detail-card"><span>Requested Split</span><strong>{{ $requestedSplit }} creatives</strong></div>
-                                <div class="special-detail-card"><span>Approved Split</span><strong>{{ $approvedSplit === '—' ? '—' : $approvedSplit.' creatives' }}</strong></div>
-                                <div class="special-detail-card"><span>Preferred Designer</span><strong>{{ $splitRequest->targetDesigner?->name ?? 'No preference' }}</strong></div>
-                                <div class="special-detail-card"><span>Approved Designer</span><strong>{{ $splitRequest->approvedDesigner?->name ?? '—' }}</strong></div>
-                                <div class="special-detail-card"><span>Created Split Task</span><strong>{{ $splitChild?->task_id ?? ($splitRequest->split_details['created_task_code'] ?? '—') }}</strong></div>
-                                <div class="special-detail-card"><span>Responded By</span><strong>{{ $splitDecider?->name ?? '—' }}</strong></div>
-                                <div class="special-detail-card"><span>Responded At</span><strong>{{ $splitPending ? 'Pending Response' : ($splitRequest->admin_action_at?->format('d M Y · h:i A') ?? $splitRequest->designer_head_action_at?->format('d M Y · h:i A') ?? '—') }}</strong></div>
-                            </div>
-                            <div style="margin-top:10px"><strong>Request Reason</strong><p style="white-space:pre-wrap">{{ $splitRequest->reason }}</p></div>
-                            @if($splitRequest->overall_status === 'rejected')
-                                <div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#fff5f5;color:#991b1b"><strong>Decline Reason</strong><p style="margin:4px 0 0;white-space:pre-wrap">{{ $splitRequest->decision_reason }}</p></div>
+                        <div style="margin-bottom:16px">
+                            @include('partials.split-details-card', ['request' => $splitRequest])
+                            @if($splitChild)
+                                <div class="activity-item" style="margin-top:10px"><strong>Created Split Task</strong><p>{{ $splitChild->task_id }} · {{ $splitChild->display_task_name ?? $splitChild->task_name }}</p></div>
                             @endif
-                            @if(!empty($splitRequest->split_details['details']))<div style="margin-top:8px"><strong>Split Notes</strong><p style="white-space:pre-wrap">{{ $splitRequest->split_details['details'] }}</p></div>@endif
+                            @if(!empty($splitRequest->split_details['details']))
+                                <div class="activity-item" style="margin-top:10px"><strong>Split Notes</strong><p style="white-space:pre-wrap">{{ $splitRequest->split_details['details'] }}</p></div>
+                            @endif
                         </div>
                     @endforeach
                 </div>

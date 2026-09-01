@@ -273,31 +273,11 @@
                 @foreach($splitRequests as $request)
                     @php
                         $isPendingRequest = in_array($request->overall_status, ['pending_approval','pending_designer_head','pending_admin'], true);
-                        $requestedSplit = data_get($request,'split_count')
-                            ?? data_get($request,'split_details.requested_count')
-                            ?? data_get($request,'split_details.creative_count');
-                        $approvedSplit = data_get($request,'approved_split_count')
-                            ?? data_get($request,'split_details.approved_count')
-                            ?? data_get($request,'split_details.approved_creative_count');
+                        $requestedSplit = $request->splitCreativeSummary()['requested'];
                     @endphp
 
-                    <div class="bd-request-card" id="request-{{ $request->id }}">
-                        <div class="bd-request-head">
-                            <div>
-                                <div class="bd-request-title">Split {{ ucwords(str_replace('_',' ',$request->overall_status)) }}</div>
-                                <div class="bd-request-meta">{{ $request->created_at?->format('d M Y · h:i A') }}</div>
-                            </div>
-                            <span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$request->overall_status)) }}</span>
-                        </div>
-
-                        <div class="bd-request-grid"><div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded At</strong>{{ $isPendingRequest ? 'Pending Response' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded By</strong>{{ $isPendingRequest ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div>
-                            <div class="bd-request-field"><strong>Requested Split</strong>{{ $requestedSplit ?? '—' }}</div>
-                            <div class="bd-request-field"><strong>Approved Split</strong>{{ $approvedSplit ?? '—' }}</div>
-                            <div class="bd-request-field"><strong>Preferred Designer</strong>{{ $request->targetDesigner?->name ?? '—' }}</div>
-                            <div class="bd-request-field"><strong>Approved Designer</strong>{{ $request->approvedDesigner?->name ?? '—' }}</div>
-                            @if($request->reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>Request Reason</strong>{{ $request->reason }}</div>@endif
-                            @if($request->decision_reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>Decision Comment</strong>{{ $request->decision_reason }}</div>@endif
-                        </div>
+                    <div id="request-{{ $request->id }}">
+                        @include('partials.split-details-card', ['request' => $request])
 
                         @if($isPendingRequest)
                             <div class="head-decision">

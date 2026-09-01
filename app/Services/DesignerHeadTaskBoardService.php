@@ -85,10 +85,16 @@ class DesignerHeadTaskBoardService
          * apply automatically since only tasks already present in $tasks
          * (filtered above) are kept. ---- */
         $eligibleTaskIds = $taskIds->all();
+        // designerId is either a Designer's own forced filter or a Designer
+        // Head/BD "filter by designer" dropdown — reused here so a Designer
+        // still sees a split they requested even if the approved child task
+        // went to a different designer.
+        $requesterMatchId = $filters['designerId'] !== '' ? (int) $filters['designerId'] : null;
+
         $splitLog = DesignTaskRequest::query()
             ->where('request_type', 'split')
             ->where('overall_status', 'approved')
-            ->with(['task:id,task_id,task_name,designer_id', 'task.designer:id,name', 'adminActor:id', 'designerHeadActor:id'])
+            ->with(['task:id,task_id,task_name,designer_id,assigned_by,vertical,priority,task_nature,party_name', 'task.designer:id,name', 'adminActor:id', 'designerHeadActor:id'])
             ->latest('designer_head_action_at')
             ->get()
             ->filter(fn (DesignTaskRequest $request) => $inPeriod($request->responded_at))
@@ -98,7 +104,26 @@ class DesignerHeadTaskBoardService
                 return $childId ? array_merge(['request' => $request], ['child_id' => $childId]) : null;
             })
             ->filter()
-            ->filter(fn (array $row) => in_array($row['child_id'], $eligibleTaskIds, true));
+            ->filter(function (array $row) use ($eligibleTaskIds, $requesterMatchId, $filters) {
+                if (in_array($row['child_id'], $eligibleTaskIds, true)) {
+                    return true;
+                }
+
+                $task = $row['request']->task;
+
+                if ($requesterMatchId === null || (int) $row['request']->requested_by !== $requesterMatchId || ! $task) {
+                    return false;
+                }
+
+                // Requester-only match (child now owned by a different designer):
+                // the ORIGINAL task still has to satisfy Search/Vertical/Priority/BD
+                // so this stays compatible with the other filters.
+                return ($filters['vertical'] === '' || $task->vertical === $filters['vertical'])
+                    && ($filters['priority'] === '' || $task->priority === $filters['priority'])
+                    && ($filters['bdId'] === '' || (string) $task->assigned_by === $filters['bdId'])
+                    && ($filters['search'] === '' || collect([$task->task_id, $task->task_name, $task->party_name, $task->vertical, $task->task_nature])
+                        ->filter()->contains(fn ($v) => stripos((string) $v, trim($filters['search'])) !== false));
+            });
 
         $splitChildTasks = $splitLog->isEmpty()
             ? collect()

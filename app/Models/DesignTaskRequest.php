@@ -88,4 +88,36 @@ class DesignTaskRequest extends Model
     {
         return $this->adminActor ? $this->admin_action_at : $this->designer_head_action_at;
     }
+
+    /**
+     * Creative-count figures for a 'split' request, derived from split_details
+     * (see DesignTaskRequestService::executeSplit()). Total is reconstructed
+     * from the immutable approved_creative_count + original_remaining_creatives
+     * pair recorded at execution time — never from the task's current (possibly
+     * further-changed) total_creatives — so it stays accurate historically.
+     * Before approval only the requested count is known; approved/remaining/
+     * percent stay null rather than guessing.
+     */
+    public function splitCreativeSummary(): array
+    {
+        $details = $this->split_details ?? [];
+        $requested = $details['requested_creative_count'] ?? $details['creative_count'] ?? null;
+        $approved = $details['approved_creative_count'] ?? null;
+        $keptByOriginal = $details['original_remaining_creatives'] ?? null;
+
+        $total = ($approved !== null && $keptByOriginal !== null)
+            ? $approved + $keptByOriginal
+            : $this->task?->total_creatives;
+
+        $remaining = ($approved !== null && $total !== null) ? max(0, $total - $approved) : null;
+        $percent = ($approved !== null && $total) ? (int) round(($approved / $total) * 100) : null;
+
+        return [
+            'total' => $total,
+            'requested' => $requested,
+            'approved' => $approved,
+            'remaining' => $remaining,
+            'percent' => $percent,
+        ];
+    }
 }

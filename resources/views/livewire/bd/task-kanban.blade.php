@@ -15,6 +15,13 @@
         .applied-filter-chip{font-size:9px;font-weight:850;color:#101828;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:999px;padding:5px 10px;white-space:nowrap}
         .applied-filters-clear{margin-left:auto;padding:6px 12px;font-size:10px;min-height:auto}
 
+        .request-column{border-color:#fecaca;background:#fff8f7}
+        .request-column .kanban-column-header{background:#fff1f0;border-bottom-color:#fecaca}
+        .request-card{border-left-color:#e30613!important;background:linear-gradient(90deg,#fff1f1 0,#fff 22%)}
+        .request-type-pill{display:inline-flex;align-items:center;min-height:20px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:950;text-transform:uppercase;letter-spacing:.04em}
+        .request-type-split{background:#f4f0ff;color:#6938ef;border:1px solid #d9d6fe}
+        .request-open-label{margin-top:9px;padding-top:8px;border-top:1px solid #eef0f3;color:#e30613;font-size:9px;font-weight:900}
+
         .kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;position:relative}
         .kanban-shell::-webkit-scrollbar{display:none}
         .kanban-shell.is-panning{cursor:grabbing}
@@ -523,6 +530,42 @@
                         @endforelse
                     </div>
                 </section>
+
+                @if($statusKey === 'completed')
+                    <section class="kanban-column request-column" data-status="split_log" wire:key="bd-split-log">
+                        <header class="kanban-column-header">
+                            <span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span>
+                            <span class="kanban-count">{{ $splitLogRows->count() }}</span>
+                        </header>
+
+                        <div class="kanban-list">
+                            @forelse($splitLogRows as $row)
+                                @php $childTask = $row['childTask']; $request = $row['request']; @endphp
+                                <article class="task-card request-card">
+                                    <a class="task-card-link" href="{{ route('bd.tasks.show', $childTask) }}" draggable="false">
+                                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                                            <div class="task-card-id">{{ $childTask->task_id }}</div>
+                                            <span class="request-type-pill request-type-split">Split</span>
+                                        </div>
+
+                                        <div class="task-card-name">{{ $childTask->display_task_name ?? $childTask->task_name }}</div>
+
+                                        <div class="task-card-meta">
+                                            <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
+                                            <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
+                                        </div>
+
+                                        <div class="request-open-label">Open task</div>
+                                    </a>
+                                </article>
+                            @empty
+                                <div class="empty-state">No splits approved in {{ $periodLabel }}.</div>
+                            @endforelse
+                        </div>
+                    </section>
+                @endif
             @endforeach
         </div>
     </div>

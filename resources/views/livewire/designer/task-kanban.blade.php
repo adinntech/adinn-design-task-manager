@@ -1,6 +1,6 @@
 <div x-data="designerKanban()" x-init="init()" x-on:task-status-changed.window="showToast($event.detail.message)" x-on:task-move-blocked.window="showToast($event.detail.message)">
     <style>
-        .designer-toolbar{display:grid;grid-template-columns:minmax(220px,1.3fr) repeat(auto-fit,minmax(140px,.6fr));gap:9px;margin-bottom:14px}.designer-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.metric-active-breakdown{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}.metric-active-chip{font-size:8px;font-weight:800;color:#475467;background:#f2f4f7;border-radius:999px;padding:2px 7px;white-space:nowrap}.continuation-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:8px;font-weight:800;line-height:1.4}.previous-month-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:8px;font-weight:800;line-height:1.4}.applied-filters{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid #eef0f3}.applied-filters-label{font-size:9px;font-weight:900;color:#475467;text-transform:uppercase;letter-spacing:.04em}.applied-filter-chip{font-size:9px;font-weight:850;color:#101828;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:999px;padding:5px 10px;white-space:nowrap}.applied-filters-clear{margin-left:auto;padding:6px 12px;font-size:10px;min-height:auto}@media(max-width:900px){.designer-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}.kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none}.kanban-shell::-webkit-scrollbar{display:none}.kanban-shell.is-panning{cursor:grabbing}
+        .designer-toolbar{display:grid;grid-template-columns:minmax(220px,1.3fr) repeat(auto-fit,minmax(140px,.6fr));gap:9px;margin-bottom:14px}.designer-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.metric-active-breakdown{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}.metric-active-chip{font-size:8px;font-weight:800;color:#475467;background:#f2f4f7;border-radius:999px;padding:2px 7px;white-space:nowrap}.continuation-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:8px;font-weight:800;line-height:1.4}.previous-month-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:8px;font-weight:800;line-height:1.4}.request-column{border-color:#fecaca;background:#fff8f7}.request-column .kanban-column-header{background:#fff1f0;border-bottom-color:#fecaca}.request-card{border-left-color:#e30613!important;background:linear-gradient(90deg,#fff1f1 0,#fff 22%)}.request-type-pill{display:inline-flex;align-items:center;min-height:20px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:950;text-transform:uppercase;letter-spacing:.04em}.request-type-split{background:#f4f0ff;color:#6938ef;border:1px solid #d9d6fe}.request-open-label{margin-top:9px;padding-top:8px;border-top:1px solid #eef0f3;color:#e30613;font-size:9px;font-weight:900}.applied-filters{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid #eef0f3}.applied-filters-label{font-size:9px;font-weight:900;color:#475467;text-transform:uppercase;letter-spacing:.04em}.applied-filter-chip{font-size:9px;font-weight:850;color:#101828;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:999px;padding:5px 10px;white-space:nowrap}.applied-filters-clear{margin-left:auto;padding:6px 12px;font-size:10px;min-height:auto}@media(max-width:900px){.designer-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}.kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none}.kanban-shell::-webkit-scrollbar{display:none}.kanban-shell.is-panning{cursor:grabbing}
 .kanban-shell{position:relative}
 body[data-kanban-dragging="1"] .kanban-shell::before,
 body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z-index:50;top:0;width:34px;height:100%;pointer-events:none;opacity:.2}
@@ -407,6 +407,33 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         @endforelse
                     </div>
                 </section>
+
+                @if($statusKey === 'completed')
+                    <section class="kanban-column request-column" data-status="split_log" wire:key="designer-split-log">
+                        <header class="kanban-column-header"><span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span><span class="kanban-count">{{ $splitLogRows->count() }}</span></header>
+                        <div class="kanban-list">
+                            @forelse($splitLogRows as $row)
+                                @php $childTask = $row['childTask']; $request = $row['request']; @endphp
+                                <a href="{{ route('designer.tasks.show', $childTask) }}" class="task-card request-card" wire:key="designer-split-{{ $childTask->id }}">
+                                    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                                        <div class="task-card-id">{{ $childTask->task_id }}</div>
+                                        <span class="request-type-pill request-type-split">Split</span>
+                                    </div>
+                                    <div class="task-card-name">{{ $childTask->display_task_name ?? $childTask->task_name }}</div>
+                                    <div class="task-card-meta">
+                                        <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
+                                        <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
+                                        <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
+                                        <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
+                                    </div>
+                                    <div class="request-open-label">Open task</div>
+                                </a>
+                            @empty
+                                <div class="empty-state">No splits approved in {{ $periodLabel }}.</div>
+                            @endforelse
+                        </div>
+                    </section>
+                @endif
             @endforeach
         </div>
     </div>
