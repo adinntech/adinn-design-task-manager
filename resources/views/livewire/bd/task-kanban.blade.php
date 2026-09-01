@@ -26,7 +26,7 @@
         .kanban-shell::-webkit-scrollbar{display:none}
         .kanban-shell.is-panning{cursor:grabbing}
         .kanban-board{display:grid;grid-template-columns:repeat(10,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}
-        .kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden}
+        .kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden;position:relative}
         .kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}
         .kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}
         .kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}
@@ -54,6 +54,18 @@
         .kanban-column.status-completed .kanban-count{background:#dcfce7;color:#15803d}
         .kanban-column.status-swap_tasks .kanban-count{background:#ccfbf1;color:#0f766e}
         .kanban-column.status-decline_tasks .kanban-count{background:#fee4e2;color:#b42318}
+
+        .kanban-column.kanban-column-focus{box-shadow:0 0 0 3px rgba(227,6,19,.55);border-color:#e30613;border-radius:14px}
+        .kanban-column.kanban-column-focus .kanban-column-header{animation:bdColumnFocusPulse .45s ease-in-out 2}
+        @keyframes bdColumnFocusPulse{
+            0%,100%{box-shadow:0 0 0 0 rgba(227,6,19,0);transform:scale(1)}
+            50%{box-shadow:0 0 0 10px rgba(227,6,19,.22);transform:scale(1.012)}
+        }
+        .kanban-column.kanban-column-focus::after{content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none;border:2px solid rgba(227,6,19,.5);animation:bdColumnRingFade .9s ease-in-out 2}
+        @keyframes bdColumnRingFade{
+            0%,100%{opacity:0}
+            50%{opacity:1}
+        }
 
         .task-card{border:1px solid #e3e6ec;border-left:5px solid #cbd5e1;border-radius:11px;background:#fff;padding:11px;margin-bottom:8px;color:inherit;box-shadow:0 4px 12px rgba(16,24,40,.04);transition:.16s}
         .task-card:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,24,40,.08);border-color:#d7dbe3}
@@ -588,6 +600,7 @@
                             this.enablePan();
                             this.enablePointerEdgeScroll();
                             this.refreshSortable();
+                            this.focusRequestedColumn();
                         });
 
                         document.addEventListener('livewire:init', () => {
@@ -596,6 +609,7 @@
                                     this.enablePan();
                                     this.enablePointerEdgeScroll();
                                     this.refreshSortable();
+                                    this.focusRequestedColumn();
                                 });
                             });
                         });
@@ -774,6 +788,51 @@
                         this.toast = message || 'Task updated successfully.';
                         clearTimeout(this.toastTimer);
                         this.toastTimer = setTimeout(() => this.toast = '', 2600);
+                    },
+
+                    focusRequestedColumn(){
+                        const focus = new URLSearchParams(window.location.search).get('focus');
+                        if (!focus) return;
+
+                        const shell = this.$root.querySelector('[data-bd-kanban-shell]');
+                        if (!shell) return;
+
+                        let attempts = 0;
+                        const maxAttempts = 40;
+
+                        const locate = () => {
+                            const list = shell.querySelector('.kanban-list[data-status="'+focus+'"]');
+                            if (list) return list.closest('.kanban-column');
+                            return shell.querySelector('.kanban-column[data-status="'+focus+'"]');
+                        };
+
+                        const highlight = (column) => {
+                            column.classList.add('kanban-column-focus');
+                            const finish = () => {
+                                column.classList.remove('kanban-column-focus');
+                                column.removeEventListener('animationend', finish);
+                            };
+                            column.addEventListener('animationend', finish);
+                        };
+
+                        const scrollTo = (column) => {
+                            const targetLeft = column.offsetLeft - (shell.clientWidth - column.offsetWidth) / 2;
+                            shell.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+                            highlight(column);
+                        };
+
+                        const tryFocus = () => {
+                            const column = locate();
+                            if (column) {
+                                scrollTo(column);
+                                return;
+                            }
+                            if (++attempts < maxAttempts) {
+                                setTimeout(tryFocus, 100);
+                            }
+                        };
+
+                        tryFocus();
                     }
                 };
             }

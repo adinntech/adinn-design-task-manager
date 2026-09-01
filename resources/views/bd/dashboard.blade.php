@@ -100,9 +100,14 @@
     .dh-line-chart .trend-label{font-size:8px;fill:#98a2b3;font-weight:700}
     .dh-line-chart .trend-value{font-size:8px;fill:#344054;font-weight:900}
     .dh-line-chart .trend-value-rating{fill:#b27a00}
-    .dh-chart-legend{display:flex;gap:14px;margin-top:8px;font-size:8px;color:#667085;font-weight:750;flex-wrap:wrap}
+    .dh-chart-legend{display:flex;gap:14px;margin-top:14px;font-size:8px;color:#667085;font-weight:750;flex-wrap:wrap}
     .dh-chart-legend span{display:inline-flex;align-items:center;gap:5px}
     .dh-legend-dot{width:8px;height:8px;border-radius:2px;display:inline-block}
+    .dh-legend-dashed{border-top:2px dashed #f5b301;background:transparent;height:0;width:14px}
+    .dh-line-chart .chart-axis-label{font-size:8px;fill:#98a2b3;font-weight:800}
+    .dh-line-chart .chart-axis-rating{fill:#b27a00}
+    .dh-line-chart .trend-point{cursor:pointer}
+
 
     .dh-req{border:1px solid #e6e9ef;border-radius:12px;background:#fff;padding:12px;margin-bottom:9px}
     .dh-req:last-child{margin-bottom:0}

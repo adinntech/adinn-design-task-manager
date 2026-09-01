@@ -28,33 +28,37 @@
         return $html.'</span>';
     };
     $barMax = max(1, collect($bar)->max('value'));
-    $chartW = 640; $chartH = 150; $padX = 34; $padY = 18;
+    $chartW = 640; $chartH = 150; $padX = 44; $padY = 18;
     $lineCount = $line->count();
     $stepX = $lineCount > 1 ? ($chartW - $padX * 2) / ($lineCount - 1) : 0;
     $series = [
-        'assigned' => ['key' => 'assigned', 'color' => 'trend-assigned', 'point' => 'trend-point-assigned', 'value' => 'trend-value', 'max' => max(1, (int) $line->max('assigned'))],
-        'completed' => ['key' => 'completed', 'color' => 'trend-completed', 'point' => 'trend-point-completed', 'value' => 'trend-value', 'max' => max(1, (int) $line->max('completed'))],
+        'assigned' => ['key' => 'assigned', 'color' => 'trend-assigned', 'point' => 'trend-point-assigned', 'label' => 'Assigned'],
+        'completed' => ['key' => 'completed', 'color' => 'trend-completed', 'point' => 'trend-point-completed', 'label' => 'Completed'],
+        'in_progress' => ['key' => 'in_progress', 'color' => 'trend-progress', 'point' => 'trend-point-progress', 'label' => 'In Progress'],
     ];
-    $points = collect($series)->map(function ($s) use ($line, $stepX, $padX, $chartH, $padY) {
-        return $line->values()->map(function (array $m, int $i) use ($s, $stepX, $padX, $chartH, $padY) {
+    $countMax = max(1, (int) collect($series)->map(fn ($s) => $line->max($s['key']))->max());
+    $points = collect($series)->map(function ($s) use ($line, $stepX, $padX, $chartH, $padY, $countMax) {
+        return $line->values()->map(function (array $m, int $i) use ($s, $stepX, $padX, $chartH, $padY, $countMax) {
             return [
-                'x' => $padX + $i * $stepX,
-                'y' => $chartH - $padY - (($m[$s['key']] / $s['max']) * ($chartH - $padY * 2)),
+                'x' => round($padX + $i * $stepX, 1),
+                'y' => round($chartH - $padY - (($m[$s['key']] / $countMax) * ($chartH - $padY * 2)), 1),
                 'label' => $m['label'],
+                'series' => $s['label'],
                 'v' => (int) $m[$s['key']],
             ];
         });
     });
     $rPoints = $line->values()->map(function (array $m, int $i) use ($stepX, $padX, $chartH, $padY) {
         return [
-            'x' => $padX + $i * $stepX,
-            'y' => $m['rating'] !== null ? ($chartH - $padY - (($m['rating'] / 5) * ($chartH - $padY * 2))) : null,
+            'x' => round($padX + $i * $stepX, 1),
+            'y' => $m['rating'] !== null ? round($chartH - $padY - (($m['rating'] / 5) * ($chartH - $padY * 2)), 1) : null,
+            'label' => $m['label'],
             'v' => $m['rating'],
         ];
     });
-    $poly = $points->map(fn ($pts) => $pts->map(fn ($p) => round($p['x'], 1).','.round($p['y'], 1))->implode(' '));
+    $poly = $points->map(fn ($pts) => $pts->map(fn ($p) => $p['x'].','.$p['y'])->implode(' '));
     $rPointsVal = $rPoints->whereNotNull('y')->values();
-    $rPoly = $rPointsVal->map(fn ($p) => round($p['x'], 1).','.round($p['y'], 1))->implode(' ');
+    $rPoly = $rPointsVal->map(fn ($p) => $p['x'].','.$p['y'])->implode(' ');
 @endphp
 
 <div class="dh-zone-inner">
@@ -64,13 +68,13 @@
         <div class="dh-kpi"><div class="dh-kpi-icon">▤</div><div class="dh-kpi-label">Total Designers Assigned</div><div class="dh-kpi-value">{{ $stats['total_designers'] }}</div><div class="dh-kpi-note">All-time unique Designers on your tickets</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">▦</div><div class="dh-kpi-label">Assigned Tasks</div><div class="dh-kpi-value">{{ $stats['total_tasks'] }}</div><div class="dh-kpi-note">{{ $selectedMonthLabel }} · {{ $selectedDesignerName ?? 'All Designers' }}</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">➤</div><div class="dh-kpi-label">In Progress</div><div class="dh-kpi-value">{{ $stats['in_progress'] }}</div><div class="dh-kpi-note">Being worked now</div></div>
-        <div class="dh-kpi"><div class="dh-kpi-icon">◷</div><div class="dh-kpi-label">Pending</div><div class="dh-kpi-value">{{ $stats['pending'] }}</div><div class="dh-kpi-note">Not yet started</div></div>
-        <div class="dh-kpi"><div class="dh-kpi-icon">◔</div><div class="dh-kpi-label">Ready to Start</div><div class="dh-kpi-value">{{ $stats['ready_to_start'] }}</div><div class="dh-kpi-note">{{ $selectedDesignerName ?? 'All Designers' }}</div></div>
-        <div class="dh-kpi"><div class="dh-kpi-icon">?</div><div class="dh-kpi-label">Clarification Needed</div><div class="dh-kpi-value">{{ $stats['clarification_needed'] }}</div><div class="dh-kpi-note">Awaiting clarification</div></div>
-        <div class="dh-kpi"><div class="dh-kpi-icon">↗</div><div class="dh-kpi-label">Waiting for BD Review</div><div class="dh-kpi-value">{{ $stats['waiting'] }}</div><div class="dh-kpi-note">Waiting for confirmation</div></div>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'assigned_tasks']) }}"><div class="dh-kpi-icon">◷</div><div class="dh-kpi-label">Pending</div><div class="dh-kpi-value">{{ $stats['pending'] }}</div><div class="dh-kpi-note">Not yet started</div></a>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'yet_to_start']) }}"><div class="dh-kpi-icon">◔</div><div class="dh-kpi-label">Ready to Start</div><div class="dh-kpi-value">{{ $stats['ready_to_start'] }}</div><div class="dh-kpi-note">{{ $selectedDesignerName ?? 'All Designers' }}</div></a>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'need_clarification']) }}"><div class="dh-kpi-icon">?</div><div class="dh-kpi-label">Clarification Needed</div><div class="dh-kpi-value">{{ $stats['clarification_needed'] }}</div><div class="dh-kpi-note">Awaiting clarification</div></a>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'waiting_confirmation']) }}"><div class="dh-kpi-icon">↗</div><div class="dh-kpi-label">Waiting for BD Review</div><div class="dh-kpi-value">{{ $stats['waiting'] }}</div><div class="dh-kpi-note">Waiting for confirmation</div></a>
         <div class="dh-kpi"><div class="dh-kpi-icon">!</div><div class="dh-kpi-label">Overdue</div><div class="dh-kpi-value">{{ $stats['overdue'] }}</div><div class="dh-kpi-note">Past deadline</div></div>
-        <div class="dh-kpi"><div class="dh-kpi-icon">✕</div><div class="dh-kpi-label">Declined</div><div class="dh-kpi-value">{{ $stats['declined'] }}</div><div class="dh-kpi-note">Approved declines</div></div>
-        <div class="dh-kpi"><div class="dh-kpi-icon">✂</div><div class="dh-kpi-label">Split</div><div class="dh-kpi-value">{{ $stats['split'] }}</div><div class="dh-kpi-note">Approved splits</div></div>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'decline_tasks']) }}"><div class="dh-kpi-icon">✕</div><div class="dh-kpi-label">Declined</div><div class="dh-kpi-value">{{ $stats['declined'] }}</div><div class="dh-kpi-note">Approved declines</div></a>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'split_log']) }}"><div class="dh-kpi-icon">✂</div><div class="dh-kpi-label">Split</div><div class="dh-kpi-value">{{ $stats['split'] }}</div><div class="dh-kpi-note">Approved splits</div></a>
         <div class="dh-kpi"><div class="dh-kpi-icon">⇄</div><div class="dh-kpi-label">Swapped</div><div class="dh-kpi-value">{{ $stats['swapped'] }}</div><div class="dh-kpi-note">Approved transfers</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">↻</div><div class="dh-kpi-label">Rework Tasks</div><div class="dh-kpi-value">{{ $stats['rework_tasks'] }}</div><div class="dh-kpi-note">In rework now</div></div>
         <div class="dh-kpi"><div class="dh-kpi-icon">◇</div><div class="dh-kpi-label">Pending Reviews</div><div class="dh-kpi-value">{{ $stats['pending_reviews'] }}</div><div class="dh-kpi-note">Awaiting your review</div></div>
@@ -225,24 +229,27 @@
                     @if($rPoly)<polyline class="trend-line trend-rating" points="{{ $rPoly }}"/>@endif
                     @foreach($points as $s => $pts)
                         @foreach($pts as $p)
-                            <circle class="trend-point {{ $series[$s]['point'] }}" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"/>
+                            <circle class="trend-point {{ $series[$s]['point'] }}" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"><title>{{ $p['series'] }} · {{ $p['label'] }}: {{ $p['v'] }}</title></circle>
                             <text class="trend-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ $p['v'] }}</text>
                         @endforeach
                     @endforeach
                     @foreach($rPoints as $p)
                         @if($p['y'] !== null)
-                            <circle class="trend-point trend-point-rating" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"/>
-                            <text class="trend-value trend-value-rating" x="{{ $p['x'] }}" y="{{ $p['y'] + 13 }}" text-anchor="middle">{{ $fmt($p['v']) }}</text>
+                            <circle class="trend-point trend-point-rating" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"><title>Avg Rating · {{ $p['label'] }}: {{ $fmt($p['v']) }} / 5</title></circle>
+                            <text class="trend-value trend-value-rating" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ $p['v'] !== null ? number_format((float) $p['v'], 1) : '—' }}</text>
                         @endif
                     @endforeach
                     @foreach($points->first() as $p)
                         <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
                     @endforeach
+                    <text class="chart-axis-label" x="8" y="{{ $chartH - $padY }}" text-anchor="middle">Tasks</text>
+                    <text class="chart-axis-label chart-axis-rating" x="{{ $chartW - 8 }}" y="{{ $padY }}" text-anchor="middle">Rating&nbsp;/&nbsp;5</text>
                 </svg>
                 <div class="dh-chart-legend">
                     <span><i class="dh-legend-dot" style="background:#2970ff"></i>Assigned</span>
                     <span><i class="dh-legend-dot" style="background:#027a48"></i>Completed</span>
-                    <span><i class="dh-legend-dot" style="background:#f5b301"></i>Avg Rating / 5</span>
+                    <span><i class="dh-legend-dot" style="background:#3538cd"></i>In Progress</span>
+                    <span><i class="dh-legend-dot dh-legend-dashed" style="background:#f5b301"></i>Avg Rating / 5</span>
                 </div>
             </div>
         </section>
