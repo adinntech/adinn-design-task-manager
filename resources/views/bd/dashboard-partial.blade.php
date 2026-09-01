@@ -75,9 +75,9 @@
         <div class="dh-kpi"><div class="dh-kpi-icon">!</div><div class="dh-kpi-label">Overdue</div><div class="dh-kpi-value">{{ $stats['overdue'] }}</div><div class="dh-kpi-note">Past deadline</div></div>
         <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'decline_tasks']) }}"><div class="dh-kpi-icon">✕</div><div class="dh-kpi-label">Declined</div><div class="dh-kpi-value">{{ $stats['declined'] }}</div><div class="dh-kpi-note">Approved declines</div></a>
         <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'split_log']) }}"><div class="dh-kpi-icon">✂</div><div class="dh-kpi-label">Split</div><div class="dh-kpi-value">{{ $stats['split'] }}</div><div class="dh-kpi-note">Approved splits</div></a>
-        <div class="dh-kpi"><div class="dh-kpi-icon">⇄</div><div class="dh-kpi-label">Swapped</div><div class="dh-kpi-value">{{ $stats['swapped'] }}</div><div class="dh-kpi-note">Approved transfers</div></div>
-        <div class="dh-kpi"><div class="dh-kpi-icon">↻</div><div class="dh-kpi-label">Rework Tasks</div><div class="dh-kpi-value">{{ $stats['rework_tasks'] }}</div><div class="dh-kpi-note">In rework now</div></div>
-        <div class="dh-kpi"><div class="dh-kpi-icon">◇</div><div class="dh-kpi-label">Pending Reviews</div><div class="dh-kpi-value">{{ $stats['pending_reviews'] }}</div><div class="dh-kpi-note">Awaiting your review</div></div>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'swap_tasks']) }}"><div class="dh-kpi-icon">⇄</div><div class="dh-kpi-label">Swapped</div><div class="dh-kpi-value">{{ $stats['swapped'] }}</div><div class="dh-kpi-note">Approved transfers</div></a>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'rework']) }}"><div class="dh-kpi-icon">↻</div><div class="dh-kpi-label">Rework Tasks</div><div class="dh-kpi-value">{{ $stats['rework_tasks'] }}</div><div class="dh-kpi-note">In rework now</div></a>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'waiting_confirmation']) }}"><div class="dh-kpi-icon">◇</div><div class="dh-kpi-label">Pending Reviews</div><div class="dh-kpi-value">{{ $stats['pending_reviews'] }}</div><div class="dh-kpi-note">Awaiting your review</div></a>
         <div class="dh-kpi"><div class="dh-kpi-icon">◌</div><div class="dh-kpi-label">Clarification Tickets</div><div class="dh-kpi-value">{{ $stats['clarification_tickets'] }}</div><div class="dh-kpi-note">Clarification status</div></div>
     </div>
 
@@ -216,39 +216,63 @@
             <div class="dh-card-head">
                 <div>
                     <div class="dh-card-title">Performance Trend</div>
-                    <div class="dh-card-sub">Assigned, completed, in-progress &amp; average rating · last 6 months</div>
+                    <div class="dh-card-sub">Monthly task counts &amp; average rating · last 6 months</div>
                 </div>
             </div>
             <div class="dh-card-body">
+                @php
+                    $last = $line->last() ?? ['assigned' => 0, 'completed' => 0, 'rating' => null];
+                    $lastRating = $last['rating'] !== null ? number_format((float) $last['rating'], 1) : '—';
+                    $latestRated = $line->reverse()->first(fn ($m) => $m['rating'] !== null);
+                    $lastRating = $latestRated && $latestRated['rating'] !== null ? number_format((float) $latestRated['rating'], 1) : '—';
+                @endphp
+                <div class="dh-trend-summary">
+                    <div class="dh-trend-stat"><span class="dh-trend-stat-label">Assigned Tasks</span><span class="dh-trend-stat-value">{{ $last['assigned'] }}</span></div>
+                    <div class="dh-trend-stat"><span class="dh-trend-stat-label">Completed Tasks</span><span class="dh-trend-stat-value">{{ $last['completed'] }}</span></div>
+                    <div class="dh-trend-stat"><span class="dh-trend-stat-label">Avg Rating</span><span class="dh-trend-stat-value">{{ $lastRating }} <em>/ 5</em></span></div>
+                </div>
+
                 <svg class="dh-line-chart" viewBox="0 0 {{ $chartW }} {{ $chartH + 24 }}" preserveAspectRatio="xMidYMid meet">
                     @foreach([0.25, 0.5, 0.75] as $frac)
                         @php $gy = $chartH - $padY - $frac * ($chartH - $padY * 2); @endphp
                         <line class="grid-line" x1="{{ $padX }}" x2="{{ $chartW - $padX }}" y1="{{ $gy }}" y2="{{ $gy }}"/>
                     @endforeach
                     @foreach($poly as $s => $pts)@if($pts)<polyline class="trend-line {{ $series[$s]['color'] }}" points="{{ $pts }}"/>@endif@endforeach
-                    @if($rPoly)<polyline class="trend-line trend-rating" points="{{ $rPoly }}"/>@endif
                     @foreach($points as $s => $pts)
                         @foreach($pts as $p)
                             <circle class="trend-point {{ $series[$s]['point'] }}" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"><title>{{ $p['series'] }} · {{ $p['label'] }}: {{ $p['v'] }}</title></circle>
                             <text class="trend-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ $p['v'] }}</text>
                         @endforeach
                     @endforeach
-                    @foreach($rPoints as $p)
-                        @if($p['y'] !== null)
-                            <circle class="trend-point trend-point-rating" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"><title>Avg Rating · {{ $p['label'] }}: {{ $fmt($p['v']) }} / 5</title></circle>
-                            <text class="trend-value trend-value-rating" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ $p['v'] !== null ? number_format((float) $p['v'], 1) : '—' }}</text>
-                        @endif
-                    @endforeach
                     @foreach($points->first() as $p)
                         <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
                     @endforeach
                     <text class="chart-axis-label" x="8" y="{{ $chartH - $padY }}" text-anchor="middle">Tasks</text>
-                    <text class="chart-axis-label chart-axis-rating" x="{{ $chartW - 8 }}" y="{{ $padY }}" text-anchor="middle">Rating&nbsp;/&nbsp;5</text>
                 </svg>
                 <div class="dh-chart-legend">
                     <span><i class="dh-legend-dot" style="background:#2970ff"></i>Assigned</span>
                     <span><i class="dh-legend-dot" style="background:#027a48"></i>Completed</span>
                     <span><i class="dh-legend-dot" style="background:#3538cd"></i>In Progress</span>
+                </div>
+
+                <div class="dh-trend-rating-head"><span class="dh-trend-rating-title">Average Rating</span><span class="dh-trend-rating-scale">scale 0 – 5</span></div>
+                <svg class="dh-line-chart dh-rating-chart" viewBox="0 0 {{ $chartW }} {{ $chartH + 24 }}" preserveAspectRatio="xMidYMid meet">
+                    @foreach([0.25, 0.5, 0.75] as $frac)
+                        @php $gy = $chartH - $padY - $frac * ($chartH - $padY * 2); @endphp
+                        <line class="grid-line" x1="{{ $padX }}" x2="{{ $chartW - $padX }}" y1="{{ $gy }}" y2="{{ $gy }}"/>
+                    @endforeach
+                    @if($rPoly)<polyline class="trend-line trend-rating" points="{{ $rPoly }}"/>@endif
+                    @foreach($rPoints as $p)
+                        @if($p['y'] !== null)
+                            <circle class="trend-point trend-point-rating" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.5"><title>Avg Rating · {{ $p['label'] }}: {{ $fmt($p['v']) }} / 5</title></circle>
+                            <text class="trend-value trend-value-rating" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ number_format((float) $p['v'], 1) }}</text>
+                        @endif
+                    @endforeach
+                    @foreach($points->first() as $p)
+                        <text class="trend-label" x="{{ $p['x'] }}" y="{{ $chartH + 10 }}" text-anchor="middle">{{ $p['label'] }}</text>
+                    @endforeach
+                </svg>
+                <div class="dh-chart-legend">
                     <span><i class="dh-legend-dot dh-legend-dashed" style="background:#f5b301"></i>Avg Rating / 5</span>
                 </div>
             </div>

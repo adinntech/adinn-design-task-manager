@@ -107,6 +107,16 @@
     .dh-line-chart .chart-axis-label{font-size:8px;fill:#98a2b3;font-weight:800}
     .dh-line-chart .chart-axis-rating{fill:#b27a00}
     .dh-line-chart .trend-point{cursor:pointer}
+    .dh-trend-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+    .dh-trend-stat{border:1px solid #e6e9ef;border-radius:12px;background:#fff;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+    .dh-trend-stat-label{font-size:8px;color:#667085;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+    .dh-trend-stat-value{font-size:20px;font-weight:950;color:#101828}
+    .dh-trend-stat-value em{font-style:normal;font-size:10px;color:#98a2b3;font-weight:750}
+    .dh-trend-rating-head{display:flex;align-items:center;justify-content:space-between;margin:16px 0 4px}
+    .dh-trend-rating-title{font-size:10px;font-weight:900;color:#344054}
+    .dh-trend-rating-scale{font-size:8px;color:#98a2b3;font-weight:750}
+    .dh-rating-chart{background:linear-gradient(180deg,#fffbeb 0,#fff 40%);border-radius:12px;padding-top:6px}
+
 
 
     .dh-req{border:1px solid #e6e9ef;border-radius:12px;background:#fff;padding:12px;margin-bottom:9px}
