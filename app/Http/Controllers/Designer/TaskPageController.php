@@ -67,7 +67,20 @@ class TaskPageController extends Controller
             ->where('overall_status', 'approved')
             ->exists();
 
-        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer, 403);
+        // Split requester / original assigned designer: a Designer may open the
+        // child task produced by their own approved split — even when it was
+        // assigned to another Designer — because they are legitimately related to
+        // it (the requester is always the original assigned Designer of the
+        // split-from task). Only that one requester is granted this; no broader
+        // access and nothing for unrelated tasks.
+        $isSplitRequester = ! $isCurrentDesigner && DesignTaskRequest::query()
+            ->where('request_type', 'split')
+            ->where('overall_status', 'approved')
+            ->where('requested_by', $user->id)
+            ->where('split_details->created_task_id', $task->id)
+            ->exists();
+
+        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer || $isSplitRequester, 403);
 
         return view('designer.tasks.show', compact('task'));
     }

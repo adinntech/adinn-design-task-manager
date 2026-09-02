@@ -53,6 +53,9 @@ class TaskDetail extends Component
 
     public bool $selfDeclinedReadOnly = false;
 
+    /** For a split-requester opening the child task assigned to another Designer. */
+    public bool $splitRequesterReadOnly = false;
+
     private function isSwapShadowTask(?DesignTask $task = null): bool
     {
         $task ??= $this->task;
@@ -153,7 +156,20 @@ class TaskDetail extends Component
             ->where('overall_status', 'approved')
             ->exists();
 
-        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer, 403);
+        // Split requester / original assigned designer: a Designer may open the
+        // child task produced by their own approved split — even when it was
+        // assigned to another Designer — because they are legitimately related to
+        // it (the requester is always the original assigned Designer of the
+        // split-from task). Only that one requester is granted this; no broader
+        // access and nothing for unrelated tasks.
+        $isSplitRequester = ! $isCurrentDesigner && DesignTaskRequest::query()
+            ->where('request_type', 'split')
+            ->where('overall_status', 'approved')
+            ->where('requested_by', $user->id)
+            ->where('split_details->created_task_id', $task->id)
+            ->exists();
+
+        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer || $isSplitRequester, 403);
 
         $this->swapInitiatorReadOnly = $isApprovedSwapInitiator
             && (
@@ -162,6 +178,8 @@ class TaskDetail extends Component
             );
 
         $this->selfDeclinedReadOnly = $isSelfDeclinedViewer;
+
+        $this->splitRequesterReadOnly = $isSplitRequester;
 
         $this->task = $task;
 
