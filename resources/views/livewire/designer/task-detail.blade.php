@@ -235,6 +235,9 @@
                 @if($selfDeclinedReadOnly)
                     <span class="badge badge-dark">Self Declined · Read Only</span>
                 @endif
+                @if($splitRequesterReadOnly)
+                    <span class="badge badge-dark">Split Task · Read Only</span>
+                @endif
                 @if($task->decline_outcome_label)
                     <span class="badge {{ str_contains($task->decline_outcome_label,'Rejected') ? 'badge-danger' : 'badge-success' }}">{{ $task->decline_outcome_label }}</span>
                 @endif
@@ -245,7 +248,7 @@
         <div class="page-actions">
             <a class="btn btn-secondary" href="{{ route('designer.tasks.index') }}">Back to My Tasks</a>
 
-            @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly)
+            @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly || $splitRequesterReadOnly)
 
             @if(in_array('decline', $allowedRequestTypes, true))
                 @if(in_array('decline', $pendingRequestTypes, true))
@@ -310,6 +313,11 @@
     @if($swapInitiatorReadOnly)
         <div class="swap-readonly-note">
             Swap approved. You can view this task and add comments only.
+        </div>
+    @endif
+    @if($splitRequesterReadOnly)
+        <div class="swap-readonly-note">
+            This task was created by your Split Request and is now assigned to another Designer. You can view details and history only.
         </div>
     @endif
 
@@ -532,7 +540,7 @@
                             @endforelse
                         </div>
 
-                        @if($task->status !== 'completed' && ! $selfDeclinedReadOnly)
+                        @if($task->status !== 'completed' && ! $selfDeclinedReadOnly && ! $splitRequesterReadOnly)
                             <div class="comment-compose" style="margin-top:14px">
                                 <div class="comment-compose-head">
                                     <div>
@@ -656,7 +664,7 @@
 
     <section x-show="tab === 'comments'" style="display:none">
         <div class="comment-shell">
-            @unless($selfDeclinedReadOnly)
+            @unless($selfDeclinedReadOnly || $splitRequesterReadOnly)
             <div class="comment-compose">
                 <div class="comment-compose-head">
                     <div>
@@ -864,7 +872,7 @@
                                 </div>
                             @endif
 
-                            @if($currentReworkPending > 0 && $progressPercentage < 100 && ! $selfDeclinedReadOnly)
+                            @if($currentReworkPending > 0 && $progressPercentage < 100 && ! $selfDeclinedReadOnly && ! $splitRequesterReadOnly)
                             <div class="rework-upload-wrap">
                                 <div style="display:grid;grid-template-columns:minmax(150px,.55fr) minmax(240px,1fr);gap:10px;align-items:end">
                                     <div>
@@ -902,7 +910,7 @@
                             @endif
                         </div>
                     @endif
-                    @if($swapInitiatorReadOnly || $selfDeclinedReadOnly)
+                    @if($swapInitiatorReadOnly || $selfDeclinedReadOnly || $splitRequesterReadOnly)
                         <div class="empty-state" style="margin-bottom:14px">
                             Progress Updates history is view-only.
                         </div>
@@ -1300,7 +1308,7 @@
 
     <div class="toast" x-show="toast" x-transition x-text="toast" style="display:none"></div>
 
-    @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly)
+    @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly || $splitRequesterReadOnly)
         <livewire:designer.task-request-modal :task="$task" :key="'task-request-modal-'.$task->id" />
     @endunless
 </div>

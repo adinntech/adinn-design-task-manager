@@ -67,7 +67,17 @@ class TaskPageController extends Controller
             ->where('overall_status', 'approved')
             ->exists();
 
-        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer, 403);
+        // The requester of an approved split can open the child task created for
+        // another Designer (e.g. from their own "Split Tasks" Kanban column) to
+        // track it, read-only — mirrors App\Livewire\Designer\TaskDetail::mount().
+        $isSplitRequester = ! $isCurrentDesigner && DesignTaskRequest::query()
+            ->where('request_type', 'split')
+            ->where('overall_status', 'approved')
+            ->where('requested_by', $user->id)
+            ->where('split_details->created_task_id', $task->id)
+            ->exists();
+
+        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer || $isSplitRequester, 403);
 
         return view('designer.tasks.show', compact('task'));
     }

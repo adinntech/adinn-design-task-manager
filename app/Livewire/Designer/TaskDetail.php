@@ -53,6 +53,9 @@ class TaskDetail extends Component
 
     public bool $selfDeclinedReadOnly = false;
 
+    /** For a split-requester opening the child task assigned to another Designer. */
+    public bool $splitRequesterReadOnly = false;
+
     private function isSwapShadowTask(?DesignTask $task = null): bool
     {
         $task ??= $this->task;
@@ -153,7 +156,19 @@ class TaskDetail extends Component
             ->where('overall_status', 'approved')
             ->exists();
 
-        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer, 403);
+        // The requester of an approved split can open the child task created for
+        // another Designer (e.g. from their own "Split Tasks" Kanban column) to
+        // track it, but never interacts with it — that Designer's own workspace
+        // owns the workflow. Matched via split_details->created_task_id, the same
+        // link the Kanban split-log listing itself is built from.
+        $isSplitRequester = ! $isCurrentDesigner && DesignTaskRequest::query()
+            ->where('request_type', 'split')
+            ->where('overall_status', 'approved')
+            ->where('requested_by', $user->id)
+            ->where('split_details->created_task_id', $task->id)
+            ->exists();
+
+        abort_unless($isCurrentDesigner || $isApprovedSwapInitiator || $isSelfDeclinedViewer || $isSplitRequester, 403);
 
         $this->swapInitiatorReadOnly = $isApprovedSwapInitiator
             && (
@@ -162,6 +177,8 @@ class TaskDetail extends Component
             );
 
         $this->selfDeclinedReadOnly = $isSelfDeclinedViewer;
+
+        $this->splitRequesterReadOnly = $isSplitRequester;
 
         $this->task = $task;
 
@@ -218,6 +235,8 @@ class TaskDetail extends Component
 
         abort_if($this->swapInitiatorReadOnly, 403, 'This swapped task is read-only for the original Designer.');
 
+        abort_if($this->splitRequesterReadOnly, 403, 'This split task is read-only for the requester.');
+
         $nextStatus = app(DesignTaskStatusService::class)
             ->nextDesignerStatus($this->task->status);
 
@@ -235,7 +254,7 @@ class TaskDetail extends Component
 
     public function addComment(): void
     {
-        abort_if($this->selfDeclinedReadOnly, 403);
+        abort_if($this->selfDeclinedReadOnly || $this->splitRequesterReadOnly, 403);
 
         $this->validate([
             'comment' => ['required', 'string', 'max:10000'],
@@ -251,7 +270,7 @@ class TaskDetail extends Component
 
     public function addClarification(): void
     {
-        abort_if($this->selfDeclinedReadOnly, 403);
+        abort_if($this->selfDeclinedReadOnly || $this->splitRequesterReadOnly, 403);
 
         if ($this->task->status === 'completed') {
             $this->addError('clarificationMessage', 'Clarification is read-only once the task is completed.');
@@ -688,7 +707,7 @@ class TaskDetail extends Component
 
         return view('livewire.designer.task-detail', [
             'statuses' => DesignTaskStatusService::STATUSES,
-            'nextStatus' => ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly)
+            'nextStatus' => ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly || $this->splitRequesterReadOnly)
                 ? null
                 : app(DesignTaskStatusService::class)->nextDesignerStatus($this->task->status),
             'comments' => $comments,
@@ -740,11 +759,12 @@ class TaskDetail extends Component
                 ->unique()
                 ->values()
                 ->all(),
-            'allowedRequestTypes' => ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly)
+            'allowedRequestTypes' => ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly || $this->splitRequesterReadOnly)
                 ? []
                 : app(DesignTaskRequestService::class)->allowedTypesForTask($this->task),
             'swapInitiatorReadOnly' => $this->swapInitiatorReadOnly,
             'selfDeclinedReadOnly' => $this->selfDeclinedReadOnly,
+            'splitRequesterReadOnly' => $this->splitRequesterReadOnly,
             'showTaskUpdation' => $this->canViewTaskUpdation(),
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,
