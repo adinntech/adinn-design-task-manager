@@ -27,9 +27,6 @@
     $ptlBranches = ($timeline['flow']['branches'] ?? collect());
     $ptlFinalZipUrl = $task->final_submission_url;
     $ptlIsComplete = $ptlCompleted >= (int) $task->total_creatives;
-    $ptlMerged = is_array($task->requirements['_final_merged_paths'] ?? null)
-        ? array_flip($task->requirements['_final_merged_paths'])
-        : [];
 @endphp
 <style>
     .ptl{--ptl-ink:#344054;--ptl-line:#cbd5e1}
@@ -158,7 +155,7 @@
                                     <span>by {{ $child->designer?->name ?? '—' }} · {{ $child->submitted_at?->format('d M Y · h:i A') }}</span>
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                    @if($ptlFinalZipUrl)
+                                    @if($ptlIsComplete && $ptlFinalZipUrl)
                                         <a class="ptl-file" target="_blank" href="{{ $ptlFinalZipUrl }}" title="Download final submission">⬇ Final ZIP</a>
                                     @elseif($child->attachment_url)
                                         <a class="ptl-file" target="_blank" href="{{ $child->attachment_url }}" title="Download">⬇ {{ $child->attachment_original_name ?? 'Download ZIP' }}</a>
@@ -210,9 +207,7 @@
                                                     <span>by {{ $child->designer?->name ?? '—' }} · {{ $child->submitted_at?->format('d M Y · h:i A') }}</span>
                                                 </div>
                                                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                                    @if($ptlFinalZipUrl && isset($ptlMerged[$child->attachment_path]))
-                                                        <a class="ptl-file" target="_blank" href="{{ $ptlFinalZipUrl }}" title="Included in final submission">⬇ Final ZIP</a>
-                                                    @elseif($child->attachment_url)
+                                                    @if($child->attachment_url)
                                                         <a class="ptl-file" target="_blank" href="{{ $child->attachment_url }}" title="Download">⬇ {{ $child->attachment_original_name ?? 'Download ZIP' }}</a>
                                                     @else
                                                         <span class="ptl-empty">No file available</span>
