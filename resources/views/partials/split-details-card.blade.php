@@ -119,7 +119,7 @@
     <div class="split-detail-approval">
         <div class="split-detail-approval-label">Split approval</div>
         <div class="split-detail-approval-value">{{ $splitSummary['percent'] !== null ? $splitSummary['percent'].'% of ticket' : 'Pending' }}</div>
-        <div class="split-detail-bar"><div class="split-detail-bar-fill" style="width:{{ $splitSummary['percent'] ?? 0 }}%"></div></div>
+        <div class="split-detail-bar"><x-progress-fill :percentage="$splitSummary['percent'] ?? 0" /></div>
         <div class="split-detail-approval-note">
             @if($splitSummary['approved'] !== null && $splitSummary['total'])
                 {{ $splitSummary['approved'] }} of {{ $splitSummary['total'] }} creatives approved

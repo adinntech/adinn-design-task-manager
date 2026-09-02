@@ -85,7 +85,6 @@
     .bd-progress-card{display:flex;align-items:center;gap:14px;padding:14px 16px}
     .bd-progress-label{font-size:9px;font-weight:900;color:#344054;white-space:nowrap}
     .bd-progress-track{flex:1;height:10px;border-radius:999px;background:#f2f4f7;overflow:hidden}
-    .bd-progress-track > span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#e30613,#ff6b7d)}
     .bd-progress-value{font-size:13px;font-weight:950;color:#101828;min-width:34px;text-align:right}
 
     .bd-donut-wrap{display:flex;align-items:center;gap:14px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f2f4f7;flex-wrap:wrap}
@@ -161,7 +160,7 @@
     <section class="bd-card">
         <div class="bd-card-body bd-progress-card">
             <div class="bd-progress-label">Completion Rate</div>
-            <div class="bd-progress-track"><span style="width:{{ $completionRate }}%"></span></div>
+            <div class="bd-progress-track"><x-progress-fill :percentage="$completionRate" /></div>
             <div class="bd-progress-value">{{ $completionRate }}%</div>
         </div>
     </section>

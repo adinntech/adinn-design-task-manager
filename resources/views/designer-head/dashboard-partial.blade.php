@@ -115,6 +115,7 @@
             'trendCards' => $trendCards,
             'trendData' => $line,
             'trendContext' => $trendContext,
+            'expandable' => true,
         ])
     </div>
 
@@ -141,7 +142,7 @@
                         <td class="dh-danger">{{ $row['task']->due_at?->format('d M Y') ?? '—' }}</td>
                         <td><span class="dh-pill dh-pill-overdue">{{ $row['days'] }}d</span></td>
                         <td>
-                            <div class="dh-progress"><div class="dh-progress-track"><div class="dh-progress-fill" style="width:{{ $row['percentage'] }}%"></div></div><div class="dh-progress-note">{{ $row['percentage'] }}% · {{ $row['done'] }}/{{ $row['total'] }}</div></div>
+                            <div class="dh-progress"><div class="dh-progress-track"><x-progress-fill :percentage="$row['percentage']" /></div><div class="dh-progress-note">{{ $row['percentage'] }}% · {{ $row['done'] }}/{{ $row['total'] }}</div></div>
                         </td>
                         <td>{!! $statusPill($row['task']->status) !!}</td>
                     </tr>
@@ -298,7 +299,7 @@
                         <td>{{ $task->assigned_at?->format('d M Y') ?? '—' }}</td>
                         <td class="{{ $row['overdue'] ? 'dh-danger' : '' }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
                         <td>
-                            <div class="dh-progress"><div class="dh-progress-track"><div class="dh-progress-fill" style="width:{{ $row['percentage'] }}%"></div></div><div class="dh-progress-note">{{ $row['percentage'] }}%</div></div>
+                            <div class="dh-progress"><div class="dh-progress-track"><x-progress-fill :percentage="$row['percentage']" /></div><div class="dh-progress-note">{{ $row['percentage'] }}%</div></div>
                         </td>
                         <td><span class="dh-strong">{{ $row['done'] }} / {{ $task->total_creatives }}</span><div class="dh-cell-sub">{{ $row['remaining'] }} remaining</div></td>
                         <td>{!! $statusPill($task->status, $row['overdue']) !!}</td>
