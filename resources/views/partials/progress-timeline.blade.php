@@ -25,6 +25,8 @@
     $ptlRemaining = $ptlProgress->remaining($task);
     $ptlSubmission = ($timeline['flow']['submission'] ?? null);
     $ptlBranches = ($timeline['flow']['branches'] ?? collect());
+    $ptlFinalZipUrl = $task->final_submission_url;
+    $ptlIsComplete = $ptlCompleted >= (int) $task->total_creatives;
 @endphp
 <style>
     .ptl{--ptl-ink:#344054;--ptl-line:#cbd5e1}
@@ -153,7 +155,9 @@
                                     <span>by {{ $child->designer?->name ?? '—' }} · {{ $child->submitted_at?->format('d M Y · h:i A') }}</span>
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                    @if($child->attachment_url)
+                                    @if($ptlIsComplete && $ptlFinalZipUrl)
+                                        <a class="ptl-file" target="_blank" href="{{ $ptlFinalZipUrl }}" title="Download final submission">⬇ Final ZIP</a>
+                                    @elseif($child->attachment_url)
                                         <a class="ptl-file" target="_blank" href="{{ $child->attachment_url }}" title="Download">⬇ {{ $child->attachment_original_name ?? 'Download ZIP' }}</a>
                                     @else
                                         <span class="ptl-empty">No file available</span>
@@ -232,6 +236,11 @@
                                 <span class="ptl-badge is-final">Final BD Approval</span>
                                 <span class="ptl-card-meta">{{ $branch['status'] }}</span>
                             </div>
+                            @if($ptlFinalZipUrl)
+                                <div style="margin-bottom:12px">
+                                    <a class="ptl-file" target="_blank" href="{{ $ptlFinalZipUrl }}" title="Download Final Submission">⬇ Download Final Submission</a>
+                                </div>
+                            @endif
                             <div class="ptl-grid">
                                 <div class="ptl-cell"><span>Approved / Completed By</span><strong>{{ $branch['approvedBy'] }}</strong></div>
                                 <div class="ptl-cell"><span>Approved At</span><strong>{{ $branch['approvedAt']?->format('d M Y · h:i A') ?? '—' }}</strong></div>

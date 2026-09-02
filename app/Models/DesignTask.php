@@ -5,14 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class DesignTask extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'task_id','assigned_at','assigned_by','task_name','vertical','task_nature','party_type','party_name',
-        'contact_person','mobile_number','priority','due_at','designer_id','total_creatives','status','requirements',
+        'task_id', 'assigned_at', 'assigned_by', 'task_name', 'vertical', 'task_nature', 'party_type', 'party_name',
+        'contact_person', 'mobile_number', 'priority', 'due_at', 'designer_id', 'total_creatives', 'status', 'requirements',
     ];
 
     protected function casts(): array
@@ -25,14 +26,45 @@ class DesignTask extends Model
         ];
     }
 
-    public function designer(){ return $this->belongsTo(User::class, 'designer_id'); }
-    public function assigner(){ return $this->belongsTo(User::class, 'assigned_by'); }
-    public function requests(){ return $this->hasMany(DesignTaskRequest::class, 'design_task_id'); }
-    public function eodRecords(){ return $this->hasMany(DesignTaskEodRecord::class, 'design_task_id'); }
+    public function designer()
+    {
+        return $this->belongsTo(User::class, 'designer_id');
+    }
+
+    public function assigner()
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    public function requests()
+    {
+        return $this->hasMany(DesignTaskRequest::class, 'design_task_id');
+    }
+
+    public function eodRecords()
+    {
+        return $this->hasMany(DesignTaskEodRecord::class, 'design_task_id');
+    }
 
     public function getDisplayTaskNameAttribute(): string
     {
         return trim((string) preg_replace('/\s*\((?:split|swap|swapped)\)\s*$/i', '', (string) $this->task_name));
+    }
+
+    public function getFinalSubmissionUrlAttribute(): ?string
+    {
+        $path = $this->requirements['_final_submission_path'] ?? null;
+
+        if (! $path) {
+            return null;
+        }
+
+        return Storage::disk(config('filesystems.final_submission_disk', 'spaces'))->url($path);
+    }
+
+    public function getFinalSubmissionNameAttribute(): string
+    {
+        return basename((string) ($this->requirements['_final_submission_path'] ?? 'final-submission.zip'));
     }
 
     public function getDeclineOutcomeLabelAttribute(): ?string
@@ -73,13 +105,16 @@ class DesignTask extends Model
                     'label' => $type === 'split' ? 'Split Approved' : 'Swap Approved',
                     'class' => 'task-operation-pill task-operation-pill-'.$type.' task-operation-pill-approved',
                 ];
+
                 continue;
             }
 
             $latest = $requests->first(fn ($request) => $request->request_type === $type);
-            if (! $latest) continue;
+            if (! $latest) {
+                continue;
+            }
 
-            $pending = in_array($latest->overall_status, ['pending_approval','pending_designer_head','pending_admin'], true);
+            $pending = in_array($latest->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true);
             $rejected = $latest->overall_status === 'rejected';
 
             if ($pending) {
@@ -100,7 +135,6 @@ class DesignTask extends Model
 
     public function bdReview()
     {
-        return $this->hasOne(\App\Models\DesignTaskBdReview::class, 'design_task_id')->latestOfMany();
+        return $this->hasOne(DesignTaskBdReview::class, 'design_task_id')->latestOfMany();
     }
-
 }
