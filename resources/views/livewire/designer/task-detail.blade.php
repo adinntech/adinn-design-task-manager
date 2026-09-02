@@ -235,9 +235,6 @@
                 @if($selfDeclinedReadOnly)
                     <span class="badge badge-dark">Self Declined · Read Only</span>
                 @endif
-                @if($splitRequesterReadOnly)
-                    <span class="badge badge-dark">Split Task · Read Only</span>
-                @endif
                 @if($task->decline_outcome_label)
                     <span class="badge {{ str_contains($task->decline_outcome_label,'Rejected') ? 'badge-danger' : 'badge-success' }}">{{ $task->decline_outcome_label }}</span>
                 @endif
@@ -248,7 +245,7 @@
         <div class="page-actions">
             <a class="btn btn-secondary" href="{{ route('designer.tasks.index') }}">Back to My Tasks</a>
 
-            @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly || $splitRequesterReadOnly)
+            @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly)
 
             @if(in_array('decline', $allowedRequestTypes, true))
                 @if(in_array('decline', $pendingRequestTypes, true))
@@ -313,12 +310,6 @@
     @if($swapInitiatorReadOnly)
         <div class="swap-readonly-note">
             Swap approved. You can view this task and add comments only.
-        </div>
-    @endif
-
-    @if($splitRequesterReadOnly && $task->designer_id !== Auth::id())
-        <div class="swap-readonly-note">
-            Split approved. This split task is assigned to another Designer. You can view it and add comments only.
         </div>
     @endif
 
@@ -849,7 +840,7 @@
                                 </div>
                             @endif
 
-                            @if($currentReworkPending > 0 && $progressPercentage < 100 && ! $selfDeclinedReadOnly && ! $splitRequesterReadOnly)
+                            @if($currentReworkPending > 0 && $progressPercentage < 100 && ! $selfDeclinedReadOnly)
                             <div class="rework-upload-wrap">
                                 <div style="display:grid;grid-template-columns:minmax(150px,.55fr) minmax(240px,1fr);gap:10px;align-items:end">
                                     <div>
@@ -887,7 +878,7 @@
                             @endif
                         </div>
                     @endif
-                    @if($swapInitiatorReadOnly || $selfDeclinedReadOnly || $splitRequesterReadOnly)
+                    @if($swapInitiatorReadOnly || $selfDeclinedReadOnly)
                         <div class="empty-state" style="margin-bottom:14px">
                             Progress Updates history is view-only.
                         </div>
@@ -1285,7 +1276,7 @@
 
     <div class="toast" x-show="toast" x-transition x-text="toast" style="display:none"></div>
 
-    @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly || $splitRequesterReadOnly)
+    @unless($swapInitiatorReadOnly || $selfDeclinedReadOnly)
         <livewire:designer.task-request-modal :task="$task" :key="'task-request-modal-'.$task->id" />
     @endunless
 </div>
