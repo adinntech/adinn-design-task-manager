@@ -28,6 +28,12 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 .kanban-column.status-swap_tasks .kanban-count{background:#ccfbf1;color:#0f766e}
 .kanban-column.status-self_declined .kanban-count{background:#e5e7eb;color:#4b5563}
 
+.kanban-column.kanban-column-focus{animation:kanbanColumnFocusBlink .5s ease-in-out 2}
+@keyframes kanbanColumnFocusBlink{
+    0%,100%{box-shadow:none;border-color:#e7e9ef}
+    50%{box-shadow:0 0 0 3px rgba(227,6,19,.55);border-color:#e30613}
+}
+
 .task-card{display:block;border:1px solid #e3e6ec;border-left:5px solid #cbd5e1;border-radius:11px;background:#fff;padding:11px;margin-bottom:8px;color:inherit;text-decoration:none;box-shadow:0 4px 12px rgba(16,24,40,.04);cursor:grab;transition:.16s}
 .task-card:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(16,24,40,.08);border-color:#d7dbe3}
 .task-card-highlight{animation:taskCardHighlightPulse .7s ease-in-out 3}
@@ -501,21 +507,70 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                             const column = target ? target.closest('.kanban-column')
                                 : (focus ? this.$root.querySelector('.kanban-column[data-status="' + focus + '"]') : null);
 
-                            if (shell && column) {
-                                shell.scrollTo({ left: Math.max(0, column.offsetLeft - 12), behavior: 'smooth' });
-                            }
+                            const afterScroll = () => {
+                                if (column) {
+                                    column.classList.add('kanban-column-focus');
+                                    column.addEventListener('animationend', function onColumnBlinkEnd(event) {
+                                        if (event.animationName !== 'kanbanColumnFocusBlink') return;
+                                        column.classList.remove('kanban-column-focus');
+                                        column.removeEventListener('animationend', onColumnBlinkEnd);
+                                    });
+                                }
 
-                            if (target) {
-                                target.classList.add('task-card-highlight');
-                                target.addEventListener('animationend', function onPulseEnd(event) {
-                                    if (event.animationName !== 'taskCardHighlightPulse') return;
-                                    target.classList.remove('task-card-highlight');
-                                    target.removeEventListener('animationend', onPulseEnd);
-                                });
+                                if (target) {
+                                    target.classList.add('task-card-highlight');
+                                    target.addEventListener('animationend', function onPulseEnd(event) {
+                                        if (event.animationName !== 'taskCardHighlightPulse') return;
+                                        target.classList.remove('task-card-highlight');
+                                        target.removeEventListener('animationend', onPulseEnd);
+                                    });
+                                }
+                            };
+
+                            if (shell && column) {
+                                this.scrollShellTo(shell, Math.max(0, column.offsetLeft - 12), afterScroll);
+                            } else {
+                                afterScroll();
                             }
                         };
 
                         attempt(0);
+                    },
+
+                    // Smooth-scrolls the shell, then calls `done` once movement actually
+                    // stops (native `scrollend` where supported, otherwise a scroll-event
+                    // debounce) so the blink never starts mid-scroll. A generous safety
+                    // timer guarantees `done` still fires if neither signal arrives.
+                    scrollShellTo(shell, left, done){
+                        if (Math.abs(shell.scrollLeft - left) < 2) {
+                            shell.scrollTo({ left, behavior: 'smooth' });
+                            done();
+                            return;
+                        }
+
+                        let finished = false;
+                        let debounce = null;
+
+                        const finish = () => {
+                            if (finished) return;
+                            finished = true;
+                            clearTimeout(debounce);
+                            clearTimeout(safety);
+                            shell.removeEventListener('scroll', onScroll);
+                            shell.removeEventListener('scrollend', finish);
+                            done();
+                        };
+
+                        const onScroll = () => {
+                            clearTimeout(debounce);
+                            debounce = setTimeout(finish, 120);
+                        };
+
+                        shell.addEventListener('scroll', onScroll, { passive: true });
+                        shell.addEventListener('scrollend', finish);
+                        const safety = setTimeout(finish, 1500);
+
+                        shell.scrollTo({ left, behavior: 'smooth' });
                     },
 
                     refreshSortable(){
