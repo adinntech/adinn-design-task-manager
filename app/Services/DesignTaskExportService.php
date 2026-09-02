@@ -33,15 +33,20 @@ class DesignTaskExportService
 
     private const BORDER_COLOR = 'E5E7EB';
 
+    private const LATE_ROW_FILL = 'FFC7CE';
+
+    private const LATE_ROW_TEXT = '9C0006';
+
     private const HEADER = [
-        'Task ID', 'Task Name', 'Designer', 'BD', 'Vertical', 'Task Type',
+        'S.NO', 'Task ID', 'Task Name', 'Designer', 'BD', 'Vertical', 'Task Type',
         'Created At', 'Assigned At', 'Due Date', 'Completed At', 'Status',
         'Creatives', 'Progress Details', 'Rework Details',
         'Split/Swap/Decline Details', 'Ratings', 'Deadline Result', 'Cross-Month Info',
+        'Period Continuation',
     ];
 
     private const COLUMN_WIDTHS = [
-        14, 28, 18, 18, 14, 24, 12, 12, 12, 12, 18, 18, 28, 24, 22, 32, 24, 22,
+        6, 14, 28, 18, 18, 14, 24, 12, 12, 12, 12, 18, 18, 28, 24, 22, 32, 24, 22,
     ];
 
     public function __construct(
@@ -135,6 +140,8 @@ class DesignTaskExportService
                 ->map(fn (Collection $rows) => $rows->countBy('request_type'));
 
         $rows = [];
+        $lateRowNumbers = [];
+        $rowNumber = 0;
         $totals = [
             'total' => 0, 'completed' => 0, 'active' => 0, 'overdue' => 0,
             'split' => 0, 'swap' => 0, 'decline' => 0, 'reworks' => 0, 'reworkCreatives' => 0,
@@ -170,7 +177,13 @@ class DesignTaskExportService
                 default => null,
             };
 
+            $rowNumber++;
+            if ($completion['status'] === 'late') {
+                $lateRowNumbers[] = $rowNumber;
+            }
+
             $rows[] = [
+                $rowNumber,
                 $task->task_id,
                 $task->display_task_name ?? $task->task_name,
                 $task->designer?->name ?? '—',
@@ -189,6 +202,7 @@ class DesignTaskExportService
                 $this->ratingCell($rating),
                 $this->completionText($completion),
                 $this->crossMonthCell($task->assigned_at?->format('M Y'), $terminalAt?->format('M Y')),
+                $task->continuation_label ?? 'No',
             ];
 
             $totals['total']++;
@@ -220,7 +234,7 @@ class DesignTaskExportService
             ['Average Rating', $ratingCount > 0 ? DesignTaskBdReview::formatRating($ratingSum / $ratingCount) : '—'],
         ];
 
-        $spreadsheet = $this->buildSpreadsheet($rows, $summary);
+        $spreadsheet = $this->buildSpreadsheet($rows, $summary, $lateRowNumbers);
         $filename = $filenamePrefix.'-'.now()->format('Y-m-d-His').'.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {
@@ -230,7 +244,11 @@ class DesignTaskExportService
         ]);
     }
 
-    private function buildSpreadsheet(array $rows, array $summary): Spreadsheet
+    /**
+     * @param  int[]  $lateRowNumbers  1-based position of each row (within $rows) that
+     *                                 completed after its due date — highlighted red.
+     */
+    private function buildSpreadsheet(array $rows, array $summary, array $lateRowNumbers = []): Spreadsheet
     {
         $spreadsheet = new Spreadsheet;
 
@@ -245,6 +263,10 @@ class DesignTaskExportService
         } else {
             $tasksSheet->fromArray($rows, null, 'A2');
             $this->styleBodyRows($tasksSheet, count(self::HEADER), 2, count($rows) + 1, true);
+
+            foreach ($lateRowNumbers as $rowNumber) {
+                $this->styleLateRow($tasksSheet, count(self::HEADER), $rowNumber + 1);
+            }
         }
 
         foreach (self::COLUMN_WIDTHS as $index => $width) {
@@ -286,6 +308,20 @@ class DesignTaskExportService
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::BORDER_COLOR]]],
             'alignment' => ['vertical' => Alignment::VERTICAL_TOP, 'wrapText' => $wrap],
+        ]);
+    }
+
+    /**
+     * Overrides the fill/font for one already-styled body row — a task that
+     * completed after its due date — without touching overdue (still-open) rows,
+     * which keep the normal white styling and existing "days overdue" text.
+     */
+    private function styleLateRow(Worksheet $sheet, int $columnCount, int $row): void
+    {
+        $range = 'A'.$row.':'.$this->columnLetter($columnCount).$row;
+        $sheet->getStyle($range)->applyFromArray([
+            'font' => ['color' => ['rgb' => self::LATE_ROW_TEXT]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::LATE_ROW_FILL]],
         ]);
     }
 
