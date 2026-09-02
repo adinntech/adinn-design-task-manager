@@ -43,7 +43,7 @@
         place-items:center;
         background:#fff0f1;
         color:#e30613;
-        font-size:10px;
+        font-size:11px;
         font-weight:900;
         flex:0 0 auto;
     }
@@ -54,14 +54,14 @@
         overflow:hidden;
         text-overflow:ellipsis;
         white-space:nowrap;
-        font-size:9px;
+        font-size:12px;
         font-weight:800;
         color:#344054;
     }
     .multi-file-size{
         display:block;
         margin-top:2px;
-        font-size:8px;
+        font-size:10px;
         color:#98a2b3;
     }
     .multi-file-remove{
@@ -80,9 +80,9 @@
     .multi-file-remove:hover{background:#ffe4e6}
     .multi-file-help{
         margin-top:5px;
-        font-size:8px;
+        font-size:11px;
         color:#667085;
-        line-height:1.45;
+        line-height:1.5;
     }
     @media(max-width:700px){
         .multi-file-name{max-width:62vw}

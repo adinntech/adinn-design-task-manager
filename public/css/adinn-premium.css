@@ -79,31 +79,32 @@ body{color:var(--adinn-ink);background:#f5f6f8}
 .info-grid{gap:10px}
 .info-item,.activity-item{padding:13px 14px;border-radius:11px;background:#fff}
 .info-item span,.activity-item strong{
-    font-size:9px;font-weight:850;letter-spacing:.015em;color:var(--adinn-muted)
+    font-size:11px;font-weight:850;letter-spacing:.015em;color:var(--adinn-muted)
 }
 .info-item strong,.activity-item p{
-    margin-top:5px;font-size:11px;line-height:1.45;color:var(--adinn-text)
+    margin-top:5px;font-size:13px;line-height:1.5;color:var(--adinn-text)
 }
-.btn{min-height:38px;padding:9px 14px;border-radius:10px;font-size:10px;font-weight:850;letter-spacing:.005em;transition:.16s ease}
+.metric-label{font-size:12px}
+.btn{min-height:40px;padding:9px 16px;border-radius:10px;font-size:14px!important;font-weight:850;letter-spacing:.005em;transition:.16s ease}
 .btn:hover{transform:translateY(-1px)}
 .btn-primary{box-shadow:0 5px 12px rgba(227,6,19,.12)}
 .premium-input,.field,input[type=text],input[type=email],input[type=number],input[type=date],input[type=datetime-local],select,textarea{
-    border-color:#d0d5dd;border-radius:10px;min-height:39px;font-size:11px;color:var(--adinn-ink)
+    border-color:#d0d5dd;border-radius:10px;min-height:42px;font-size:14px!important;color:var(--adinn-ink)
 }
 textarea{line-height:1.55}
 .premium-input:focus,.field:focus,input:focus,select:focus,textarea:focus{
     outline:none;border-color:#f04452;box-shadow:0 0 0 3px rgba(227,6,19,.08)
 }
-.label{font-size:9px;font-weight:850;color:var(--adinn-text)}
-.badge{font-size:8px;font-weight:900;letter-spacing:.025em;padding:5px 8px}
-.empty-state{padding:28px 16px;border-radius:11px;background:#fafbfc;color:#98a2b3;font-size:10px}
-table{font-size:10px}
-th{font-size:9px!important;font-weight:900!important;letter-spacing:.02em}
-td{line-height:1.45}
-.flash{border-radius:11px;padding:11px 13px;font-size:10px;font-weight:700}
+.label{font-size:12px!important;font-weight:850;color:var(--adinn-text)}
+.badge{font-size:10px!important;font-weight:900;letter-spacing:.025em;padding:5px 8px}
+.empty-state{padding:28px 16px;border-radius:11px;background:#fafbfc;color:#98a2b3;font-size:13px}
+table{font-size:14px}
+th{font-size:12px!important;font-weight:900!important;letter-spacing:.02em}
+td{font-size:14px!important;line-height:1.5}
+.flash{border-radius:11px;padding:11px 13px;font-size:13px;font-weight:700}
 .collapse-panel{margin-bottom:14px;border-radius:13px}
 .collapse-panel summary{
-    min-height:58px;padding:15px 17px;font-size:12px;font-weight:900;letter-spacing:-.01em;
+    min-height:58px;padding:15px 17px;font-size:13px;font-weight:900;letter-spacing:-.01em;
     gap:10px
 }
 .collapse-panel summary:after{margin-left:auto}
@@ -113,13 +114,13 @@ td{line-height:1.45}
     display:inline-flex!important;
     align-items:center!important;
     justify-content:center!important;
-    min-width:20px!important;
-    height:20px!important;
+    min-width:22px!important;
+    height:22px!important;
     padding:0 6px!important;
     border-radius:999px!important;
     background:#fff0f1!important;
     color:var(--adinn-red)!important;
-    font-size:8px!important;
+    font-size:10px!important;
     font-weight:900!important;
     line-height:1!important;
     flex:0 0 auto;
@@ -128,22 +129,22 @@ td{line-height:1.45}
     scrollbar-width:none;
 }
 .detail-tabs::-webkit-scrollbar,.bd-detail-tabs::-webkit-scrollbar{display:none}
-.detail-tab,.bd-detail-tab{min-height:38px;font-size:10px!important;font-weight:850!important}
+.detail-tab,.bd-detail-tab{min-height:40px;font-size:13px!important;font-weight:850!important}
 .progress-card{box-shadow:none}
 .progress-track{height:8px}
-.error{color:#b42318;font-size:9px;font-weight:700;margin-top:5px}
+.error{color:#b42318;font-size:11px!important;font-weight:700;margin-top:5px}
 .attachment-group,.bd-attachment-group{box-shadow:none}
 .attachment-file,.bd-file{min-height:42px}
 .attachment-actions,.bd-file-actions{gap:6px}
-.attachment-download{font-size:8px}
+.attachment-download{font-size:11px!important}
 .bd-attachment-group{border:1px solid #e4e7ec;border-radius:12px;background:#fff;overflow:hidden;margin-bottom:10px;padding:0}
-.bd-attachment-title{font-size:9px;font-weight:900;color:#344054;background:#f8fafc;padding:9px 11px;border-bottom:1px solid #eaecf0;margin:0}
+.bd-attachment-title{font-size:12px!important;font-weight:900;color:#344054;background:#f8fafc;padding:9px 11px;border-bottom:1px solid #eaecf0;margin:0}
 .bd-file{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 11px;background:#fff;border-radius:0;margin:0;border-bottom:1px solid #f2f4f7}
 .bd-file:last-child{border-bottom:0}
 .bd-file-main{min-width:0}
-.bd-file-name{font-size:9px;font-weight:650;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bd-file-name{font-size:12px!important;font-weight:650;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .bd-file-actions{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
-.bd-file-btn{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:6px 10px;border-radius:8px;text-decoration:none;font-size:8px;font-weight:850;white-space:nowrap}
+.bd-file-btn{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 10px;border-radius:8px;text-decoration:none;font-size:11px!important;font-weight:850;white-space:nowrap}
 .bd-file-open{background:#e30613;color:#fff;border:1px solid #e30613}
 .bd-file-download{background:#fff;color:#344054;border:1px solid #d0d5dd}
 @media(max-width:700px){
@@ -165,3 +166,19 @@ td{line-height:1.45}
     .panel-header,.panel-body{padding-left:14px;padding-right:14px}
     .collapse-panel summary{padding:14px}
 }
+
+/* Dashboard "recent tasks" tables (.dh-table on BD/Designer Head, .bd-table on
+   Designer) and Kanban cards/badges are duplicated with their own small
+   font-sizes in each page's inline <style> block, so !important is required
+   here to win the cascade without touching every page. */
+.dh-table th,.bd-table th{font-size:12px!important}
+.dh-table td,.bd-table td{font-size:14px!important}
+.kanban-column-title,.kanban-count{font-size:11px!important}
+.task-card-id{font-size:11px!important}
+.task-card-name{font-size:14px!important}
+.task-card-client{font-size:12px!important}
+.task-meta-item{font-size:11px!important}
+.task-meta-item strong{font-size:10px!important}
+.kanban-progress-head,.kanban-progress-head strong{font-size:10px!important}
+.due-pill,.task-request-status,.task-request-top,.request-type-pill,.task-history-tag,.kanban-rating-label{font-size:10px!important}
+.kanban-rating-value{font-size:11px!important}
