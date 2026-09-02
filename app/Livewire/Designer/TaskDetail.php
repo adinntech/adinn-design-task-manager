@@ -10,7 +10,6 @@ use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
-use App\Services\DesignTaskFinalSubmissionService;
 use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskReportingService;
@@ -445,8 +444,6 @@ class TaskDetail extends Component
                     'change_source' => 'progress_completed',
                     'note' => 'All '.$task->total_creatives.' creative(s) completed. Automatically moved to Waiting for BD Review.',
                 ]);
-
-                app(DesignTaskFinalSubmissionService::class)->ensureFinalPackage($task);
 
                 $autoCompleted = true;
             }
