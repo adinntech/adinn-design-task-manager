@@ -413,6 +413,30 @@
                     </div>
                 </details>
 
+                @if(!empty($audioFiles))
+                <details class="collapse-panel" open>
+                    <summary>Client Call Recording <span class="tab-count">{{ count($audioFiles) }}</span></summary>
+                    <div class="collapse-body">
+                        @foreach($audioFiles as $file)
+                            <div class="bd-attachment-group">
+                                <div class="bd-attachment-title">{{ $file['name'] }}</div>
+                                <div style="padding:11px">
+                                    @php
+                                        $audioUrl = route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($file['path'])]);
+                                    @endphp
+                                    <audio controls preload="none" style="width:100%">
+                                        <source src="{{ $audioUrl }}">
+                                    </audio>
+                                    <div class="bd-file-actions" style="margin-top:9px">
+                                        <a class="bd-file-btn bd-file-download" href="{{ $audioUrl }}">Download</a>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </details>
+                @endif
+
                 <details class="collapse-panel">
                     <summary>Attachments <span class="tab-count">{{ $requirementAttachmentCount }}</span></summary>
                     <div class="collapse-body">

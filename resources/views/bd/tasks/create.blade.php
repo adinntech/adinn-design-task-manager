@@ -238,6 +238,10 @@ function validateField(input,show=true){
  const value=input.type==='file'?(input.files?.length||0):String(input.value??'').trim();
  let message='';
  if(input.required&&!value)message=`${getLabel(input)} is required.`;
+ else if(input.type==='file'&&input.dataset.audioOnly==='1'&&value){
+  const invalid=Array.from(input.files).some(file=>!/\.(mp3|wav)$/i.test(file.name));
+  if(invalid)message='Only MP3 or WAV audio files are allowed.';
+ }
  else if(value&&input.validity){
   if(input.validity.patternMismatch)message=`${getLabel(input)} is not in the correct format.`;
   else if(input.validity.typeMismatch)message=`Enter a valid ${getLabel(input).toLowerCase()}.`;
@@ -257,9 +261,10 @@ function bindLiveValidation(root=document){
  });
 }
 
-function uploadHtml(name,label,required=false,accept=''){
- const star=required?' *':'',req=required?'required':'',acceptAttr=accept?`accept="${accept}"`:'';
- return `<div class="md:col-span-2"><label class="label">${label}${star}</label><input class="field" type="file" name="${name}[]" multiple data-accumulate-files ${acceptAttr} ${req}><p class="multi-file-help">Select multiple files together, or choose more files later. Use × to remove any file before submitting.</p></div>`;
+function uploadHtml(name,label,required=false,accept='',audioOnly=false){
+ const star=required?' *':'',req=required?'required':'',acceptAttr=accept?`accept="${accept}"`:'',audioAttr=audioOnly?'data-audio-only="1"':'';
+ const help=audioOnly?'MP3 or WAV only · Select multiple files together, or choose more files later. Use × to remove any file before submitting.':'Select multiple files together, or choose more files later. Use × to remove any file before submitting.';
+ return `<div class="md:col-span-2"><label class="label">${label}${star}</label><input class="field" type="file" name="${name}[]" multiple data-accumulate-files ${acceptAttr} ${audioAttr} ${req}><p class="multi-file-help">${help}</p></div>`;
 }
 function dimensionRowHtml(index,row={}){
  const name=esc(row.name??''),width=esc(row.width??''),height=esc(row.height??'');
@@ -434,7 +439,7 @@ function fieldHtml(f){
  }
  if(type==='file'||type==='files')return uploadHtml(name,label,required);
  if(type==='mediafiles')return uploadHtml(name,label,required,'image/*,video/*');
- if(type==='audio')return uploadHtml(name,label,required,'audio/*,.mp3,.wav,.m4a,.aac,.ogg');
+ if(type==='audio')return uploadHtml(name,label,required,'.mp3,.wav,audio/mpeg,audio/mp3,audio/wav,audio/x-wav',true);
  if(type==='location')return `<div class="${wrap}"><label class="label">${label}${star}</label><input class="field" type="text" list="locationOptions" name="${name}" value="${old}" placeholder="Search or enter location" ${req}></div>`;
  if(name==='creative_mobile_number')return `<div class="${wrap}"><label class="label">${label}${star}</label><input class="field" type="text" name="${name}" value="${old}" inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10" placeholder="Enter 10-digit mobile number" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" ${req}></div>`;
  if(type==='number')return `<div class="${wrap}"><label class="label">${label}${star}</label><input class="field" type="number" name="${name}" value="${old}" min="1" max="9999" step="1" inputmode="numeric" ${req}></div>`;
@@ -637,12 +642,26 @@ document.getElementById('partyType').addEventListener('change',e=>document.getEl
 
 taskForm.addEventListener('reset',()=>setTimeout(()=>{vertical.value='';populateNatures();taskForm.querySelectorAll('.has-error').forEach(el=>el.classList.remove('has-error'));taskForm.querySelectorAll('.live-field-error').forEach(el=>el.classList.add('hidden'));},0));
 taskForm.addEventListener('submit',event=>{
+ if(submit.dataset.submitting==='1'){event.preventDefault();return;}
  let valid=true;
  taskForm.querySelectorAll('input,select,textarea').forEach(input=>{if(!validateField(input,true))valid=false;});
  if(!validateDimensions(true))valid=false;
  if(!validateSizes(true))valid=false;
  if(!validateMediaSizes(true))valid=false;
- if(!valid){event.preventDefault();taskForm.querySelector('.has-error,[data-dimension-error]:not(.hidden)')?.scrollIntoView({behavior:'smooth',block:'center'});}
+ if(!valid){event.preventDefault();taskForm.querySelector('.has-error,[data-dimension-error]:not(.hidden)')?.scrollIntoView({behavior:'smooth',block:'center'});return;}
+ submit.dataset.submitting='1';
+ submit.dataset.originalText=submit.textContent;
+ submit.disabled=true;
+ submit.textContent='Creating Task...';
+});
+
+// bfcache restore (e.g. browser back after a failed submit elsewhere) must not
+// leave the button permanently stuck disabled/relabeled.
+window.addEventListener('pageshow',event=>{
+ if(!event.persisted)return;
+ submit.dataset.submitting='';
+ if(submit.dataset.originalText)submit.textContent=submit.dataset.originalText;
+ submit.disabled=!(vertical.value&&nature.value);
 });
 
 bindLiveValidation(taskForm);

@@ -134,6 +134,7 @@ class AssignedTaskController extends Controller
         $requirementAttachmentCount = collect($requirementAttachmentGroups)
             ->sum(fn (array $group) => count($group['files']));
         $commentAttachmentCount = $comments->sum(fn ($comment) => $comment->attachments->count());
+        $audioFiles = $this->collectAudioFiles($task->requirements ?? []);
 
         $pipelineEvents = app(DesignTaskPipelineService::class)->build(
             $task,
@@ -175,6 +176,7 @@ class AssignedTaskController extends Controller
             'attachmentCount' => $requirementAttachmentCount + $commentAttachmentCount,
             'bdReviews' => $bdReviews,
             'taskRating' => $taskRating,
+            'audioFiles' => $audioFiles,
         ]);
     }
 
@@ -427,7 +429,9 @@ class AssignedTaskController extends Controller
     {
         $groups = [];
         foreach ($requirements as $key => $value) {
-            if (str_starts_with((string) $key, '_')) {
+            // Client call recording gets its own dedicated "Audio Reference"
+            // section (with a player) instead of the generic attachment list.
+            if (str_starts_with((string) $key, '_') || $key === 'client_audio') {
                 continue;
             }
             $files = [];
@@ -443,6 +447,18 @@ class AssignedTaskController extends Controller
         }
 
         return $groups;
+    }
+
+    /**
+     * The client phone-call recording reference, extracted separately so the
+     * Task Overview can show it with a dedicated audio player + download.
+     */
+    private function collectAudioFiles(array $requirements): array
+    {
+        $files = [];
+        $this->extractStoredFiles($requirements['client_audio'] ?? [], $files);
+
+        return $files;
     }
 
     private function extractStoredFiles(mixed $value, array &$files): void

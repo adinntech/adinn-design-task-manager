@@ -620,6 +620,8 @@ class TaskDetail extends Component
         $requirementAttachmentCount = collect($requirementAttachmentGroups)
             ->sum(fn (array $group) => count($group['files']));
 
+        $audioFiles = $this->collectAudioFiles($this->task->requirements ?? []);
+
         $commentAttachmentCount = $comments->sum(
             fn (DesignTaskComment $comment) => $comment->attachments->count()
         );
@@ -752,6 +754,7 @@ class TaskDetail extends Component
             'commentAttachmentCount' => $commentAttachmentCount,
             'attachmentCount' => $requirementAttachmentCount + $commentAttachmentCount,
             'editHistory' => $editHistory,
+            'audioFiles' => $audioFiles,
         ]);
     }
 
@@ -890,6 +893,12 @@ class TaskDetail extends Component
         $groups = [];
 
         foreach ($requirements as $key => $value) {
+            // Client call recording gets its own dedicated "Audio Reference"
+            // section (with a player) instead of the generic attachment list.
+            if ($key === 'client_audio') {
+                continue;
+            }
+
             $files = [];
             $this->extractStoredFiles($value, $files);
 
@@ -905,6 +914,18 @@ class TaskDetail extends Component
         }
 
         return $groups;
+    }
+
+    /**
+     * The client phone-call recording reference, extracted separately so the
+     * Task Overview can show it with a dedicated audio player + download.
+     */
+    private function collectAudioFiles(array $requirements): array
+    {
+        $files = [];
+        $this->extractStoredFiles($requirements['client_audio'] ?? [], $files);
+
+        return $files;
     }
 
     private function extractStoredFiles(mixed $value, array &$files): void

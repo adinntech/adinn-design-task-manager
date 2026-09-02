@@ -152,6 +152,23 @@
                         <div class="requirement-row"><div class="requirement-key">{{ ucwords(str_replace('_',' ',$key)) }}</div><div>{{ is_array($value) ? json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) : $value }}</div></div>
                     @empty<div class="empty-state">No requirement data available.</div>@endforelse
                 </div></div></details>
+                @if(!empty($audioFiles))
+                <details class="collapse-panel" open><summary><span class="collapse-summary-title">Client Call Recording <span class="bd-tab-count">{{ count($audioFiles) }}</span></span></summary><div class="collapse-body">
+                    @foreach($audioFiles as $file)
+                        <div class="bd-attachment-group">
+                            <div class="bd-attachment-title">{{ $file['name'] }}</div>
+                            <div style="padding:11px">
+                                <audio controls preload="none" style="width:100%">
+                                    <source src="{{ $file['url'] }}">
+                                </audio>
+                                <div class="bd-file-actions" style="margin-top:9px">
+                                    <a class="bd-file-btn bd-file-download" href="{{ $file['url'] }}" download>Download</a>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div></details>
+                @endif
                 <details class="collapse-panel"><summary><span class="collapse-summary-title">Attachments <span class="bd-tab-count">{{ $requirementAttachmentCount }}</span></span></summary><div class="collapse-body">
                     @forelse($requirementAttachmentGroups as $group)
                         <div class="bd-attachment-group">
@@ -628,4 +645,30 @@
     </div></div></section>
     @endif
 </div>
+
+@push('scripts')
+<script>
+// Approve/Reject/Accept/Decline forms are plain POSTs (full page reload on
+// success), so a stray double-click before navigation starts must not fire a
+// second request. Scoped to .head-decision-box only — no global button lock.
+document.addEventListener('submit', function (event) {
+    var form = event.target;
+    if (!(form instanceof HTMLFormElement) || !form.matches('.head-decision-box')) return;
+
+    if (form.dataset.submitting === '1') {
+        event.preventDefault();
+        return;
+    }
+
+    form.dataset.submitting = '1';
+
+    var button = form.querySelector('button[type="submit"]');
+    if (button) {
+        button.dataset.originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Processing...';
+    }
+});
+</script>
+@endpush
 @endsection

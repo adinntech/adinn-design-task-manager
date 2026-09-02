@@ -36,6 +36,19 @@ class TaskController extends Controller
         'company_details_upload', 'attachments',
     ];
 
+    /**
+     * The client call-recording reference accepts only MP3/WAV — enforced by
+     * extension AND real MIME type (not Laravel's `mimes:` rule, which infers
+     * extension from MIME and can misclassify browser-supplied WAV variants
+     * such as audio/x-wav).
+     */
+    private const AUDIO_EXTENSIONS = ['mp3', 'wav'];
+
+    private const AUDIO_MIME_TYPES = [
+        'audio/mpeg', 'audio/mp3',
+        'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave', 'audio/vnd.wav',
+    ];
+
     public function create()
     {
         $designers = User::query()
@@ -165,8 +178,7 @@ class TaskController extends Controller
 
         $mediaSizeRows = collect($data['media_size_rows'] ?? [])
             ->filter(fn ($row) => is_array($row))
-            ->filter(fn ($row) =>
-                filled($row['name'] ?? null)
+            ->filter(fn ($row) => filled($row['name'] ?? null)
                 || filled($row['width'] ?? null)
                 || filled($row['height'] ?? null)
                 || filled($row['ratio'] ?? null)
@@ -281,7 +293,6 @@ class TaskController extends Controller
 
         return view('bd.tasks.show', compact('task'));
     }
-
 
     private function storeSingleFile(
         UploadedFile $file,
@@ -403,18 +414,18 @@ class TaskController extends Controller
             'vehicle_type' => [
                 'nullable',
                 Rule::in([
-                '3 Side LED 14 feet',
-                '3 Side LED 18 feet',
-                '7x5 LED Hybrid 8 feet',
-                'Box Model Triangle Roof',
-                'Center Portion Triangle Roof',
-                'Center Portion Without Roof',
-                'L-Model Box Roof with Utility Room',
-                'L-Model Box Roof',
-                'L-Model Without Roof',
-                'L-Shape LED',
-                'Single Side LED 17 feet',
-                'Static Model'
+                    '3 Side LED 14 feet',
+                    '3 Side LED 18 feet',
+                    '7x5 LED Hybrid 8 feet',
+                    'Box Model Triangle Roof',
+                    'Center Portion Triangle Roof',
+                    'Center Portion Without Roof',
+                    'L-Model Box Roof with Utility Room',
+                    'L-Model Box Roof',
+                    'L-Model Without Roof',
+                    'L-Shape LED',
+                    'Single Side LED 17 feet',
+                    'Static Model',
                 ]),
             ],
             'media' => ['nullable', 'string', 'max:180'],
@@ -472,6 +483,7 @@ class TaskController extends Controller
                             || blank($row['height'] ?? null)
                         ) {
                             $fail('Complete Name, Width and Height for every Board Details row, or remove the incomplete row.');
+
                             return;
                         }
                     }
@@ -503,8 +515,7 @@ class TaskController extends Controller
 
                     $rows = collect(is_array($value) ? $value : [])
                         ->filter(fn ($row) => is_array($row))
-                        ->filter(fn ($row) =>
-                            filled($row['name'] ?? null)
+                        ->filter(fn ($row) => filled($row['name'] ?? null)
                             || filled($row['width'] ?? null)
                             || filled($row['height'] ?? null)
                             || filled($row['ratio'] ?? null)
@@ -512,6 +523,7 @@ class TaskController extends Controller
 
                     if ($rows->isEmpty()) {
                         $fail('Add at least one complete Creative Size Details row.');
+
                         return;
                     }
 
@@ -525,6 +537,7 @@ class TaskController extends Controller
                             || blank($row['ratio'] ?? null)
                         ) {
                             $fail('Complete Name, Width, Height and Ratio for every Creative Size Details row.');
+
                             return;
                         }
                     }
@@ -561,6 +574,7 @@ class TaskController extends Controller
                             || blank($row['height'] ?? null)
                         ) {
                             $fail('Complete Name, Width and Height for every Size Details row, or remove the incomplete row.');
+
                             return;
                         }
                     }
@@ -588,7 +602,7 @@ class TaskController extends Controller
         foreach (self::FILE_FIELDS as $field) {
             $common[$field] = ['nullable', 'array', 'max:20'];
             $common["{$field}.*"] = $field === 'client_audio'
-                ? ['file', 'mimes:mp3,wav,m4a,aac,ogg', 'max:51200']
+                ? $this->audioFileRule()
                 : ['file', 'max:102400'];
         }
 
@@ -614,7 +628,6 @@ class TaskController extends Controller
             'pop_offsets.mockup_design' => ['description', 'product_type', 'company_details'],
             'pop_offsets.design_adaptation' => ['description', 'product_type', 'company_details'],
             'pop_offsets.creative_design' => ['description', 'product_type', 'company_details'],
-
 
             'events_activations.proposal_designs' => ['description', 'requirement_list'],
             'events_activations.element_design_with_creative' => ['description', 'creative', 'recce_report', 'requirement_list'],
@@ -661,6 +674,26 @@ class TaskController extends Controller
         return $common;
     }
 
+    private function audioFileRule(): array
+    {
+        return [
+            'file',
+            'max:51200',
+            function (string $attribute, mixed $value, \Closure $fail): void {
+                if (! $value instanceof UploadedFile) {
+                    return;
+                }
+
+                $extension = strtolower((string) $value->getClientOriginalExtension());
+                $mime = strtolower((string) $value->getMimeType());
+
+                if (! in_array($extension, self::AUDIO_EXTENSIONS, true) || ! in_array($mime, self::AUDIO_MIME_TYPES, true)) {
+                    $fail('The Audio Reference must be an MP3 or WAV file.');
+                }
+            },
+        ];
+    }
+
     private function maximumAllowedDueDate(): Carbon
     {
         $date = now()->copy()->startOfDay();
@@ -676,5 +709,4 @@ class TaskController extends Controller
 
         return $date->endOfDay();
     }
-
 }

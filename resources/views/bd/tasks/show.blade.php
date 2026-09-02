@@ -320,6 +320,23 @@
                         <div class="requirement-row"><div class="requirement-key">{{ ucwords(str_replace('_',' ',$key)) }}</div><div>@if($key === 'board_details' && is_array($value)) @include('partials.board-details-table',['rows'=>$value]) @else {{ is_array($value) ? json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) : $value }} @endif</div></div>
                     @empty<div class="empty-state">No requirement data available.</div>@endforelse
                 </div></div></details>
+                @if(!empty($audioFiles))
+                <details class="collapse-panel" open><summary><span class="collapse-summary-title">Client Call Recording <span class="bd-tab-count">{{ count($audioFiles) }}</span></span></summary><div class="collapse-body">
+                    @foreach($audioFiles as $file)
+                        <div class="bd-attachment-group">
+                            <div class="bd-attachment-title">{{ $file['name'] }}</div>
+                            <div style="padding:11px">
+                                <audio controls preload="none" style="width:100%">
+                                    <source src="{{ $file['url'] }}">
+                                </audio>
+                                <div class="bd-file-actions" style="margin-top:9px">
+                                    <a class="bd-file-btn bd-file-download" href="{{ $file['url'] }}" download>Download</a>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div></details>
+                @endif
                 <details class="collapse-panel"><summary><span class="collapse-summary-title">Attachments <span class="bd-tab-count">{{ $requirementAttachmentCount }}</span></span></summary><div class="collapse-body">
                     @forelse($requirementAttachmentGroups as $group)
                         <div class="bd-attachment-group">
