@@ -446,7 +446,7 @@ class TaskDetail extends Component
                     'note' => 'All '.$task->total_creatives.' creative(s) completed. Automatically moved to Waiting for BD Review.',
                 ]);
 
-                app(DesignTaskFinalSubmissionService::class)->ensureFinalPackage($task);
+                app(DesignTaskFinalSubmissionService::class)->ensureLatest($task);
 
                 $autoCompleted = true;
             }
@@ -603,6 +603,19 @@ class TaskDetail extends Component
         });
 
         $this->task = $this->task->fresh();
+
+        // Finalize the consolidated ZIP only when this rework cycle is fully
+        // resubmitted (cumulative rework == assigned), after the transaction has
+        // committed. ensureLatest() is idempotent and runs against the refreshed
+        // task, so it rebuilds/reconciles the consolidated ZIP for completed
+        // cycles without duplicating rework history or files. While incomplete,
+        // each rework ZIP stays as a standalone temporary object (downloadable on
+        // its own card). A finalize failure keeps history + standalone files
+        // intact (no broken downloads) and a later submit retries safely.
+        if ($pendingAfter === 0) {
+            app(DesignTaskFinalSubmissionService::class)->ensureLatest($this->task);
+        }
+
         $this->reset(['reworkCompletedCount', 'reworkAttachment']);
 
         $message = $pendingAfter > 0
