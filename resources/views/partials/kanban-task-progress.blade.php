@@ -22,4 +22,19 @@
             <span>{{ $task->status === 'rework' ? 'Rework active' : ($task->status === 'waiting_confirmation' ? 'Awaiting BD' : 'In progress') }}</span>
         </div>
     </div>
+
+    @if($task->status === 'waiting_confirmation')
+        @php
+            $bdReviewMovedAt = \App\Models\DesignTaskStatusHistory::query()
+                ->where('design_task_id', $task->id)
+                ->where('to_status', 'waiting_confirmation')
+                ->latest('created_at')
+                ->value('created_at');
+        @endphp
+        @if($bdReviewMovedAt)
+            <div style="margin-top:6px;font-size:10px;font-weight:800;color:#98a2b3">
+                BD Review Time: {{ app(\App\Services\DesignTaskReportingService::class)->humanDuration((int) $bdReviewMovedAt->diffInMinutes(now())) }}
+            </div>
+        @endif
+    @endif
 @endif
