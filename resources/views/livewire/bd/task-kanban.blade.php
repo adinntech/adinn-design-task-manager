@@ -22,12 +22,12 @@
         .request-type-split{background:#f4f0ff;color:#6938ef;border:1px solid #d9d6fe}
         .request-open-label{margin-top:9px;padding-top:8px;border-top:1px solid #eef0f3;color:#e30613;font-size:9px;font-weight:900}
 
-        .kanban-shell{overflow-x:auto;overflow-y:visible;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;position:relative}
+        .kanban-shell{overflow-x:auto;overflow-y:auto;max-height:70vh;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;position:relative}
         .kanban-shell::-webkit-scrollbar{display:none}
         .kanban-shell.is-panning{cursor:grabbing}
         .kanban-board{display:grid;grid-template-columns:repeat(10,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}
-        .kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;overflow:hidden;position:relative}
-        .kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3}
+        .kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;position:relative}
+        .kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3;border-radius:13px 13px 0 0;position:sticky;top:0;z-index:3}
         .kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}
         .kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}
         .kanban-list{padding:9px;min-height:420px}
