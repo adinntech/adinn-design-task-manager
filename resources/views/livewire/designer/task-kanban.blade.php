@@ -309,6 +309,9 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
             @foreach($statuses as $statusKey => $statusLabel)
                 @php
                     $columnTasks = $tasks->where('status', $statusKey);
+                    if ($statusKey === 'assigned_tasks') {
+                        $columnTasks = $columnTasks->sortByDesc('created_at');
+                    }
                 @endphp
                 <section class="kanban-column status-{{ $statusKey }}" data-status="{{ $statusKey }}" wire:key="column-{{ $statusKey }}">
                     <header class="kanban-column-header"><span class="kanban-column-title">{{ $statusLabel }}</span><span class="kanban-count">{{ $columnTasks->count() }}</span></header>
@@ -405,7 +408,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                     <div class="task-meta-item"><strong>Creatives</strong>{{ $task->total_creatives }}</div>
                                     <div class="task-meta-item"><strong>Due</strong>{{ \Illuminate\Support\Carbon::parse($task->due_at)->format('d M, h:i A') }}</div>
                                     <div class="task-meta-item"><strong>Assigned by</strong>{{ $task->assigner?->name ?? 'BD' }}</div>
-                                    <div class="task-meta-item"><strong>Created</strong>{{ $task->created_at->format('d M Y') }}</div>
+                                    <div class="task-meta-item"><strong>Created</strong>{{ $task->created_at->format('d M Y • h:i A') }}</div>
                                 </div>
                             </a>
                         @empty

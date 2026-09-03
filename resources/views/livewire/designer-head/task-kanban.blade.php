@@ -461,6 +461,9 @@
             @foreach($statuses as $statusKey => $statusLabel)
                 @php
                     $columnTasks = $tasks->where('status', $statusKey);
+                    if ($statusKey === 'assigned_tasks') {
+                        $columnTasks = $columnTasks->sortByDesc('created_at');
+                    }
                 @endphp
 
                 <section class="kanban-column status-{{ $statusKey }}" data-status="{{ $statusKey }}" wire:key="designer-head-column-{{ $statusKey }}">
@@ -580,7 +583,7 @@
 
                                         <div class="task-meta-item">
                                             <strong>Created</strong>
-                                            {{ $task->created_at->format('d M Y') }}
+                                            {{ $task->created_at->format('d M Y • h:i A') }}
                                         </div>
                                     </div>
                                 </a>
