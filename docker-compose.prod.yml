@@ -1,0 +1,103 @@
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APACHE_DOCUMENT_ROOT: /var/www/html/public
+
+    image: adinn-design-task-manager:prod
+    container_name: adinn_app
+
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+
+    env_file:
+      - .env
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    networks:
+      - adinn_network
+
+
+  queue:
+    image: adinn-design-task-manager:prod
+    container_name: adinn_queue
+
+    restart: unless-stopped
+
+    command:
+      - php
+      - artisan
+      - queue:work
+      - --sleep=3
+      - --tries=3
+      - --timeout=120
+
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/99-custom.ini:ro
+
+    env_file:
+      - .env
+
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+    networks:
+      - adinn_network
+
+
+  db:
+    image: mariadb:10.4.32
+
+    container_name: adinn_db
+    restart: unless-stopped
+
+    environment:
+      TZ: Asia/Kolkata
+
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -h 127.0.0.1 -uroot -p$$MARIADB_ROOT_PASSWORD --silent"
+        ]
+
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - adinn_network
+
+
+volumes:
+  mariadb_data:
+
+
+networks:
+  adinn_network:
+    driver: bridge
