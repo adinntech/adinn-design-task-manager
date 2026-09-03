@@ -19,15 +19,19 @@ class TaskExportController extends Controller
     {
         abort_unless($request->user()?->role === 'bd', 403);
 
+        $priority = (string) $request->query('priority', '');
+        $isOverdue = $priority === 'overdue';
+
         $filters = [
             'search' => (string) $request->query('search', ''),
             'vertical' => (string) $request->query('vertical', ''),
-            'priority' => (string) $request->query('priority', ''),
+            'priority' => $isOverdue ? '' : $priority,
             'designerId' => (string) $request->query('designer_id', ''),
             'bdId' => (string) $request->user()->id,
             'period' => (string) $request->query('period', 'current_month'),
             'dateFrom' => (string) $request->query('date_from', ''),
             'dateTo' => (string) $request->query('date_to', ''),
+            'overdue' => $isOverdue,
         ];
 
         return $exportService->export($filters, 'bd-tasks');

@@ -91,15 +91,18 @@ class TaskKanban extends Component
 
     private function filterArray(): array
     {
+        $isOverdue = $this->priority === 'overdue';
+
         return [
             'search' => $this->search,
             'vertical' => $this->vertical,
-            'priority' => $this->priority,
+            'priority' => $isOverdue ? '' : $this->priority,
             'designerId' => $this->designerId,
             'bdId' => (string) Auth::id(),
             'period' => $this->period,
             'dateFrom' => $this->dateFrom,
             'dateTo' => $this->dateTo,
+            'overdue' => $isOverdue,
         ];
     }
 

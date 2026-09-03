@@ -72,15 +72,18 @@ class TaskKanban extends Component
 
     private function filterArray(): array
     {
+        $isOverdue = $this->priority === 'overdue';
+
         return [
             'search' => $this->search,
             'vertical' => $this->vertical,
-            'priority' => $this->priority,
+            'priority' => $isOverdue ? '' : $this->priority,
             'designerId' => (string) Auth::id(),
             'bdId' => $this->bdId,
             'period' => $this->period,
             'dateFrom' => $this->dateFrom,
             'dateTo' => $this->dateTo,
+            'overdue' => $isOverdue,
         ];
     }
 
@@ -151,7 +154,7 @@ class TaskKanban extends Component
                 });
             })
             ->when($this->vertical !== '', fn ($query) => $query->where('vertical', $this->vertical))
-            ->when($this->priority !== '', fn ($query) => $query->where('priority', $this->priority))
+            ->when(! in_array($this->priority, ['', 'overdue'], true), fn ($query) => $query->where('priority', $this->priority))
             ->when($this->bdId !== '', fn ($query) => $query->where('assigned_by', $this->bdId))
             ->orderBy('due_at')
             ->get()

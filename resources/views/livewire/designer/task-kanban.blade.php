@@ -267,7 +267,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
         <div class="designer-toolbar">
             <input class="premium-input" type="search" placeholder="Search Task ID, task name, client, vertical, BD..." wire:model.live.debounce.350ms="search">
             <select class="premium-select" wire:model.live="vertical"><option value="">All Verticals</option><option value="outdoor">Outdoor</option><option value="roadshow">RoadShow</option><option value="fixtures">Fixtures</option><option value="signage">Signage</option><option value="pop_offsets">POP and Offsets</option><option value="digital_marketing">Digital Marketing</option><option value="events_activations">Events and Activations</option></select>
-            <select class="premium-select" wire:model.live="priority"><option value="">All Priorities</option><option value="urgent">Urgent</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+            <select class="premium-select" wire:model.live="priority"><option value="">All Priorities</option><option value="overdue">Overdue</option><option value="urgent">Urgent</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
 
             <select class="premium-select" wire:model.live="bdId">
                 <option value="">All BD</option>

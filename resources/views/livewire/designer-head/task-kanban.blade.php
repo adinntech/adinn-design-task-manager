@@ -351,6 +351,7 @@
 
                 <select class="premium-select" wire:model.live="priority">
                     <option value="">All Priorities</option>
+                    <option value="overdue">Overdue</option>
                     <option value="urgent">Urgent</option>
                     <option value="high">High</option>
                     <option value="medium">Medium</option>

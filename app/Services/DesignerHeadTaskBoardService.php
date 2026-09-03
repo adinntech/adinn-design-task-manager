@@ -38,10 +38,14 @@ class DesignerHeadTaskBoardService
     ];
 
     /**
-     * @param  array{search:string,vertical:string,priority:string,designerId:string,bdId:string,period:string,dateFrom:string,dateTo:string}  $filters
+     * @param  array{search:string,vertical:string,priority:string,designerId:string,bdId:string,period:string,dateFrom:string,dateTo:string,overdue?:bool}  $filters
      */
     public function build(array $filters): array
     {
+        if (! empty($filters['overdue'])) {
+            return $this->buildOverdue($filters);
+        }
+
         [$periodStart, $periodEnd] = $this->dateRangeBounds($filters['period'], $filters['dateFrom'], $filters['dateTo']);
 
         $tasks = $this->tasksFor($filters, $periodStart, $periodEnd);
@@ -184,6 +188,73 @@ class DesignerHeadTaskBoardService
             'statuses' => $statuses,
             'activeBreakdown' => $activeBreakdown,
         ];
+    }
+
+    /**
+     * The "Overdue" option in the Priority dropdown deliberately bypasses the
+     * origin-period scoping every other view of this board uses — an overdue
+     * task can have originated in an earlier month than the one selected, and
+     * it must still surface here regardless. Reuses the exact same overdue
+     * rule as DesignTaskReportingService::completionInfo() (not completed +
+     * due date passed): status != completed, due_at in the past.
+     */
+    private function buildOverdue(array $filters): array
+    {
+        $tasks = $this->overdueTasks($filters);
+
+        $statuses = DesignTaskStatusService::STATUSES;
+        $statuses['swap_tasks'] = 'Swapped Tasks';
+        $statuses['decline_tasks'] = 'Decline Tasks';
+
+        $activeBreakdown = collect($statuses)
+            ->reject(fn ($label, $key) => $key === 'completed')
+            ->map(fn ($label, $key) => ['label' => $label, 'count' => $tasks->where('status', $key)->count()])
+            ->values();
+
+        $now = now();
+
+        return [
+            'tasks' => $tasks,
+            'visibleTasks' => $tasks,
+            'swapShadowTasks' => collect(),
+            'splitLogRows' => collect(),
+            'periodStart' => $now->copy()->startOfMonth(),
+            'periodEnd' => $now->copy()->endOfMonth(),
+            'periodStats' => ['completed' => 0, 'swapped' => 0, 'declined' => 0, 'split' => 0, 'total' => $tasks->count()],
+            'statuses' => $statuses,
+            'activeBreakdown' => $activeBreakdown,
+        ];
+    }
+
+    private function overdueTasks(array $filters): Collection
+    {
+        $declinedTaskIds = DesignTaskRequest::query()
+            ->where('request_type', 'decline')
+            ->where('overall_status', 'approved')
+            ->whereNotNull('approved_designer_id')
+            ->pluck('design_task_id')
+            ->all();
+
+        $tasks = $this->applyFilters(
+            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
+            array_merge($filters, ['priority' => ''])
+        )
+            ->where('status', '!=', 'completed')
+            ->whereNotNull('due_at')
+            ->where('due_at', '<', now())
+            ->orderByRaw("CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END")
+            ->orderBy('due_at')
+            ->get();
+
+        $tasks = $tasks
+            ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
+            ->values();
+
+        return $tasks->each(function (DesignTask $task) use ($declinedTaskIds) {
+            if (in_array($task->id, $declinedTaskIds, true)) {
+                $task->status = 'decline_tasks';
+            }
+        });
     }
 
     /**
