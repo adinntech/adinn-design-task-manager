@@ -91,6 +91,34 @@
         </div>
     </section>
 
+    {{-- 3. Team Designer Last Login --}}
+    <section class="dh-card">
+        <div class="dh-card-head">
+            <div>
+                <div class="dh-card-title">Team Designer Last Login</div>
+            </div>
+        </div>
+        <div class="dh-table-wrap">
+            <table class="dh-table">
+                <thead>
+                <tr><th>Designer</th><th>Username</th><th>Last Login Date</th><th>Last Login Time</th></tr>
+                </thead>
+                <tbody>
+                @forelse($teamDesignerLogins as $designerLogin)
+                    <tr>
+                        <td><span class="dh-designer-link">{{ $designerLogin->name }}</span></td>
+                        <td>{{ $designerLogin->username ?? '—' }}</td>
+                        <td>{{ $designerLogin->last_login_at?->format('d M Y') ?? 'Never Logged In' }}</td>
+                        <td>{{ $designerLogin->last_login_at?->format('h:i A') ?? '—' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4"><div class="dh-empty">No active Designers found.</div></td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     {{-- 4. Monthly charts --}}
     <div class="dh-grid dh-grid-2">
         <section class="dh-card">

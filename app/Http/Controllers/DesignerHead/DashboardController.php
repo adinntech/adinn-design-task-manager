@@ -36,9 +36,9 @@ class DashboardController extends Controller
     /**
      * Last-login roster for the Designer Head's team — every active Designer,
      * same scope already used everywhere else on this dashboard (no separate
-     * team/hierarchy model exists). Independent of the month/designer filters
-     * above, so it lives outside the AJAX-refreshed #dh-root zone and doesn't
-     * need to be recomputed by fragment().
+     * team/hierarchy model exists). Independent of the month/designer filters,
+     * but rendered inside the AJAX-refreshed #dh-root zone (below Designer
+     * Analytics), so both index() and fragment() need it.
      */
     private function teamDesignerLogins(): Collection
     {
@@ -53,7 +53,10 @@ class DashboardController extends Controller
     {
         abort_unless($request->user()?->role === 'designer_head', 403);
 
-        return view('designer-head.dashboard-partial', $this->analytics($request));
+        return view('designer-head.dashboard-partial', array_merge(
+            $this->analytics($request),
+            ['teamDesignerLogins' => $this->teamDesignerLogins()]
+        ));
     }
 
     /**

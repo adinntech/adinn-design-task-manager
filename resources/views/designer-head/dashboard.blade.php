@@ -181,28 +181,6 @@
         </div>
     </div>
 
-    <section class="dh-card">
-        <div class="dh-card-head"><span class="dh-card-title">Team Designer Last Login</span></div>
-        <div class="dh-card-body">
-            <div class="dh-table-wrap">
-                <table class="dh-table">
-                    <thead><tr><th>Designer</th><th>Username</th><th>Last Login</th></tr></thead>
-                    <tbody>
-                        @forelse($teamDesignerLogins as $designerLogin)
-                            <tr>
-                                <td>{{ $designerLogin->name }}</td>
-                                <td>{{ $designerLogin->username ?? '—' }}</td>
-                                <td>{{ optional($designerLogin->last_login_at)->format('d M Y \• h:i A') ?? 'Never logged in' }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="3" class="empty-state">No active Designers found.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
-
     <div id="dh-root" class="dh-zone">
         @include('designer-head.dashboard-partial', [
             'stats' => $stats,
@@ -210,6 +188,7 @@
             'selectedDesigner' => $selectedDesigner,
             'selectedDesignerName' => $selectedDesignerName,
             'workload' => $workload,
+            'teamDesignerLogins' => $teamDesignerLogins,
             'bar' => $bar,
             'line' => $line,
             'taskRows' => $taskRows,
