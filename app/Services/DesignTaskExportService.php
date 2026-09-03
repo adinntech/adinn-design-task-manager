@@ -7,6 +7,7 @@ use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -37,6 +38,16 @@ class DesignTaskExportService
 
     private const LATE_ROW_TEXT = '9C0006';
 
+    private const GREEN_FILL = 'C6EFCE';
+
+    private const GREEN_TEXT = '006100';
+
+    /** 1-based column index of the "Status" header — where the completed-late green indicator is applied. */
+    private const STATUS_COLUMN = 12;
+
+    /** Rows above the column header on the Tasks sheet, reserved for the Report Summary block. */
+    private const SUMMARY_ROWS = 6;
+
     private const HEADER = [
         'S.NO', 'Task ID', 'Task Name', 'Designer', 'BD', 'Vertical', 'Task Type',
         'Created At', 'Assigned At', 'Due Date', 'Completed At', 'Status',
@@ -66,6 +77,7 @@ class DesignTaskExportService
         $tasks = $board['tasks']->concat($board['swapShadowTasks'])->values();
         $statuses = $board['statuses'];
         $taskIds = $tasks->pluck('id');
+        $reportSummary = $this->reportSummaryLines($filters, $board['periodStart'], $board['periodEnd']);
 
         $eodProgress = $this->reporting->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'progress'), $taskIds, 'SUM(completed_count)');
         $eodRework = $this->reporting->mapByTask(DesignTaskEodRecord::query()->where('update_type', 'rework'), $taskIds, 'SUM(completed_count)');
@@ -140,7 +152,8 @@ class DesignTaskExportService
                 ->map(fn (Collection $rows) => $rows->countBy('request_type'));
 
         $rows = [];
-        $lateRowNumbers = [];
+        $overdueCompletedRowNumbers = [];
+        $activeOverdueRowNumbers = [];
         $rowNumber = 0;
         $totals = [
             'total' => 0, 'completed' => 0, 'active' => 0, 'overdue' => 0,
@@ -179,7 +192,9 @@ class DesignTaskExportService
 
             $rowNumber++;
             if ($completion['status'] === 'late') {
-                $lateRowNumbers[] = $rowNumber;
+                $overdueCompletedRowNumbers[] = $rowNumber;
+            } elseif ($completion['status'] === 'overdue') {
+                $activeOverdueRowNumbers[] = $rowNumber;
             }
 
             $rows[] = [
@@ -234,7 +249,7 @@ class DesignTaskExportService
             ['Average Rating', $ratingCount > 0 ? DesignTaskBdReview::formatRating($ratingSum / $ratingCount) : '—'],
         ];
 
-        $spreadsheet = $this->buildSpreadsheet($rows, $summary, $lateRowNumbers);
+        $spreadsheet = $this->buildSpreadsheet($rows, $summary, $reportSummary, $overdueCompletedRowNumbers, $activeOverdueRowNumbers);
         $filename = $filenamePrefix.'-'.now()->format('Y-m-d-His').'.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {
@@ -245,34 +260,50 @@ class DesignTaskExportService
     }
 
     /**
-     * @param  int[]  $lateRowNumbers  1-based position of each row (within $rows) that
-     *                                 completed after its due date — highlighted red.
+     * @param  string[][]  $reportSummary               ['Label', 'Value'] pairs shown in the Report
+     *                                                   Summary block above the column header.
+     * @param  int[]  $overdueCompletedRowNumbers        1-based position of each row (within $rows) that
+     *                                                    completed after its due date — red row, green
+     *                                                    "Status" cell (still overdue on completion, but done).
+     * @param  int[]  $activeOverdueRowNumbers           1-based position of each row (within $rows) that is
+     *                                                    still open and past its due date — red row only.
      */
-    private function buildSpreadsheet(array $rows, array $summary, array $lateRowNumbers = []): Spreadsheet
+    private function buildSpreadsheet(array $rows, array $summary, array $reportSummary, array $overdueCompletedRowNumbers = [], array $activeOverdueRowNumbers = []): Spreadsheet
     {
         $spreadsheet = new Spreadsheet;
+        $columnCount = count(self::HEADER);
+        $headerRow = self::SUMMARY_ROWS + 1;
+        $firstDataRow = $headerRow + 1;
 
         $tasksSheet = $spreadsheet->getActiveSheet();
         $tasksSheet->setTitle('Tasks');
-        $tasksSheet->fromArray(self::HEADER, null, 'A1');
-        $this->styleHeaderRow($tasksSheet, count(self::HEADER), 1);
+        $this->writeReportSummary($tasksSheet, $reportSummary, $columnCount);
+
+        $tasksSheet->fromArray(self::HEADER, null, 'A'.$headerRow);
+        $this->styleHeaderRow($tasksSheet, $columnCount, $headerRow);
 
         if (empty($rows)) {
-            $tasksSheet->setCellValue('A2', 'No matching tasks for the selected filters');
-            $tasksSheet->mergeCells('A2:'.$this->columnLetter(count(self::HEADER)).'2');
+            $tasksSheet->setCellValue('A'.$firstDataRow, 'No matching tasks for the selected filters');
+            $tasksSheet->mergeCells('A'.$firstDataRow.':'.$this->columnLetter($columnCount).$firstDataRow);
         } else {
-            $tasksSheet->fromArray($rows, null, 'A2');
-            $this->styleBodyRows($tasksSheet, count(self::HEADER), 2, count($rows) + 1, true);
+            $tasksSheet->fromArray($rows, null, 'A'.$firstDataRow);
+            $this->styleBodyRows($tasksSheet, $columnCount, $firstDataRow, $firstDataRow + count($rows) - 1, true);
 
-            foreach ($lateRowNumbers as $rowNumber) {
-                $this->styleLateRow($tasksSheet, count(self::HEADER), $rowNumber + 1);
+            foreach ($activeOverdueRowNumbers as $rowNumber) {
+                $this->styleOverdueRow($tasksSheet, $columnCount, $firstDataRow - 1 + $rowNumber);
+            }
+
+            foreach ($overdueCompletedRowNumbers as $rowNumber) {
+                $sheetRow = $firstDataRow - 1 + $rowNumber;
+                $this->styleOverdueRow($tasksSheet, $columnCount, $sheetRow);
+                $this->styleCompletedStatusCell($tasksSheet, $sheetRow);
             }
         }
 
         foreach (self::COLUMN_WIDTHS as $index => $width) {
             $tasksSheet->getColumnDimension($this->columnLetter($index + 1))->setWidth($width);
         }
-        $tasksSheet->freezePane('A2');
+        $tasksSheet->freezePane('A'.$firstDataRow);
 
         $summarySheet = $spreadsheet->createSheet();
         $summarySheet->setTitle('Summary');
@@ -312,17 +343,90 @@ class DesignTaskExportService
     }
 
     /**
-     * Overrides the fill/font for one already-styled body row — a task that
-     * completed after its due date — without touching overdue (still-open) rows,
-     * which keep the normal white styling and existing "days overdue" text.
+     * Overrides the fill/font for one already-styled body row — either still open
+     * and past its due date, or completed after its due date — with the same red
+     * "overdue" indication either way. Rows completed on time (or not yet due)
+     * keep the normal white styling.
      */
-    private function styleLateRow(Worksheet $sheet, int $columnCount, int $row): void
+    private function styleOverdueRow(Worksheet $sheet, int $columnCount, int $row): void
     {
         $range = 'A'.$row.':'.$this->columnLetter($columnCount).$row;
         $sheet->getStyle($range)->applyFromArray([
             'font' => ['color' => ['rgb' => self::LATE_ROW_TEXT]],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::LATE_ROW_FILL]],
         ]);
+    }
+
+    /**
+     * Green "Status" cell on an otherwise-red overdue row — the row's red
+     * stays the overdue indication, this one cell marks that the task did
+     * get completed, so the two colors never fight for the same space.
+     */
+    private function styleCompletedStatusCell(Worksheet $sheet, int $row): void
+    {
+        $cell = $this->columnLetter(self::STATUS_COLUMN).$row;
+        $sheet->getStyle($cell)->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => self::GREEN_TEXT]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::GREEN_FILL]],
+        ]);
+    }
+
+    /**
+     * @return string[][] ['Label', 'Value'] pairs for the Report Summary block.
+     */
+    private function reportSummaryLines(array $filters, Carbon $periodStart, Carbon $periodEnd): array
+    {
+        if (! empty($filters['overdue'])) {
+            return [
+                ['Period Type', 'Overdue (All Periods)'],
+                ['From', 'N/A — overdue tasks are shown regardless of the selected period'],
+                ['To', 'N/A'],
+                ['Generated At', now()->format('d M Y h:i A')],
+            ];
+        }
+
+        $periodTypeLabel = match ($filters['period'] ?? 'current_month') {
+            'last_month' => 'Last Month',
+            'custom' => 'Custom Period',
+            default => 'Current Month',
+        };
+
+        return [
+            ['Period Type', $periodTypeLabel],
+            ['From', $periodStart->format('d M Y')],
+            ['To', $periodEnd->format('d M Y')],
+            ['Generated At', now()->format('d M Y h:i A')],
+        ];
+    }
+
+    /**
+     * Writes the Report Summary block into rows 1-{self::SUMMARY_ROWS} of the
+     * Tasks sheet, above the column header — the first thing visible when the
+     * file opens (row 1, column A).
+     */
+    private function writeReportSummary(Worksheet $sheet, array $reportSummary, int $columnCount): void
+    {
+        $lastColumn = $this->columnLetter(min(6, $columnCount));
+
+        $sheet->setCellValue('A1', 'Report Summary');
+        $sheet->mergeCells('A1:'.$lastColumn.'1');
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 13, 'color' => ['rgb' => self::HEADER_TEXT]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::HEADER_FILL]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(24);
+
+        $row = 2;
+        foreach ($reportSummary as [$label, $value]) {
+            $cell = 'A'.$row;
+            $sheet->setCellValue($cell, $label.': '.$value);
+            $sheet->mergeCells($cell.':'.$lastColumn.$row);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => self::BODY_TEXT]],
+            ]);
+            $row++;
+        }
     }
 
     private function columnLetter(int $oneBasedIndex): string
