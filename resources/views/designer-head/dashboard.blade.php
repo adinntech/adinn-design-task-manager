@@ -164,6 +164,7 @@
             <div class="dh-eyebrow">Designer Head</div>
             <h1 class="dh-title">Designer Performance &amp; Task Control</h1>
             <div class="dh-sub">{{ $selectedMonthLabel }} · {{ $selectedDesignerName ?? 'All Designers' }}</div>
+            <div class="dh-sub">Last Login: {{ optional(auth()->user()->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}</div>
         </div>
         <div class="dh-filters">
             <select class="dh-select" id="dh-designer" aria-label="Filter by Designer">
@@ -179,6 +180,28 @@
             </select>
         </div>
     </div>
+
+    <section class="dh-card">
+        <div class="dh-card-head"><span class="dh-card-title">Team Designer Last Login</span></div>
+        <div class="dh-card-body">
+            <div class="dh-table-wrap">
+                <table class="dh-table">
+                    <thead><tr><th>Designer</th><th>Username</th><th>Last Login</th></tr></thead>
+                    <tbody>
+                        @forelse($teamDesignerLogins as $designerLogin)
+                            <tr>
+                                <td>{{ $designerLogin->name }}</td>
+                                <td>{{ $designerLogin->username ?? '—' }}</td>
+                                <td>{{ optional($designerLogin->last_login_at)->format('d M Y \• h:i A') ?? 'Never logged in' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="empty-state">No active Designers found.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
     <div id="dh-root" class="dh-zone">
         @include('designer-head.dashboard-partial', [

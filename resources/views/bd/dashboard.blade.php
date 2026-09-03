@@ -188,6 +188,7 @@
             <div class="dh-eyebrow">BD</div>
             <h1 class="dh-title">BD Dashboard</h1>
             <div class="dh-sub">{{ $selectedMonthLabel }} · {{ $selectedDesignerName ?? 'All Designers' }}</div>
+            <div class="dh-sub">Last Login: {{ optional(auth()->user()->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}</div>
         </div>
         <div class="dh-filters">
             <div class="bd-dash-actions">

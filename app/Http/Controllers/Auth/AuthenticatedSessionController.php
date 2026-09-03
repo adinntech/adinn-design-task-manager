@@ -57,6 +57,10 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // Only a genuinely successful, active-account login bumps this — never
+        // a refresh, an existing session, or a rejected/inactive attempt above.
+        $user->update(['last_login_at' => now()]);
+
         return $this->redirectForRole(Auth::user()->role);
     }
 

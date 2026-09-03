@@ -129,6 +129,7 @@
         <div>
             <h1>Welcome back, {{ auth()->user()->name }}</h1>
             <p>All important task and request information in one place.</p>
+            <p style="margin-top:4px">Last Login: {{ optional(auth()->user()->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}</p>
         </div>
         <div class="bd-dash-actions">
             <a class="bd-dash-btn secondary" href="{{ route('designer.tasks.index') }}">View All Tasks</a>

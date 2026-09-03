@@ -27,7 +27,26 @@ class DashboardController extends Controller
     {
         abort_unless($request->user()?->role === 'designer_head', 403);
 
-        return view('designer-head.dashboard', $this->analytics($request));
+        return view('designer-head.dashboard', array_merge(
+            $this->analytics($request),
+            ['teamDesignerLogins' => $this->teamDesignerLogins()]
+        ));
+    }
+
+    /**
+     * Last-login roster for the Designer Head's team — every active Designer,
+     * same scope already used everywhere else on this dashboard (no separate
+     * team/hierarchy model exists). Independent of the month/designer filters
+     * above, so it lives outside the AJAX-refreshed #dh-root zone and doesn't
+     * need to be recomputed by fragment().
+     */
+    private function teamDesignerLogins(): Collection
+    {
+        return User::query()
+            ->where('role', 'designer')
+            ->where('is_active', true)
+            ->orderByDesc('last_login_at')
+            ->get(['id', 'name', 'username', 'last_login_at']);
     }
 
     public function fragment(Request $request): View
