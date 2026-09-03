@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -23,16 +25,26 @@ class AuthenticatedSessionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        // Accepts username, email address, or employee code — whichever the
+        // account was set up with — so there is no separate login screen per
+        // identifier type.
+        $user = User::query()
+            ->where('email', $credentials['login'])
+            ->orWhere('username', $credentials['login'])
+            ->orWhere('employee_code', $credentials['login'])
+            ->first();
+
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => 'The provided credentials are incorrect.',
+                'login' => 'The provided credentials are incorrect.',
             ]);
         }
 
+        Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
         if (! Auth::user()->is_active) {
@@ -41,7 +53,7 @@ class AuthenticatedSessionController extends Controller
             $request->session()->regenerateToken();
 
             throw ValidationException::withMessages([
-                'email' => 'This account is currently inactive.',
+                'login' => 'This account is currently inactive.',
             ]);
         }
 

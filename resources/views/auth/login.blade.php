@@ -19,8 +19,8 @@
         <form method="POST" action="{{ route('login.store') }}">
             @csrf
             <div class="auth-group">
-                <label class="label" for="email">Email address</label>
-                <input class="premium-input" id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="email" required autofocus placeholder="name@adinn.com">
+                <label class="label" for="login">Username / Email / Employee Code</label>
+                <input class="premium-input" id="login" name="login" type="text" value="{{ old('login') }}" autocomplete="username" required autofocus placeholder="Username, email or employee code">
             </div>
 
 <div class="auth-group">
