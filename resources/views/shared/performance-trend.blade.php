@@ -16,7 +16,7 @@
     $months = $trendData->pluck('label');
     $cardColors = $cards->pluck('color', 'label');
 
-    $tw = 620; $th = 160; $px = 40; $py = 22;
+    $tw = 620; $th = 160; $thLine = 220; $px = 40; $py = 22;
     $n = max(2, $trendData->count());
     $stepX = ($tw - $px * 2) / ($n - 1);
     $lineSeries = [
@@ -26,18 +26,26 @@
     ];
     $lineMax = max(1, (int) collect($lineSeries)->map(fn ($s) => $trendData->max($s['label'] === 'In Progress' ? 'in_progress' : ($s['label'] === 'Completed' ? 'completed' : 'assigned')))->max());
 
-    $linePoints = collect($lineSeries)->map(function ($s) use ($trendData, $px, $py, $th, $stepX, $lineMax) {
+    $linePoints = collect($lineSeries)->map(function ($s) use ($trendData, $px, $py, $thLine, $stepX, $lineMax) {
         $key = $s['label'] === 'In Progress' ? 'in_progress' : ($s['label'] === 'Completed' ? 'completed' : 'assigned');
-        return $trendData->values()->map(function ($m, $i) use ($key, $px, $py, $th, $stepX, $lineMax) {
+        return $trendData->values()->map(function ($m, $i) use ($key, $px, $py, $thLine, $stepX, $lineMax) {
             return [
                 'x' => round($px + $i * $stepX, 1),
-                'y' => round($th - $py - (($m[$key] ?? 0) / $lineMax) * ($th - $py * 2), 1),
+                'y' => round($thLine - $py - (($m[$key] ?? 0) / $lineMax) * ($thLine - $py * 2), 1),
                 'v' => (int) ($m[$key] ?? 0),
                 'label' => $m['label'] ?? '',
             ];
         });
     });
     $linePolys = $linePoints->map(fn ($pts) => $pts->map(fn ($p) => $p['x'].','.$p['y'])->implode(' '));
+    $yTicks = collect([0, 0.25, 0.5, 0.75, 1])->map(fn ($f) => [
+        'y' => round($thLine - $py - $f * ($thLine - $py * 2), 1),
+        'v' => (int) round($f * $lineMax),
+    ]);
+    $monthTooltips = $trendData->values()->map(fn ($m) => trim(($m['label'] ?? '')
+        ."\nAssigned: ".(int) ($m['assigned'] ?? 0)
+        ."\nIn Progress: ".(int) ($m['in_progress'] ?? 0)
+        ."\nCompleted: ".(int) ($m['completed'] ?? 0)));
 
     $barSeries = [
         'overdue_completed' => ['label' => 'Overdue & Completed', 'color' => '#f79009'],
@@ -75,24 +83,25 @@
                 <button type="button" class="pt-expand" @click="ptExpandModal=true;ptExpandChart='line'" aria-label="Expand chart"><span class="pt-expand-ico">⤢</span></button>
                 @endif
             </div>
-            <svg class="pt-svg" viewBox="0 0 {{ $tw }} {{ $th + 22 }}" preserveAspectRatio="xMidYMid meet" role="img">
-                @foreach([0.25, 0.5, 0.75] as $frac)
-                    <line class="pt-grid" x1="{{ $px }}" x2="{{ $tw - $px }}" y1="{{ $th - $py - $frac * ($th - $py * 2) }}" y2="{{ $th - $py - $frac * ($th - $py * 2) }}"/>
+            <svg class="pt-svg" viewBox="0 0 {{ $tw }} {{ $thLine + 22 }}" preserveAspectRatio="xMidYMid meet" role="img">
+                @foreach($yTicks as $tick)
+                    <line class="pt-grid" x1="{{ $px }}" x2="{{ $tw - $px }}" y1="{{ $tick['y'] }}" y2="{{ $tick['y'] }}"/>
+                    <text class="pt-axis-label" x="{{ $px - 6 }}" y="{{ $tick['y'] + 3 }}" text-anchor="end">{{ $tick['v'] }}</text>
                 @endforeach
                 @foreach($lineSeries as $idx => $ls)
                     <polyline class="pt-line" style="stroke:{{ $ls['color'] }}" points="{{ $linePolys[$idx] }}"/>
                 @endforeach
                 @foreach($lineSeries as $idx => $ls)
-                    @php $lab = $ls['label']; @endphp
                     @foreach($linePoints[$idx] as $p)
-                        <circle class="pt-point" style="fill:{{ $ls['color'] }}" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="3.4">
-                            <title>{{ $lab }} · {{ $p['label'] }}: {{ $p['v'] }}</title>
-                        </circle>
-                        <text class="pt-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 7 }}" text-anchor="middle">{{ $p['v'] }}</text>
+                        <circle class="pt-point" style="fill:{{ $ls['color'] }}" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="4"/>
+                        <text class="pt-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 8 }}" text-anchor="middle">{{ $p['v'] }}</text>
                     @endforeach
                 @endforeach
                 @foreach($months as $i => $m)
-                    <text class="pt-label" x="{{ round($px + $i * $stepX, 1) }}" y="{{ $th + 12 }}" text-anchor="middle">{{ $m }}</text>
+                    <text class="pt-label" x="{{ round($px + $i * $stepX, 1) }}" y="{{ $thLine + 14 }}" text-anchor="middle">{{ $m }}</text>
+                @endforeach
+                @foreach($trendData as $i => $m)
+                    <rect class="pt-hover-strip" x="{{ round($px + $i * $stepX - $stepX / 2, 1) }}" y="0" width="{{ round($stepX, 1) }}" height="{{ $thLine }}" fill="transparent"><title>{{ $monthTooltips[$i] }}</title></rect>
                 @endforeach
             </svg>
             <div class="pt-legend">
@@ -164,6 +173,10 @@
     $lLinePolys = $lLinePoints->map(fn ($pts) => $pts->map(fn ($p) => $p['x'].','.$p['y'])->implode(' '));
     $lBarStep = ($ltw - $lpx * 2) / $ln;
     $lBarW = ($ltw - $lpx * 2) / ($ln * 2.6);
+    $lYTicks = collect([0, 0.25, 0.5, 0.75, 1])->map(fn ($f) => [
+        'y' => round($lth - $lpy - $f * ($lth - $lpy * 2), 1),
+        'v' => (int) round($f * $lLineMax),
+    ]);
 @endphp
 <div
     class="pt-modal-overlay"
@@ -186,23 +199,24 @@
         <div class="pt-modal-body">
             <div class="pt-modal-chart" x-show="ptExpandChart==='line'" x-cloak>
                 <svg class="pt-svg" viewBox="0 0 {{ $ltw }} {{ $lth + 30 }}" preserveAspectRatio="xMidYMid meet" role="img">
-                    @foreach([0.25, 0.5, 0.75] as $frac)
-                        <line class="pt-grid" x1="{{ $lpx }}" x2="{{ $ltw - $lpx }}" y1="{{ $lth - $lpy - $frac * ($lth - $lpy * 2) }}" y2="{{ $lth - $lpy - $frac * ($lth - $lpy * 2) }}"/>
+                    @foreach($lYTicks as $tick)
+                        <line class="pt-grid" x1="{{ $lpx }}" x2="{{ $ltw - $lpx }}" y1="{{ $tick['y'] }}" y2="{{ $tick['y'] }}"/>
+                        <text class="pt-axis-label" x="{{ $lpx - 8 }}" y="{{ $tick['y'] + 3 }}" text-anchor="end">{{ $tick['v'] }}</text>
                     @endforeach
                     @foreach($lineSeries as $idx => $ls)
                         <polyline class="pt-line" style="stroke:{{ $ls['color'] }}" points="{{ $lLinePolys[$idx] }}"/>
                     @endforeach
                     @foreach($lineSeries as $idx => $ls)
-                        @php $lab = $ls['label']; @endphp
                         @foreach($lLinePoints[$idx] as $p)
-                            <circle class="pt-point" style="fill:{{ $ls['color'] }}" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="4.5">
-                                <title>{{ $lab }} · {{ $p['label'] }}: {{ $p['v'] }}</title>
-                            </circle>
+                            <circle class="pt-point" style="fill:{{ $ls['color'] }}" cx="{{ $p['x'] }}" cy="{{ $p['y'] }}" r="4.5"/>
                             <text class="pt-value" x="{{ $p['x'] }}" y="{{ $p['y'] - 9 }}" text-anchor="middle">{{ $p['v'] }}</text>
                         @endforeach
                     @endforeach
                     @foreach($months as $i => $m)
                         <text class="pt-label" x="{{ round($lpx + $i * $lstepX, 1) }}" y="{{ $lth + 16 }}" text-anchor="middle">{{ $m }}</text>
+                    @endforeach
+                    @foreach($trendData as $i => $m)
+                        <rect class="pt-hover-strip" x="{{ round($lpx + $i * $lstepX - $lstepX / 2, 1) }}" y="0" width="{{ round($lstepX, 1) }}" height="{{ $lth }}" fill="transparent"><title>{{ $monthTooltips[$i] }}</title></rect>
                     @endforeach
                 </svg>
                 <div class="pt-legend">
@@ -260,7 +274,8 @@
         .pt-stat-dot{width:8px;height:8px;border-radius:99px;display:inline-block}
         .pt-stat-label{font-size:7px;color:#667085;font-weight:800;text-transform:uppercase;letter-spacing:.03em;line-height:1.25}
         .pt-stat-value{font-size:17px;font-weight:950;color:#101828}
-        .pt-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+        .pt-charts{display:grid;grid-template-columns:1fr;gap:14px}
+        .pt-axis-label{font-size:7.5px;fill:#98a2b3;font-weight:700}
         .pt-chart{border:1px solid #eef0f3;border-radius:12px;padding:12px;background:#fff;min-width:0}
         .pt-chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
         .pt-chart-title{font-size:9px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
@@ -287,9 +302,9 @@
         .pt-modal-chart .pt-svg{width:100%}
         .pt-modal-chart .pt-label{font-size:10px}
         .pt-modal-chart .pt-value{font-size:9px}
+        .pt-modal-chart .pt-axis-label{font-size:9px}
         .pt-modal-chart .pt-legend{font-size:9px}
         @media (max-width:900px){
-            .pt-charts{grid-template-columns:1fr}
             .pt-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
         }
         @media (max-width:520px){
