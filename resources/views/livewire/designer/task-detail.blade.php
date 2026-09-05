@@ -279,7 +279,7 @@
                     $hasPendingDecline = in_array('decline', $pendingRequestTypes, true);
                     $waitingForBdReviewBlocked = $nextStatus === 'waiting_confirmation' && $progressPercentage < 100;
                     $moveBlocked = $hasPendingDecline || $waitingForBdReviewBlocked;
-                    $moveBlockedReason = $hasPendingDecline ? 'Resolve the pending Decline request first.' : 'Complete 100% creative progress first.';
+                    $moveBlockedReason = $hasPendingDecline ? 'Resolve the pending Decline request first.' : 'Complete the creative work before proceeding to the next stage.';
                 @endphp
                 <div style="display:flex;flex-direction:column;align-items:stretch">
                     <button
@@ -650,7 +650,7 @@
 
                             @if($sidebarMoveBlocked)
                                 <div class="muted" style="margin-top:7px;color:#b45309">
-                                    {{ $sidebarPendingDecline ? 'Resolve the pending Decline request first.' : 'Complete 100% creative progress first.' }}
+                                    {{ $sidebarPendingDecline ? 'Resolve the pending Decline request first.' : 'Complete the creative work before proceeding to the next stage.' }}
                                 </div>
                             @endif
                         @endif
