@@ -532,10 +532,6 @@
                                     @endif
                                     @include('partials.kanban-task-progress', ['task' => $task])
 
-                                    @if($task->status === 'completed' && $task->bdReview?->created_at)
-                                        <div class="task-card-client">Completed: {{ $task->bdReview->created_at->format('d M Y · h:i A') }}</div>
-                                    @endif
-
                             @if($task->status === 'completed' && $task->bdReview && $task->bdReview->overall_rating !== null)
                                 @php
                                     $kanbanRating = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($task->bdReview->overall_rating)));
@@ -588,6 +584,13 @@
                                             <strong>Created</strong>
                                             {{ $task->created_at->format('d M Y • h:i A') }}
                                         </div>
+
+                                        @if($task->status === 'completed' && $task->bdReview?->created_at)
+                                            <div class="task-meta-item">
+                                                <strong>Completed</strong>
+                                                {{ $task->bdReview->created_at->format('d M Y • h:i A') }}
+                                            </div>
+                                        @endif
                                     </div>
                                 </a>
 

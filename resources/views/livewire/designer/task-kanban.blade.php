@@ -374,10 +374,6 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                     @endif
                                     @include('partials.kanban-task-progress', ['task' => $task])
 
-                                    @if($task->status === 'completed' && $task->bdReview?->created_at)
-                                        <div class="task-card-client">Completed: {{ $task->bdReview->created_at->format('d M Y · h:i A') }}</div>
-                                    @endif
-
                             @if($task->status === 'completed' && $task->bdReview && $task->bdReview->overall_rating !== null)
                                 @php
                                     $kanbanRating = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($task->bdReview->overall_rating)));
@@ -411,6 +407,9 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                     <div class="task-meta-item"><strong>Due</strong>{{ \Illuminate\Support\Carbon::parse($task->due_at)->format('d M, h:i A') }}</div>
                                     <div class="task-meta-item"><strong>Assigned by</strong>{{ $task->assigner?->name ?? 'BD' }}</div>
                                     <div class="task-meta-item"><strong>Created</strong>{{ $task->created_at->format('d M Y • h:i A') }}</div>
+                                    @if($task->status === 'completed' && $task->bdReview?->created_at)
+                                        <div class="task-meta-item"><strong>Completed</strong>{{ $task->bdReview->created_at->format('d M Y • h:i A') }}</div>
+                                    @endif
                                 </div>
                             </a>
                         @empty
