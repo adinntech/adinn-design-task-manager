@@ -207,7 +207,7 @@ class DesignTaskExportService
                 $task->task_nature,
                 optional($task->created_at)->format('d M Y'),
                 optional($task->assigned_at)->format('d M Y'),
-                optional($task->due_at)->format('d M Y'),
+                optional($task->due_at)->format('d M Y h:i A'),
                 optional($completedAt)->format('d M Y'),
                 $statuses[$task->status] ?? ucwords(str_replace('_', ' ', (string) $task->status)),
                 "Total: {$totalCreatives}\nDone: {$completedCreatives}\nRemaining: {$remaining}\nProgress: {$percentage}%",

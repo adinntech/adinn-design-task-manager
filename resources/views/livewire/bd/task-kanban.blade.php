@@ -517,7 +517,7 @@
 
                                         <div class="task-meta-item">
                                             <strong>Due</strong>
-                                            {{ $dueAt->format('d M Y') }}
+                                            {{ $dueAt->format('d M Y · h:i A') }}
                                         </div>
 
                                         <div class="task-meta-item">

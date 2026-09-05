@@ -48,11 +48,10 @@ class DesignTaskReportingService
     public function completionInfo(DesignTask $task, ?Carbon $completedAt): array
     {
         if ($completedAt) {
-            $daysLate = $task->due_at && $completedAt->gt($task->due_at)
-                ? (int) $task->due_at->diffInDays($completedAt)
-                : 0;
+            $isLate = (bool) ($task->due_at && $completedAt->gt($task->due_at));
+            $daysLate = $isLate ? (int) $task->due_at->diffInDays($completedAt) : 0;
 
-            return ['status' => $daysLate > 0 ? 'late' : 'on_time', 'days' => $daysLate];
+            return ['status' => $isLate ? 'late' : 'on_time', 'days' => $daysLate];
         }
 
         if ($task->status !== 'completed' && $task->due_at && $task->due_at->lt(now())) {

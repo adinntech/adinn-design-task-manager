@@ -118,7 +118,7 @@
                             </div>
                         @endif
                         <div class="activity-item" style="margin-top:12px"><strong>Assigned Designer</strong><p>{{ $task->designer?->name ?? '—' }}</p></div>
-                        <div class="activity-item" style="margin-top:8px"><strong>Due Date</strong><p>{{ $task->due_at?->format('d M Y') }}</p></div>
+                        <div class="activity-item" style="margin-top:8px"><strong>Due Date</strong><p>{{ $task->due_at?->format('d M Y · h:i A') }}</p></div>
                         <a href="{{ route('admin.tasks.edit',$task) }}" class="btn btn-primary" style="width:100%;margin-top:12px">Edit Task</a>
                     </div>
                 </section>

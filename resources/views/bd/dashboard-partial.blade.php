@@ -118,7 +118,7 @@
                         <td>{{ $task->designer?->name ?? '—' }}</td>
                         <td>{{ $task->assigner?->name ?? '—' }}</td>
                         <td>{{ $task->assigned_at?->format('d M Y') ?? '—' }}</td>
-                        <td class="{{ $row['overdue'] ? 'dh-danger' : '' }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
+                        <td class="{{ $row['overdue'] ? 'dh-danger' : '' }}">{{ $task->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
                         <td>
                             <div class="dh-progress"><div class="dh-progress-track"><x-progress-fill :percentage="$row['percentage']" /></div><div class="dh-progress-note">{{ $row['percentage'] }}%</div></div>
                         </td>
@@ -209,7 +209,7 @@
                         <td><a class="dh-task-link" href="{{ route('bd.tasks.show', $row['task']) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td>{{ $row['task']->assigner?->name ?? '—' }}</td>
-                        <td class="dh-danger">{{ $row['task']->due_at?->format('d M Y') ?? '—' }}</td>
+                        <td class="dh-danger">{{ $row['task']->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
                         <td><span class="dh-pill dh-pill-overdue">{{ $row['days'] }}d</span></td>
                         <td>
                             <div class="dh-progress"><div class="dh-progress-track"><x-progress-fill :percentage="$row['percentage']" /></div><div class="dh-progress-note">{{ $row['percentage'] }}% · {{ $row['done'] }}/{{ $row['total'] }}</div></div>
@@ -295,7 +295,7 @@
                         <td><a class="dh-task-link" href="{{ route('bd.tasks.show', $row['task']) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td>{{ $row['task']->assigned_at?->format('d M Y · h:i A') ?? '—' }}</td>
-                        <td>{{ $row['task']->due_at?->format('d M Y') ?? '—' }}</td>
+                        <td>{{ $row['task']->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
                         <td>{{ $row['completed_at']->format('d M Y · h:i A') }}</td>
                         <td>{{ $row['duration_text'] ?? '—' }}</td>
                         <td>
@@ -340,7 +340,7 @@
                             <div class="dh-cell-sub">{{ $task->designer?->name ?? '—' }}</div>
                         </td>
                         <td>{{ optional($task->created_at)->format('d M Y · h:i A') ?? '—' }}</td>
-                        <td>{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
+                        <td>{{ $task->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
                         <td>{{ $row['submitted_at']->format('d M Y · h:i A') }}</td>
                         <td class="{{ $row['decision_status'] === 'pending' ? 'dh-danger' : '' }}">{{ $row['duration_text'] ?? '—' }}</td>
                         <td>

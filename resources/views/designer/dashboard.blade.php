@@ -222,7 +222,7 @@
                             </span>
                         </td>
                         <td>{{ ucfirst($task->priority) }}</td>
-                        <td style="{{ $isOverdue ? 'color:#c01048;font-weight:850' : '' }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
+                        <td style="{{ $isOverdue ? 'color:#c01048;font-weight:850' : '' }}">{{ $task->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="9"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
@@ -261,7 +261,7 @@
                         </td>
                         <td>{{ $row['percentage'] }}%</td>
                         <td><span style="font-weight:850">{{ $row['done'] }} / {{ $task->total_creatives }}</span><div style="color:#98a2b3">{{ $row['remaining'] }} remaining</div></td>
-                        <td style="{{ $row['overdue'] ? 'color:#c01048;font-weight:850' : '' }}">{{ $task->due_at?->format('d M Y') ?? '—' }}</td>
+                        <td style="{{ $row['overdue'] ? 'color:#c01048;font-weight:850' : '' }}">{{ $task->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
                         <td>{{ $row['completed_at']?->format('d M Y') ?? '—' }}</td>
                         <td>
                             @if($row['completion']['status'] === 'overdue')

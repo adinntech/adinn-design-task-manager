@@ -357,7 +357,7 @@
                                 'Vertical' => ucwords(str_replace('_', ' ', $task->vertical)),
                                 'Task Nature' => ucwords(str_replace('_', ' ', $task->task_nature)),
                                 'Priority' => ucfirst($task->priority),
-                                'Due Date' => \Illuminate\Support\Carbon::parse($task->due_at)->format('d M Y'),
+                                'Due Date' => \Illuminate\Support\Carbon::parse($task->due_at)->format('d M Y · h:i A'),
                                 'Assigned By' => $task->assigner?->name ?? 'BD',
                                 'Assigned At' => \Illuminate\Support\Carbon::parse($task->assigned_at)->format('d M Y'),
                                 'Total Creatives' => $task->total_creatives,

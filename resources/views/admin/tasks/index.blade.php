@@ -76,7 +76,7 @@
                             <td>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</td>
                             <td><span class="badge priority-{{ $task->priority }}">{{ $task->priority }}</span></td>
                             <td><span class="badge badge-dark">{{ $statuses[$task->status] ?? ucwords(str_replace('_',' ',$task->status)) }}</span> @if(data_get($task->requirements, '_split_from_task_id'))<span class="badge badge-success">Split Task</span>@endif</td>
-                            <td>{{ $task->due_at?->format('d M Y') }}</td>
+                            <td>{{ $task->due_at?->format('d M Y · h:i A') }}</td>
                             <td>
                                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
                                     <a class="btn btn-secondary" href="{{ route('admin.tasks.show',$task) }}">View</a>

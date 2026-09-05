@@ -137,7 +137,7 @@
 <div class="content-grid-3">
     <section class="panel">
         <div class="panel-header"><div class="panel-title">Recent Tasks</div></div>
-        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody>@forelse($recentTasks as $task)<tr><td><a class="file-link" href="{{ route('admin.tasks.show',$task) }}">{{ $task->task_id }}</a><div style="margin-top:3px;font-weight:700">{{ $task->task_name }}</div></td><td>{{ $task->designer?->name ?? '—' }}</td><td><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M Y') }}</td></tr>@empty<tr><td colspan="4" class="empty-state">No tasks available.</td></tr>@endforelse</tbody></table></div></div>
+        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody>@forelse($recentTasks as $task)<tr><td><a class="file-link" href="{{ route('admin.tasks.show',$task) }}">{{ $task->task_id }}</a><div style="margin-top:3px;font-weight:700">{{ $task->task_name }}</div></td><td>{{ $task->designer?->name ?? '—' }}</td><td><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M Y · h:i A') }}</td></tr>@empty<tr><td colspan="4" class="empty-state">No tasks available.</td></tr>@endforelse</tbody></table></div></div>
     </section>
 
     <section class="panel">
