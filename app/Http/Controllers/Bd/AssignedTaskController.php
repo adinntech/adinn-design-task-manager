@@ -187,10 +187,12 @@ class AssignedTaskController extends Controller
         $data = $request->validate([
             'number_of_creatives' => ['required', 'integer', 'min:1', 'max:'.$task->total_creatives],
             'comment' => ['required', 'string', 'max:10000'],
+            'attachment' => ['nullable', 'file', 'mimes:zip', 'max:102400'],
         ], [
             'number_of_creatives.required' => 'Enter the number of creatives requiring rework.',
             'number_of_creatives.max' => 'Rework creatives cannot exceed the total number of creatives.',
             'comment.required' => 'Enter the rework comments.',
+            'attachment.mimes' => 'Rework attachment accepts ZIP files only.',
         ]);
 
         DB::transaction(function () use ($request, $task, $data) {
@@ -206,13 +208,38 @@ class AssignedTaskController extends Controller
                 ]);
             }
 
-            DesignTaskBdReview::create([
+            $review = DesignTaskBdReview::create([
                 'design_task_id' => $lockedTask->id,
                 'submitted_by' => $request->user()->id,
                 'action' => 'rework',
                 'number_of_creatives' => (int) $data['number_of_creatives'],
                 'comment' => trim($data['comment']),
             ]);
+
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+
+                $root = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
+                $directory = implode('/', [
+                    $root,
+                    now()->format('Y'),
+                    $lockedTask->vertical,
+                    $lockedTask->task_id.'_'.Str::slug($lockedTask->task_name),
+                    Str::slug($lockedTask->task_nature),
+                    'rework-request',
+                    'review-'.$review->id,
+                ]);
+
+                $fileName = $lockedTask->task_id.'__rework-request-'.$review->id.'__'.now()->format('Ymd-His-v').'.zip';
+                $path = $file->storePubliclyAs($directory, $fileName, 'spaces');
+
+                $review->update([
+                    'attachment_disk' => 'spaces',
+                    'attachment_path' => $path,
+                    'attachment_original_name' => $file->getClientOriginalName(),
+                    'attachment_size' => $file->getSize(),
+                ]);
+            }
 
             DesignTaskComment::create([
                 'design_task_id' => $lockedTask->id,

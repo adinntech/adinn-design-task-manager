@@ -692,7 +692,7 @@
 
                 @if($task->status === 'waiting_confirmation')
                     <div class="bd-review-box" x-data="{
-                        panel: {!! ($errors->has('number_of_creatives') || $errors->has('comment')) ? "'rework'" : (($errors->has('designer_attitude') || $errors->has('design_satisfaction') || $errors->has('rework_iteration') || $errors->has('meeting_deadline') || $errors->has('client_satisfaction') || $errors->has('rating_comment')) ? "'rating'" : 'null') !!},
+                        panel: {!! ($errors->has('number_of_creatives') || $errors->has('comment') || $errors->has('attachment')) ? "'rework'" : (($errors->has('designer_attitude') || $errors->has('design_satisfaction') || $errors->has('rework_iteration') || $errors->has('meeting_deadline') || $errors->has('client_satisfaction') || $errors->has('rating_comment')) ? "'rating'" : 'null') !!},
                         submitting: false,
                         designerAttitude: {{ (float) old('designer_attitude', 0) }},
                         designSatisfaction: {{ (float) old('design_satisfaction', 0) }},
@@ -734,7 +734,7 @@
                             <button type="button" class="btn bd-complete-btn" @click="panel = (panel === 'rating' ? null : 'rating')">Mark As Completed</button>
                         </div>
 
-                        <form method="POST" action="{{ route('bd.tasks.rework', $task) }}" style="margin-top:12px" x-show="panel === 'rework'" x-cloak @submit="onReworkSubmit($event)">
+                        <form method="POST" action="{{ route('bd.tasks.rework', $task) }}" enctype="multipart/form-data" style="margin-top:12px" x-show="panel === 'rework'" x-cloak @submit="onReworkSubmit($event)">
                             @csrf
                             <div class="bd-review-grid">
                                 <div>
@@ -746,6 +746,12 @@
                                     <label class="label">Comments</label>
                                     <textarea class="premium-input" name="comment" rows="3" maxlength="10000" placeholder="Describe the corrections required..." oninput="this.nextElementSibling.style.display='none'">{{ old('comment') }}</textarea>
                                     <div class="error" style="{{ $errors->has('comment') ? '' : 'display:none' }}">Please enter rework comments.</div>
+                                </div>
+                                <div>
+                                    <label class="label">Attachment (optional)</label>
+                                    <input class="premium-input" type="file" name="attachment" accept=".zip,application/zip">
+                                    <div class="muted" style="margin-top:5px">ZIP only · Maximum 100 MB</div>
+                                    <div class="error" style="{{ $errors->has('attachment') ? '' : 'display:none' }}">{{ $errors->first('attachment') ?: 'Only ZIP files are allowed.' }}</div>
                                 </div>
                             </div>
                             <div class="bd-review-actions">

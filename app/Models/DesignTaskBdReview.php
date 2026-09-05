@@ -13,6 +13,10 @@ class DesignTaskBdReview extends Model
         'action',
         'number_of_creatives',
         'comment',
+        'attachment_disk',
+        'attachment_path',
+        'attachment_original_name',
+        'attachment_size',
         'designer_attitude',
         'design_satisfaction',
         'rework_iteration',
@@ -41,6 +45,16 @@ class DesignTaskBdReview extends Model
     public function submitter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk($this->attachment_disk ?: 'spaces')
+            ->url($this->attachment_path);
     }
 
     /**

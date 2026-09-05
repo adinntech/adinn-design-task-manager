@@ -869,6 +869,11 @@
                                 <div style="padding:10px 11px;border-radius:10px;background:#fff;border:1px solid #fee2e2;margin-bottom:10px">
                                     <div style="font-size:8px;font-weight:900;text-transform:uppercase;color:#991b1b">BD Rework Comment</div>
                                     <div style="margin-top:4px;font-size:10px;font-weight:500;line-height:1.5;color:#344054;white-space:pre-wrap">{{ $latestReworkReview->comment }}</div>
+                                    @if($latestReworkReview->attachment_url)
+                                        <div style="margin-top:6px">
+                                            <a class="ptl-file" target="_blank" href="{{ $latestReworkReview->attachment_url }}" title="Download">⬇ {{ $latestReworkReview->attachment_original_name ?? 'Download ZIP' }}</a>
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
 

@@ -192,6 +192,15 @@
                                 <div class="ptl-cell"><span>Designer Time</span><strong>{{ $branch['durationText'] }}</strong></div>
                             </div>
 
+                            @if(!empty($branch['comment']))
+                                <div class="ptl-empty" style="margin-top:10px;white-space:pre-wrap;color:#344054">{{ $branch['comment'] }}</div>
+                            @endif
+                            @if(!empty($branch['attachmentUrl']))
+                                <div style="margin-top:8px">
+                                    <a class="ptl-file" target="_blank" href="{{ $branch['attachmentUrl'] }}" title="Download">⬇ {{ $branch['attachmentName'] ?? 'Download ZIP' }}</a>
+                                </div>
+                            @endif
+
                             @if(($branch['children'] ?? collect())->isNotEmpty())
                                 <div class="ptl-children">
                                     @foreach($branch['children'] as $order => $child)

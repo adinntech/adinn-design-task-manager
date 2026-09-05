@@ -222,12 +222,16 @@ class DesignTaskReportingService
             }
 
             $ordinal = $cycle['rework']['ordinal'];
+            $review = $reworkReviews->get($ordinal - 1);
             $reworkParents[$ordinal] = [
                 'ordinal' => $ordinal,
                 'startedAt' => $cycle['rework']['started_at'],
                 'endedAt' => $cycle['rework']['moved_back_at'],
                 'requestedCount' => $cycle['rework']['creatives'],
-                'bdName' => $reworkReviews->get($ordinal - 1)?->submitter?->name,
+                'bdName' => $review?->submitter?->name,
+                'comment' => $review?->comment,
+                'attachmentUrl' => $review?->attachment_url,
+                'attachmentName' => $review?->attachment_original_name,
                 'durationText' => $this->humanDuration((int) $cycle['rework']['duration_minutes']),
                 'durationMinutes' => (int) $cycle['rework']['duration_minutes'],
                 'children' => collect(),
@@ -302,6 +306,9 @@ class DesignTaskReportingService
                 'ordinal' => $parent['ordinal'],
                 'startedAt' => $parent['startedAt'],
                 'bdName' => $parent['bdName'],
+                'comment' => $parent['comment'],
+                'attachmentUrl' => $parent['attachmentUrl'],
+                'attachmentName' => $parent['attachmentName'],
                 'requestedCount' => $parent['requestedCount'],
                 'remainingCount' => $parent['remainingCount'],
                 'durationText' => $parent['durationText'],
