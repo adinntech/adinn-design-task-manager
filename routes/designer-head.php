@@ -21,7 +21,7 @@ Route::middleware(['auth', 'role:designer_head'])
         Route::view('/assigned-tasks', 'designer-head.assigned-tasks')
             ->name('assigned-tasks');
 
-        // Backward compatibility for older dashboard/bookmarked links.
+        // Backward compatibility for olders dashboard/bookmarked links.
         Route::redirect('/all-tasks', '/designer-head/assigned-tasks')
             ->name('all-tasks');
 
