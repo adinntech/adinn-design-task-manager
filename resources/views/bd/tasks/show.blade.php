@@ -14,133 +14,34 @@
     .bd-edit-batch{border:1px solid #e7e9ee;border-radius:12px;overflow:hidden}.bd-edit-head{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;background:#f8f9fb;border-bottom:1px solid #eceef2;font-size:9px;color:#667085}.bd-edit-head strong{font-size:10px;color:#344054}.bd-edit-row{padding:11px 12px;border-bottom:1px solid #f0f1f3}.bd-edit-row:last-child{border-bottom:0}.bd-edit-field{font-size:9px;font-weight:900;text-transform:uppercase;color:#667085;margin-bottom:7px}.bd-edit-values{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:8px;align-items:center}.bd-old,.bd-new{padding:9px;border-radius:9px;font-size:10px;overflow-wrap:anywhere}.bd-old{background:#fff1f1;border:1px solid #fecaca;color:#9b1c1c}.bd-new{background:#ecfdf3;border:1px solid #abefc6;color:#067647;font-weight:750}.bd-arrow{text-align:center;color:#98a2b3;font-weight:900}
     .bd-eod-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}.bd-eod-card{padding:13px;border-radius:12px;background:#fff;border:1px solid #e7e9ef}.bd-eod-card span{display:block;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.05em;color:#7c8492}.bd-eod-card strong{display:block;font-size:18px;margin-top:5px;color:#111827}.bd-eod-card:nth-child(1){background:#f8fafc;border-color:#e2e8f0}.bd-eod-card:nth-child(2){background:#ecfdf3;border-color:#bbf7d0}.bd-eod-card:nth-child(3){background:#fff7ed;border-color:#fed7aa}.bd-eod-card.rework-stat{background:#fff9eb;border-color:#f5d16a}.bd-eod-card.rework-stat span{color:#9a6700}.bd-eod-card.rework-stat strong{color:#7a5200}.bd-eod-overall{margin-bottom:16px;padding:14px;border:1px solid #e7e9ef;border-radius:12px;background:#f9fafb}.bd-eod-overall-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px;font-weight:850;color:#344054}.bd-eod-overall-head strong{font-size:15px;color:#111827}.bd-eod-row{border:1px solid #e7e9ef;border-radius:12px;padding:13px 14px;background:#fff;margin-bottom:10px;font-size:10px}.bd-eod-row.is-rework{border-color:#f2ce68;background:linear-gradient(180deg,#fffdf7,#fff9e8);box-shadow:inset 4px 0 0 #f5b301}.bd-eod-row.is-progress{border-left:4px solid #d9dee7}.bd-eod-row-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid #f2f4f7}.bd-eod-row-meta strong{display:block;font-size:11px;color:#111827;margin-top:2px}.bd-eod-row-meta span{display:block;margin-top:3px;font-size:9px;color:#7c8492}.bd-eod-grid{display:grid;grid-template-columns:repeat(4,minmax(90px,1fr));gap:10px}.bd-eod-grid div span{display:block;font-size:8px;text-transform:uppercase;color:#98a2b3;font-weight:800;letter-spacing:.04em}.bd-eod-grid div strong{display:block;margin-top:3px;font-size:11px;color:#344054}.bd-eod-type-badge{display:inline-flex;align-items:center;min-height:21px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:900;margin-bottom:5px}.bd-eod-type-badge.rework{background:#fff0c2;color:#7a5200;border:1px solid #f2cf68}.bd-eod-type-badge.progress{background:#f2f4f7;color:#475467;border:1px solid #e4e7ec}@media(max-width:900px){.bd-eod-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.bd-eod-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.bd-eod-summary{grid-template-columns:1fr}}
     .bd-attachment-group{border:1px solid #e8eaef;border-radius:11px;padding:11px;margin-bottom:9px}.bd-attachment-title{font-size:10px;font-weight:850;margin-bottom:8px}.bd-file{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:8px 9px;background:#f8f9fb;border-radius:8px;margin-top:6px}.bd-file-name{font-size:9px;font-weight:750;overflow-wrap:anywhere}.bd-comment{border:1px solid #e8eaef;border-left:4px solid #98a2b3;border-radius:11px;padding:11px 12px;margin-bottom:9px}.bd-comment.role-bd{border-left-color:#e30613}.bd-comment.role-designer{border-left-color:#2563eb}.bd-comment-head{display:flex;justify-content:space-between;gap:10px;font-size:9px;color:#667085}.bd-comment-head strong{font-size:10px;color:#344054}.bd-comment-message{margin-top:8px;font-size:11px;line-height:1.55;font-weight:450;white-space:pre-wrap;color:#111827}
-    .bd-review-box{margin-top:16px;border:1px solid #e4e7ec;border-radius:13px;background:#fcfcfd;padding:14px}.bd-review-box h3{margin:0 0 4px;font-size:11px;font-weight:900;color:#101828}.bd-review-box p{margin:0 0 12px;font-size:9px;color:#667085}.bd-review-grid{display:grid;grid-template-columns:180px minmax(0,1fr);gap:10px}.bd-review-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.bd-danger-btn{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.bd-complete-btn{background:#16a34a!important;color:#fff!important;border-color:#16a34a!important}.bd-rating-panel{margin-top:12px;border-top:1px solid #eaecf0;padding-top:14px}.rating-row{display:grid;grid-template-columns:180px minmax(220px,1fr) 52px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid #f2f4f7}.rating-label{font-size:9px;font-weight:850;color:#344054}.star-picker{display:flex;gap:4px;align-items:center}.star-unit{position:relative;width:25px;height:25px;font-size:24px;line-height:25px;color:#d0d5dd;display:inline-block;user-select:none}.star-unit .star-empty{position:absolute;inset:0}.star-unit .star-fill{position:absolute;inset:0;color:#f59e0b;overflow:hidden;white-space:nowrap;pointer-events:none}.star-half-hit{position:absolute;top:0;bottom:0;width:50%;border:0;background:transparent;cursor:pointer;padding:0;z-index:2}.star-half-hit.left{left:0}.star-half-hit.right{right:0}.star-unit::after{content:'';position:absolute;top:22%;bottom:22%;left:50%;width:1px;background:rgba(15,23,42,.25);pointer-events:none;z-index:3}.rating-value{font-size:9px;font-weight:900;color:#344054}.overall-rating-card{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:11px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e4e7ec}.overall-rating-card span{font-size:9px;font-weight:850;color:#475467}.overall-rating-card strong{font-size:18px;color:#101828}.rating-summary-shell{
-        border:1px solid #f1d07a;
-        border-radius:14px;
-        background:linear-gradient(180deg,#fffdf7 0%,#fff9e9 100%);
-        padding:14px;
-        box-shadow:0 4px 14px rgba(245,179,1,.06);
-    }
-    .rating-summary-top{
-        display:flex;
-        align-items:flex-start;
-        justify-content:space-between;
-        gap:12px;
-        margin-bottom:12px;
-    }
-    .rating-summary-kicker{
-        font-size:8px;
-        font-weight:950;
-        letter-spacing:.045em;
-        text-transform:uppercase;
-        color:#8a6200;
-    }
-    .rating-summary-score{
-        font-size:14px;
-        font-weight:950;
-        color:#624600;
-        white-space:nowrap;
-    }
-    .rating-summary-stars{
-        display:flex;
-        align-items:center;
-        gap:4px;
-        margin-top:7px;
-        line-height:1;
-    }
-    .rating-compact-grid{
-        display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
-        gap:8px;
-        margin-top:10px;
-    }
-    .rating-compact-item{
-        border:1px solid #eee3bd;
-        border-radius:11px;
-        background:rgba(255,255,255,.74);
-        padding:10px 11px;
-        min-width:0;
-    }
-    .rating-compact-head{
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        gap:8px;
-    }
-    .rating-compact-label{
-        font-size:8px;
-        font-weight:950;
-        color:#5f6470;
-        text-transform:uppercase;
-        letter-spacing:.025em;
-        line-height:1.35;
-    }
-    .rating-compact-score{
-        font-size:10px;
-        font-weight:950;
-        color:#5d4300;
-        white-space:nowrap;
-    }
-    .rating-compact-stars{
-        display:flex;
-        align-items:center;
-        gap:3px;
-        margin-top:7px;
-        line-height:1;
-    }
-    .rating-static-star{
-        --star-fill:0%;
-        display:inline-block;
-        width:17px;
-        height:17px;
-        flex:0 0 17px;
-        font-size:17px;
-        line-height:17px;
-        font-family:Arial,"Segoe UI Symbol",sans-serif;
-        background:linear-gradient(
-            90deg,
-            #f5b301 0%,
-            #f5b301 var(--star-fill),
-            #d8dee8 var(--star-fill),
-            #d8dee8 100%
-        );
-        -webkit-background-clip:text;
-        background-clip:text;
-        -webkit-text-fill-color:transparent;
-        color:transparent;
-    }
-    .rating-overall-item{
-        border-color:#efcc69;
-        background:#fffaf0;
-    }
-    .rating-meta-row{
-        display:grid;
-        grid-template-columns:minmax(0,1fr) auto;
-        gap:10px;
-        margin-top:10px;
-    }
-    .rating-comment-compact,
-    .rating-submitted-compact{
-        border:1px solid #e8e2cf;
-        border-radius:10px;
-        background:#fff;
-        padding:10px 11px;
-        font-size:9px;
-        line-height:1.5;
-        color:#475467;
-    }
-    .rating-comment-compact strong,
-    .rating-submitted-compact strong{
-        color:#101828;
-        font-weight:900;
-    }
-    .rating-submitted-compact{
-        min-width:220px;
-    }
+    .bd-review-box{margin-top:16px;border:1px solid #e4e7ec;border-radius:13px;background:#fcfcfd;padding:14px}.bd-review-box h3{margin:0 0 4px;font-size:11px;font-weight:900;color:#101828}.bd-review-box p{margin:0 0 12px;font-size:9px;color:#667085}.bd-review-grid{display:grid;grid-template-columns:180px minmax(0,1fr);gap:10px}.bd-review-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.bd-danger-btn{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.bd-complete-btn{background:#16a34a!important;color:#fff!important;border-color:#16a34a!important}.bd-rating-panel{margin-top:12px;border-top:1px solid #eaecf0;padding-top:14px}.rating-row{display:grid;grid-template-columns:180px minmax(220px,1fr) 52px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid #f2f4f7}.rating-label{font-size:9px;font-weight:850;color:#344054}.star-picker{display:flex;gap:4px;align-items:center}.star-unit{position:relative;width:25px;height:25px;font-size:24px;line-height:25px;color:#d0d5dd;display:inline-block;user-select:none}.star-unit .star-empty{position:absolute;inset:0}.star-unit .star-fill{position:absolute;inset:0;color:#f59e0b;overflow:hidden;white-space:nowrap;pointer-events:none}.star-half-hit{position:absolute;top:0;bottom:0;width:50%;border:0;background:transparent;cursor:pointer;padding:0;z-index:2}.star-half-hit.left{left:0}.star-half-hit.right{right:0}.star-unit::after{content:'';position:absolute;top:22%;bottom:22%;left:50%;width:1px;background:rgba(15,23,42,.25);pointer-events:none;z-index:3}.rating-value{font-size:9px;font-weight:900;color:#344054}.overall-rating-card{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:11px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e4e7ec}.overall-rating-card span{font-size:9px;font-weight:850;color:#475467}.overall-rating-card strong{font-size:18px;color:#101828}.rating-static-star{--star-fill:0%;display:inline-block;width:17px;height:17px;flex:0 0 17px;font-size:17px;line-height:17px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+    .ratings-card{border:1px solid #eef0f3;border-radius:14px;background:#fff;overflow:hidden}
+    .ratings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .ratings-grid-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border-bottom:1px solid #eef0f3}
+    .ratings-grid-item:nth-child(odd){border-right:1px solid #eef0f3}
+    .ratings-grid-item:nth-last-child(-n+2){border-bottom:0}
+    .ratings-item-left{display:flex;align-items:center;gap:12px;min-width:0}
+    .ratings-item-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 34px}
+    .ratings-item-name{font-size:11px;font-weight:850;color:#1d2939;margin-bottom:5px}
+    .ratings-item-stars{display:flex;align-items:center;gap:3px;line-height:1}
+    .ratings-item-score{font-size:12px;font-weight:900;color:#101828;white-space:nowrap}
+    .ratings-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:16px 18px;border-top:1px solid #eef0f3}
+    .ratings-footer-comments,.ratings-footer-submitted{display:flex;gap:10px;align-items:flex-start}
+    .ratings-footer-icon{width:26px;height:26px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;flex:0 0 26px}
+    .ratings-footer-icon.is-comment{background:#eef2ff;color:#2563eb}
+    .ratings-footer-icon.is-user{background:#eef1f5;color:#475467}
+    .ratings-footer-title,.ratings-footer-label{font-size:10px;font-weight:850;color:#1d2939}
+    .ratings-footer-text{margin-top:3px;font-size:10px;color:#667085;line-height:1.5}
+    .ratings-footer-name{margin-top:2px;font-size:10px;font-weight:850;color:#1d2939}
+    .ratings-footer-date{margin-top:2px;font-size:9px;color:#8a95a6}
+    .ratings-footer-submitted{justify-self:end;text-align:left}
     @media(max-width:760px){
-        .rating-compact-grid{grid-template-columns:1fr}
-        .rating-meta-row{grid-template-columns:1fr}
-        .rating-submitted-compact{min-width:0}
+        .ratings-grid{grid-template-columns:1fr}
+        .ratings-grid-item{border-right:0!important}
+        .ratings-grid-item:nth-last-child(-n+2){border-bottom:1px solid #eef0f3}
+        .ratings-grid-item:last-child{border-bottom:0}
+        .ratings-footer{grid-template-columns:1fr}
+        .ratings-footer-submitted{justify-self:start}
     }
 
     .board-table-shell{width:100%;max-width:100%;overflow-x:auto;border:1px solid #e4e7ec;border-radius:10px;background:#fff}
@@ -830,87 +731,7 @@
             </div>
 
             <div class="panel-body">
-                @if(! $taskRating)
-                    <div class="empty-state">No rating available.</div>
-                @else
-                @php
-                    $overallRatingValue = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($taskRating->overall_rating)));
-                @endphp
-
-                <div class="rating-summary-shell">
-                    <div class="rating-summary-top">
-                        <div>
-                            <div class="rating-summary-kicker">Overall Rating</div>
-                            <div class="rating-summary-stars" aria-label="{{ number_format($overallRatingValue, 2) }} out of 5 stars">
-                                @for($starIndex = 1; $starIndex <= 5; $starIndex++)
-                                    @php
-                                        $starFill = $overallRatingValue >= $starIndex
-                                            ? 100
-                                            : ($overallRatingValue >= ($starIndex - 0.5) ? 50 : 0);
-                                    @endphp
-                                    <span class="rating-static-star" style="--star-fill:{{ $starFill }}%;" aria-hidden="true">★</span>
-                                @endfor
-                            </div>
-                        </div>
-
-                        <div class="rating-summary-score">
-                            {{ \App\Models\DesignTaskBdReview::formatRating($overallRatingValue) }} / 5
-                        </div>
-                    </div>
-
-                    <div class="rating-compact-grid">
-                        @foreach([
-                            'Designer Attitude' => $taskRating->designer_attitude,
-                            'Design Satisfaction' => $taskRating->design_satisfaction,
-                            'Rework Iteration' => $taskRating->rework_iteration,
-                            'Meeting Deadline' => $taskRating->meeting_deadline,
-                            'Client Satisfaction' => $taskRating->client_satisfaction,
-                            'Overall Rating' => $taskRating->overall_rating,
-                        ] as $label => $value)
-                            @php
-                                $ratingValue = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($value)));
-                            @endphp
-
-                            <div class="rating-compact-item {{ $label === 'Overall Rating' ? 'rating-overall-item' : '' }}">
-                                <div class="rating-compact-head">
-                                    <span class="rating-compact-label">{{ $label }}</span>
-                                    <span class="rating-compact-score">
-                                        {{ \App\Models\DesignTaskBdReview::formatRating($ratingValue) }} / 5
-                                    </span>
-                                </div>
-
-                                <div class="rating-compact-stars" aria-label="{{ number_format($ratingValue, 1) }} out of 5 stars">
-                                    @for($starIndex = 1; $starIndex <= 5; $starIndex++)
-                                        @php
-                                            $starFill = $ratingValue >= $starIndex
-                                                ? 100
-                                                : ($ratingValue >= ($starIndex - 0.5) ? 50 : 0);
-                                        @endphp
-
-                                        <span
-                                            class="rating-static-star"
-                                            style="--star-fill:{{ $starFill }}%;"
-                                            aria-hidden="true"
-                                        >★</span>
-                                    @endfor
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <div class="rating-meta-row">
-                        <div class="rating-comment-compact">
-                            <strong>Comments</strong><br>
-                            {{ $taskRating->comment ?: 'No comments added.' }}
-                        </div>
-
-                        <div class="rating-submitted-compact">
-                            Submitted by <strong>{{ $taskRating->submitter?->name ?? 'BD' }}</strong><br>
-                            <span>{{ $taskRating->created_at?->format('d M Y · h:i A') }}</span>
-                        </div>
-                    </div>
-                </div>
-                @endif
+                @include('partials.task-ratings', ['taskRating' => $taskRating])
             </div>
         </div>
     </section>
