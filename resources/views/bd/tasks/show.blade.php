@@ -906,7 +906,7 @@
 
                         <div class="rating-submitted-compact">
                             Submitted by <strong>{{ $taskRating->submitter?->name ?? 'BD' }}</strong><br>
-                            <span>{{ $taskRating->created_at?->format('d M Y') }}</span>
+                            <span>{{ $taskRating->created_at?->format('d M Y · h:i A') }}</span>
                         </div>
                     </div>
                 </div>
