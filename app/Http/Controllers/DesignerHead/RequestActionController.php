@@ -44,7 +44,7 @@ class RequestActionController extends Controller
         $validated = $request->validate($rules);
 
         try {
-            $service->approve(
+            $decided = $service->approve(
                 $taskRequest,
                 auth()->user(),
                 isset($validated['approved_designer_id']) ? (int) $validated['approved_designer_id'] : null,
@@ -59,6 +59,8 @@ class RequestActionController extends Controller
             return back()->with('error', $message)->withInput();
         }
 
+        app(\App\Services\TaskNotificationService::class)->requestDecided($decided, 'approved', auth()->user());
+
         return back()->with('success', 'Request accepted successfully.');
     }
 
@@ -69,7 +71,7 @@ class RequestActionController extends Controller
         ]);
 
         try {
-            $service->reject($taskRequest, auth()->user(), $validated['decision_reason']);
+            $decided = $service->reject($taskRequest, auth()->user(), $validated['decision_reason']);
         } catch (ValidationException|AuthorizationException $e) {
             $message = $e instanceof ValidationException
                 ? $e->validator->errors()->first()
@@ -77,6 +79,8 @@ class RequestActionController extends Controller
 
             return back()->with('error', $message)->withInput();
         }
+
+        app(\App\Services\TaskNotificationService::class)->requestDecided($decided, 'rejected', auth()->user());
 
         return back()->with('success', 'Request declined successfully.');
     }

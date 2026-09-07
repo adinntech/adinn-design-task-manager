@@ -166,7 +166,8 @@
 
             <div class="topbar-right">
                 <div class="topbar-role-pill">{{ ucwords(str_replace('_', ' ', $role)) }}</div>
-                <div class="topbar-avatar">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+                @livewire('notification-bell')
+                <div class="topbar-avatar" title="{{ auth()->user()->name }}">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
             </div>
         </header>
 

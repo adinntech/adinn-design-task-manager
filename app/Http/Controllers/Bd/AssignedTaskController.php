@@ -261,6 +261,15 @@ class AssignedTaskController extends Controller
             ]);
         });
 
+        $reworkCount = app(DesignTaskProgressService::class)->reworkCount($task->fresh());
+        app(\App\Services\TaskNotificationService::class)->reworkRequested(
+            $task->fresh(),
+            $reworkCount,
+            (int) $data['number_of_creatives'],
+            trim($data['comment']),
+            $request->user()
+        );
+
         return redirect()
             ->route('bd.tasks.show', ['task' => $task, 'tab' => 'eod'])
             ->with('success', 'Task moved to Rework.');
@@ -354,6 +363,17 @@ class AssignedTaskController extends Controller
             ]);
         });
 
+        $review = DesignTaskBdReview::query()
+            ->with('submitter:id,name,role')
+            ->where('design_task_id', $task->id)
+            ->where('action', 'completed')
+            ->latest()
+            ->first();
+
+        if ($review) {
+            app(\App\Services\TaskNotificationService::class)->taskRated($task->fresh(), $review);
+        }
+
         return redirect()
             ->route('bd.tasks.show', ['task' => $task, 'tab' => 'ratings'])
             ->with('success', 'Task completed and rating submitted successfully.');
@@ -433,6 +453,8 @@ class AssignedTaskController extends Controller
                 ]);
             }
         });
+
+        app(\App\Services\TaskNotificationService::class)->commentAdded($task->fresh(), $request->user(), trim($data['comment']));
 
         $redirectTab = in_array($request->input('redirect_tab'), ['overview', 'comments'], true)
             ? $request->input('redirect_tab')

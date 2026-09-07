@@ -220,6 +220,8 @@ class TaskController extends Controller
             }
         });
 
+        app(\App\Services\TaskNotificationService::class)->commentAdded($task->fresh(), $request->user(), trim($data['comment']));
+
         return redirect()
             ->route('designer-head.tasks.show', ['task' => $task, 'tab' => 'comments'])
             ->with('success', 'Comment added successfully.');

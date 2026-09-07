@@ -342,6 +342,13 @@ class TaskDetail extends Component
                 ]);
             }
         });
+
+        app(\App\Services\TaskNotificationService::class)->commentAdded(
+            $this->task->fresh(),
+            Auth::user(),
+            trim($message),
+            $statusAtComment === 'need_clarification'
+        );
     }
 
     public function submitEod(): void

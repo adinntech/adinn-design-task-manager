@@ -51,7 +51,7 @@ class DesignTaskStatusService
             ]);
         }
 
-        return DB::transaction(function () use ($task, $designer, $targetStatus, $source) {
+        $updated = DB::transaction(function () use ($task, $designer, $targetStatus, $source) {
             $lockedTask = DesignTask::query()->lockForUpdate()->findOrFail($task->id);
 
             if ((int) $lockedTask->designer_id !== (int) $designer->id) {
@@ -112,6 +112,10 @@ class DesignTaskStatusService
 
             return $lockedTask->fresh();
         });
+
+        app(TaskNotificationService::class)->statusChanged($updated, $targetStatus, $designer);
+
+        return $updated;
     }
 
     public function designerCanMove(string $fromStatus, string $targetStatus): bool

@@ -282,6 +282,8 @@ class TaskController extends Controller
                 ]);
         }
 
+        app(\App\Services\TaskNotificationService::class)->taskAssigned($task, auth()->user(), $task->designer ?? \App\Models\User::find($task->designer_id));
+
         return redirect()
             ->route('bd.tasks.show', $task)
             ->with('success', 'Design task created successfully.');

@@ -111,7 +111,7 @@ class TaskRequestModal extends Component
 
         $attachments = $attachments !== [] ? $attachments : null;
 
-        app(DesignTaskRequestService::class)->create(
+        $createdRequest = app(DesignTaskRequestService::class)->create(
             $this->task,
             Auth::user(),
             $this->type,
@@ -122,6 +122,8 @@ class TaskRequestModal extends Component
                 'attachments' => $attachments,
             ]
         );
+
+        app(\App\Services\TaskNotificationService::class)->requestSubmitted($createdRequest);
 
         $this->resetFields();
         $this->open = false;
