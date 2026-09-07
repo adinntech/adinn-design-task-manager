@@ -234,7 +234,10 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 
     <div class="page-head">
         <div><h1>My Tasks</h1><p>Manage assigned design tasks across the complete production pipeline.</p></div>
-        <div class="page-actions"><span class="badge badge-dark">{{ $tasks->count() }} visible tasks</span></div>
+        <div class="page-actions">
+            <x-refresh-button :needs-refresh="$needsRefresh" :livewire="true" />
+            <span class="badge badge-dark">{{ $tasks->count() }} visible tasks</span>
+        </div>
     </div>
 
     <div class="designer-metrics">

@@ -2,12 +2,21 @@
 
 namespace App\Livewire;
 
+use App\Services\TaskNotificationUrlResolver;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class NotificationBell extends Component
 {
+    #[On('notification-received')]
+    public function refresh(): void
+    {
+        // Livewire re-renders on any listened event — picks up the newly
+        // broadcast notification from the database on next render().
+    }
+
     public function markAsRead(string $id): void
     {
         Auth::user()->notifications()->whereKey($id)->first()?->markAsRead();
@@ -66,6 +75,12 @@ class NotificationBell extends Component
         ]);
     }
 
+    /**
+     * A normal-comment notification opens straight to the Comments tab; a
+     * clarification-comment notification opens Overview (where the
+     * Clarification section already lives) — everything else opens the
+     * task's default landing tab, unchanged.
+     */
     private function urlFor(DatabaseNotification $notification): ?string
     {
         $taskId = $notification->data['task_id'] ?? null;
@@ -74,12 +89,9 @@ class NotificationBell extends Component
             return null;
         }
 
-        return match (Auth::user()->role) {
-            'bd' => route('bd.tasks.show', $taskId),
-            'designer' => route('designer.tasks.show', $taskId),
-            'designer_head' => route('designer-head.tasks.show', $taskId),
-            'admin' => route('admin.tasks.show', $taskId),
-            default => null,
-        };
+        $isNormalComment = ($notification->data['category'] ?? null) === 'comment'
+            && ! ($notification->data['is_clarification'] ?? false);
+
+        return TaskNotificationUrlResolver::forTask(Auth::user(), (int) $taskId, $isNormalComment ? 'comments' : null);
     }
 }

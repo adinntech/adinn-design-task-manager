@@ -207,3 +207,21 @@ td{font-size:14px!important;line-height:1.5}
 .notif-empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:11px}
 @media(max-width:520px){.notif-dropdown{position:fixed;top:70px;right:12px;left:12px;width:auto}}
 .kanban-rating-value{font-size:11px!important}
+
+/* Real-time notifications: bell shake, refresh-button shake, comment unread badge */
+@keyframes adinn-shake{
+    0%,100%{transform:rotate(0)}
+    10%,30%,50%,70%{transform:rotate(-12deg)}
+    20%,40%,60%,80%{transform:rotate(12deg)}
+    90%{transform:rotate(-6deg)}
+}
+.notif-bell-btn.is-shaking{animation:adinn-shake 1.4s ease-in-out infinite}
+.comment-unread-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:18px;height:18px;margin-left:6px;padding:0 5px;
+    border-radius:999px;background:var(--brand);color:#fff;
+    font-size:10px;font-weight:900;line-height:1;vertical-align:middle
+}
+.refresh-btn{display:inline-flex;align-items:center;gap:7px;transform-origin:50% 50%}
+.refresh-btn.is-shaking{animation:adinn-shake .9s ease-in-out infinite}
+.refresh-btn-icon{display:inline-block}

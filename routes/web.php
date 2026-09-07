@@ -1,9 +1,17 @@
 <?php
 
+use App\Http\Controllers\ActivityFlagController;
 use App\Http\Controllers\Bd\AssignedTaskController;
 use App\Http\Controllers\Bd\TaskController;
 use App\Http\Controllers\Bd\TaskExportController;
 use Illuminate\Support\Facades\Route;
+
+// Shared across all authenticated roles — not role-scoped, since every role
+// uses the same refresh-flag mechanics (see App\Services\TaskNotificationUrlResolver
+// for the role→route dispatch the bell's notification links use directly).
+Route::middleware('auth')->group(function () {
+    Route::post('/activity/{scope}/ack', [ActivityFlagController::class, 'ack'])->name('activity.ack');
+});
 
 Route::middleware(['auth', 'role:bd'])
     ->prefix('bd')

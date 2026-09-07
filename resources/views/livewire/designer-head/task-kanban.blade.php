@@ -300,6 +300,9 @@
             <h1>All Tasks</h1>
             <p>Monitor all Designer tasks across the complete production pipeline.</p>
         </div>
+        <div class="page-actions">
+            <x-refresh-button :needs-refresh="$needsRefresh" :livewire="true" />
+        </div>
     </div>
 
     <div class="bd-metrics">

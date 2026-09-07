@@ -27,7 +27,7 @@
     .rating-summary-shell{border:1px solid #f1d07a;border-radius:14px;background:linear-gradient(180deg,#fffdf7 0%,#fff9e9 100%);padding:14px;box-shadow:0 4px 14px rgba(245,179,1,.06)}.rating-summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.rating-summary-kicker{font-size:8px;font-weight:950;letter-spacing:.045em;text-transform:uppercase;color:#8a6200}.rating-summary-score{font-size:14px;font-weight:950;color:#624600;white-space:nowrap}.rating-summary-stars{display:flex;align-items:center;gap:4px;margin-top:7px;line-height:1}.rating-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.rating-compact-item{border:1px solid #eee3bd;border-radius:11px;background:rgba(255,255,255,.74);padding:10px 11px;min-width:0}.rating-compact-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.rating-compact-label{font-size:8px;font-weight:950;color:#5f6470;text-transform:uppercase;letter-spacing:.025em;line-height:1.35}.rating-compact-score{font-size:10px;font-weight:950;color:#5d4300;white-space:nowrap}.rating-compact-stars{display:flex;align-items:center;gap:3px;margin-top:7px;line-height:1}.rating-static-star{--star-fill:0%;display:inline-block;width:17px;height:17px;flex:0 0 17px;font-size:17px;line-height:17px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}.rating-overall-item{border-color:#efcc69;background:#fffaf0}.rating-meta-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:10px}.rating-comment-compact,.rating-submitted-compact{border:1px solid #e8e2cf;border-radius:10px;background:#fff;padding:10px 11px;font-size:9px;line-height:1.5;color:#475467}.rating-comment-compact strong,.rating-submitted-compact strong{color:#101828;font-weight:900}.rating-submitted-compact{min-width:220px}@media(max-width:760px){.rating-compact-grid{grid-template-columns:1fr}.rating-meta-row{grid-template-columns:1fr}.rating-submitted-compact{min-width:0}}
 </style>
 
-<div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview' }">
+<div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview', commentsSeen: new URLSearchParams(window.location.search).get('tab') === 'comments' }">
     <div class="page-head">
         <div>
             <h1>{{ $task->display_task_name ?? $task->task_name }}</h1>
@@ -52,7 +52,9 @@
 
     <div class="bd-detail-tabs">
         <button class="bd-detail-tab" :class="{active:tab==='overview'}" @click="tab='overview'">Overview</button>
-        <button class="bd-detail-tab" :class="{active:tab==='comments'}" @click="tab='comments'">Comments</button>
+        <button class="bd-detail-tab" :class="{active:tab==='comments'}" @click="tab='comments'; commentsSeen = true">Comments
+            @if(($commentUnreadCount ?? 0) > 0)<span class="comment-unread-badge" x-show="!commentsSeen">{{ $commentUnreadCount }}</span>@endif
+        </button>
         @if($declineRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='decline-details'}" @click="tab='decline-details'">Decline Details</button>@endif
         @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Split Details</button>@endif
         @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Swap Details</button>@endif

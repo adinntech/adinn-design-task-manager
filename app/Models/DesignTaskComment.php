@@ -12,6 +12,7 @@ class DesignTaskComment extends Model
         'design_task_id',
         'user_id',
         'status_at_comment',
+        'context',
         'comment',
     ];
 

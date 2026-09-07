@@ -4,12 +4,13 @@ namespace App\Notifications;
 
 use App\Models\DesignTask;
 use App\Models\User;
+use App\Notifications\Concerns\BroadcastsSynchronously;
 use App\Notifications\Concerns\TruncatesText;
 use Illuminate\Notifications\Notification;
 
 class ReworkRequestedNotification extends Notification
 {
-    use TruncatesText;
+    use BroadcastsSynchronously, TruncatesText;
 
     public function __construct(
         private DesignTask $task,
@@ -17,12 +18,11 @@ class ReworkRequestedNotification extends Notification
         private int $reworkCreatives,
         private string $comment,
         private User $bd
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     public function toArray(object $notifiable): array
@@ -35,6 +35,7 @@ class ReworkRequestedNotification extends Notification
             'task_id' => $this->task->id,
             'task_ref' => $this->task->task_id,
             'task_name' => $this->task->display_task_name ?? $this->task->task_name,
+            'category' => 'rework',
         ];
     }
 }

@@ -10,6 +10,9 @@
         <h1>Task Monitoring</h1>
         <p>Search, update or remove tasks from the complete design pipeline.</p>
     </div>
+    <div class="page-actions">
+        <x-refresh-button :needs-refresh="$needsRefresh" />
+    </div>
 </div>
 
 <div class="panel">

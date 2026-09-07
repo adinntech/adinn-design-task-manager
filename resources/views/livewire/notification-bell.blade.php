@@ -1,5 +1,5 @@
-<div class="notif-bell-wrap" x-data="{ open: false, permission: (window.Notification ? Notification.permission : 'unsupported') }" @click.outside="open = false" wire:poll.20s="$refresh">
-    <button type="button" class="notif-bell-btn" @click="open = !open" aria-label="Notifications">
+<div class="notif-bell-wrap" x-data="{ open: false }" @click.outside="open = false" wire:poll.20s="$refresh">
+    <button type="button" class="notif-bell-btn{{ $unreadCount > 0 ? ' is-shaking' : '' }}" @click="open = !open" aria-label="Notifications">
         🔔
         @if($unreadCount > 0)
             <span class="notif-badge">{{ $unreadCount > 99 ? '99+' : $unreadCount }}</span>
@@ -9,10 +9,7 @@
     <div class="notif-dropdown" x-show="open" x-cloak x-transition.opacity.duration.120ms>
         <div class="notif-dropdown-head">
             <span class="notif-dropdown-title">Notifications</span>
-            <div style="display:flex;align-items:center;gap:12px">
-                <button type="button" class="notif-mark-all" x-show="permission === 'default'" @click="Notification.requestPermission().then(p => permission = p)">Enable alerts</button>
-                <button type="button" class="notif-mark-all" wire:click="markAllAsRead" @disabled($unreadCount === 0)>Mark all as read</button>
-            </div>
+            <button type="button" class="notif-mark-all" wire:click="markAllAsRead" @disabled($unreadCount === 0)>Mark all as read</button>
         </div>
 
         <div class="notif-list">
@@ -75,6 +72,10 @@
             } catch (e) { /* autoplay blocked or unsupported: fail silently */ }
         };
 
+        // In-app sound must fire only for a genuinely NEW notification — never
+        // on refresh, render, dropdown-open, or a WebSocket reconnect. A
+        // localStorage "seen" set is the source of truth for what this browser
+        // has already heard, independent of Livewire's re-render cadence.
         const seenKey = 'adinn_notif_seen_ids';
         const getSeen = () => {
             try { return new Set(JSON.parse(localStorage.getItem(seenKey) || '[]')); } catch (e) { return new Set(); }
@@ -106,21 +107,6 @@
             saveSeen(seen);
 
             playBeep();
-
-            if (window.Notification && Notification.permission === 'granted') {
-                newOnes.slice(0, 3).forEach(n => {
-                    try {
-                        const browserNotif = new Notification(n.title, {
-                            body: (n.message || '').split('\n')[0],
-                            tag: 'adinn-notif-' + n.id,
-                        });
-                        browserNotif.onclick = () => {
-                            window.focus();
-                            if (n.url) { window.location.href = n.url; }
-                        };
-                    } catch (e) { /* fail silently */ }
-                });
-            }
         });
 
         Livewire.on('notification-open-url', (data) => {

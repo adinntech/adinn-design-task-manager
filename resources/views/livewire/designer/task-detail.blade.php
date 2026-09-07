@@ -1,6 +1,7 @@
 <div
     x-data="{
-        tab: 'overview',
+        tab: new URLSearchParams(window.location.search).get('tab') || 'overview',
+        commentsSeen: new URLSearchParams(window.location.search).get('tab') === 'comments',
         toast: '',
         attachmentPreviewOpen: false,
         attachmentPreviewUrl: '',
@@ -323,7 +324,9 @@
 
     <div class="detail-tabs">
         <button class="detail-tab" :class="{ active: tab === 'overview' }" @click="tab = 'overview'">Overview</button>
-        <button class="detail-tab" :class="{ active: tab === 'comments' }" @click="tab = 'comments'">Comments</button>
+        <button class="detail-tab" :class="{ active: tab === 'comments' }" @click="tab = 'comments'; commentsSeen = true">Comments
+            @if($commentUnreadCount > 0)<span class="comment-unread-badge" x-show="!commentsSeen">{{ $commentUnreadCount }}</span>@endif
+        </button>
         @if($requests->where('request_type', 'decline')->isNotEmpty())
             <button class="detail-tab" :class="{ active: tab === 'decline-details' }" @click="tab = 'decline-details'">Decline Details</button>
         @endif

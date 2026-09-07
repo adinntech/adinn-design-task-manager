@@ -4,17 +4,18 @@ namespace App\Notifications;
 
 use App\Models\DesignTask;
 use App\Models\DesignTaskBdReview;
+use App\Notifications\Concerns\BroadcastsSynchronously;
 use Illuminate\Notifications\Notification;
 
 class TaskRatedNotification extends Notification
 {
-    public function __construct(private DesignTask $task, private DesignTaskBdReview $review)
-    {
-    }
+    use BroadcastsSynchronously;
+
+    public function __construct(private DesignTask $task, private DesignTaskBdReview $review) {}
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     public function toArray(object $notifiable): array
@@ -35,6 +36,7 @@ class TaskRatedNotification extends Notification
             'task_id' => $this->task->id,
             'task_ref' => $this->task->task_id,
             'task_name' => $this->task->display_task_name ?? $this->task->task_name,
+            'category' => 'rating',
         ];
     }
 }

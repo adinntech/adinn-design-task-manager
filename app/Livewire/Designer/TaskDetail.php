@@ -10,11 +10,13 @@ use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use App\Services\CommentReadStateService;
 use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskReportingService;
 use App\Services\DesignTaskRequestService;
 use App\Services\DesignTaskStatusService;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +57,8 @@ class TaskDetail extends Component
 
     /** For a split-requester opening the child task assigned to another Designer. */
     public bool $splitRequesterReadOnly = false;
+
+    public int $commentUnreadCount = 0;
 
     private function isSwapShadowTask(?DesignTask $task = null): bool
     {
@@ -182,6 +186,10 @@ class TaskDetail extends Component
 
         $this->task = $task;
 
+        $readState = app(CommentReadStateService::class);
+        $this->commentUnreadCount = $readState->unreadCountFor($user, $task);
+        $readState->markReadFor($user, $task);
+
         $this->reconcileCompletedRework();
     }
 
@@ -284,19 +292,20 @@ class TaskDetail extends Component
             'clarificationAttachments.*' => ['file', 'max:102400'],
         ]);
 
-        $this->persistComment($this->clarificationMessage, $this->clarificationAttachments, 'need_clarification');
+        $this->persistComment($this->clarificationMessage, $this->clarificationAttachments, 'need_clarification', 'clarification');
 
         $this->reset(['clarificationMessage', 'clarificationAttachments']);
         $this->dispatch('comment-added', message: 'Clarification sent successfully.');
     }
 
-    private function persistComment(string $message, array $files, ?string $statusAtComment = null): void
+    private function persistComment(string $message, array $files, ?string $statusAtComment = null, string $context = 'comment'): void
     {
-        DB::transaction(function () use ($message, $files, $statusAtComment) {
+        DB::transaction(function () use ($message, $files, $statusAtComment, $context) {
             $newComment = DesignTaskComment::create([
                 'design_task_id' => $this->task->id,
                 'user_id' => Auth::id(),
                 'status_at_comment' => $statusAtComment ?? $this->task->status,
+                'context' => $context,
                 'comment' => trim($message),
             ]);
 
@@ -343,11 +352,11 @@ class TaskDetail extends Component
             }
         });
 
-        app(\App\Services\TaskNotificationService::class)->commentAdded(
+        app(TaskNotificationService::class)->commentAdded(
             $this->task->fresh(),
             Auth::user(),
             trim($message),
-            $statusAtComment === 'need_clarification'
+            $context === 'clarification'
         );
     }
 
@@ -631,12 +640,12 @@ class TaskDetail extends Component
             ->get();
 
         $clarificationComments = $comments
-            ->where('status_at_comment', 'need_clarification')
+            ->where('context', 'clarification')
             ->sortBy('created_at')
             ->values();
 
         $generalComments = $comments
-            ->reject(fn ($c) => $c->status_at_comment === 'need_clarification')
+            ->reject(fn ($c) => $c->context === 'clarification')
             ->values();
 
         $requirementAttachmentGroups = $this->collectRequirementAttachments(

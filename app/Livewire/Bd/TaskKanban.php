@@ -6,19 +6,25 @@ use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
+use App\Models\UserActivityFlag;
 use App\Services\DesignerHeadTaskBoardService;
+use App\Services\TaskNotificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class TaskKanban extends Component
 {
     public string $search = '';
+
     public string $vertical = '';
+
     public string $priority = '';
+
     public string $designerId = '';
 
     /** current_month | last_month | custom — scopes only the historical/final columns below. */
@@ -29,11 +35,25 @@ class TaskKanban extends Component
 
     public string $dateTo = '';
 
+    public bool $needsRefresh = false;
+
     public function mount(): void
     {
         abort_unless(Auth::user()?->role === 'bd', 403);
         $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
         $this->dateTo = now()->endOfMonth()->format('Y-m-d');
+        $this->needsRefresh = UserActivityFlag::query()
+            ->where('user_id', Auth::id())
+            ->whereIn('scope', TaskNotificationService::LIST_CATEGORIES)
+            ->whereNotNull('flagged_at')
+            ->exists();
+    }
+
+    /** Fired only by an explicit Refresh-button click (see refresh-button component). */
+    #[On('refresh-tasks')]
+    public function refreshBoard(): void
+    {
+        $this->needsRefresh = false;
     }
 
     public function markRework(int $taskId): void

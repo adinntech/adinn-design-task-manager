@@ -11,10 +11,12 @@ use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use App\Services\CommentReadStateService;
 use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskReportingService;
 use App\Services\DesignTaskStatusService;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +45,10 @@ class AssignedTaskController extends Controller
 
         $task->load(['designer:id,name,email,role', 'assigner:id,name,email,role']);
 
+        $readState = app(CommentReadStateService::class);
+        $commentUnreadCount = $readState->unreadCountFor($request->user(), $task);
+        $readState->markReadFor($request->user(), $task);
+
         $comments = DesignTaskComment::query()
             ->with(['user:id,name,role', 'attachments'])
             ->where('design_task_id', $task->id)
@@ -50,12 +56,12 @@ class AssignedTaskController extends Controller
             ->get();
 
         $clarificationComments = $comments
-            ->where('status_at_comment', 'need_clarification')
+            ->where('context', 'clarification')
             ->sortBy('created_at')
             ->values();
 
         $generalComments = $comments
-            ->reject(fn ($c) => $c->status_at_comment === 'need_clarification')
+            ->reject(fn ($c) => $c->context === 'clarification')
             ->values();
 
         $history = DesignTaskStatusHistory::query()
@@ -177,6 +183,7 @@ class AssignedTaskController extends Controller
             'bdReviews' => $bdReviews,
             'taskRating' => $taskRating,
             'audioFiles' => $audioFiles,
+            'commentUnreadCount' => $commentUnreadCount,
         ]);
     }
 
@@ -262,7 +269,7 @@ class AssignedTaskController extends Controller
         });
 
         $reworkCount = app(DesignTaskProgressService::class)->reworkCount($task->fresh());
-        app(\App\Services\TaskNotificationService::class)->reworkRequested(
+        app(TaskNotificationService::class)->reworkRequested(
             $task->fresh(),
             $reworkCount,
             (int) $data['number_of_creatives'],
@@ -371,7 +378,7 @@ class AssignedTaskController extends Controller
             ->first();
 
         if ($review) {
-            app(\App\Services\TaskNotificationService::class)->taskRated($task->fresh(), $review);
+            app(TaskNotificationService::class)->taskRated($task->fresh(), $review);
         }
 
         return redirect()
@@ -411,6 +418,7 @@ class AssignedTaskController extends Controller
                 'design_task_id' => $task->id,
                 'user_id' => $request->user()->id,
                 'status_at_comment' => $isClarificationReply ? 'need_clarification' : $task->status,
+                'context' => $isClarificationReply ? 'clarification' : 'comment',
                 'comment' => trim($data['comment']),
             ]);
 
@@ -454,7 +462,7 @@ class AssignedTaskController extends Controller
             }
         });
 
-        app(\App\Services\TaskNotificationService::class)->commentAdded($task->fresh(), $request->user(), trim($data['comment']));
+        app(TaskNotificationService::class)->commentAdded($task->fresh(), $request->user(), trim($data['comment']), $isClarificationReply);
 
         $redirectTab = in_array($request->input('redirect_tab'), ['overview', 'comments'], true)
             ? $request->input('redirect_tab')

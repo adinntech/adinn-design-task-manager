@@ -108,7 +108,7 @@
 
 </style>
 
-<div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview' }">
+<div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview', commentsSeen: new URLSearchParams(window.location.search).get('tab') === 'comments' }">
     <div class="page-head">
         <div>
             <h1>{{ $task->display_task_name ?? $task->task_name }}</h1>
@@ -125,7 +125,9 @@
     <div class="bd-detail-tabs">
         <button class="bd-detail-tab" :class="{active:tab==='overview'}" @click="tab='overview'">Overview</button>
         
-        <button class="bd-detail-tab" :class="{active:tab==='comments'}" @click="tab='comments'">Comments</button>
+        <button class="bd-detail-tab" :class="{active:tab==='comments'}" @click="tab='comments'; commentsSeen = true">Comments
+            @if(($commentUnreadCount ?? 0) > 0)<span class="comment-unread-badge" x-show="!commentsSeen">{{ $commentUnreadCount }}</span>@endif
+        </button>
         @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Task Split Details</button>@endif
         @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Task Transfer Details</button>@endif
         @if($declineRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='decline-details'}" @click="tab='decline-details'">Decline Request Details</button>@endif

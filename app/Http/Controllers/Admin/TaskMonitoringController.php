@@ -11,11 +11,15 @@ use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
+use App\Models\UserActivityFlag;
+use App\Services\CommentReadStateService;
 use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -78,12 +82,22 @@ class TaskMonitoringController extends Controller
 
         $statuses = DesignTaskStatusService::STATUSES;
 
-        return view('admin.tasks.index', compact('tasks', 'designers', 'statuses'));
+        $needsRefresh = UserActivityFlag::query()
+            ->where('user_id', $request->user()->id)
+            ->whereIn('scope', TaskNotificationService::LIST_CATEGORIES)
+            ->whereNotNull('flagged_at')
+            ->exists();
+
+        return view('admin.tasks.index', compact('tasks', 'designers', 'statuses', 'needsRefresh'));
     }
 
-    public function show(DesignTask $task): View
+    public function show(Request $request, DesignTask $task): View
     {
         $task->load(['designer:id,name,email', 'assigner:id,name,email']);
+
+        $readState = app(CommentReadStateService::class);
+        $commentUnreadCount = $readState->unreadCountFor($request->user(), $task);
+        $readState->markReadFor($request->user(), $task);
 
         $history = DesignTaskStatusHistory::query()
             ->with('changedBy:id,name,role')
@@ -98,12 +112,12 @@ class TaskMonitoringController extends Controller
             ->get();
 
         $clarificationComments = $comments
-            ->where('status_at_comment', 'need_clarification')
+            ->where('context', 'clarification')
             ->sortBy('created_at')
             ->values();
 
         $generalComments = $comments
-            ->reject(fn ($c) => $c->status_at_comment === 'need_clarification')
+            ->reject(fn ($c) => $c->context === 'clarification')
             ->values();
 
         $statuses = DesignTaskStatusService::STATUSES;
@@ -215,7 +229,8 @@ class TaskMonitoringController extends Controller
             'taskRating',
             'progressColorKey',
             'reworkCount',
-            'pipelineEvents'
+            'pipelineEvents',
+            'commentUnreadCount'
         ));
     }
 
@@ -237,6 +252,7 @@ class TaskMonitoringController extends Controller
                 'files' => $files,
             ];
         }
+
         return $groups;
     }
 
@@ -246,6 +262,7 @@ class TaskMonitoringController extends Controller
             foreach ($value as $item) {
                 $this->extractStoredFiles($item, $files);
             }
+
             return;
         }
 
@@ -264,6 +281,7 @@ class TaskMonitoringController extends Controller
     private function looksLikeStoredFilePath(string $value): bool
     {
         $value = trim($value);
+
         return $value !== ''
             && ! filter_var($value, FILTER_VALIDATE_URL)
             && str_contains($value, '/')
@@ -463,7 +481,7 @@ class TaskMonitoringController extends Controller
 
         if ($field === 'due_at') {
             try {
-                return \Illuminate\Support\Carbon::parse($value)->format('d M Y');
+                return Carbon::parse($value)->format('d M Y');
             } catch (\Throwable) {
                 return (string) $value;
             }

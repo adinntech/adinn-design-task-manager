@@ -300,6 +300,7 @@
         </div>
 
         <div class="page-actions">
+            <x-refresh-button :needs-refresh="$needsRefresh" :livewire="true" />
             <a class="btn btn-primary" href="{{ route('bd.tasks.create') }}">＋ Create New Task</a>
         </div>
     </div>

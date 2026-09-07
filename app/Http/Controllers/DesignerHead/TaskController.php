@@ -12,10 +12,12 @@ use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
+use App\Services\CommentReadStateService;
 use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskReportingService;
 use App\Services\DesignTaskStatusService;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +33,10 @@ class TaskController extends Controller
         abort_unless($request->user()?->role === 'designer_head', 403);
 
         $task->load(['designer:id,name,email,role', 'assigner:id,name,email,role']);
+
+        $readState = app(CommentReadStateService::class);
+        $commentUnreadCount = $readState->unreadCountFor($request->user(), $task);
+        $readState->markReadFor($request->user(), $task);
 
         $comments = DesignTaskComment::query()
             ->with(['user:id,name,role', 'attachments'])
@@ -159,6 +165,7 @@ class TaskController extends Controller
             'commentAttachmentCount' => $commentAttachmentCount,
             'attachmentCount' => $requirementAttachmentCount + $commentAttachmentCount,
             'audioFiles' => $audioFiles,
+            'commentUnreadCount' => $commentUnreadCount,
         ]);
     }
 
@@ -220,7 +227,7 @@ class TaskController extends Controller
             }
         });
 
-        app(\App\Services\TaskNotificationService::class)->commentAdded($task->fresh(), $request->user(), trim($data['comment']));
+        app(TaskNotificationService::class)->commentAdded($task->fresh(), $request->user(), trim($data['comment']));
 
         return redirect()
             ->route('designer-head.tasks.show', ['task' => $task, 'tab' => 'comments'])

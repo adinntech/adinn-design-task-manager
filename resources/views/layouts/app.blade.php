@@ -317,6 +317,100 @@
 </script>
 
 
+@auth
+<script>
+    window.AdinnRealtime = {
+        userId: {{ auth()->id() }},
+        reverb: {
+            key: @json(config('broadcasting.connections.reverb.key')),
+            host: @json(config('broadcasting.connections.reverb.options.host')),
+            port: {{ (int) config('broadcasting.connections.reverb.options.port', 8080) }},
+            scheme: @json(config('broadcasting.connections.reverb.options.scheme', 'http')),
+        },
+    };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/pusher-js@8.6.0/dist/web/pusher.min.js"></script>
+<script>
+(function () {
+    function csrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.content : '';
+    }
+
+    // Shared Refresh-button click handler (BD/Designer/Head Kanban + Admin
+    // task list): clear this user's server-side "needs refresh" flag for the
+    // non-comment categories only (the backend maps scope "tasks" to every
+    // list-relevant category — see ActivityFlagController), which also marks
+    // those categories' notifications read — comments are never touched by
+    // this. Then either let a Livewire board re-render itself or reload a
+    // plain page. Never triggered automatically — only by an explicit click.
+    window.adinnAckRefresh = function (btn, scope, isLivewireBoard) {
+        // Shake stays on until the ack actually succeeds — a failed request
+        // must leave the pending/shake state in place so the user can retry.
+        fetch('/activity/' + scope + '/ack', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken(), Accept: 'application/json' },
+        }).then(function (response) {
+            if (!response.ok) throw new Error('ack failed');
+
+            btn.classList.remove('is-shaking');
+
+            // Re-render the bell so its unread count reflects the categories
+            // just marked read, without a page reload.
+            window.Livewire && window.Livewire.dispatch('notification-received');
+
+            if (isLivewireBoard && window.Livewire) {
+                window.Livewire.dispatch('refresh-tasks');
+            } else {
+                window.location.reload();
+            }
+        }).catch(function () {
+            // Leave is-shaking in place; the existing flash/error UI (if any)
+            // surfaces the failure, and the button remains clickable to retry.
+        });
+    };
+
+    document.addEventListener('livewire:init', function () {
+        var cfg = window.AdinnRealtime;
+        if (!cfg || !cfg.reverb.key || typeof Pusher === 'undefined') return;
+
+        var useTLS = cfg.reverb.scheme === 'https';
+
+        var pusher = new Pusher(cfg.reverb.key, {
+            wsHost: cfg.reverb.host,
+            wsPort: cfg.reverb.port,
+            wssPort: cfg.reverb.port,
+            forceTLS: useTLS,
+            enabledTransports: useTLS ? ['ws', 'wss'] : ['ws'],
+            disableStats: true,
+            cluster: '',
+            authEndpoint: '/broadcasting/auth',
+            auth: { headers: { 'X-CSRF-TOKEN': csrfToken() } },
+        });
+
+        var channel = pusher.subscribe('private-App.Models.User.' + cfg.userId);
+
+        // Every App\Notifications\* class broadcasts under this one fixed
+        // Laravel-internal event name (none of them override broadcastAs());
+        // payload.category (set by each Notification::toArray()) is what
+        // distinguishes "comment" (bell only, never shakes the task-list
+        // refresh button) from every list-relevant category (bell + shake) —
+        // see TaskNotificationService::LIST_CATEGORIES for the same taxonomy
+        // used server-side.
+        channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', function (data) {
+            window.Livewire && window.Livewire.dispatch('notification-received');
+
+            if (data && data.category && data.category !== 'comment') {
+                document.querySelectorAll('.refresh-btn[data-scope="tasks"]').forEach(function (btn) {
+                    btn.classList.add('is-shaking');
+                });
+            }
+        });
+    });
+})();
+</script>
+@endauth
+
 @livewireScripts
 @stack('scripts')
 </body>
