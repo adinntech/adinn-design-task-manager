@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\CleanupCompletedTaskNotifications;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -60,6 +62,13 @@ class AuthenticatedSessionController extends Controller
         // Only a genuinely successful, active-account login bumps this — never
         // a refresh, an existing session, or a rejected/inactive attempt above.
         $user->update(['last_login_at' => now()]);
+
+        // Queued so login never waits on it; Cache::add throttles it to once
+        // per hour across all logins so the notification table isn't rescanned
+        // on every sign-in.
+        if (Cache::add('cleanup-completed-task-notifications:dispatched', true, now()->addHour())) {
+            CleanupCompletedTaskNotifications::dispatch();
+        }
 
         return $this->redirectForRole(Auth::user()->role);
     }
