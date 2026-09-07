@@ -194,7 +194,7 @@ class AssignedTaskController extends Controller
         $data = $request->validate([
             'number_of_creatives' => ['required', 'integer', 'min:1', 'max:'.$task->total_creatives],
             'comment' => ['required', 'string', 'max:10000'],
-            'attachment' => ['nullable', 'file', 'mimes:zip', 'max:102400'],
+            'attachment' => ['nullable', 'file', 'mimes:zip', 'max:'.(6 * 1024 * 1024)], // 6 GB
         ], [
             'number_of_creatives.required' => 'Enter the number of creatives requiring rework.',
             'number_of_creatives.max' => 'Rework creatives cannot exceed the total number of creatives.',

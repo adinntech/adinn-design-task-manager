@@ -10,6 +10,8 @@ use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use App\Models\FileUpload;
+use App\Services\CloudMultipartUploadService;
 use App\Services\CommentReadStateService;
 use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskProgressService;
@@ -45,9 +47,10 @@ class TaskDetail extends Component
 
     public ?int $eodCompletedCount = null;
 
-    public $taskUpdateAttachment = null;
+    /** FileUpload id, set by public/js/large-zip-upload.js once the direct-to-Spaces upload completes. */
+    public ?string $taskUpdateUploadId = null;
 
-    public $reworkAttachment = null;
+    public ?string $reworkUploadId = null;
 
     public ?int $reworkCompletedCount = null;
 
@@ -115,6 +118,31 @@ class TaskDetail extends Component
 
         return (int) $task->designer_id === (int) Auth::id()
             && ! $this->isSwapShadowTask($task);
+    }
+
+    /**
+     * Resolves the FileUpload a large-zip-upload.js session finished for this
+     * task — never trusts the raw id without re-checking ownership/purpose/
+     * status, since it's just a Livewire property set from client JS.
+     */
+    private function resolveCompletedUpload(?string $uploadId, string $purpose, string $errorField, string $errorMessage): FileUpload
+    {
+        $upload = ($uploadId !== null && $uploadId !== '')
+            ? FileUpload::query()
+                ->where('id', $uploadId)
+                ->where('user_id', Auth::id())
+                ->where('design_task_id', $this->task->id)
+                ->where('purpose', $purpose)
+                ->where('status', 'completed')
+                ->whereNull('consumed_at')
+                ->first()
+            : null;
+
+        if (! $upload) {
+            throw ValidationException::withMessages([$errorField => $errorMessage]);
+        }
+
+        return $upload;
     }
 
     public function mount(DesignTask $task): void
@@ -372,17 +400,19 @@ class TaskDetail extends Component
 
         $this->validate([
             'eodCompletedCount' => ['required', 'integer', 'min:1'],
-            'taskUpdateAttachment' => ['required', 'file', 'mimes:zip', 'max:102400'],
         ], [
             'eodCompletedCount.required' => 'Enter the number of creatives added to progress.',
-            'taskUpdateAttachment.required' => 'Upload the Task Updation ZIP file.',
-            'taskUpdateAttachment.mimes' => 'Task Updation accepts ZIP files only.',
         ]);
 
-        $file = $this->taskUpdateAttachment;
+        $fileUpload = $this->resolveCompletedUpload(
+            $this->taskUpdateUploadId,
+            'progress_update',
+            'taskUpdateUploadId',
+            'Upload the Task Updation ZIP file.'
+        );
         $autoCompleted = false;
 
-        DB::transaction(function () use ($file, &$autoCompleted): void {
+        DB::transaction(function () use ($fileUpload, &$autoCompleted): void {
             $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
             if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'in_progress') {
@@ -413,7 +443,8 @@ class TaskDetail extends Component
             $root = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
             $directory = implode('/', [$root, now()->format('Y'), $task->vertical, $task->task_id.'_'.Str::slug($task->task_name), Str::slug($task->task_nature), 'task-updation']);
             $fileName = $task->task_id.'__task-updation__'.now()->format('Ymd-His-v').'.zip';
-            $path = $file->storePubliclyAs($directory, $fileName, 'spaces');
+            $path = $directory.'/'.$fileName;
+            app(CloudMultipartUploadService::class)->promoteToFinalPath($fileUpload, $path);
 
             DesignTaskEodRecord::create([
                 'design_task_id' => $task->id,
@@ -426,7 +457,7 @@ class TaskDetail extends Component
                 'rework_count_snapshot' => null,
                 'attachment_disk' => 'spaces',
                 'attachment_path' => $path,
-                'attachment_original_name' => $file->getClientOriginalName(),
+                'attachment_original_name' => $fileUpload->original_filename,
                 'submitted_at' => now(),
             ]);
 
@@ -467,7 +498,7 @@ class TaskDetail extends Component
         });
 
         $this->task = $this->task->fresh();
-        $this->reset(['eodCompletedCount', 'taskUpdateAttachment']);
+        $this->reset(['eodCompletedCount', 'taskUpdateUploadId']);
         $this->dispatch('eod-updated', message: 'Task Updation submitted successfully.');
 
         if ($autoCompleted) {
@@ -490,20 +521,22 @@ class TaskDetail extends Component
 
         $this->validate([
             'reworkCompletedCount' => ['required', 'integer', 'min:1', 'max:'.$pendingBefore],
-            'reworkAttachment' => ['required', 'file', 'mimes:zip', 'max:102400'],
         ], [
             'reworkCompletedCount.required' => 'Enter the number of reworked creatives being submitted.',
             'reworkCompletedCount.max' => 'You cannot submit more creatives than the current Rework pending count.',
-            'reworkAttachment.required' => 'Upload the Rework creative ZIP.',
-            'reworkAttachment.mimes' => 'Rework creative upload accepts ZIP files only.',
         ]);
 
-        $file = $this->reworkAttachment;
+        $fileUpload = $this->resolveCompletedUpload(
+            $this->reworkUploadId,
+            'rework',
+            'reworkUploadId',
+            'Upload the Rework creative ZIP.'
+        );
         $submittedCount = (int) $this->reworkCompletedCount;
         $nextStage = 'rework';
         $pendingAfter = $pendingBefore;
 
-        DB::transaction(function () use ($file, $submittedCount, &$nextStage, &$pendingAfter): void {
+        DB::transaction(function () use ($fileUpload, $submittedCount, &$nextStage, &$pendingAfter): void {
             $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
             if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'rework') {
@@ -540,7 +573,8 @@ class TaskDetail extends Component
             ]);
 
             $fileName = $task->task_id.'__rework-'.$reworkCount.'__'.now()->format('Ymd-His-v').'.zip';
-            $path = $file->storePubliclyAs($directory, $fileName, 'spaces');
+            $path = $directory.'/'.$fileName;
+            app(CloudMultipartUploadService::class)->promoteToFinalPath($fileUpload, $path);
 
             // completed() includes this record, so calculate snapshots after create.
             DesignTaskEodRecord::create([
@@ -554,7 +588,7 @@ class TaskDetail extends Component
                 'rework_count_snapshot' => $reworkCount,
                 'attachment_disk' => 'spaces',
                 'attachment_path' => $path,
-                'attachment_original_name' => $file->getClientOriginalName(),
+                'attachment_original_name' => $fileUpload->original_filename,
                 'submitted_at' => now(),
             ]);
 
@@ -617,7 +651,7 @@ class TaskDetail extends Component
         });
 
         $this->task = $this->task->fresh();
-        $this->reset(['reworkCompletedCount', 'reworkAttachment']);
+        $this->reset(['reworkCompletedCount', 'reworkUploadId']);
 
         $message = $pendingAfter > 0
             ? 'Rework submitted. '.$pendingAfter.' creative(s) remain in this Rework cycle.'

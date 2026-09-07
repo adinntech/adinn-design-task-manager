@@ -653,7 +653,7 @@
                                 <div>
                                     <label class="label">Attachment (optional)</label>
                                     <input class="premium-input" type="file" name="attachment" accept=".zip,application/zip">
-                                    <div class="muted" style="margin-top:5px">ZIP only · Maximum 100 MB</div>
+                                    <div class="muted" style="margin-top:5px">ZIP only · Maximum 6 GB</div>
                                     <div class="error" style="{{ $errors->has('attachment') ? '' : 'display:none' }}">{{ $errors->first('attachment') ?: 'Only ZIP files are allowed.' }}</div>
                                 </div>
                             </div>

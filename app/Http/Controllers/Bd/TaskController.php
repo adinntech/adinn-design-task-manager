@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -48,6 +50,15 @@ class TaskController extends Controller
         'audio/mpeg', 'audio/mp3',
         'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave', 'audio/vnd.wav',
     ];
+
+    /** Per-file cap for every non-audio FILE_FIELDS entry (reference/knowledge files). */
+    private const MAX_GENERAL_FILE_KB = 6 * 1024 * 1024; // 6 GB
+
+    /** Call recordings don't need the 6 GB ceiling; keep them generous but bounded. */
+    private const MAX_AUDIO_FILE_KB = 1024 * 1024; // 1 GB
+
+    /** Above this, a general file must be a ZIP — below it, existing type rules apply unchanged. */
+    private const ZIP_ONLY_THRESHOLD_BYTES = 500 * 1024 * 1024; // 500 MB
 
     public function create()
     {
@@ -282,7 +293,7 @@ class TaskController extends Controller
                 ]);
         }
 
-        app(\App\Services\TaskNotificationService::class)->taskAssigned($task, auth()->user(), $task->designer ?? \App\Models\User::find($task->designer_id));
+        app(TaskNotificationService::class)->taskAssigned($task, auth()->user(), $task->designer ?? User::find($task->designer_id));
 
         return redirect()
             ->route('bd.tasks.show', $task)
@@ -605,7 +616,7 @@ class TaskController extends Controller
             $common[$field] = ['nullable', 'array', 'max:20'];
             $common["{$field}.*"] = $field === 'client_audio'
                 ? $this->audioFileRule()
-                : ['file', 'max:102400'];
+                : $this->generalFileRule();
         }
 
         $required = match ("{$vertical}.{$nature}") {
@@ -680,7 +691,7 @@ class TaskController extends Controller
     {
         return [
             'file',
-            'max:51200',
+            'max:'.self::MAX_AUDIO_FILE_KB,
             function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! $value instanceof UploadedFile) {
                     return;
@@ -691,6 +702,29 @@ class TaskController extends Controller
 
                 if (! in_array($extension, self::AUDIO_EXTENSIONS, true) || ! in_array($mime, self::AUDIO_MIME_TYPES, true)) {
                     $fail('The Audio Reference must be an MP3 or WAV file.');
+                }
+            },
+        ];
+    }
+
+    /**
+     * Reference/knowledge files: unrestricted type up to 500 MB (unchanged
+     * behaviour), ZIP-only between 500 MB and the 6 GB hard cap. Reuses
+     * Laravel's own `mimes:zip` rule (already proven for the Progress Update
+     * ZIP field) via a sub-validation instead of hand-rolling a MIME list.
+     */
+    private function generalFileRule(): array
+    {
+        return [
+            'file',
+            'max:'.self::MAX_GENERAL_FILE_KB,
+            function (string $attribute, mixed $value, \Closure $fail): void {
+                if (! $value instanceof UploadedFile || $value->getSize() <= self::ZIP_ONLY_THRESHOLD_BYTES) {
+                    return;
+                }
+
+                if (Validator::make(['file' => $value], ['file' => 'mimes:zip'])->fails()) {
+                    $fail('Files larger than 500 MB must be ZIP format.');
                 }
             },
         ];

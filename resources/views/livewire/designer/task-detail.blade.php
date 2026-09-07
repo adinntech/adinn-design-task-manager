@@ -221,6 +221,19 @@
             .history-view-count{margin-top:7px}
         }
 
+        .large-upload-widget{display:flex;gap:12px;align-items:flex-start}
+        .large-upload-circle-wrap{position:relative;width:44px;height:44px;flex:0 0 auto}
+        .large-upload-circle{width:44px;height:44px;transform:rotate(-90deg)}
+        .large-upload-circle-bg{fill:none;stroke:#e4e7ec;stroke-width:3}
+        .large-upload-circle-fg{fill:none;stroke:#2970ff;stroke-width:3;stroke-linecap:round;transition:stroke-dasharray .3s ease}
+        .large-upload-percent{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#344054}
+        .large-upload-info{flex:1;min-width:0}
+        .upload-status-note{font-size:9px;font-weight:700;margin-top:4px}
+        .upload-status-note--resume{color:#b54708}
+        .upload-status-note--uploading,.upload-status-note--preparing,.upload-status-note--finalizing{color:#175cd3}
+        .upload-status-note--completed{color:#067647}
+        .upload-status-note--failed,.upload-status-note--error{color:#b4232f}
+
 </style>
 
     <div class="page-head">
@@ -896,24 +909,66 @@
                                         @error('reworkCompletedCount')<div class="error">{{ $message }}</div>@enderror
                                     </div>
 
-                                    <div>
+                                    <div wire:ignore>
                                         <label class="label">Corrected Rework ZIP *</label>
-                                        <input type="file" accept=".zip,application/zip" wire:model="reworkAttachment">
-                                        <div class="muted" style="margin-top:5px">ZIP only · Maximum 100 MB</div>
-                                        @error('reworkAttachment')<div class="error">{{ $message }}</div>@enderror
+                                        <div class="large-upload-widget">
+                                            <div class="large-upload-circle-wrap">
+                                                <svg viewBox="0 0 36 36" class="large-upload-circle">
+                                                    <path class="large-upload-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                    <path id="reworkUploadCircle" class="large-upload-circle-fg" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                </svg>
+                                                <div class="large-upload-percent" id="reworkUploadPercent"></div>
+                                            </div>
+                                            <div class="large-upload-info">
+                                                <input type="file" id="reworkUploadInput" accept=".zip,application/zip">
+                                                <div class="muted" style="margin-top:5px">ZIP only · Maximum 6 GB</div>
+                                                <div class="muted" id="reworkUploadDetail" style="margin-top:2px"></div>
+                                                <div class="muted" id="reworkUploadEta" style="margin-top:2px"></div>
+                                                <div id="reworkUploadStatus"></div>
+                                            </div>
+                                        </div>
                                     </div>
+                                    @error('reworkUploadId')<div class="error">{{ $message }}</div>@enderror
                                 </div>
 
                                 <button
                                     class="btn btn-primary rework-submit"
+                                    id="reworkSubmitBtn"
                                     wire:click="submitReworkUpdate"
                                     wire:loading.attr="disabled"
-                                    wire:target="submitReworkUpdate,reworkAttachment"
+                                    wire:target="submitReworkUpdate"
                                     wire:loading.class="is-loading"
-                                    @disabled($currentReworkPending < 1)
+                                    @disabled(! $reworkUploadId)
                                 >
                                     Submit Rework Progress
                                 </button>
+
+                                <script>
+                                (function () {
+                                    if (typeof AdinnZipUpload === 'undefined') return;
+                                    new AdinnZipUpload({
+                                        input: document.getElementById('reworkUploadInput'),
+                                        purpose: 'rework',
+                                        taskId: {{ (int) $task->id }},
+                                        wireProp: 'reworkUploadId',
+                                        urls: {
+                                            initiate: '{{ route('designer.uploads.initiate') }}',
+                                            active: '{{ route('designer.uploads.active') }}',
+                                            partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
+                                            parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
+                                            complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
+                                        },
+                                        els: {
+                                            status: document.getElementById('reworkUploadStatus'),
+                                            percent: document.getElementById('reworkUploadPercent'),
+                                            detail: document.getElementById('reworkUploadDetail'),
+                                            eta: document.getElementById('reworkUploadEta'),
+                                            circle: document.getElementById('reworkUploadCircle'),
+                                            submitBtn: document.getElementById('reworkSubmitBtn'),
+                                        },
+                                    });
+                                })();
+                                </script>
                             </div>
                             @endif
                         </div>
@@ -942,22 +997,66 @@
                                     @enderror
                                 </div>
 
-                                <div class="eod-field">
+                                <div class="eod-field" wire:ignore>
                                     <label class="label">Progress Updates ZIP *</label>
-                                    <input class="field" type="file" accept=".zip,application/zip" wire:model="taskUpdateAttachment">
-                                    @error('taskUpdateAttachment')<div class="error">{{ $message }}</div>@enderror
+                                    <div class="large-upload-widget">
+                                        <div class="large-upload-circle-wrap">
+                                            <svg viewBox="0 0 36 36" class="large-upload-circle">
+                                                <path class="large-upload-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                                <path id="eodUploadCircle" class="large-upload-circle-fg" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                            </svg>
+                                            <div class="large-upload-percent" id="eodUploadPercent"></div>
+                                        </div>
+                                        <div class="large-upload-info">
+                                            <input type="file" id="eodUploadInput" accept=".zip,application/zip">
+                                            <div class="muted" style="margin-top:5px">ZIP only · Maximum 6 GB</div>
+                                            <div class="muted" id="eodUploadDetail" style="margin-top:2px"></div>
+                                            <div class="muted" id="eodUploadEta" style="margin-top:2px"></div>
+                                            <div id="eodUploadStatus"></div>
+                                        </div>
+                                    </div>
                                 </div>
+                                @error('taskUpdateUploadId')<div class="error">{{ $message }}</div>@enderror
                             </div>
                             <button
                                 class="btn btn-primary"
+                                id="eodSubmitBtn"
                                 style="margin-top:12px"
                                 wire:click="submitEod"
                                 wire:loading.attr="disabled"
                                 wire:target="submitEod"
                                 wire:loading.class="is-loading"
+                                @disabled(! $taskUpdateUploadId)
                             >
                                 Submit Progress Update
                             </button>
+
+                            <script>
+                            (function () {
+                                if (typeof AdinnZipUpload === 'undefined') return;
+                                new AdinnZipUpload({
+                                    input: document.getElementById('eodUploadInput'),
+                                    purpose: 'progress_update',
+                                    taskId: {{ (int) $task->id }},
+                                    wireProp: 'taskUpdateUploadId',
+                                    urls: {
+                                        initiate: '{{ route('designer.uploads.initiate') }}',
+                                        active: '{{ route('designer.uploads.active') }}',
+                                        partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
+                                        parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
+                                        complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
+                                    },
+                                    els: {
+                                        status: document.getElementById('eodUploadStatus'),
+                                        percent: document.getElementById('eodUploadPercent'),
+                                        detail: document.getElementById('eodUploadDetail'),
+                                        eta: document.getElementById('eodUploadEta'),
+                                        circle: document.getElementById('eodUploadCircle'),
+                                        submitBtn: document.getElementById('eodSubmitBtn'),
+                                    },
+                                });
+                            })();
+                            </script>
                         </div>
                     @elseif(in_array($task->status, ['waiting_confirmation','completed'], true))
                         <div class="empty-state" style="margin-bottom:14px">

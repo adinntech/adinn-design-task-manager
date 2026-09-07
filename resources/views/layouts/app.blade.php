@@ -7,6 +7,7 @@
     <title>@yield('title', 'Adinn Design Task Manager')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('css/adinn-premium.css') }}">
+    <script src="{{ asset('js/large-zip-upload.js') }}"></script>
     @livewireStyles
     @stack('styles')
 

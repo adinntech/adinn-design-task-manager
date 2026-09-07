@@ -233,6 +233,8 @@ function setError(input,message=''){
  node.classList.toggle('hidden',!message);
  return !message;
 }
+const MAX_FILE_BYTES=6*1024*1024*1024;
+const ZIP_ONLY_THRESHOLD_BYTES=500*1024*1024;
 function validateField(input,show=true){
  if(!input||input.disabled||input.type==='hidden'||input.readOnly)return true;
  const value=input.type==='file'?(input.files?.length||0):String(input.value??'').trim();
@@ -241,6 +243,13 @@ function validateField(input,show=true){
  else if(input.type==='file'&&input.dataset.audioOnly==='1'&&value){
   const invalid=Array.from(input.files).some(file=>!/\.(mp3|wav)$/i.test(file.name));
   if(invalid)message='Only MP3 or WAV audio files are allowed.';
+ }
+ else if(input.type==='file'&&input.dataset.audioOnly!=='1'&&value){
+  const files=Array.from(input.files);
+  const tooLarge=files.find(file=>file.size>MAX_FILE_BYTES);
+  const needsZip=files.find(file=>file.size>ZIP_ONLY_THRESHOLD_BYTES&&!/\.zip$/i.test(file.name));
+  if(tooLarge)message='Maximum file size is 6 GB.';
+  else if(needsZip)message='Files larger than 500 MB must be ZIP format.';
  }
  else if(value&&input.validity){
   if(input.validity.patternMismatch)message=`${getLabel(input)} is not in the correct format.`;
@@ -263,7 +272,7 @@ function bindLiveValidation(root=document){
 
 function uploadHtml(name,label,required=false,accept='',audioOnly=false){
  const star=required?' *':'',req=required?'required':'',acceptAttr=accept?`accept="${accept}"`:'',audioAttr=audioOnly?'data-audio-only="1"':'';
- const help=audioOnly?'MP3 or WAV only · Select multiple files together, or choose more files later. Use × to remove any file before submitting.':'Select multiple files together, or choose more files later. Use × to remove any file before submitting.';
+ const help=audioOnly?'Only MP3 and WAV audio files are allowed. Select multiple files together, or choose more files later. Use × to remove any file before submitting.':'Select multiple files together, or choose more files later. Files over 500 MB must be ZIP format. Maximum 6 GB per file.';
  return `<div class="md:col-span-2"><label class="label">${label}${star}</label><input class="field" type="file" name="${name}[]" multiple data-accumulate-files ${acceptAttr} ${audioAttr} ${req}><p class="multi-file-help">${help}</p></div>`;
 }
 function dimensionRowHtml(index,row={}){
