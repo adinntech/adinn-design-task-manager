@@ -5,9 +5,7 @@ namespace App\Livewire\DesignerHead;
 use App\Models\DesignTask;
 use App\Models\DesignTaskRequest;
 use App\Models\User;
-use App\Models\UserActivityFlag;
 use App\Services\DesignerHeadTaskBoardService;
-use App\Services\TaskNotificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
@@ -41,11 +39,12 @@ class TaskKanban extends Component
         abort_unless(Auth::user()?->role === 'designer_head', 403);
         $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
         $this->dateTo = now()->endOfMonth()->format('Y-m-d');
-        $this->needsRefresh = UserActivityFlag::query()
-            ->where('user_id', Auth::id())
-            ->whereIn('scope', TaskNotificationService::LIST_CATEGORIES)
-            ->whereNotNull('flagged_at')
-            ->exists();
+
+        // The shake state is a temporary in-page attention cue, not restored
+        // history — a full page load (including a browser reload) always
+        // starts with the Refresh button un-shaken; only a live WebSocket
+        // event received while this page stays open shakes it again.
+        $this->needsRefresh = false;
     }
 
     /** Fired only by an explicit Refresh-button click (see refresh-button component). */

@@ -11,12 +11,10 @@ use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
-use App\Models\UserActivityFlag;
 use App\Services\CommentReadStateService;
 use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
-use App\Services\TaskNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -82,11 +80,11 @@ class TaskMonitoringController extends Controller
 
         $statuses = DesignTaskStatusService::STATUSES;
 
-        $needsRefresh = UserActivityFlag::query()
-            ->where('user_id', $request->user()->id)
-            ->whereIn('scope', TaskNotificationService::LIST_CATEGORIES)
-            ->whereNotNull('flagged_at')
-            ->exists();
+        // The shake state is a temporary in-page attention cue, not restored
+        // history — a full page load (including a browser reload) always
+        // starts with the Refresh button un-shaken; only a live WebSocket
+        // event received while this page stays open shakes it again.
+        $needsRefresh = false;
 
         return view('admin.tasks.index', compact('tasks', 'designers', 'statuses', 'needsRefresh'));
     }
