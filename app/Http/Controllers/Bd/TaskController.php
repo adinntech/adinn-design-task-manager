@@ -71,6 +71,46 @@ class TaskController extends Controller
         return view('bd.tasks.create', compact('designers'));
     }
 
+    /**
+     * Informational-only workload snapshot for the "Designer Availability" meter
+     * shown under the Preferred Designer field. Deterministic count-based formula
+     * (no AI) reusing the same "active = not completed" definition already used
+     * by the Kanban boards (App\Livewire\*\TaskKanban) — never affects assignment.
+     */
+    public function availability(User $designer)
+    {
+        abort_unless($designer->role === 'designer' && $designer->is_active, 404);
+
+        $activeTasks = DesignTask::where('designer_id', $designer->id)
+            ->whereNotIn('status', ['completed'])
+            ->count();
+
+        $capacity = max(1, (int) config('workload.designer_capacity'));
+        $workloadPercent = (int) min(100, round($activeTasks / $capacity * 100));
+        $availabilityPercent = 100 - $workloadPercent;
+
+        $level = match (true) {
+            $availabilityPercent >= 60 => 'green',
+            $availabilityPercent >= 30 => 'orange',
+            default => 'red',
+        };
+
+        $label = match ($level) {
+            'green' => 'Good Availability',
+            'orange' => 'Moderate Availability',
+            default => 'Low Availability',
+        };
+
+        return response()->json([
+            'designer_id' => $designer->id,
+            'designer_name' => $designer->name,
+            'active_tasks' => $activeTasks,
+            'availability_percent' => $availabilityPercent,
+            'level' => $level,
+            'label' => $label,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $verticals = array_keys(self::NATURES);

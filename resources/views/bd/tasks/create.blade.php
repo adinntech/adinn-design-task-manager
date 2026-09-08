@@ -92,6 +92,20 @@
         .media-size-remove{width:48px}
     }
 
+    .designer-availability{margin-top:8px;padding:10px 12px;border:1px solid #e4e7ec;border-radius:10px;background:#fafafa}
+    .designer-availability-name{font-size:11px;font-weight:900;color:#101828;margin-bottom:4px}
+    .designer-availability-meta{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:#475467;margin-bottom:6px}
+    .designer-availability-track{height:8px;border-radius:999px;background:#eaecf0;overflow:hidden}
+    .designer-availability-fill{height:100%;border-radius:999px;width:0;transition:width .3s ease}
+    .designer-availability-fill.green{background:#15803d}
+    .designer-availability-fill.orange{background:#d97706}
+    .designer-availability-fill.red{background:#b42318}
+    .designer-availability-status{margin-top:6px;font-size:10px;font-weight:900}
+    .designer-availability-status.green{color:#15803d}
+    .designer-availability-status.orange{color:#d97706}
+    .designer-availability-status.red{color:#b42318}
+    .designer-availability-note{font-size:10px;color:#667085;font-style:italic}
+
 </style>
 
 <div class="page-head">
@@ -156,7 +170,11 @@
             min="{{ $minDueDate }}"
             max="{{ $maxDueDateInput }}"
         ></div>
-        <div><label class="label">Designer Name *</label><select class="field" name="designer_id" required><option value="">Select designer</option>@foreach($designers as $designer)<option value="{{ $designer->id }}" @selected((string)old('designer_id')===(string)$designer->id)>{{ $designer->name }}</option>@endforeach</select></div>
+        <div>
+            <label class="label">Designer Name *</label>
+            <select class="field" id="designerSelect" name="designer_id" required><option value="">Select designer</option>@foreach($designers as $designer)<option value="{{ $designer->id }}" @selected((string)old('designer_id')===(string)$designer->id)>{{ $designer->name }}</option>@endforeach</select>
+            <div id="designerAvailability" class="designer-availability hidden"></div>
+        </div>
 
         <div>
             <label class="label" for="total_creatives">Total Number of Creatives *</label>
@@ -648,6 +666,47 @@ function renderFields(){
 vertical.addEventListener('change',()=>populateNatures());
 nature.addEventListener('change',renderFields);
 document.getElementById('partyType').addEventListener('change',e=>document.getElementById('partyNameLabel').textContent=(e.target.value==='agency'?'Agency':'Client')+' Name *');
+
+// Designer Availability meter — informational only; never blocks or alters task creation.
+(function(){
+ const select=document.getElementById('designerSelect');
+ const box=document.getElementById('designerAvailability');
+ const availabilityUrlTemplate=@json(url('/bd/designers/__ID__/availability'));
+ let requestToken=0;
+ let controller=null;
+
+ function render(html){box.innerHTML=html;box.classList.remove('hidden');}
+
+ select.addEventListener('change',()=>{
+  const designerId=select.value;
+  const token=++requestToken;
+  if(controller)controller.abort();
+  if(!designerId){box.classList.add('hidden');box.innerHTML='';return;}
+
+  render('<div class="designer-availability-note">Checking availability...</div>');
+  controller=new AbortController();
+
+  fetch(availabilityUrlTemplate.replace('__ID__',encodeURIComponent(designerId)),{
+   headers:{'Accept':'application/json'},
+   signal:controller.signal,
+  })
+   .then(res=>{if(!res.ok)throw new Error('bad_response');return res.json();})
+   .then(data=>{
+    if(token!==requestToken)return;
+    render(`
+     <div class="designer-availability-name">Designer Availability — ${esc(data.designer_name)}</div>
+     <div class="designer-availability-meta"><span>Workload: ${esc(data.active_tasks)} active task${data.active_tasks===1?'':'s'}</span><span>Availability: ${esc(data.availability_percent)}%</span></div>
+     <div class="designer-availability-track"><div class="designer-availability-fill ${esc(data.level)}" style="width:${esc(data.availability_percent)}%"></div></div>
+     <div class="designer-availability-status ${esc(data.level)}">${esc(data.label)}</div>
+    `);
+   })
+   .catch(err=>{
+    if(err.name==='AbortError')return;
+    if(token!==requestToken)return;
+    render('<div class="designer-availability-note">Availability unavailable</div>');
+   });
+ });
+})();
 
 taskForm.addEventListener('reset',()=>setTimeout(()=>{vertical.value='';populateNatures();taskForm.querySelectorAll('.has-error').forEach(el=>el.classList.remove('has-error'));taskForm.querySelectorAll('.live-field-error').forEach(el=>el.classList.add('hidden'));},0));
 taskForm.addEventListener('submit',event=>{

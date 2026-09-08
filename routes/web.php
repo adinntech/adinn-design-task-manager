@@ -19,6 +19,7 @@ Route::middleware(['auth', 'role:bd'])
     ->group(function () {
         Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::get('/designers/{designer}/availability', [TaskController::class, 'availability'])->name('designers.availability');
 
         // Registered ahead of the /tasks/{task} wildcard below (same group, same
         // request cycle) so "export" is never swallowed by task-show's route model
