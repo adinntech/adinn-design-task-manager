@@ -89,16 +89,19 @@ class TaskController extends Controller
         $workloadPercent = (int) min(100, round($activeTasks / $capacity * 100));
         $availabilityPercent = 100 - $workloadPercent;
 
+        $thresholds = config('workload.availability_thresholds');
         $level = match (true) {
-            $availabilityPercent >= 60 => 'green',
-            $availabilityPercent >= 30 => 'orange',
-            default => 'red',
+            $availabilityPercent >= $thresholds['available'] => 'available',
+            $availabilityPercent >= $thresholds['moderate'] => 'moderate',
+            $availabilityPercent >= $thresholds['busy'] => 'busy',
+            default => 'critical',
         };
 
         $label = match ($level) {
-            'green' => 'Good Availability',
-            'orange' => 'Moderate Availability',
-            default => 'Low Availability',
+            'available' => 'Available',
+            'moderate' => 'Moderate',
+            'busy' => 'Busy',
+            default => 'Critical',
         };
 
         return response()->json([

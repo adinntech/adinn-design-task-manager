@@ -97,13 +97,15 @@
     .designer-availability-meta{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:#475467;margin-bottom:6px}
     .designer-availability-track{height:8px;border-radius:999px;background:#eaecf0;overflow:hidden}
     .designer-availability-fill{height:100%;border-radius:999px;width:0;transition:width .3s ease}
-    .designer-availability-fill.green{background:#15803d}
-    .designer-availability-fill.orange{background:#d97706}
-    .designer-availability-fill.red{background:#b42318}
+    .designer-availability-fill.available{background:#16c60c}
+    .designer-availability-fill.moderate{background:#e9961a}
+    .designer-availability-fill.busy{background:#f7630c}
+    .designer-availability-fill.critical{background:#e81224}
     .designer-availability-status{margin-top:6px;font-size:10px;font-weight:900}
-    .designer-availability-status.green{color:#15803d}
-    .designer-availability-status.orange{color:#d97706}
-    .designer-availability-status.red{color:#b42318}
+    .designer-availability-status.available{color:#16c60c}
+    .designer-availability-status.moderate{color:#e9961a}
+    .designer-availability-status.busy{color:#f7630c}
+    .designer-availability-status.critical{color:#e81224}
     .designer-availability-note{font-size:10px;color:#667085;font-style:italic}
 
 </style>
