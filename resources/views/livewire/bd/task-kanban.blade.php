@@ -25,7 +25,7 @@
         .kanban-shell{overflow-x:auto;overflow-y:auto;max-height:70vh;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;position:relative}
         .kanban-shell::-webkit-scrollbar{display:none}
         .kanban-shell.is-panning{cursor:grabbing}
-        .kanban-board{display:grid;grid-template-columns:repeat(10,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}
+        .kanban-board{display:grid;grid-template-columns:repeat(12,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}
         .kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb;position:relative}
         .kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3;border-radius:13px 13px 0 0;position:sticky;top:0;z-index:3}
         .kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}
@@ -43,6 +43,8 @@
         .kanban-column.status-completed .kanban-column-header{border-top-color:#16a34a;background:#f0fdf4}
         .kanban-column.status-swap_tasks .kanban-column-header{border-top-color:#0f766e;background:#f0fdfa}
         .kanban-column.status-decline_tasks .kanban-column-header{border-top-color:#b42318;background:#fff5f5}
+        .kanban-column.status-draft .kanban-column-header{border-top-color:#eab308;background:#fefce8}
+        .kanban-column.status-draft{background:#fdfceb}
 
         .kanban-column.status-assigned_tasks .kanban-count{background:#eaecf0;color:#475467}
         .kanban-column.status-review_analysis .kanban-count{background:#dbeafe;color:#1d4ed8}
@@ -54,6 +56,11 @@
         .kanban-column.status-completed .kanban-count{background:#dcfce7;color:#15803d}
         .kanban-column.status-swap_tasks .kanban-count{background:#ccfbf1;color:#0f766e}
         .kanban-column.status-decline_tasks .kanban-count{background:#fee4e2;color:#b42318}
+        .kanban-column.status-draft .kanban-count{background:#fef9c3;color:#a16207}
+
+        .task-card.draft-card{border-left-color:#eab308;background:linear-gradient(90deg,#fefce8 0,#fff 22%)}
+        .due-pill.due-draft{background:#fef9c3;color:#ca8a04}
+        .draft-open-label{margin-top:9px;padding-top:8px;border-top:1px solid #eef0f3;color:#a16207;font-size:9px;font-weight:900}
 
         .kanban-column.kanban-column-focus{box-shadow:0 0 0 3px rgba(227,6,19,.55);border-color:#e30613;border-radius:14px}
         .kanban-column.kanban-column-focus .kanban-column-header{animation:bdColumnFocusPulse .45s ease-in-out 2}
@@ -417,26 +424,66 @@
                     <div class="kanban-list" data-bd-kanban-list data-status="{{ $statusKey }}">
                         @forelse($columnTasks as $task)
                             @php
-                                $dueAt = \Illuminate\Support\Carbon::parse($task->due_at);
-                                $now = now();
+                                $isDraft = $task->status === 'draft';
+                                $dueClass = '';
+                                $dueLabel = '';
 
-                                if ($task->status === 'completed') {
-                                    $dueClass = 'due-completed';
-                                    $dueLabel = 'Completed';
-                                } elseif ($dueAt->isPast()) {
-                                    $dueClass = 'due-overdue';
-                                    $dueLabel = 'Overdue';
-                                } elseif ($dueAt->isToday()) {
-                                    $dueClass = 'due-today';
-                                    $dueLabel = 'Due Today';
-                                } elseif ($now->diffInHours($dueAt, false) <= 48) {
-                                    $dueClass = 'due-soon';
-                                    $dueLabel = 'Due Soon';
-                                } else {
-                                    $dueClass = 'due-safe';
-                                    $dueLabel = 'On Track';
+                                if (! $isDraft) {
+                                    $dueAt = \Illuminate\Support\Carbon::parse($task->due_at);
+                                    $now = now();
+
+                                    if ($task->status === 'completed') {
+                                        $dueClass = 'due-completed';
+                                        $dueLabel = 'Completed';
+                                    } elseif ($dueAt->isPast()) {
+                                        $dueClass = 'due-overdue';
+                                        $dueLabel = 'Overdue';
+                                    } elseif ($dueAt->isToday()) {
+                                        $dueClass = 'due-today';
+                                        $dueLabel = 'Due Today';
+                                    } elseif ($now->diffInHours($dueAt, false) <= 48) {
+                                        $dueClass = 'due-soon';
+                                        $dueLabel = 'Due Soon';
+                                    } else {
+                                        $dueClass = 'due-safe';
+                                        $dueLabel = 'On Track';
+                                    }
                                 }
                             @endphp
+
+                            @if($isDraft)
+                                <article class="task-card draft-card" data-task-id="{{ $task->id }}" data-task-status="draft" wire:key="bd-task-{{ $task->id }}">
+                                    <a class="task-card-link" href="{{ route('bd.tasks.create', ['draft' => $task->id]) }}" draggable="false">
+                                        <div class="task-card-head-row">
+                                            <span class="task-card-id">{{ $task->task_id }}</span>
+
+                                            <div class="task-card-badges">
+                                                <div class="task-card-badges-main">
+                                                    <span class="due-pill due-draft">Draft</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="task-card-name">{{ $task->task_name ?: 'Untitled draft' }}</div>
+                                        <div class="task-card-client">
+                                            @if($task->vertical){{ ucwords(str_replace('_',' ',$task->vertical)) }}@endif@if($task->task_nature) · {{ ucwords(str_replace('_',' ',$task->task_nature)) }}@endif
+                                        </div>
+
+                                        <div class="task-card-meta">
+                                            <div class="task-meta-item">
+                                                <strong>Party</strong>
+                                                {{ $task->party_name ?: '—' }}
+                                            </div>
+                                            <div class="task-meta-item">
+                                                <strong>Created</strong>
+                                                {{ $task->created_at->format('d M Y • h:i A') }}
+                                            </div>
+                                        </div>
+
+                                        <div class="draft-open-label">Open Draft →</div>
+                                    </a>
+                                </article>
+                            @else
 
                             <article class="task-card {{ $dueClass }}" data-task-id="{{ $task->id }}" data-task-status="{{ $task->status }}" wire:key="bd-task-{{ $task->id }}">
                                 <a class="task-card-link" href="{{ route('bd.tasks.show', $task) }}" draggable="false">
@@ -547,6 +594,7 @@
                                     </div>
                                 @endif
                             </article>
+                            @endif
                         @empty
                             <div class="kanban-empty">No matching tasks</div>
                         @endforelse

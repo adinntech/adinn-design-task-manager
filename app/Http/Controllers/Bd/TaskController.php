@@ -60,7 +60,7 @@ class TaskController extends Controller
     /** Above this, a general file must be a ZIP — below it, existing type rules apply unchanged. */
     private const ZIP_ONLY_THRESHOLD_BYTES = 500 * 1024 * 1024; // 500 MB
 
-    public function create()
+    public function create(Request $request)
     {
         $designers = User::query()
             ->where('role', 'designer')
@@ -68,7 +68,21 @@ class TaskController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('bd.tasks.create', compact('designers'));
+        $draft = null;
+        $draftFiles = [];
+
+        if ($request->query('draft')) {
+            $draft = DesignTask::query()
+                ->where('assigned_by', $request->user()->id)
+                ->where('status', 'draft')
+                ->findOrFail((int) $request->query('draft'));
+
+            $draftFiles = collect($this->collectRequirementAttachments(
+                is_array($draft->requirements) ? $draft->requirements : []
+            ))->mapWithKeys(fn (array $group) => [$group['key'] => $group['files']])->all();
+        }
+
+        return view('bd.tasks.create', compact('designers', 'draft', 'draftFiles'));
     }
 
     /**
@@ -252,6 +266,116 @@ class TaskController extends Controller
             $requirements['creative_size_details'] = $mediaSizeRows;
         }
 
+        $isDraftConversion = (bool) $request->input('draft_id');
+        $existingDraft = null;
+
+        if ($isDraftConversion) {
+            $existingDraft = DesignTask::query()
+                ->where('assigned_by', $request->user()->id)
+                ->where('status', 'draft')
+                ->findOrFail((int) $request->input('draft_id'));
+        }
+
+        $rootFolder = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
+
+        if ($isDraftConversion && $existingDraft) {
+            // Convert-a-draft path: uploads happen BEFORE any DB mutation so an
+            // upload failure leaves the draft fully intact (no half-conversion).
+            // The new files land in the final task folder under the exact DT id
+            // this conversion will assign, so storage and record always agree.
+            $finalTaskId = sprintf('DT-%s-%05d', now()->format('Y'), $existingDraft->id);
+
+            $requirements = array_merge(
+                is_array($existingDraft->requirements) ? $existingDraft->requirements : [],
+                $requirements
+            );
+
+            $taskNameSlug = Str::slug($data['task_name']);
+            $taskNatureSlug = Str::slug(str_replace('_', '-', $data['task_nature']));
+            $verticalSlug = Str::slug(str_replace('_', '-', $data['vertical']));
+
+            $taskFolder = implode('/', [
+                $rootFolder,
+                now()->format('Y'),
+                $verticalSlug,
+                "{$finalTaskId}_{$taskNameSlug}",
+                $taskNatureSlug,
+            ]);
+
+            $requirements = $this->removeMarkedFiles($requirements, $this->parseRemovedFiles($request));
+
+            try {
+                foreach (self::FILE_FIELDS as $field) {
+                    if ($request->hasFile($field)) {
+                        $requirements[$field] = $this->storeMultipleFiles(
+                            files: $request->file($field),
+                            directory: "{$taskFolder}/{$field}",
+                            taskId: $finalTaskId,
+                            fieldName: $field
+                        );
+                    }
+                }
+            } catch (\Throwable $exception) {
+                Storage::disk('spaces')->deleteDirectory($taskFolder);
+                report($exception);
+
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'upload' => 'The task could not be created because one or more files could not be saved. Please try again.',
+                    ]);
+            }
+
+            $task = DB::transaction(function () use ($data, $existingDraft, $finalTaskId, $requirements): DesignTask {
+                $existingDraft->update([
+                    'assigned_at' => now(),
+                    'assigned_by' => auth()->id(),
+                    'task_name' => $data['task_name'],
+                    'vertical' => $data['vertical'],
+                    'task_nature' => $data['task_nature'],
+                    'party_type' => $data['party_type'],
+                    'party_name' => $data['party_name'],
+                    'contact_person' => $data['contact_person'] ?? '',
+                    'mobile_number' => $data['mobile_number'] ?? '',
+                    'priority' => $data['priority'],
+                    'due_at' => $data['due_at'],
+                    'designer_id' => $data['designer_id'],
+                    'total_creatives' => $data['total_creatives'],
+                    'status' => 'assigned_tasks',
+                    'task_id' => $finalTaskId,
+                    'requirements' => $requirements,
+                ]);
+
+                $task = $existingDraft->fresh();
+
+                DesignTaskStatusHistory::create([
+                    'design_task_id' => $task->id,
+                    'from_status' => 'draft',
+                    'to_status' => 'assigned_tasks',
+                    'changed_by' => auth()->id(),
+                    'change_source' => 'draft_created',
+                    'note' => 'Task assigned from draft.',
+                ]);
+
+                DesignTaskStatusHistory::create([
+                    'design_task_id' => $task->id,
+                    'from_status' => 'assigned_tasks',
+                    'to_status' => 'assigned_tasks',
+                    'changed_by' => auth()->id(),
+                    'change_source' => 'task_assigned',
+                    'note' => 'Task Assigned',
+                ]);
+
+                return $task;
+            });
+
+            app(TaskNotificationService::class)->taskAssigned($task, auth()->user(), $task->designer ?? User::find($task->designer_id));
+
+            return redirect()
+                ->route('bd.tasks.show', $task)
+                ->with('success', 'Design task created successfully.');
+        }
+
         $task = DB::transaction(function () use ($data): DesignTask {
             $task = DesignTask::create([
                 'task_id' => 'PENDING-'.Str::uuid(),
@@ -297,8 +421,6 @@ class TaskController extends Controller
             return $task->fresh();
         });
 
-        $rootFolder = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
-
         $taskNameSlug = Str::slug($task->task_name);
         $taskNatureSlug = Str::slug(str_replace('_', '-', $task->task_nature));
         $verticalSlug = Str::slug(str_replace('_', '-', $task->vertical));
@@ -341,6 +463,363 @@ class TaskController extends Controller
         return redirect()
             ->route('bd.tasks.show', $task)
             ->with('success', 'Design task created successfully.');
+    }
+
+    /**
+     * Save (or update) a BD Draft. Uses the same dynamic requirement rules but
+     * WITHOUT the final-validation requireds, so a partially-completed form can
+     * be stored. No designer assignment, no availability check, no notification.
+     */
+    public function storeDraft(Request $request)
+    {
+        $draftId = (int) $request->input('draft_id');
+
+        if ($draftId) {
+            return $this->updateDraft($request, DesignTask::findOrFail($draftId));
+        }
+
+        $data = $this->validateDraftPayload($request);
+
+        $requirements = $this->collectRequirementValues($request, $data);
+
+        $task = DesignTask::create([
+            'task_id' => 'PENDING-'.Str::uuid(),
+            'assigned_at' => now(),
+            'assigned_by' => auth()->id(),
+            'task_name' => $data['task_name'] ?? '',
+            'vertical' => $data['vertical'] ?? '',
+            'task_nature' => $data['task_nature'] ?? '',
+            'party_type' => $data['party_type'] ?? 'client',
+            'party_name' => $data['party_name'] ?? '',
+            'contact_person' => $data['contact_person'] ?? '',
+            'mobile_number' => $data['mobile_number'] ?? '',
+            'priority' => $data['priority'] ?? 'low',
+            'due_at' => $data['due_at'] ?? null,
+            'designer_id' => null,
+            'total_creatives' => $data['total_creatives'] ?? null,
+            'status' => 'draft',
+            'requirements' => [],
+        ]);
+
+        return $this->persistDraft($request, $task, $requirements);
+    }
+
+    public function updateDraft(Request $request, DesignTask $task)
+    {
+        abort_unless(
+            $request->user()?->role === 'bd'
+            && (int) $task->assigned_by === (int) $request->user()->id
+            && $task->status === 'draft',
+            403
+        );
+
+        $data = $this->validateDraftPayload($request);
+
+        $requirements = $this->collectRequirementValues($request, $data);
+
+        $task->update([
+            'task_name' => $data['task_name'] ?? $task->task_name,
+            'vertical' => $data['vertical'] ?? $task->vertical,
+            'task_nature' => $data['task_nature'] ?? $task->task_nature,
+            'party_type' => $data['party_type'] ?? $task->party_type,
+            'party_name' => $data['party_name'] ?? $task->party_name,
+            'contact_person' => array_key_exists('contact_person', $data) ? $data['contact_person'] : $task->contact_person,
+            'mobile_number' => array_key_exists('mobile_number', $data) ? $data['mobile_number'] : $task->mobile_number,
+            'priority' => $data['priority'] ?? $task->priority,
+            'due_at' => array_key_exists('due_at', $data) && $data['due_at'] ? $data['due_at'] : $task->due_at,
+            'total_creatives' => $data['total_creatives'] ?? $task->total_creatives,
+        ]);
+
+        $requirements = array_merge(is_array($task->requirements) ? $task->requirements : [], $requirements);
+
+        return $this->persistDraft($request, $task->fresh(), $requirements);
+    }
+
+    private function persistDraft(Request $request, DesignTask $task, array $requirements)
+    {
+        $rootFolder = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
+
+        $taskNameSlug = Str::slug($task->task_name ?: 'untitled-task');
+        $taskNatureSlug = Str::slug(str_replace('_', '-', $task->task_nature ?: 'draft'));
+        $verticalSlug = Str::slug(str_replace('_', '-', $task->vertical ?: 'draft'));
+
+        $taskFolder = implode('/', [
+            $rootFolder,
+            now()->format('Y'),
+            $verticalSlug,
+            "{$task->task_id}_{$taskNameSlug}",
+            $taskNatureSlug,
+        ]);
+
+        $requirements = $this->removeMarkedFiles($requirements, $this->parseRemovedFiles($request));
+
+        try {
+            foreach (self::FILE_FIELDS as $field) {
+                if ($request->hasFile($field)) {
+                    $requirements[$field] = $this->storeMultipleFiles(
+                        files: $request->file($field),
+                        directory: "{$taskFolder}/{$field}",
+                        taskId: $task->task_id,
+                        fieldName: $field
+                    );
+                }
+            }
+
+            $task->update(['requirements' => $requirements]);
+        } catch (\Throwable $exception) {
+            Storage::disk('spaces')->deleteDirectory($taskFolder);
+            report($exception);
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'upload' => 'The draft could not be saved because one or more files could not be stored. Please try again.',
+                ]);
+        }
+
+        return redirect()
+            ->route('bd.tasks.create', ['draft' => $task->id])
+            ->with('success', 'Task saved as draft.');
+    }
+
+    /**
+     * Files the BD explicitly removed from a draft (via the "Remove" button on
+     * an already-attached file, see create.blade.php) come in as
+     * {field: [stored paths]}. Only paths that are actually present in that
+     * field's current requirements value are deleted/dropped — never trust a
+     * client-supplied path blindly.
+     */
+    private function parseRemovedFiles(Request $request): array
+    {
+        $raw = json_decode((string) $request->input('removed_files_json', '{}'), true);
+
+        return is_array($raw) ? $raw : [];
+    }
+
+    private function removeMarkedFiles(array $requirements, array $removed): array
+    {
+        foreach ($removed as $field => $paths) {
+            if (! is_array($requirements[$field] ?? null) || ! is_array($paths)) {
+                continue;
+            }
+
+            $toRemove = array_intersect($requirements[$field], $paths);
+
+            foreach ($toRemove as $path) {
+                Storage::disk('spaces')->delete($path);
+            }
+
+            $requirements[$field] = array_values(array_diff($requirements[$field], $toRemove));
+        }
+
+        return $requirements;
+    }
+
+    /**
+     * Groups stored file paths inside a task's requirements JSON by field name,
+     * for display (draft prefill needs this so previously uploaded files show
+     * up under the correct dynamic field instead of disappearing). Mirrors
+     * Bd\AssignedTaskController::collectRequirementAttachments().
+     */
+    private function collectRequirementAttachments(array $requirements): array
+    {
+        $groups = [];
+
+        foreach ($requirements as $key => $value) {
+            if (str_starts_with((string) $key, '_')) {
+                continue;
+            }
+
+            $files = [];
+            $this->extractStoredFiles($value, $files);
+
+            if ($files === []) {
+                continue;
+            }
+
+            $groups[] = [
+                'key' => (string) $key,
+                'files' => $files,
+            ];
+        }
+
+        return $groups;
+    }
+
+    private function extractStoredFiles(mixed $value, array &$files): void
+    {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                $this->extractStoredFiles($item, $files);
+            }
+
+            return;
+        }
+
+        if (! is_string($value) || ! $this->looksLikeStoredFilePath($value)) {
+            return;
+        }
+
+        $files[] = [
+            'path' => $value,
+            'name' => basename($value),
+            'extension' => strtoupper(pathinfo($value, PATHINFO_EXTENSION) ?: 'FILE'),
+            'url' => Storage::disk('spaces')->url($value),
+        ];
+    }
+
+    private function looksLikeStoredFilePath(string $value): bool
+    {
+        $value = trim($value);
+
+        return $value !== ''
+            && ! filter_var($value, FILTER_VALIDATE_URL)
+            && str_contains($value, '/')
+            && pathinfo($value, PATHINFO_EXTENSION) !== '';
+    }
+
+    /**
+     * Minimal validation for draft saves: only basic shape rules are enforced,
+     * not the per-(vertical,nature) final required fields.
+     */
+    private function validateDraftPayload(Request $request): array
+    {
+        $verticals = array_keys(self::NATURES);
+
+        $rules = [
+            'task_name' => ['required', 'string', 'max:180'],
+            'vertical' => ['required', Rule::in($verticals)],
+            'task_nature' => ['required', 'string', 'max:120'],
+            'party_type' => ['nullable', Rule::in(['client', 'agency'])],
+            'party_name' => ['nullable', 'string', 'max:180'],
+            'contact_person' => ['nullable', 'string', 'max:120'],
+            'mobile_number' => ['nullable', 'digits:10'],
+            'priority' => ['nullable', Rule::in(['low', 'medium', 'high', 'urgent'])],
+            'due_at' => ['nullable', 'date'],
+            'designer_id' => ['nullable', 'integer'],
+            'total_creatives' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'draft_id' => ['nullable', 'integer'],
+        ];
+
+        return $request->validate($rules);
+    }
+
+    /**
+     * Collapse everything outside the base task columns and the uploaded files
+     * into the requirements JSON blob (mirrors store()'s logic, but tolerant of
+     * incomplete content).
+     */
+    private function collectRequirementValues(Request $request, array $data): array
+    {
+        $baseKeys = [
+            'task_name', 'vertical', 'task_nature', 'party_type', 'party_name', 'contact_person',
+            'mobile_number', 'priority', 'due_at', 'designer_id', 'total_creatives', 'draft_id',
+            '_token', '_method',
+        ];
+
+        // Drafts use minimal validation rules that deliberately drop the dynamic
+        // requirement fields, so collect those values straight from the raw
+        // request (uploaded files and their arrays are filtered out below).
+        $raw = $request->all();
+        $raw = array_merge($data, $raw);
+
+        $requirements = collect($raw)
+            ->except($baseKeys)
+            ->reject(function (mixed $value): bool {
+                if ($value instanceof UploadedFile) {
+                    return true;
+                }
+
+                return is_array($value)
+                    && collect($value)->contains(fn ($item) => $item instanceof UploadedFile);
+            })
+            ->filter(function (mixed $value): bool {
+                return $value !== null && $value !== '';
+            })
+            ->all();
+
+        $dimensionRows = collect($data['dimension_rows'] ?? $raw['dimension_rows'] ?? [])
+            ->filter(function ($row): bool {
+                if (! is_array($row)) {
+                    return false;
+                }
+
+                return filled($row['name'] ?? null)
+                    || filled($row['width'] ?? null)
+                    || filled($row['height'] ?? null);
+            })
+            ->map(function ($row): array {
+                $width = (float) ($row['width'] ?? 0);
+                $height = (float) ($row['height'] ?? 0);
+
+                return [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'width' => $width,
+                    'height' => $height,
+                    'unit' => 'feet',
+                    'area' => round($width * $height, 2),
+                ];
+            })
+            ->values()
+            ->all();
+
+        unset($requirements['dimension_rows']);
+        if ($dimensionRows !== []) {
+            $requirements['board_details'] = $dimensionRows;
+        }
+
+        $sizeRows = collect($data['size_rows'] ?? $raw['size_rows'] ?? [])
+            ->filter(function ($row): bool {
+                if (! is_array($row)) {
+                    return false;
+                }
+
+                return filled($row['name'] ?? null)
+                    || filled($row['width'] ?? null)
+                    || filled($row['height'] ?? null);
+            })
+            ->map(function ($row): array {
+                $width = (float) ($row['width'] ?? 0);
+                $height = (float) ($row['height'] ?? 0);
+
+                return [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'width' => $width,
+                    'height' => $height,
+                    'unit' => 'feet',
+                    'area' => round($width * $height, 2),
+                ];
+            })
+            ->values()
+            ->all();
+
+        unset($requirements['size_rows']);
+        if ($sizeRows !== []) {
+            $requirements['size_details'] = $sizeRows;
+        }
+
+        $mediaSizeRows = collect($data['media_size_rows'] ?? $raw['media_size_rows'] ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->filter(fn ($row) => filled($row['name'] ?? null)
+                || filled($row['width'] ?? null)
+                || filled($row['height'] ?? null)
+                || filled($row['ratio'] ?? null)
+            )
+            ->map(fn ($row) => [
+                'name' => trim((string) ($row['name'] ?? '')),
+                'width' => (float) ($row['width'] ?? 0),
+                'height' => (float) ($row['height'] ?? 0),
+                'ratio' => trim((string) ($row['ratio'] ?? '')),
+            ])
+            ->values()
+            ->all();
+
+        unset($requirements['media_size_rows']);
+        if ($mediaSizeRows !== []) {
+            $requirements['creative_size_details'] = $mediaSizeRows;
+        }
+
+        return $requirements;
     }
 
     public function show(DesignTask $task)

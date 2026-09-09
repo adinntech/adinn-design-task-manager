@@ -56,6 +56,7 @@ class TaskMonitoringController extends Controller
     {
         $tasks = DesignTask::query()
             ->with(['designer:id,name', 'assigner:id,name'])
+            ->where('status', '!=', 'draft')
             ->when($request->filled('search'), function ($query) use ($request) {
                 $term = '%'.trim((string) $request->input('search')).'%';
 
@@ -91,6 +92,8 @@ class TaskMonitoringController extends Controller
 
     public function show(Request $request, DesignTask $task): View
     {
+        abort_if($task->status === 'draft', 404);
+
         $task->load(['designer:id,name,email', 'assigner:id,name,email']);
 
         $readState = app(CommentReadStateService::class);
@@ -288,6 +291,8 @@ class TaskMonitoringController extends Controller
 
     public function edit(DesignTask $task): View
     {
+        abort_if($task->status === 'draft', 404);
+
         $designers = User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
@@ -304,6 +309,8 @@ class TaskMonitoringController extends Controller
 
     public function update(Request $request, DesignTask $task): RedirectResponse
     {
+        abort_if($task->status === 'draft', 404);
+
         $statuses = array_keys(DesignTaskStatusService::STATUSES);
 
         $data = $request->validate([

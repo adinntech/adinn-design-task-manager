@@ -256,6 +256,22 @@ class TaskKanban extends Component
         $tasks = $board['visibleTasks'];
         $periodStart = $board['periodStart'];
 
+        // Drafts are the BD's own work-in-progress records only and never flow
+        // through the shared board service (that one is used by Designer/
+        // Designer Head too). They are queried here directly, prepended as the
+        // first column, and appended to the tasks so the column renders them.
+        $drafts = DesignTask::query()
+            ->with(['assigner:id,name'])
+            ->where('status', 'draft')
+            ->where('assigned_by', Auth::id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        $statuses = $board['statuses'];
+        $statuses = ['draft' => 'Draft'] + $statuses;
+
+        $tasks = $tasks->concat($drafts);
+
         $periodLabel = $this->period === 'custom'
             ? $periodStart->format('d M Y').' – '.$board['periodEnd']->format('d M Y')
             : $periodStart->format('M Y');
@@ -268,7 +284,7 @@ class TaskKanban extends Component
             ->get(['id', 'name']);
 
         return view('livewire.bd.task-kanban', [
-            'statuses' => $board['statuses'],
+            'statuses' => $statuses,
             'tasks' => $tasks,
             'splitLogRows' => $board['splitLogRows'],
             'taskTags' => $this->buildTaskTags($tasks),
@@ -277,7 +293,7 @@ class TaskKanban extends Component
             'appliedFilters' => $this->appliedFilters($designers, $periodLabel),
             'activeBreakdown' => $board['activeBreakdown'],
             'stats' => [
-                'total' => $ownTasks->count(),
+                'total' => $ownTasks->count() + $drafts->count(),
                 'active' => $ownTasks->whereNotIn('status', ['completed'])->count(),
                 'waiting' => $ownTasks->where('status', 'waiting_confirmation')->count(),
                 'completed' => $ownTasks->where('status', 'completed')->count(),

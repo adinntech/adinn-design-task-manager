@@ -236,7 +236,7 @@ class DesignerHeadTaskBoardService
             ->all();
 
         $tasks = $this->applyFilters(
-            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
+            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name'])->where('status', '!=', 'draft'),
             array_merge($filters, ['priority' => ''])
         )
             ->where('status', '!=', 'completed')
@@ -305,7 +305,7 @@ class DesignerHeadTaskBoardService
     {
         $tasks = $this->originBetween(
             $this->applyFilters(
-                DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
+                DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name'])->where('status', '!=', 'draft'),
                 $filters
             ),
             $periodStart,
@@ -355,7 +355,7 @@ class DesignerHeadTaskBoardService
             ->pluck('design_task_id');
 
         return $this->applyFilters(
-            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
+            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name'])->where('status', '!=', 'draft'),
             $filters
         )
             ->whereIn('status', self::CARRY_FORWARD_STATUSES)
@@ -385,7 +385,7 @@ class DesignerHeadTaskBoardService
     {
         return $this->originBetween(
             $this->applyFilters(
-                DesignTask::query()->with(['designer:id,name', 'assigner:id,name']),
+                DesignTask::query()->with(['designer:id,name', 'assigner:id,name'])->where('status', '!=', 'draft'),
                 $filters
             )->where('status', 'swap_tasks'),
             $periodStart,
@@ -435,7 +435,7 @@ class DesignerHeadTaskBoardService
     private function continuationFromTasks(array $filters, Carbon $periodStart, Carbon $periodEnd, SupportCollection $excludeIds): Collection
     {
         $completed = $this->applyFilters(
-            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name']),
+            DesignTask::query()->with(['bdReview', 'designer:id,name', 'assigner:id,name'])->where('status', '!=', 'draft'),
             $filters
         )
             ->where('status', 'completed')
@@ -455,7 +455,7 @@ class DesignerHeadTaskBoardService
         }
 
         $swapped = $this->applyFilters(
-            DesignTask::query()->with(['designer:id,name', 'assigner:id,name']),
+            DesignTask::query()->with(['designer:id,name', 'assigner:id,name'])->where('status', '!=', 'draft'),
             $filters
         )
             ->where('status', 'swap_tasks')

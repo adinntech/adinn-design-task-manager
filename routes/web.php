@@ -19,6 +19,10 @@ Route::middleware(['auth', 'role:bd'])
     ->group(function () {
         Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+
+        Route::post('/drafts', [TaskController::class, 'storeDraft'])->name('drafts.store');
+        Route::put('/drafts/{task}', [TaskController::class, 'updateDraft'])->name('drafts.update');
+
         Route::get('/designers/{designer}/availability', [TaskController::class, 'availability'])->name('designers.availability');
 
         // Registered ahead of the /tasks/{task} wildcard below (same group, same
