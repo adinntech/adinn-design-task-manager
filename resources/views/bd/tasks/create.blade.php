@@ -781,8 +781,9 @@ document.getElementById('partyType').addEventListener('change',e=>document.getEl
    .then(data=>{
     if(token!==requestToken)return;
     render(`
-     <div class="designer-availability-name">Designer Availability — ${esc(data.designer_name)}</div>
-     <div class="designer-availability-meta"><span>Workload: ${esc(data.active_tasks)} active task${data.active_tasks===1?'':'s'}</span><span>Availability: ${esc(data.availability_percent)}%</span></div>
+     <div class="designer-availability-name">Available Occurance - ${esc(data.designer_name)}</div>
+     <div class="designer-availability-meta"><span>Active Tasks: ${esc(data.active_tasks)}</span><span>Assigned Creatives: ${esc(data.active_creatives)}</span></div>
+     <div class="designer-availability-meta"><span>Availability: ${esc(data.availability_percent)}%</span></div>
      <div class="designer-availability-track"><div class="designer-availability-fill ${esc(data.level)}" style="width:${esc(data.availability_percent)}%"></div></div>
      <div class="designer-availability-status ${esc(data.level)}">${esc(data.label)}</div>
     `);

@@ -95,12 +95,20 @@ class TaskController extends Controller
     {
         abort_unless($designer->role === 'designer' && $designer->is_active, 404);
 
-        $activeTasks = DesignTask::where('designer_id', $designer->id)
+        $stats = DesignTask::where('designer_id', $designer->id)
             ->whereNotIn('status', ['completed'])
-            ->count();
+            ->selectRaw('count(*) as active_tasks, coalesce(sum(total_creatives), 0) as active_creatives')
+            ->first();
 
-        $capacity = max(1, (int) config('workload.designer_capacity'));
-        $workloadPercent = (int) min(100, round($activeTasks / $capacity * 100));
+        $activeTasks = (int) $stats->active_tasks;
+        $activeCreatives = (int) $stats->active_creatives;
+
+        $taskCapacity = max(1, (int) config('workload.designer_capacity'));
+        $creativeCapacity = max(1, (int) config('workload.designer_creative_capacity'));
+
+        $taskWorkloadPercent = (int) min(100, round($activeTasks / $taskCapacity * 100));
+        $creativeWorkloadPercent = (int) min(100, round($activeCreatives / $creativeCapacity * 100));
+        $workloadPercent = max($taskWorkloadPercent, $creativeWorkloadPercent);
         $availabilityPercent = 100 - $workloadPercent;
 
         $thresholds = config('workload.availability_thresholds');
@@ -122,6 +130,7 @@ class TaskController extends Controller
             'designer_id' => $designer->id,
             'designer_name' => $designer->name,
             'active_tasks' => $activeTasks,
+            'active_creatives' => $activeCreatives,
             'availability_percent' => $availabilityPercent,
             'level' => $level,
             'label' => $label,
