@@ -401,10 +401,11 @@
             </div>
             <div class="dh-card-body dh-scroll" style="max-height:520px">
                 @forelse($pendingRequests as $request)
+                    @php $isStatusChange = $request->request_type === 'status_change'; @endphp
                     <div class="dh-req">
                         <div class="dh-req-top">
                             <div>
-                                <strong>{{ ucfirst($request->request_type) }} Request</strong>
+                                <strong>{{ $isStatusChange ? 'Backward Status' : ucfirst($request->request_type) }} Request</strong>
                                 <div class="dh-cell-sub">
                                     @if($request->task)
                                         <a class="dh-task-link" href="{{ route('bd.tasks.show', $request->task) }}">{{ $request->task->task_id }}</a>
@@ -414,6 +415,9 @@
                             </div>
                             <span class="dh-pill dh-pill-waiting">Pending</span>
                         </div>
+                        @if($isStatusChange)
+                            <div class="dh-cell-sub">Current: <strong>{{ \App\Services\DesignTaskStatusService::STATUSES[$request->from_status] ?? $request->from_status }}</strong> → Requested: <strong>{{ \App\Services\DesignTaskStatusService::STATUSES[$request->to_status] ?? $request->to_status }}</strong></div>
+                        @endif
                         @if($request->reason)<div class="dh-req-reason">“{{ $request->reason }}”</div>@endif
                         @if($request->targetDesigner)<div class="dh-cell-sub">Preferred Designer: <strong>{{ $request->targetDesigner->name }}</strong></div>@endif
                     </div>
@@ -439,7 +443,7 @@
                     @forelse($recentDecisions as $request)
                         @php $approved = $request->overall_status === 'approved'; @endphp
                         <tr>
-                            <td>{{ ucfirst($request->request_type) }}</td>
+                            <td>{{ $request->request_type === 'status_change' ? 'Backward Status' : ucfirst($request->request_type) }}</td>
                             <td>
                                 @if($request->task)
                                     <a class="dh-task-link" href="{{ route('bd.tasks.show', $request->task) }}">{{ $request->task->task_id }}</a>

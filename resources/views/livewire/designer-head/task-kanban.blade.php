@@ -111,6 +111,7 @@
         .request-type-decline{background:#fff1f0;color:#b42318;border:1px solid #fecdca}
         .request-type-split{background:#f4f0ff;color:#6938ef;border:1px solid #d9d6fe}
         .request-type-swap{background:#ecfdf3;color:#067647;border:1px solid #abefc6}
+        .request-type-status_change{background:#fffaeb;color:#9a6700;border:1px solid #fedf89}
         .request-open-label{margin-top:9px;padding-top:8px;border-top:1px solid #eef0f3;color:#e30613;font-size:9px;font-weight:900}
     
     .kanban-rating{
@@ -277,6 +278,8 @@
             text-transform:uppercase;
             text-align:center;
             white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
         }
         .task-request-inline.task-request-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}
         .task-request-inline.task-request-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}
@@ -426,22 +429,40 @@
                     @forelse($pendingRequests as $request)
                         @if($request->task)
                             <article class="task-card request-card">
+                                @php
+                                    $isStatusChangeRequest = $request->request_type === 'status_change';
+                                    $requestTabTarget = match ($request->request_type) {
+                                        'split' => 'split-details',
+                                        'swap' => 'swap-details',
+                                        'status_change' => 'status-change-request',
+                                        default => 'decline-details',
+                                    };
+                                @endphp
                                 <a
                                     class="task-card-link"
-                                    href="{{ route('designer-head.tasks.show', ['task' => $request->task, 'tab' => $request->request_type === 'split' ? 'split-details' : ($request->request_type === 'swap' ? 'swap-details' : 'decline-details')]) }}"
+                                    href="{{ route('designer-head.tasks.show', ['task' => $request->task, 'tab' => $requestTabTarget]) }}"
                                     draggable="false"
                                 >
                                     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
                                         <div class="task-card-id">{{ $request->task->task_id }}</div>
-                                        <span class="request-type-pill request-type-{{ $request->request_type }}">{{ ucfirst($request->request_type) }}</span>
+                                        <span class="request-type-pill request-type-{{ $request->request_type }}">{{ $isStatusChangeRequest ? 'Backward Status' : ucfirst($request->request_type) }}</span>
                                     </div>
 
                                     <div class="task-card-name">{{ $request->task->display_task_name ?? $request->task->task_name }}</div>
                                     <div class="task-card-client">{{ $request->task->party_name }}</div>
 
                                     <div class="task-card-meta">
+                                        @if($isStatusChangeRequest)
+                                            <div class="task-meta-item"><strong>Current Status</strong>{{ \App\Services\DesignTaskStatusService::STATUSES[$request->from_status] ?? $request->from_status }}</div>
+                                            <div class="task-meta-item"><strong>Requested Status</strong>{{ \App\Services\DesignTaskStatusService::STATUSES[$request->to_status] ?? $request->to_status }}</div>
+                                        @endif
+
                                         <div class="task-meta-item"><strong>Requested By</strong>{{ $request->requester?->name ?? '—' }}</div>
-                                        <div class="task-meta-item"><strong>Designer</strong>{{ $request->task->designer?->name ?? '—' }}</div>
+                                        <div class="task-meta-item"><strong>Requested At</strong>{{ $request->created_at?->format('d M, h:i A') }}</div>
+
+                                        @unless($isStatusChangeRequest)
+                                            <div class="task-meta-item"><strong>Designer</strong>{{ $request->task->designer?->name ?? '—' }}</div>
+                                        @endunless
 
                                         @if($request->request_type === 'split')
                                             <div class="task-meta-item"><strong>Requested Split</strong>{{ data_get($request,'split_count') ?? data_get($request,'split_details.requested_count') ?? data_get($request,'split_details.creative_count') ?? '—' }}</div>
@@ -464,7 +485,10 @@
 
             @foreach($statuses as $statusKey => $statusLabel)
                 @php
-                    $columnTasks = $tasks->where('status', $statusKey);
+                    // A task with a pending backward status_change request stays
+                    // parked in the Requests column only — it must not also render
+                    // under its current (unchanged) status column while pending.
+                    $columnTasks = $tasks->where('status', $statusKey)->whereNotIn('id', $pendingStatusChangeTaskIds);
                     if ($statusKey === 'assigned_tasks') {
                         $columnTasks = $columnTasks->sortByDesc('created_at');
                     }
@@ -521,7 +545,7 @@
                                             @php
                                                 $inlineRequest = $taskTags[$task->id][0];
                                             @endphp
-                                            <span class="task-request-inline {{ $inlineRequest['class'] }}">
+                                            <span class="task-request-inline {{ $inlineRequest['class'] }}" title="{{ $inlineRequest['title'] ?? $inlineRequest['label'] }}">
                                                 {{ $inlineRequest['label'] }}
                                             </span>
                                         @endif

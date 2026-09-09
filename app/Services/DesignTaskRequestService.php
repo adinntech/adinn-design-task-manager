@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class DesignTaskRequestService
 {
-    public const TYPES = ['decline', 'split', 'swap'];
+    public const TYPES = ['decline', 'split', 'swap', 'status_change'];
 
     private const REQUESTABLE_TYPES = [
         'assigned_tasks' => ['decline'],
@@ -67,6 +67,8 @@ class DesignTaskRequestService
                 'designer_head_status' => 'pending',
                 'admin_status' => 'pending',
                 'reason' => trim($reason),
+                'from_status' => $type === 'status_change' ? $lockedTask->status : null,
+                'to_status' => $type === 'status_change' ? $data['to_status'] : null,
                 'decision_reason' => null,
                 'target_designer_id' => $requestData['target_designer_id'] ?? null,
                 'split_details' => $requestData['split_details'] ?? null,
@@ -77,10 +79,13 @@ class DesignTaskRequestService
                 ? User::query()->whereKey($data['target_designer_id'])->value('name')
                 : null;
 
+            $statusLabel = fn (string $status) => DesignTaskStatusService::STATUSES[$status] ?? Str::headline($status);
+
             $summary = match ($type) {
                 'split' => 'Split request created for '.data_get($data, 'split_details.creative_count', '—').' creatives'.($preferredDesigner ? '; preferred Designer: '.$preferredDesigner : '; no preferred Designer').'. Reason: '.trim($reason),
                 'swap' => 'Swap request created; preferred Designer: '.($preferredDesigner ?: 'Not specified').'. Reason: '.trim($reason),
                 'decline' => 'Decline request created. Reason: '.trim($reason),
+                'status_change' => 'Backward status request created (from '.$statusLabel($lockedTask->status).' to '.$statusLabel($data['to_status']).'). Reason: '.trim($reason),
                 default => ucfirst($type).' request created.',
             };
 
@@ -150,6 +155,7 @@ class DesignTaskRequestService
                 'swap' => $this->executeSwap($lockedRequest),
                 'split' => $this->executeSplit($lockedRequest),
                 'decline' => $this->executeDecline($lockedRequest, $approver),
+                'status_change' => $this->executeStatusChange($lockedRequest, $approver),
                 default => throw ValidationException::withMessages(['request' => 'Unsupported request type.']),
             };
 
@@ -291,7 +297,17 @@ class DesignTaskRequestService
             throw new AuthorizationException('You are not allowed to raise a request for this task.');
         }
 
-        if (! in_array($type, self::TYPES, true) || ! in_array($type, $this->allowedTypes($task->status), true)) {
+        if (! in_array($type, self::TYPES, true)) {
+            throw ValidationException::withMessages(['type' => 'This request type is not available for the task\'s current status.']);
+        }
+
+        if ($type === 'status_change') {
+            $toStatus = $data['to_status'] ?? null;
+
+            if (! $toStatus || ! app(DesignTaskStatusService::class)->isBackwardMove($task->status, $toStatus)) {
+                throw ValidationException::withMessages(['to_status' => 'Please select a valid earlier status.']);
+            }
+        } elseif (! in_array($type, $this->allowedTypes($task->status), true)) {
             throw ValidationException::withMessages(['type' => 'This request type is not available for the task\'s current status.']);
         }
 
@@ -344,9 +360,9 @@ class DesignTaskRequestService
 
     private function guardApprover(User $approver, string $requestType): void
     {
-        if ($requestType === 'decline') {
+        if (in_array($requestType, ['decline', 'status_change'], true)) {
             if ($approver->role !== 'designer_head') {
-                throw new AuthorizationException('Only Designer Head can decide Decline requests.');
+                throw new AuthorizationException('Only Designer Head can decide '.($requestType === 'status_change' ? 'backward status' : 'Decline').' requests.');
             }
             return;
         }
@@ -453,6 +469,26 @@ class DesignTaskRequestService
         );
 
         return 'Task reassigned to '.$replacementDesigner->name.' and returned to Assigned Tasks.';
+    }
+
+    /**
+     * The only place a 'status_change' request's approval actually moves the
+     * task — routed through DesignTaskStatusService rather than a direct
+     * $task->update(), unlike executeDecline()/executeSwap() above.
+     */
+    private function executeStatusChange(DesignTaskRequest $request, User $approver): string
+    {
+        $task = $request->task;
+        $toLabel = DesignTaskStatusService::STATUSES[$request->to_status] ?? Str::headline((string) $request->to_status);
+
+        app(DesignTaskStatusService::class)->applyApprovedBackwardMove(
+            $task,
+            $approver,
+            $request->to_status,
+            $request->from_status
+        );
+
+        return 'Task moved back to '.$toLabel.'.';
     }
 
     private function executeSwap(DesignTaskRequest $request): string

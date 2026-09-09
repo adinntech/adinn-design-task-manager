@@ -282,6 +282,8 @@
             text-transform:uppercase;
             text-align:center;
             white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
         }
         .task-request-inline.task-request-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}
         .task-request-inline.task-request-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}
@@ -506,7 +508,7 @@
                                             @php
                                                 $inlineRequest = $taskTags[$task->id][0];
                                             @endphp
-                                            <span class="task-request-inline {{ $inlineRequest['class'] }}">
+                                            <span class="task-request-inline {{ $inlineRequest['class'] }}" title="{{ $inlineRequest['title'] ?? $inlineRequest['label'] }}">
                                                 {{ $inlineRequest['label'] }}
                                             </span>
                                         @endif

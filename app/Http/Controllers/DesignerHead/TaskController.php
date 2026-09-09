@@ -93,6 +93,13 @@ class TaskController extends Controller
             ->latest()
             ->get();
 
+        $statusChangeRequests = DesignTaskRequest::query()
+            ->with($requestRelations)
+            ->where('request_type', 'status_change')
+            ->where('design_task_id', $task->id)
+            ->latest()
+            ->get();
+
         $designers = User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
@@ -151,6 +158,7 @@ class TaskController extends Controller
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,
             'declineRequests' => $declineRequests,
+            'statusChangeRequests' => $statusChangeRequests,
             'designers' => $designers,
             'eodRecords' => $eodRecords,
             'progressTimeline' => app(DesignTaskReportingService::class)->progressTimeline($task),

@@ -118,7 +118,7 @@ class TaskKanban extends Component
     {
         return DesignTaskRequest::query()
             ->pending()
-            ->whereIn('request_type', ['decline', 'split', 'swap'])
+            ->whereIn('request_type', ['decline', 'split', 'swap', 'status_change'])
             ->with([
                 'task:id,task_id,task_name,status,priority,due_at,designer_id,party_name,vertical',
                 'task.designer:id,name',
@@ -127,6 +127,20 @@ class TaskKanban extends Component
             ])
             ->latest()
             ->get();
+    }
+
+    /**
+     * Tasks with a pending backward status_change request must appear only
+     * under the Requests column, never simultaneously under their current
+     * (unchanged) status column — unlike decline/split/swap, whose existing
+     * dual-visibility behavior stays untouched.
+     */
+    private function pendingStatusChangeTaskIds(SupportCollection $pendingRequests): array
+    {
+        return $pendingRequests
+            ->where('request_type', 'status_change')
+            ->pluck('design_task_id')
+            ->all();
     }
 
     /**
@@ -143,7 +157,7 @@ class TaskKanban extends Component
 
         $requests = DesignTaskRequest::query()
             ->whereIn('design_task_id', $tasks->pluck('id'))
-            ->whereIn('request_type', ['decline', 'split', 'swap'])
+            ->whereIn('request_type', ['decline', 'split', 'swap', 'status_change'])
             ->latest('created_at')
             ->get()
             ->groupBy('design_task_id');
@@ -171,18 +185,28 @@ class TaskKanban extends Component
                 ]]];
             }
 
-            $typeLabel = match ($latestRequest->request_type) {
-                'split' => 'Split',
-                'swap' => 'Swap',
-                'decline' => 'Decline',
-                default => 'Request',
-            };
-
             $isPending = in_array(
                 $latestRequest->overall_status,
                 ['pending_approval', 'pending_designer_head', 'pending_admin'],
                 true
             );
+
+            if ($latestRequest->request_type === 'status_change' && $isPending) {
+                return [$task->id => [[
+                    'key' => 'latest-request',
+                    'label' => '⏳ Approval Pending',
+                    'title' => 'Waiting for Status Change Approval',
+                    'class' => 'task-request-status task-request-pending',
+                ]]];
+            }
+
+            $typeLabel = match ($latestRequest->request_type) {
+                'split' => 'Split',
+                'swap' => 'Swap',
+                'decline' => 'Decline',
+                'status_change' => 'Status Change',
+                default => 'Request',
+            };
 
             $statusLabel = $isPending
                 ? 'Pending'
@@ -223,10 +247,13 @@ class TaskKanban extends Component
         $designers = User::query()->where('role', 'designer')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $bds = User::query()->where('role', 'bd')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
+        $pendingRequests = $this->pendingRequests;
+
         return view('livewire.designer-head.task-kanban', [
             'statuses' => $statuses,
             'tasks' => $visibleTasks,
-            'pendingRequests' => $this->pendingRequests,
+            'pendingRequests' => $pendingRequests,
+            'pendingStatusChangeTaskIds' => $this->pendingStatusChangeTaskIds($pendingRequests),
             'splitLogRows' => $splitLogRows,
             'taskTags' => $this->buildTaskTags($visibleTasks),
             'periodStats' => $periodStats,

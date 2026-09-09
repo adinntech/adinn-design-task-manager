@@ -157,4 +157,57 @@ class DesignTaskStatusService
             default => null,
         };
     }
+
+    /**
+     * True only when $to is strictly earlier in the pipeline than $from — the
+     * exact rule designerCanMove() already enforces forward-only, inverted and
+     * exposed for the backward-status approval-request flow to validate against.
+     */
+    public function isBackwardMove(string $from, string $to): bool
+    {
+        if (! array_key_exists($from, self::ORDER) || ! array_key_exists($to, self::ORDER)) {
+            return false;
+        }
+
+        return self::ORDER[$to] < self::ORDER[$from];
+    }
+
+    /**
+     * The only sanctioned way to move a task's status backward — used exclusively
+     * by DesignTaskRequestService when an already-approved 'status_change' request
+     * is applied. Bypasses designerCanMove() deliberately (Designer Head approval
+     * already authorized the movement); $expectedFromStatus guards against the
+     * task having moved on since the request was filed.
+     */
+    public function applyApprovedBackwardMove(
+        DesignTask $task,
+        User $approver,
+        string $toStatus,
+        ?string $expectedFromStatus = null
+    ): DesignTask {
+        return DB::transaction(function () use ($task, $approver, $toStatus, $expectedFromStatus) {
+            $lockedTask = DesignTask::query()->lockForUpdate()->findOrFail($task->id);
+
+            if ($expectedFromStatus !== null && $lockedTask->status !== $expectedFromStatus) {
+                throw ValidationException::withMessages([
+                    'status' => 'The task status has changed since this request was made and can no longer be applied.',
+                ]);
+            }
+
+            $fromStatus = $lockedTask->status;
+
+            $lockedTask->update(['status' => $toStatus]);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $lockedTask->id,
+                'from_status' => $fromStatus,
+                'to_status' => $toStatus,
+                'changed_by' => $approver->id,
+                'change_source' => 'backward_approval_applied',
+                'note' => 'Backward status change approved by Designer Head.',
+            ]);
+
+            return $lockedTask->fresh();
+        });
+    }
 }

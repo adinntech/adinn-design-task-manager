@@ -177,7 +177,7 @@ class TaskKanban extends Component
 
         $requests = DesignTaskRequest::query()
             ->whereIn('design_task_id', $tasks->pluck('id'))
-            ->whereIn('request_type', ['decline', 'split', 'swap'])
+            ->whereIn('request_type', ['decline', 'split', 'swap', 'status_change'])
             ->latest('created_at')
             ->get()
             ->groupBy('design_task_id');
@@ -201,6 +201,7 @@ class TaskKanban extends Component
                 'split' => 'Split',
                 'swap' => 'Swap',
                 'decline' => 'Decline',
+                'status_change' => 'Status Change',
                 default => 'Request',
             };
 
@@ -209,6 +210,15 @@ class TaskKanban extends Component
                 ['pending_approval', 'pending_designer_head', 'pending_admin'],
                 true
             );
+
+            if ($latestRequest->request_type === 'status_change' && $isPending) {
+                return [$task->id => [[
+                    'key' => 'latest-request',
+                    'label' => '⏳ Approval Pending',
+                    'title' => 'Waiting for Status Change Approval',
+                    'class' => 'task-request-status task-request-pending',
+                ]]];
+            }
 
             if ($latestRequest->request_type === 'decline' && $latestRequest->overall_status === 'approved') {
                 return [

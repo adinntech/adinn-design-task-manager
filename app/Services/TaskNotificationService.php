@@ -34,7 +34,7 @@ class TaskNotificationService
      * each Notification::toArray()'s 'category' key, so the bell/refresh-flag
      * and the actual notification rows always agree on the same taxonomy.
      */
-    public const LIST_CATEGORIES = ['assignment', 'status', 'rework', 'rating', 'split', 'swap', 'decline'];
+    public const LIST_CATEGORIES = ['assignment', 'status', 'rework', 'rating', 'split', 'swap', 'decline', 'status_change'];
 
     public function taskAssigned(DesignTask $task, User $assignedBy, User $designer): void
     {
@@ -142,7 +142,9 @@ class TaskNotificationService
         }
 
         $requester = $taskRequest->requester;
-        $approverRoles = $taskRequest->request_type === 'decline' ? ['designer_head'] : ['designer_head', 'admin'];
+        $approverRoles = in_array($taskRequest->request_type, ['decline', 'status_change'], true)
+            ? ['designer_head']
+            : ['designer_head', 'admin'];
 
         $approvers = User::query()->whereIn('role', $approverRoles)->where('is_active', true)->get();
 

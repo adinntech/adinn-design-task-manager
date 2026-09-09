@@ -288,6 +288,10 @@
                 @endif
             @endif
 
+            @if(in_array('status_change', $pendingRequestTypes, true))
+                <span class="badge badge-warning" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Waiting for Status Change Approval">Status Change Pending</span>
+            @endif
+
             @if($nextStatus)
                 @php
                     $hasPendingDecline = in_array('decline', $pendingRequestTypes, true);
@@ -348,6 +352,9 @@
         @endif
         @if($swapRequests->isNotEmpty())
             <button class="detail-tab" :class="{ active: tab === 'swap-details' }" @click="tab = 'swap-details'">Task Transfer Details</button>
+        @endif
+        @if($statusChangeRequests->isNotEmpty())
+            <button class="detail-tab" :class="{ active: tab === 'status-change-request' }" @click="tab = 'status-change-request'">Status Change Request</button>
         @endif
         <button class="detail-tab" :class="{ active: tab === 'history' }" @click="tab = 'history'">History</button>
         @if($clarificationComments->isNotEmpty())<button class="detail-tab" @click="tab = 'overview'; $nextTick(() => { $refs.clarificationSection.open = true; $refs.clarificationSection.scrollIntoView({behavior:'smooth'}); })">Clarification</button>@endif
@@ -1158,6 +1165,89 @@
                                 <div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:#f0fdf4;color:#08784b">
                                     <strong>Approval Reason</strong>
                                     <p style="margin:4px 0 0;white-space:pre-wrap">{{ $declineRequest->decision_reason ?: '—' }}</p>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
+
+    @if($statusChangeRequests->isNotEmpty())
+        <section x-show="tab === 'status-change-request'" style="display:none">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Status Change Request</div>
+                </div>
+                <div class="panel-body">
+                    @foreach($statusChangeRequests as $statusChangeRequest)
+                        @php
+                            $scPending = in_array(
+                                $statusChangeRequest->overall_status,
+                                ['pending_approval', 'pending_designer_head', 'pending_admin'],
+                                true
+                            );
+
+                            $scBadge = $statusChangeRequest->overall_status === 'approved'
+                                ? 'badge-success'
+                                : ($statusChangeRequest->overall_status === 'rejected' ? 'badge-danger' : 'badge-warning');
+
+                            $scDecider = $statusChangeRequest->adminActor ?: $statusChangeRequest->designerHeadActor;
+                            $scFromLabel = $statuses[$statusChangeRequest->from_status] ?? $statusChangeRequest->from_status;
+                            $scToLabel = $statuses[$statusChangeRequest->to_status] ?? $statusChangeRequest->to_status;
+                        @endphp
+
+                        <div class="activity-item" style="margin-bottom:12px">
+                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+                                <strong>{{ $scFromLabel }} → {{ $scToLabel }}</strong>
+                                <span class="badge {{ $scBadge }}">
+                                    {{ $scPending ? 'Waiting for Designer Head' : ($statusChangeRequest->overall_status === 'rejected' ? 'Rejected' : 'Approved') }}
+                                </span>
+                            </div>
+
+                            <div class="special-detail-grid" style="margin-top:10px">
+                                <div class="special-detail-card">
+                                    <span>Current Status</span>
+                                    <strong>{{ $scFromLabel }}</strong>
+                                </div>
+                                <div class="special-detail-card">
+                                    <span>Requested Status</span>
+                                    <strong>{{ $scToLabel }}</strong>
+                                </div>
+                                <div class="special-detail-card">
+                                    <span>Requested At</span>
+                                    <strong>{{ $statusChangeRequest->created_at?->format('d M Y · h:i A') }}</strong>
+                                </div>
+                                <div class="special-detail-card">
+                                    <span>Approved/Rejected By</span>
+                                    <strong>{{ $scDecider?->name ?? '—' }}</strong>
+                                </div>
+                                <div class="special-detail-card">
+                                    <span>Approved/Rejected At</span>
+                                    <strong>
+                                        {{ $scPending ? '—' : ($statusChangeRequest->admin_action_at?->format('d M Y · h:i A')
+                                            ?? $statusChangeRequest->designer_head_action_at?->format('d M Y · h:i A')
+                                            ?? '—') }}
+                                    </strong>
+                                </div>
+                                @if($scPending)
+                                    <div class="special-detail-card">
+                                        <span>Waiting</span>
+                                        <strong>{{ $statusChangeRequest->created_at?->diffForHumans(null, true) }}</strong>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div style="margin-top:10px">
+                                <strong>Reason</strong>
+                                <p style="white-space:pre-wrap">{{ $statusChangeRequest->reason }}</p>
+                            </div>
+
+                            @if($statusChangeRequest->decision_reason)
+                                <div style="margin-top:8px;padding:10px 12px;border-radius:10px;background:{{ $statusChangeRequest->overall_status === 'rejected' ? '#fff5f5' : '#f0fdf4' }};color:{{ $statusChangeRequest->overall_status === 'rejected' ? '#991b1b' : '#08784b' }}">
+                                    <strong>Decision Reason</strong>
+                                    <p style="margin:4px 0 0;white-space:pre-wrap">{{ $statusChangeRequest->decision_reason }}</p>
                                 </div>
                             @endif
                         </div>

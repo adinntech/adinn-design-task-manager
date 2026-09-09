@@ -20,6 +20,8 @@ class DesignTaskRequest extends Model
         'admin_action_at',
         'overall_status',
         'reason',
+        'from_status',
+        'to_status',
         'decision_reason',
         'target_designer_id',
         'approved_designer_id',

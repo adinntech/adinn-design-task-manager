@@ -113,6 +113,13 @@ class AssignedTaskController extends Controller
             ->latest()
             ->get();
 
+        $statusChangeRequests = DesignTaskRequest::query()
+            ->with($requestRelations)
+            ->where('request_type', 'status_change')
+            ->where('design_task_id', $task->id)
+            ->latest()
+            ->get();
+
         $eodRecords = DesignTaskEodRecord::query()
             ->with('designer:id,name,role')
             ->where('design_task_id', $task->id)
@@ -168,6 +175,7 @@ class AssignedTaskController extends Controller
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,
             'declineRequests' => $declineRequests,
+            'statusChangeRequests' => $statusChangeRequests,
             'eodRecords' => $eodRecords,
             'progressTimeline' => app(DesignTaskReportingService::class)->progressTimeline($task),
             'eodCompletedTotal' => $eodCompletedTotal,

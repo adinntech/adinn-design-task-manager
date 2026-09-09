@@ -6,6 +6,7 @@ use App\Models\DesignTask;
 use App\Models\User;
 use App\Notifications\Concerns\BroadcastsSynchronously;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Str;
 
 class TaskRequestNotification extends Notification
 {
@@ -29,7 +30,7 @@ class TaskRequestNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $typeLabel = ucfirst($this->requestType);
+        $typeLabel = Str::headline($this->requestType);
 
         $title = match ($this->event) {
             'approved' => "{$typeLabel} Request Approved",

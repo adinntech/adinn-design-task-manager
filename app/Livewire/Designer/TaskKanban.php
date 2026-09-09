@@ -7,7 +7,9 @@ use App\Models\DesignTaskRequest;
 use App\Models\User;
 use App\Services\DesignerHeadTaskBoardService;
 use App\Services\DesignTaskProgressService;
+use App\Services\DesignTaskRequestService;
 use App\Services\DesignTaskStatusService;
+use App\Services\TaskNotificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Auth;
@@ -34,6 +36,18 @@ class TaskKanban extends Component
     public string $dateTo = '';
 
     public bool $needsRefresh = false;
+
+    public bool $backwardModalOpen = false;
+
+    public ?int $backwardTaskId = null;
+
+    public string $backwardFromStatus = '';
+
+    public string $backwardToStatus = '';
+
+    public string $backwardTaskLabel = '';
+
+    public string $backwardReason = '';
 
     public function mount(): void
     {
@@ -87,6 +101,60 @@ class TaskKanban extends Component
 
         $this->dispatch('kanban-updated');
         $this->dispatch('task-status-changed', message: 'Task status updated successfully.');
+    }
+
+    /**
+     * Called instead of moveTask() when a drag targets an earlier column — a
+     * Designer can never move a task backward directly, only request it. Opens
+     * the confirmation modal; the actual request is only created once the
+     * Designer submits a mandatory reason via submitBackwardRequest().
+     */
+    public function confirmBackwardMove(int $taskId, string $targetStatus): void
+    {
+        $task = DesignTask::query()
+            ->whereKey($taskId)
+            ->where('designer_id', Auth::id())
+            ->firstOrFail();
+
+        if (! app(DesignTaskStatusService::class)->isBackwardMove($task->status, $targetStatus)) {
+            return;
+        }
+
+        $this->backwardTaskId = $task->id;
+        $this->backwardFromStatus = $task->status;
+        $this->backwardToStatus = $targetStatus;
+        $this->backwardTaskLabel = $task->task_id.' — '.$task->task_name;
+        $this->backwardReason = '';
+        $this->backwardModalOpen = true;
+    }
+
+    public function cancelBackwardMove(): void
+    {
+        $this->reset(['backwardModalOpen', 'backwardTaskId', 'backwardFromStatus', 'backwardToStatus', 'backwardTaskLabel', 'backwardReason']);
+    }
+
+    public function submitBackwardRequest(): void
+    {
+        $this->validate(['backwardReason' => ['required', 'string', 'max:5000']], [], ['backwardReason' => 'reason']);
+
+        $task = DesignTask::query()
+            ->whereKey($this->backwardTaskId)
+            ->where('designer_id', Auth::id())
+            ->firstOrFail();
+
+        $createdRequest = app(DesignTaskRequestService::class)->create(
+            $task,
+            Auth::user(),
+            'status_change',
+            $this->backwardReason,
+            ['to_status' => $this->backwardToStatus]
+        );
+
+        app(TaskNotificationService::class)->requestSubmitted($createdRequest);
+
+        $this->cancelBackwardMove();
+        $this->dispatch('kanban-updated');
+        $this->dispatch('task-status-changed', message: 'Backward status request submitted — waiting for Designer Head approval.');
     }
 
     private function filterArray(): array
@@ -194,7 +262,7 @@ class TaskKanban extends Component
 
         $requests = DesignTaskRequest::query()
             ->whereIn('design_task_id', $tasks->pluck('id'))
-            ->whereIn('request_type', ['decline', 'split', 'swap'])
+            ->whereIn('request_type', ['decline', 'split', 'swap', 'status_change'])
             ->latest('created_at')
             ->get()
             ->groupBy('design_task_id');
@@ -222,18 +290,28 @@ class TaskKanban extends Component
                 ]]];
             }
 
-            $typeLabel = match ($latestRequest->request_type) {
-                'split' => 'Split',
-                'swap' => 'Swap',
-                'decline' => 'Decline',
-                default => 'Request',
-            };
-
             $isPending = in_array(
                 $latestRequest->overall_status,
                 ['pending_approval', 'pending_designer_head', 'pending_admin'],
                 true
             );
+
+            if ($latestRequest->request_type === 'status_change' && $isPending) {
+                return [$task->id => [[
+                    'key' => 'latest-request',
+                    'label' => '⏳ Approval Pending',
+                    'title' => 'Waiting for Status Change Approval',
+                    'class' => 'task-request-status task-request-pending',
+                ]]];
+            }
+
+            $typeLabel = match ($latestRequest->request_type) {
+                'split' => 'Split',
+                'swap' => 'Swap',
+                'decline' => 'Decline',
+                'status_change' => 'Status Change',
+                default => 'Request',
+            };
 
             $isDecline = $latestRequest->request_type === 'decline';
 

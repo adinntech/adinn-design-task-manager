@@ -195,6 +195,7 @@
         @if($declineRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='decline-details'}" @click="tab='decline-details'">Decline Details</button>@endif
         @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Split Details</button>@endif
         @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Swap Details</button>@endif
+        @if($statusChangeRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='status-change-request'}" @click="tab='status-change-request'">Status Change Request</button>@endif
         <button class="bd-detail-tab" :class="{active:tab==='history'}" @click="tab='history'">History</button>
         @if($clarificationComments->isNotEmpty())<button class="bd-detail-tab" @click="tab='overview'; $nextTick(() => { $refs.clarificationSection.open = true; $refs.clarificationSection.scrollIntoView({behavior:'smooth'}); })">Clarification</button>@endif
         @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
@@ -456,6 +457,27 @@
 
     @if($swapRequests->isNotEmpty())<section class="bd-tab-panel" x-show="tab==='swap-details'" x-cloak><div class="panel"><div class="panel-header"><div class="panel-title">Swap Details</div></div><div class="panel-body">
         @foreach($swapRequests as $request)<div class="bd-request-card"><div class="bd-request-head"><div><div class="bd-request-title">Swap {{ ucwords(str_replace('_',' ',$request->overall_status)) }}</div><div class="bd-request-meta">Requested by {{ $request->requester?->name ?? 'Designer' }} · {{ $request->created_at?->format('d M Y · h:i A') }}</div></div><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$request->overall_status)) }}</span></div><div class="bd-request-grid"><div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded At</strong>{{ in_array($request->overall_status,['pending_approval','pending_designer_head','pending_admin'],true) ? 'Pending Response' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded By</strong>{{ in_array($request->overall_status,['pending_approval','pending_designer_head','pending_admin'],true) ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div><div class="bd-request-field"><strong>Preferred Designer</strong>{{ $request->targetDesigner?->name ?? '—' }}</div><div class="bd-request-field"><strong>Approved Designer</strong>{{ $request->approvedDesigner?->name ?? '—' }}</div>@if($request->decision_reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>Decision Reason</strong>{{ $request->decision_reason }}</div>@endif</div></div>@endforeach
+    </div></div></section>@endif
+
+    @if($statusChangeRequests->isNotEmpty())<section class="bd-tab-panel" x-show="tab==='status-change-request'" x-cloak><div class="panel"><div class="panel-header"><div class="panel-title">Status Change Request</div></div><div class="panel-body">
+        @foreach($statusChangeRequests as $request)
+            @php
+                $isPendingStatusChange = in_array($request->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true);
+                $fromLabel = \App\Services\DesignTaskStatusService::STATUSES[$request->from_status] ?? $request->from_status;
+                $toLabel = \App\Services\DesignTaskStatusService::STATUSES[$request->to_status] ?? $request->to_status;
+            @endphp
+            <div class="bd-request-card"><div class="bd-request-head"><div><div class="bd-request-title">{{ $fromLabel }} → {{ $toLabel }}</div><div class="bd-request-meta">Requested by {{ $request->requester?->name ?? 'Designer' }} · {{ $request->created_at?->format('d M Y · h:i A') }}</div></div><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$request->overall_status)) }}</span></div><div class="bd-request-grid">
+                <div class="bd-request-field"><strong>Current Status</strong>{{ $fromLabel }}</div>
+                <div class="bd-request-field"><strong>Requested Status</strong>{{ $toLabel }}</div>
+                <div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div>
+                <div class="bd-request-field"><strong>Approval Status</strong>{{ $isPendingStatusChange ? 'Waiting for Designer Head' : ucwords(str_replace('_',' ',$request->overall_status)) }}</div>
+                <div class="bd-request-field"><strong>Approved/Rejected By</strong>{{ $isPendingStatusChange ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div>
+                <div class="bd-request-field"><strong>Approved/Rejected At</strong>{{ $isPendingStatusChange ? '—' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div>
+                @if($isPendingStatusChange)<div class="bd-request-field"><strong>Waiting</strong>{{ $request->created_at?->diffForHumans(null, true) }}</div>@endif
+                <div class="bd-request-field" style="grid-column:1/-1"><strong>Reason</strong>{{ $request->reason }}</div>
+                @if($request->decision_reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>Decision Reason</strong>{{ $request->decision_reason }}</div>@endif
+            </div></div>
+        @endforeach
     </div></div></section>@endif
 
     <section class="bd-tab-panel" x-show="tab==='history'" x-cloak x-data="{ historyView: 'pipeline' }">

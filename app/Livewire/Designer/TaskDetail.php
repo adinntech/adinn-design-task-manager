@@ -818,6 +818,7 @@ class TaskDetail extends Component
             'showTaskUpdation' => $this->canViewTaskUpdation(),
             'splitRequests' => $splitRequests,
             'swapRequests' => $swapRequests,
+            'statusChangeRequests' => $requests->where('request_type', 'status_change')->values(),
             'splitOriginTask' => $splitOriginTask,
             'requirementAttachmentGroups' => $requirementAttachmentGroups,
             'requirementAttachmentCount' => $requirementAttachmentCount,

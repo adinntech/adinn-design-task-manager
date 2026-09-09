@@ -195,14 +195,16 @@
             <div class="dh-card-body dh-scroll" style="max-height:520px">
                 @forelse($pendingRequests as $request)
                     @php
-                        $typeLabel = ucfirst($request->request_type);
                         $isSwap = $request->request_type === 'swap';
                         $isSplit = $request->request_type === 'split';
+                        $isStatusChange = $request->request_type === 'status_change';
+                        $typeLabel = $isStatusChange ? 'Backward Status' : ucfirst($request->request_type);
                         // Same fallback chain as the Split Details tab (designer-head/tasks/show.blade.php)
                         // so both places always agree on the Designer-requested quantity.
                         $requestedSplit = data_get($request, 'split_count')
                             ?? data_get($request, 'split_details.requested_count')
                             ?? data_get($request, 'split_details.creative_count');
+                        $requestTab = $isSplit ? 'split-details' : ($isSwap ? 'swap-details' : ($isStatusChange ? 'status-change-request' : 'decline-details'));
                     @endphp
                     <div class="dh-req">
                         <div class="dh-req-top">
@@ -210,19 +212,23 @@
                                 <strong>{{ $typeLabel }} Request</strong>
                                 <div class="dh-cell-sub">
                                     @if($request->task)
-                                        <a class="dh-task-link" href="{{ route('designer-head.tasks.show', ['task' => $request->task, 'tab' => $isSplit ? 'split-details' : ($isSwap ? 'swap-details' : 'decline-details')]) }}">{{ $request->task->task_id }}</a>
+                                        <a class="dh-task-link" href="{{ route('designer-head.tasks.show', ['task' => $request->task, 'tab' => $requestTab]) }}">{{ $request->task->task_id }}</a>
                                     @else Task unavailable @endif
                                     · requested by {{ $request->requester?->name ?? '—' }} · {{ $request->created_at?->format('d M, h:i A') }}
                                 </div>
                             </div>
                             <span class="dh-pill dh-pill-waiting">Pending</span>
                         </div>
+                        @if($isStatusChange)
+                            <div class="dh-cell-sub">Current: <strong>{{ \App\Services\DesignTaskStatusService::STATUSES[$request->from_status] ?? $request->from_status }}</strong> → Requested: <strong>{{ \App\Services\DesignTaskStatusService::STATUSES[$request->to_status] ?? $request->to_status }}</strong></div>
+                        @endif
                         @if($request->reason)<div class="dh-req-reason">“{{ $request->reason }}”</div>@endif
                         @if(! $isSwap && $request->targetDesigner)<div class="dh-cell-sub">Preferred Designer: <strong>{{ $request->targetDesigner->name }}</strong></div>@endif
                         <div class="dh-decision">
                             <form class="dh-decision-box" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
                                 @csrf
                                 <div class="dh-decision-title">Approve Request</div>
+                                @unless($isStatusChange)
                                 <label class="dh-label">Final Designer *</label>
                                 <select class="dh-select-field" name="approved_designer_id" required>
                                     <option value="">Select Designer</option>
@@ -231,6 +237,7 @@
                                         <option value="{{ $designer->id }}" @selected((int) old('approved_designer_id') === (int) $designer->id)>{{ $designer->name }}</option>
                                     @endforeach
                                 </select>
+                                @endunless
                                 @if($isSplit)
                                     <label class="dh-label">Split Quantity *</label>
                                     <input class="dh-select-field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ((int) ($request->task?->total_creatives ?? 1)) - 1) }}" value="{{ old('approved_creative_count', $requestedSplit ?: 1) }}" required>
@@ -277,7 +284,7 @@
                                 : ($request->task?->designer?->name ?? '—');
                         @endphp
                         <tr>
-                            <td>{{ ucfirst($request->request_type) }}</td>
+                            <td>{{ $request->request_type === 'status_change' ? 'Backward Status' : ucfirst($request->request_type) }}</td>
                             <td>
                                 @if($request->task)
                                     <a class="dh-task-link" href="{{ route('designer-head.assigned-tasks', ['focus' => $request->task->status, 'task' => $request->task->task_id]) }}">{{ $request->task->task_id }}</a>

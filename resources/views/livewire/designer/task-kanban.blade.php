@@ -214,6 +214,8 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
             text-transform:uppercase;
             text-align:center;
             white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
         }
         .task-request-inline.task-request-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}
         .task-request-inline.task-request-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}
@@ -360,7 +362,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                             @php
                                                 $inlineRequest = $taskTags[$task->id][0];
                                             @endphp
-                                            <span class="task-request-inline {{ $inlineRequest['class'] }}">
+                                            <span class="task-request-inline {{ $inlineRequest['class'] }}" title="{{ $inlineRequest['title'] ?? $inlineRequest['label'] }}">
                                                 {{ $inlineRequest['label'] }}
                                             </span>
                                         @endif
@@ -452,6 +454,48 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
     </div>
 
     <div class="designer-toast" x-show="toast" x-transition x-text="toast" style="display:none"></div>
+
+    @if($backwardModalOpen)
+        @php
+            $backwardFromLabel = \App\Services\DesignTaskStatusService::STATUSES[$backwardFromStatus] ?? $backwardFromStatus;
+            $backwardToLabel = \App\Services\DesignTaskStatusService::STATUSES[$backwardToStatus] ?? $backwardToStatus;
+        @endphp
+        <style>
+            .backward-modal-overlay{position:fixed;inset:0;background:rgba(15,17,22,.52);display:flex;align-items:center;justify-content:center;z-index:9998;padding:20px;backdrop-filter:blur(2px)}
+            .backward-modal-box{background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:90vh;overflow:auto;box-shadow:0 28px 70px rgba(0,0,0,.28)}
+            .backward-modal-head{padding:18px 20px;border-bottom:1px solid var(--line)}
+            .backward-modal-head h2{margin:0;font-size:16px;font-weight:900}
+            .backward-modal-transition{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;font-weight:800}
+            .backward-modal-body{padding:20px;display:grid;gap:14px}
+            .backward-modal-hint{border:1px solid #f1d5d8;background:#fff7f8;border-radius:10px;padding:10px 12px;font-size:10px;color:#6f2930;line-height:1.5}
+            .backward-modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:16px 20px;border-top:1px solid var(--line)}
+            .backward-modal-box .muted{color:#7c8492;font-size:10px}
+            .backward-modal-box .field-error{color:#b4232f;font-size:10px;margin-top:5px}
+        </style>
+        <div class="backward-modal-overlay" wire:key="backward-modal-{{ $backwardTaskId }}">
+            <div class="backward-modal-box">
+                <div class="backward-modal-head">
+                    <h2>Are you sure you want to move this ticket?</h2>
+                    <div class="muted" style="margin-top:3px">{{ $backwardTaskLabel }}</div>
+                    <div class="backward-modal-transition">{{ $backwardFromLabel }} <span aria-hidden="true">&darr;</span> {{ $backwardToLabel }}</div>
+                </div>
+                <div class="backward-modal-body">
+                    <div class="backward-modal-hint">
+                        Backward status movement requires Designer Head approval. You cannot directly move the ticket backward.
+                    </div>
+                    <div>
+                        <label class="label">Reason for backward movement *</label>
+                        <textarea class="premium-textarea" rows="3" wire:model="backwardReason" placeholder="Explain why this ticket needs to move back..."></textarea>
+                        @error('backwardReason') <div class="field-error">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+                <div class="backward-modal-foot">
+                    <button type="button" class="btn btn-secondary" wire:click="cancelBackwardMove">No</button>
+                    <button type="button" class="btn btn-primary" wire:click="submitBackwardRequest" wire:loading.attr="disabled">Yes</button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @once
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
@@ -629,6 +673,20 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                         card,
                                         event.from.children[event.oldIndex] ?? null
                                     );
+
+                                    // Columns render in pipeline order, so a drop into an
+                                    // earlier-positioned column is always a backward move —
+                                    // that can only be requested (with a reason), never applied
+                                    // directly, so it opens the confirmation modal instead of
+                                    // calling moveTask().
+                                    const lists = [...document.querySelectorAll('[data-kanban-list]')];
+                                    const fromIndex = lists.indexOf(event.from);
+                                    const toIndex = lists.indexOf(event.to);
+
+                                    if (toIndex !== -1 && fromIndex !== -1 && toIndex < fromIndex) {
+                                        this.$wire.confirmBackwardMove(taskId, targetStatus);
+                                        return;
+                                    }
 
                                     this.$wire.moveTask(taskId, targetStatus).catch(() => {
                                         event.to.classList.add('kanban-invalid');
