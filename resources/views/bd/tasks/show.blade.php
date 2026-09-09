@@ -214,6 +214,7 @@
                         <div class="info-item"><span>{{ $key }}</span><strong>{{ $value }}</strong></div>
                     @endforeach
                 </div></div></details>
+                @include('partials.designer-profile-panel')
                 <details class="collapse-panel"><summary>Task Requirements</summary><div class="collapse-body"><div class="requirement-list">
                     @forelse(($task->requirements ?? []) as $key=>$value)
                         @php

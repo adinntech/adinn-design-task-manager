@@ -12,3 +12,8 @@ Route::middleware(['auth', 'role:designer,designer_head,bd'])
         Route::get('/', [ProfileController::class, 'show'])->name('show');
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
     });
+
+// Designer-only self-service editing of experienced verticals + skills.
+Route::middleware(['auth', 'role:designer'])
+    ->put('/profile/designer-profile', [ProfileController::class, 'updateDesignerProfile'])
+    ->name('profile.designer-profile.update');

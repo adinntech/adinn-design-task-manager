@@ -18,6 +18,21 @@ use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
+    /**
+     * Canonical vertical list + display labels — the single source of truth
+     * reused by the Admin Designer-profile form and Designer info displays so
+     * they never drift from the keys validated below in NATURES.
+     */
+    public const VERTICALS = [
+        'outdoor' => 'Outdoor',
+        'roadshow' => 'Road Show',
+        'fixtures' => 'Fixtures',
+        'signage' => 'Signage',
+        'pop_offsets' => 'Print / POP',
+        'events_activations' => 'Events & Activations',
+        'media' => 'Media',
+    ];
+
     private const NATURES = [
         'outdoor' => ['mockup_requirements', 'creative_adaptation', 'new_creative_design', 'cutout_size_calculation'],
         'roadshow' => ['creative_adaptation_requirements', 'new_creative_design'],
@@ -66,7 +81,7 @@ class TaskController extends Controller
             ->where('role', 'designer')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'experienced_verticals', 'skills']);
 
         $draft = null;
         $draftFiles = [];

@@ -43,7 +43,7 @@ class AssignedTaskController extends Controller
             403
         );
 
-        $task->load(['designer:id,name,email,role', 'assigner:id,name,email,role']);
+        $task->load(['designer:id,name,email,role,experienced_verticals,skills', 'assigner:id,name,email,role']);
 
         $readState = app(CommentReadStateService::class);
         $commentUnreadCount = $readState->unreadCountFor($request->user(), $task);

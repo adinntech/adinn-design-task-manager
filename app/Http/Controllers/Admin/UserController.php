@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Bd\TaskController as BdTaskController;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\DesignerProfileService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +46,7 @@ class UserController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate([
+        $data = $request->validate($this->designerProfileRules([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'unique:users,username'],
             'employee_code' => ['required', 'string', 'max:100', 'unique:users,employee_code'],
@@ -52,10 +54,10 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['admin', 'bd', 'designer', 'designer_head'])],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'is_active' => ['nullable', 'boolean'],
-        ], $this->duplicateMessages());
+        ]), $this->duplicateMessages());
 
         try {
-            User::create([
+            User::create(array_merge([
                 'name' => $data['name'],
                 'username' => $data['username'],
                 'employee_code' => $data['employee_code'],
@@ -63,7 +65,7 @@ class UserController extends Controller
                 'role' => $data['role'],
                 'password' => Hash::make($data['password']),
                 'is_active' => $request->boolean('is_active'),
-            ]);
+            ], $this->designerProfileData($data)));
         } catch (\Illuminate\Database\QueryException $e) {
             return back()->withInput()->withErrors([
                 'username' => 'That username, email or employee code is already taken.',
@@ -80,6 +82,40 @@ class UserController extends Controller
      * User Management form ("Username already exists", etc.), reused by both
      * store() and update().
      */
+    /**
+     * Adds the Designer-only profile fields (nullable regardless of role —
+     * designerProfileData() below is what actually restricts them to
+     * role=designer) to a base rule set shared by store()/update().
+     */
+    private function designerProfileRules(array $baseRules): array
+    {
+        return array_merge($baseRules, [
+            'experienced_verticals' => ['nullable', 'array'],
+            'experienced_verticals.*' => [Rule::in(array_keys(BdTaskController::VERTICALS))],
+            'skills' => ['nullable', 'array'],
+            'skills.*' => ['string', 'max:100'],
+        ]);
+    }
+
+    /**
+     * Experienced Verticals / Skills are Designer-only profile data — stored
+     * only when role=designer so switching a user to another role clears any
+     * stale designer-profile values rather than leaving them orphaned.
+     */
+    private function designerProfileData(array $data): array
+    {
+        if (($data['role'] ?? null) !== 'designer') {
+            return ['experienced_verticals' => null, 'skills' => null];
+        }
+
+        $normalizer = app(DesignerProfileService::class);
+
+        return [
+            'experienced_verticals' => $normalizer->normalizeVerticals($data['experienced_verticals'] ?? []),
+            'skills' => $normalizer->normalizeSkills($data['skills'] ?? []),
+        ];
+    }
+
     private function duplicateMessages(): array
     {
         return [
@@ -96,7 +132,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        $data = $request->validate([
+        $data = $request->validate($this->designerProfileRules([
             'name' => ['required', 'string', 'max:255'],
             'username' => [
                 'required', 'string', 'max:255',
@@ -115,7 +151,7 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['admin', 'bd', 'designer', 'designer_head'])],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active' => ['nullable', 'boolean'],
-        ], $this->duplicateMessages());
+        ]), $this->duplicateMessages());
 
         if ($user->is(auth()->user()) && ! $request->boolean('is_active')) {
             return back()
@@ -123,14 +159,14 @@ class UserController extends Controller
                 ->withInput();
         }
 
-        $update = [
+        $update = array_merge([
             'name' => $data['name'],
             'username' => $data['username'],
             'employee_code' => $data['employee_code'],
             'email' => $data['email'],
             'role' => $data['role'],
             'is_active' => $request->boolean('is_active'),
-        ];
+        ], $this->designerProfileData($data));
 
         if (! empty($data['password'])) {
             $update['password'] = Hash::make($data['password']);

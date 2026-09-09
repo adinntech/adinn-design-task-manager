@@ -146,6 +146,14 @@
     .designer-availability-status.busy{color:#f7630c}
     .designer-availability-status.critical{color:#e81224}
     .designer-availability-note{font-size:10px;color:#667085;font-style:italic}
+    .designer-profile-list{margin-top:8px;max-height:190px;overflow-y:auto;border:1px solid #e4e7ec;border-radius:10px}
+    .designer-profile-card{display:block;width:100%;text-align:left;padding:8px 12px;border:0;border-bottom:1px solid #eef0f3;background:#fff;cursor:pointer}
+    .designer-profile-card:last-child{border-bottom:0}
+    .designer-profile-card:hover{background:#f9fafb}
+    .designer-profile-card.is-selected{background:#fff1f0;box-shadow:inset 3px 0 0 #e30613}
+    .designer-profile-name{font-size:11px;font-weight:900;color:#101828}
+    .designer-profile-meta{font-size:9.5px;color:#667085;margin-top:2px}
+    .designer-profile-meta strong{color:#475467}
 
     .draft-attached-files{margin-bottom:8px;display:flex;flex-direction:column;gap:6px}
     .draft-attached-file{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid #e4e7ec;border-radius:9px;background:#f7fdf8;font-size:11px}
@@ -198,10 +206,7 @@
             <label class="label">Vertical *</label>
             <select class="field" id="vertical" name="vertical" required>
                 <option value="">Select vertical</option>
-                @foreach([
-                    'outdoor'=>'Outdoor','roadshow'=>'Road Show','fixtures'=>'Fixtures','signage'=>'Signage',
-                    'pop_offsets'=>'Print / POP','events_activations'=>'Events & Activations','media'=>'Media'
-                ] as $value=>$label)
+                @foreach(\App\Http\Controllers\Bd\TaskController::VERTICALS as $value=>$label)
                     <option value="{{ $value }}" @selected(($formValues['vertical']??'')===$value)>{{ $label }}</option>
                 @endforeach
             </select>
@@ -232,6 +237,25 @@
         <div>
             <label class="label">Designer Name *</label>
             <select class="field" id="designerSelect" name="designer_id" required><option value="">Select designer</option>@foreach($designers as $designer)<option value="{{ $designer->id }}" @selected((string)($formValues['designer_id']??'')===(string)$designer->id)>{{ $designer->name }}</option>@endforeach</select>
+            <div id="designerProfiles" class="designer-profile-list">
+                @foreach($designers as $designer)
+                    @php
+                        $designerVerticalLabels = collect($designer->experienced_verticals ?? [])
+                            ->map(fn ($v) => \App\Http\Controllers\Bd\TaskController::VERTICALS[$v] ?? $v)
+                            ->implode(', ');
+                        $designerSkillLabels = implode(', ', $designer->skills ?? []);
+                    @endphp
+                    <button
+                        type="button"
+                        class="designer-profile-card {{ (string)($formValues['designer_id']??'')===(string)$designer->id ? 'is-selected' : '' }}"
+                        data-designer-id="{{ $designer->id }}"
+                    >
+                        <div class="designer-profile-name">{{ $designer->name }}</div>
+                        <div class="designer-profile-meta"><strong>Experienced:</strong> {{ $designerVerticalLabels ?: '—' }}</div>
+                        <div class="designer-profile-meta"><strong>Skills:</strong> {{ $designerSkillLabels ?: '—' }}</div>
+                    </button>
+                @endforeach
+            </div>
             <div id="designerAvailability" class="designer-availability hidden"></div>
         </div>
 
@@ -764,7 +788,21 @@ document.getElementById('partyType').addEventListener('change',e=>document.getEl
 
  function render(html){box.innerHTML=html;box.classList.remove('hidden');}
 
+ // Profile cards are a convenience picker only — they just drive the same
+ // native select + change event the availability meter already listens to,
+ // so assignment/availability logic below stays completely untouched.
+ document.querySelectorAll('.designer-profile-card').forEach(card=>{
+  card.addEventListener('click',()=>{
+   select.value=card.dataset.designerId;
+   select.dispatchEvent(new Event('change'));
+  });
+ });
+
  select.addEventListener('change',()=>{
+  document.querySelectorAll('.designer-profile-card').forEach(card=>{
+   card.classList.toggle('is-selected',card.dataset.designerId===select.value);
+  });
+
   const designerId=select.value;
   const token=++requestToken;
   if(controller)controller.abort();

@@ -10,13 +10,20 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'username', 'employee_code', 'email', 'password', 'role', 'is_active', 'last_login_at'];
+    protected $fillable = ['name', 'username', 'employee_code', 'email', 'password', 'role', 'is_active', 'last_login_at', 'experienced_verticals', 'skills'];
 
     protected $hidden = ['password', 'remember_token'];
 
     protected function casts(): array
     {
-        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'last_login_at' => 'datetime'];
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
+            'experienced_verticals' => 'array',
+            'skills' => 'array',
+        ];
     }
 
     public function assignedTasks()
