@@ -146,6 +146,11 @@
     .designer-availability-status.busy{color:#f7630c}
     .designer-availability-status.critical{color:#e81224}
     .designer-availability-note{font-size:10px;color:#667085;font-style:italic}
+    .designer-checkin-label{margin-top:8px;font-size:10px;color:#475467}
+    .designer-checkin-status{font-size:10px;font-weight:900}
+    .designer-checkin-status.checked-in{color:#16c60c}
+    .designer-checkin-status.not-checked-in{color:#e81224}
+    .designer-checkin-status.unknown{color:#667085}
     .designer-profile-list{margin-top:8px;max-height:190px;overflow-y:auto;border:1px solid #e4e7ec;border-radius:10px}
     .designer-profile-card{display:block;width:100%;text-align:left;padding:8px 12px;border:0;border-bottom:1px solid #eef0f3;background:#fff;cursor:pointer}
     .designer-profile-card:last-child{border-bottom:0}
@@ -787,6 +792,8 @@ document.getElementById('partyType').addEventListener('change',e=>document.getEl
  let controller=null;
 
  function render(html){box.innerHTML=html;box.classList.remove('hidden');}
+ function checkinClass(v){return v===true?'checked-in':v===false?'not-checked-in':'unknown';}
+ function checkinText(v){return v===true?'🟢 Checked In':v===false?'🔴 Not Checked In':'⚪ Unable to check';}
 
  // Profile cards are a convenience picker only — they just drive the same
  // native select + change event the availability meter already listens to,
@@ -824,6 +831,8 @@ document.getElementById('partyType').addEventListener('change',e=>document.getEl
      <div class="designer-availability-meta"><span>Availability: ${esc(data.availability_percent)}%</span></div>
      <div class="designer-availability-track"><div class="designer-availability-fill ${esc(data.level)}" style="width:${esc(data.availability_percent)}%"></div></div>
      <div class="designer-availability-status ${esc(data.level)}">${esc(data.label)}</div>
+     <div class="designer-checkin-label">Check-in Status:</div>
+     <div class="designer-checkin-status ${checkinClass(data.checked_in)}">${checkinText(data.checked_in)}</div>
     `);
    })
    .catch(err=>{

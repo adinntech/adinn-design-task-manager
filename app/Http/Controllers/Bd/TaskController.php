@@ -7,6 +7,7 @@ use App\Models\DesignTask;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use App\Services\TaskNotificationService;
+use App\Services\ZohoAttendanceService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -149,6 +150,7 @@ class TaskController extends Controller
             'availability_percent' => $availabilityPercent,
             'level' => $level,
             'label' => $label,
+            'checked_in' => app(ZohoAttendanceService::class)->isCheckedIn($designer->email),
         ]);
     }
 
