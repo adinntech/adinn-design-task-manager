@@ -624,7 +624,6 @@
 
                             </article>
                         @empty
-                            <div class="kanban-empty">No matching tasks</div>
                         @endforelse
                     </div>
                 </section>

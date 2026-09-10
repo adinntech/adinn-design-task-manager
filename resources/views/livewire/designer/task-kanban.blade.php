@@ -418,7 +418,6 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                 </div>
                             </a>
                         @empty
-                            <div class="kanban-empty">No matching tasks</div>
                         @endforelse
                     </div>
                 </section>
@@ -668,30 +667,50 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                         return;
                                     }
 
-                                    event.to.removeChild(card);
-                                    event.from.insertBefore(
-                                        card,
-                                        event.from.children[event.oldIndex] ?? null
-                                    );
+                                    const originalParent = event.from;
+                                    const originalIndex = event.oldIndex;
+                                    const revert = () => {
+                                        if (card.parentElement !== originalParent) {
+                                            card.parentElement?.removeChild(card);
+                                            originalParent.insertBefore(card, originalParent.children[originalIndex] ?? null);
+                                        }
+                                        card.dataset.taskStatus = fromStatus;
+                                    };
 
                                     // Columns render in pipeline order, so a drop into an
                                     // earlier-positioned column is always a backward move —
                                     // that can only be requested (with a reason), never applied
-                                    // directly, so it opens the confirmation modal instead of
-                                    // calling moveTask().
+                                    // directly, so it's reverted and opens the confirmation
+                                    // modal instead of calling moveTask().
                                     const lists = [...document.querySelectorAll('[data-kanban-list]')];
                                     const fromIndex = lists.indexOf(event.from);
                                     const toIndex = lists.indexOf(event.to);
 
                                     if (toIndex !== -1 && fromIndex !== -1 && toIndex < fromIndex) {
+                                        revert();
                                         this.$wire.confirmBackwardMove(taskId, targetStatus);
                                         return;
                                     }
 
-                                    this.$wire.moveTask(taskId, targetStatus).catch(() => {
-                                        event.to.classList.add('kanban-invalid');
-                                        setTimeout(() => event.to.classList.remove('kanban-invalid'), 400);
-                                    });
+                                    // Leave the card where Sortable already dropped it so
+                                    // Livewire's re-render only needs to confirm it in place —
+                                    // reverting first and relying on the morph to relocate the
+                                    // card across columns is what left it stuck in the old
+                                    // column until a manual page refresh.
+                                    card.dataset.taskStatus = targetStatus;
+
+                                    let blocked = false;
+                                    const onBlocked = () => { blocked = true; };
+                                    window.addEventListener('task-move-blocked', onBlocked, { once: true });
+
+                                    this.$wire.moveTask(taskId, targetStatus)
+                                        .then(() => { if (blocked) revert(); })
+                                        .catch(() => {
+                                            revert();
+                                            event.to.classList.add('kanban-invalid');
+                                            setTimeout(() => event.to.classList.remove('kanban-invalid'), 400);
+                                        })
+                                        .finally(() => window.removeEventListener('task-move-blocked', onBlocked));
                                 }
                             }));
                         });
