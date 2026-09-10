@@ -7,14 +7,15 @@ use App\Models\User;
 use App\Notifications\TaskCommentNotification;
 
 /**
- * Per-recipient unread state for NORMAL comments only, reusing the existing
+ * Per-recipient unread state for task comments, reusing the existing
  * per-user `notifications` table rows created by TaskCommentNotification
  * (each row is already keyed by notifiable_id = the recipient). No separate
  * table, and no single global read flag: a Designer viewing their comments
  * only marks their own rows read — a Designer Head's independent rows for
- * the same task are untouched. Clarification-sourced comments carry
- * data->is_clarification = true and are excluded — they have their own
- * conversation (Overview → Clarification) and are not part of this count.
+ * the same task are untouched. unreadCountFor() (the in-page "N new
+ * comments" banner) excludes clarification-flagged rows — they have their
+ * own conversation (Overview → Clarification) — but markReadFor() clears
+ * both, since opening the ticket should zero out this task's bell count.
  */
 class CommentReadStateService
 {
@@ -23,9 +24,19 @@ class CommentReadStateService
         return $this->normalCommentQuery($user, $task)->count();
     }
 
+    /**
+     * Marks ALL of this task's comment notifications read for this user —
+     * including clarification-flagged ones. unreadCountFor() still excludes
+     * clarification from the banner count (it has its own conversation UI),
+     * but opening the ticket at all means the bell's unread count for this
+     * task should drop to zero, not just the normal-comment portion of it.
+     */
     public function markReadFor(User $user, DesignTask $task): void
     {
-        $this->normalCommentQuery($user, $task)->update(['read_at' => now()]);
+        $user->unreadNotifications()
+            ->where('type', TaskCommentNotification::class)
+            ->where('data->task_id', $task->id)
+            ->update(['read_at' => now()]);
     }
 
     private function normalCommentQuery(User $user, DesignTask $task)
