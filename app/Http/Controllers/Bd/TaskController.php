@@ -34,7 +34,7 @@ class TaskController extends Controller
         'media' => 'Media',
     ];
 
-    private const NATURES = [
+    protected const NATURES = [
         'outdoor' => ['mockup_requirements', 'creative_adaptation', 'new_creative_design', 'cutout_size_calculation'],
         'roadshow' => ['creative_adaptation_requirements', 'new_creative_design'],
         'fixtures' => ['design_with_creative', 'design_without_creative'],
@@ -44,7 +44,7 @@ class TaskController extends Controller
         'media' => ['creative_adaptation', 'own_creative'],
     ];
 
-    private const FILE_FIELDS = [
+    protected const FILE_FIELDS = [
         'supporting_documents', 'content_images', 'logo_images', 'reference_images', 'additional_attachments',
         'site_photo', 'creative', 'reference_image', 'company_details_document', 'hoarding_artwork',
         'description_upload', 'vehicle_details', 'brand_details_upload', 'recce_report', 'client_format_manual',
@@ -60,21 +60,21 @@ class TaskController extends Controller
      * extension from MIME and can misclassify browser-supplied WAV variants
      * such as audio/x-wav).
      */
-    private const AUDIO_EXTENSIONS = ['mp3', 'wav'];
+    protected const AUDIO_EXTENSIONS = ['mp3', 'wav'];
 
-    private const AUDIO_MIME_TYPES = [
+    protected const AUDIO_MIME_TYPES = [
         'audio/mpeg', 'audio/mp3',
         'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave', 'audio/vnd.wav',
     ];
 
     /** Per-file cap for every non-audio FILE_FIELDS entry (reference/knowledge files). */
-    private const MAX_GENERAL_FILE_KB = 6 * 1024 * 1024; // 6 GB
+    protected const MAX_GENERAL_FILE_KB = 6 * 1024 * 1024; // 6 GB
 
     /** Call recordings don't need the 6 GB ceiling; keep them generous but bounded. */
-    private const MAX_AUDIO_FILE_KB = 1024 * 1024; // 1 GB
+    protected const MAX_AUDIO_FILE_KB = 1024 * 1024; // 1 GB
 
     /** Above this, a general file must be a ZIP — below it, existing type rules apply unchanged. */
-    private const ZIP_ONLY_THRESHOLD_BYTES = 500 * 1024 * 1024; // 500 MB
+    protected const ZIP_ONLY_THRESHOLD_BYTES = 500 * 1024 * 1024; // 500 MB
 
     public function create(Request $request)
     {
@@ -192,106 +192,7 @@ class TaskController extends Controller
         $rules = array_merge($rules, $this->requirementRules($request));
         $data = $request->validate($rules);
 
-        $baseKeys = [
-            'task_name', 'vertical', 'zoho_project_number', 'task_nature', 'party_type', 'party_name', 'contact_person',
-            'mobile_number', 'priority', 'due_at', 'designer_id', 'total_creatives',
-        ];
-
-        $requirements = collect($data)
-            ->except($baseKeys)
-            ->reject(function (mixed $value): bool {
-                if ($value instanceof UploadedFile) {
-                    return true;
-                }
-
-                return is_array($value)
-                    && collect($value)->contains(fn ($item) => $item instanceof UploadedFile);
-            })
-            ->all();
-
-        $dimensionRows = collect($data['dimension_rows'] ?? [])
-            ->filter(function ($row): bool {
-                if (! is_array($row)) {
-                    return false;
-                }
-
-                return filled($row['name'] ?? null)
-                    || filled($row['width'] ?? null)
-                    || filled($row['height'] ?? null);
-            })
-            ->map(function ($row): array {
-                $width = (float) ($row['width'] ?? 0);
-                $height = (float) ($row['height'] ?? 0);
-
-                return [
-                    'name' => trim((string) ($row['name'] ?? '')),
-                    'width' => $width,
-                    'height' => $height,
-                    'unit' => 'feet',
-                    'area' => round($width * $height, 2),
-                ];
-            })
-            ->values()
-            ->all();
-
-        unset($requirements['dimension_rows']);
-
-        if ($dimensionRows !== []) {
-            $requirements['board_details'] = $dimensionRows;
-        }
-
-        $sizeRows = collect($data['size_rows'] ?? [])
-            ->filter(function ($row): bool {
-                if (! is_array($row)) {
-                    return false;
-                }
-
-                return filled($row['name'] ?? null)
-                    || filled($row['width'] ?? null)
-                    || filled($row['height'] ?? null);
-            })
-            ->map(function ($row): array {
-                $width = (float) ($row['width'] ?? 0);
-                $height = (float) ($row['height'] ?? 0);
-
-                return [
-                    'name' => trim((string) ($row['name'] ?? '')),
-                    'width' => $width,
-                    'height' => $height,
-                    'unit' => 'feet',
-                    'area' => round($width * $height, 2),
-                ];
-            })
-            ->values()
-            ->all();
-
-        unset($requirements['size_rows']);
-
-        if ($sizeRows !== []) {
-            $requirements['size_details'] = $sizeRows;
-        }
-
-        $mediaSizeRows = collect($data['media_size_rows'] ?? [])
-            ->filter(fn ($row) => is_array($row))
-            ->filter(fn ($row) => filled($row['name'] ?? null)
-                || filled($row['width'] ?? null)
-                || filled($row['height'] ?? null)
-                || filled($row['ratio'] ?? null)
-            )
-            ->map(fn ($row) => [
-                'name' => trim((string) ($row['name'] ?? '')),
-                'width' => (float) ($row['width'] ?? 0),
-                'height' => (float) ($row['height'] ?? 0),
-                'ratio' => trim((string) ($row['ratio'] ?? '')),
-            ])
-            ->values()
-            ->all();
-
-        unset($requirements['media_size_rows']);
-
-        if ($mediaSizeRows !== []) {
-            $requirements['creative_size_details'] = $mediaSizeRows;
-        }
+        $requirements = $this->buildRequirementsPayload($data);
 
         $isDraftConversion = (bool) $request->input('draft_id');
         $existingDraft = null;
@@ -492,6 +393,119 @@ class TaskController extends Controller
         return redirect()
             ->route('bd.tasks.show', $task)
             ->with('success', 'Design task created successfully.');
+    }
+
+    /**
+     * Collapse everything outside the base task columns and the uploaded files
+     * into the requirements JSON blob, including the dimension/size/media-size
+     * row groups. Shared by Bd\TaskController::store() and
+     * Designer\TaskController::store() — both validate the same requirement
+     * rules via requirementRules() and only differ in the base task columns.
+     */
+    protected function buildRequirementsPayload(array $data): array
+    {
+        $baseKeys = [
+            'task_name', 'vertical', 'zoho_project_number', 'task_nature', 'party_type', 'party_name', 'contact_person',
+            'mobile_number', 'priority', 'due_at', 'designer_id', 'bd_id', 'total_creatives',
+        ];
+
+        $requirements = collect($data)
+            ->except($baseKeys)
+            ->reject(function (mixed $value): bool {
+                if ($value instanceof UploadedFile) {
+                    return true;
+                }
+
+                return is_array($value)
+                    && collect($value)->contains(fn ($item) => $item instanceof UploadedFile);
+            })
+            ->all();
+
+        $dimensionRows = collect($data['dimension_rows'] ?? [])
+            ->filter(function ($row): bool {
+                if (! is_array($row)) {
+                    return false;
+                }
+
+                return filled($row['name'] ?? null)
+                    || filled($row['width'] ?? null)
+                    || filled($row['height'] ?? null);
+            })
+            ->map(function ($row): array {
+                $width = (float) ($row['width'] ?? 0);
+                $height = (float) ($row['height'] ?? 0);
+
+                return [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'width' => $width,
+                    'height' => $height,
+                    'unit' => 'feet',
+                    'area' => round($width * $height, 2),
+                ];
+            })
+            ->values()
+            ->all();
+
+        unset($requirements['dimension_rows']);
+
+        if ($dimensionRows !== []) {
+            $requirements['board_details'] = $dimensionRows;
+        }
+
+        $sizeRows = collect($data['size_rows'] ?? [])
+            ->filter(function ($row): bool {
+                if (! is_array($row)) {
+                    return false;
+                }
+
+                return filled($row['name'] ?? null)
+                    || filled($row['width'] ?? null)
+                    || filled($row['height'] ?? null);
+            })
+            ->map(function ($row): array {
+                $width = (float) ($row['width'] ?? 0);
+                $height = (float) ($row['height'] ?? 0);
+
+                return [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'width' => $width,
+                    'height' => $height,
+                    'unit' => 'feet',
+                    'area' => round($width * $height, 2),
+                ];
+            })
+            ->values()
+            ->all();
+
+        unset($requirements['size_rows']);
+
+        if ($sizeRows !== []) {
+            $requirements['size_details'] = $sizeRows;
+        }
+
+        $mediaSizeRows = collect($data['media_size_rows'] ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->filter(fn ($row) => filled($row['name'] ?? null)
+                || filled($row['width'] ?? null)
+                || filled($row['height'] ?? null)
+                || filled($row['ratio'] ?? null)
+            )
+            ->map(fn ($row) => [
+                'name' => trim((string) ($row['name'] ?? '')),
+                'width' => (float) ($row['width'] ?? 0),
+                'height' => (float) ($row['height'] ?? 0),
+                'ratio' => trim((string) ($row['ratio'] ?? '')),
+            ])
+            ->values()
+            ->all();
+
+        unset($requirements['media_size_rows']);
+
+        if ($mediaSizeRows !== []) {
+            $requirements['creative_size_details'] = $mediaSizeRows;
+        }
+
+        return $requirements;
     }
 
     /**
@@ -861,7 +875,7 @@ class TaskController extends Controller
         return view('bd.tasks.show', compact('task'));
     }
 
-    private function storeSingleFile(
+    protected function storeSingleFile(
         UploadedFile $file,
         string $directory,
         string $taskId,
@@ -924,7 +938,7 @@ class TaskController extends Controller
         return $path;
     }
 
-    private function storeMultipleFiles(
+    protected function storeMultipleFiles(
         array|UploadedFile|null $files,
         string $directory,
         string $taskId,
@@ -953,7 +967,7 @@ class TaskController extends Controller
         return $paths;
     }
 
-    private function requirementRules(Request $request): array
+    protected function requirementRules(Request $request): array
     {
         $vertical = $request->input('vertical');
         $nature = $request->input('task_nature');
@@ -1241,7 +1255,7 @@ class TaskController extends Controller
         return $common;
     }
 
-    private function audioFileRule(): array
+    protected function audioFileRule(): array
     {
         return [
             'file',
@@ -1267,7 +1281,7 @@ class TaskController extends Controller
      * Laravel's own `mimes:zip` rule (already proven for the Progress Update
      * ZIP field) via a sub-validation instead of hand-rolling a MIME list.
      */
-    private function generalFileRule(): array
+    protected function generalFileRule(): array
     {
         return [
             'file',
@@ -1284,7 +1298,7 @@ class TaskController extends Controller
         ];
     }
 
-    private function maximumAllowedDueDate(): Carbon
+    protected function maximumAllowedDueDate(): Carbon
     {
         $date = now()->copy()->startOfDay();
         $workingDaysAdded = 0;

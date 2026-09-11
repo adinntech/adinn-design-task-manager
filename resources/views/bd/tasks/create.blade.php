@@ -5,6 +5,9 @@
 @section('content')
 
 @php
+    $actorRole = $actorRole ?? 'bd';
+    $isDesignerActor = $actorRole === 'designer';
+
     $maxDueDate = now()->copy()->startOfDay();
     $workingDaysAdded = 0;
 
@@ -174,7 +177,7 @@
         <h1>{{ isset($draft) && $draft ? 'Edit Design Task Draft' : 'Create Design Task' }}</h1>
         <p>{{ isset($draft) && $draft ? 'Finish this draft and click "Create Task" to assign it, or keep saving your progress.' : 'Select a vertical and task nature to load the relevant requirement form.' }}</p>
     </div>
-    <a href="{{ route('bd.tasks.index') }}" class="btn btn-secondary">Back to Assigned Tasks</a>
+    <a href="{{ route($isDesignerActor ? 'designer.tasks.index' : 'bd.tasks.index') }}" class="btn btn-secondary">Back to {{ $isDesignerActor ? 'My Tasks' : 'Assigned Tasks' }}</a>
 </div>
 
 @if(isset($draft) && $draft)
@@ -195,7 +198,7 @@
 </div>
 @endif
 
-<form method="POST" action="{{ route('bd.tasks.store') }}" enctype="multipart/form-data" id="taskForm" class="space-y-6" novalidate>
+<form method="POST" action="{{ route($isDesignerActor ? 'designer.tasks.store' : 'bd.tasks.store') }}" enctype="multipart/form-data" id="taskForm" class="space-y-6" novalidate>
 @csrf
 <input type="hidden" name="draft_id" id="draftIdInput" value="{{ old('draft_id', isset($draft) && $draft ? $draft->id : '') }}">
 <input type="hidden" name="_method" id="methodInput" value="">
@@ -261,6 +264,21 @@
         </div>
 
         <div>
+        @if($isDesignerActor)
+            <label class="label">Assigned BD *</label>
+            <select class="field" id="designerSelect" name="bd_id" required><option value="">Select BD</option>@foreach($assignees as $bd)<option value="{{ $bd->id }}" @selected((string)($formValues['bd_id']??'')===(string)$bd->id)>{{ $bd->name }}</option>@endforeach</select>
+            <div id="designerProfiles" class="designer-profile-list">
+                @foreach($assignees as $bd)
+                    <button
+                        type="button"
+                        class="designer-profile-card {{ (string)($formValues['bd_id']??'')===(string)$bd->id ? 'is-selected' : '' }}"
+                        data-designer-id="{{ $bd->id }}"
+                    >
+                        <div class="designer-profile-name">{{ $bd->name }}</div>
+                    </button>
+                @endforeach
+            </div>
+        @else
             <label class="label">Designer Name *</label>
             <select class="field" id="designerSelect" name="designer_id" required><option value="">Select designer</option>@foreach($designers as $designer)<option value="{{ $designer->id }}" @selected((string)($formValues['designer_id']??'')===(string)$designer->id)>{{ $designer->name }}</option>@endforeach</select>
             <div id="designerProfiles" class="designer-profile-list">
@@ -283,6 +301,7 @@
                 @endforeach
             </div>
             <div id="designerAvailability" class="designer-availability hidden"></div>
+        @endif
         </div>
     </div>
 </section>
@@ -299,7 +318,9 @@
 <div class="flex justify-end gap-3">
     <button type="reset" class="btn btn-secondary">Clear</button>
     <button id="submitBtn" disabled class="btn btn-primary disabled:opacity-40">Create Task</button>
-    <button id="draftBtn" value="draft" disabled class="btn btn-secondary disabled:opacity-40">Save as Draft</button>
+    {{-- Kept in the DOM (just hidden) rather than removed for the Designer flow —
+         the submit-handling JS below unconditionally reads/toggles this element. --}}
+    <button id="draftBtn" value="draft" disabled class="btn btn-secondary disabled:opacity-40 {{ $isDesignerActor ? 'hidden' : '' }}">Save as Draft</button>
 </div>
 </form>
 
@@ -789,6 +810,7 @@ vertical.addEventListener('change',()=>populateNatures());
 nature.addEventListener('change',renderFields);
 document.getElementById('partyType').addEventListener('change',e=>document.getElementById('partyNameLabel').textContent=(e.target.value==='agency'?'Agency':'Client')+' Name *');
 
+@if(!$isDesignerActor)
 // Designer Availability meter — informational only; never blocks or alters task creation.
 (function(){
  const select=document.getElementById('designerSelect');
@@ -848,6 +870,22 @@ document.getElementById('partyType').addEventListener('change',e=>document.getEl
    });
  });
 })();
+@else
+// Designer flow: the assignee is a BD, not a designer, so no availability
+// meter — but clicking a profile card still needs to select + highlight it.
+(function(){
+ const select=document.getElementById('designerSelect');
+ document.querySelectorAll('.designer-profile-card').forEach(card=>{
+  card.addEventListener('click',()=>{
+   select.value=card.dataset.designerId;
+   document.querySelectorAll('.designer-profile-card').forEach(c=>{
+    c.classList.toggle('is-selected',c.dataset.designerId===select.value);
+   });
+   select.dispatchEvent(new Event('change'));
+  });
+ });
+})();
+@endif
 
 taskForm.addEventListener('reset',()=>setTimeout(()=>{vertical.value='';populateNatures();taskForm.querySelectorAll('.has-error').forEach(el=>el.classList.remove('has-error'));taskForm.querySelectorAll('.live-field-error').forEach(el=>el.classList.add('hidden'));},0));
 taskForm.addEventListener('submit',event=>{

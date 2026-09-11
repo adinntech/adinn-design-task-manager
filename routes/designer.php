@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Designer\DashboardController;
 use App\Http\Controllers\Designer\TaskAttachmentDownloadController;
+use App\Http\Controllers\Designer\TaskController;
 use App\Http\Controllers\Designer\TaskExportController;
 use App\Http\Controllers\Designer\TaskPageController;
 use App\Http\Controllers\FileUploadController;
@@ -12,6 +13,11 @@ Route::middleware(['auth', 'role:designer'])
     ->name('designer.')
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+        // Designer-initiated task creation — sits in pending_bd_approval until the
+        // selected BD confirms it (App\Livewire\Bd\TaskKanban::approveConfirmation()).
+        Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
+        Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
 
         Route::get('/tasks', [TaskPageController::class, 'index'])->name('tasks.index');
 

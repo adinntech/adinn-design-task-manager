@@ -239,6 +239,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
         <div class="page-actions">
             <x-refresh-button :needs-refresh="$needsRefresh" :livewire="true" />
             <span class="badge badge-dark">{{ $tasks->count() }} visible tasks</span>
+            <a class="btn btn-primary" href="{{ route('designer.tasks.create') }}">＋ Create New Task</a>
         </div>
     </div>
 
@@ -630,11 +631,15 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         this.sortables = [];
 
                         document.querySelectorAll('[data-kanban-list]').forEach(list => {
-                            const isSelfDeclined = list.dataset.status === 'self_declined';
+                            // Self Declined is a read-only log; a Designer-created task awaiting
+                            // (or rejected from) BD confirmation isn't in the pipeline yet either —
+                            // none of these are draggable (server-side enforced too, see
+                            // DesignTaskStatusService::designerCanMove()).
+                            const isReadOnlyColumn = ['self_declined', 'pending_bd_approval', 'bd_rejected'].includes(list.dataset.status);
 
                             this.sortables.push(new Sortable(list, {
-                                group: isSelfDeclined ? { name: 'designer-kanban', pull: false, put: false } : 'designer-kanban',
-                                sort: !isSelfDeclined,
+                                group: isReadOnlyColumn ? { name: 'designer-kanban', pull: false, put: false } : 'designer-kanban',
+                                sort: !isReadOnlyColumn,
                                 animation: 180,
                                 ghostClass: 'sortable-ghost',
                                 chosenClass: 'sortable-chosen',

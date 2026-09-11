@@ -133,6 +133,7 @@
         </div>
         <div class="bd-dash-actions">
             <a class="bd-dash-btn secondary" href="{{ route('designer.tasks.index') }}">View All Tasks</a>
+            <a class="bd-dash-btn primary" href="{{ route('designer.tasks.create') }}">+ Create Task</a>
         </div>
     </div>
 
@@ -145,6 +146,7 @@
         <div class="bd-kpi"><div class="bd-kpi-label">Rework Creatives</div><div class="bd-kpi-value">{{ $stats['rework_creatives'] }}</div><div class="bd-kpi-note">Creatives pending resubmission</div></div>
         <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'completed']) }}"><div class="bd-kpi-label">Completed</div><div class="bd-kpi-value">{{ $stats['completed'] }}</div><div class="bd-kpi-note">Finished tasks</div></a>
         <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'waiting_confirmation']) }}"><div class="bd-kpi-label">Waiting for BD Review</div><div class="bd-kpi-value">{{ $stats['waiting_bd_review'] }}</div><div class="bd-kpi-note">Completed by you, awaiting BD</div></a>
+        <div class="bd-kpi"><div class="bd-kpi-label">Waiting for BD Confirmation</div><div class="bd-kpi-value">{{ $stats['waiting_bd_confirmation'] }}</div><div class="bd-kpi-note">New tickets you created, pending BD approval</div></div>
         <div class="bd-kpi">
             <div class="bd-kpi-label">Overall Rating</div>
             <div class="bd-kpi-value">{{ $overallRating['average'] !== null ? '★ '.$overallRating['average'] : '—' }}</div>

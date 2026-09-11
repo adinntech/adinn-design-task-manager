@@ -434,10 +434,11 @@
                         @forelse($columnTasks as $task)
                             @php
                                 $isDraft = $task->status === 'draft';
+                                $isPendingConfirmation = $task->status === 'pending_bd_approval';
                                 $dueClass = '';
                                 $dueLabel = '';
 
-                                if (! $isDraft) {
+                                if (! $isDraft && ! $isPendingConfirmation) {
                                     $dueAt = \Illuminate\Support\Carbon::parse($task->due_at);
                                     $now = now();
 
@@ -491,6 +492,29 @@
 
                                         <div class="draft-open-label">Open Draft →</div>
                                     </a>
+                                </article>
+                            @elseif($isPendingConfirmation)
+                                <article class="task-card request-card" data-task-id="{{ $task->id }}" data-task-status="pending_bd_approval" wire:key="bd-task-{{ $task->id }}">
+                                    <a class="task-card-link" href="{{ route('bd.tasks.show', $task) }}" draggable="false">
+                                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                                            <div class="task-card-id">{{ $task->task_id }}</div>
+                                            <span class="request-type-pill request-type-split">New Request</span>
+                                        </div>
+
+                                        <div class="task-card-name">{{ $task->display_task_name ?? $task->task_name }}</div>
+
+                                        <div class="task-card-meta">
+                                            <div class="task-meta-item"><strong>Created By</strong>{{ $task->designer?->name ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Assigned BD</strong>{{ auth()->user()->name }}</div>
+                                            <div class="task-meta-item"><strong>Created At</strong>{{ $task->created_at->format('d M Y • h:i A') }}</div>
+                                            <div class="task-meta-item"><strong>Status</strong>Waiting for Confirmation</div>
+                                        </div>
+                                    </a>
+
+                                    <div class="bd-card-actions" style="display:flex;gap:8px;margin-top:10px">
+                                        <button type="button" wire:click="openApproveConfirmation({{ $task->id }})" class="bd-card-action bd-card-complete" style="flex:1">Approve</button>
+                                        <button type="button" wire:click="openRejectConfirmation({{ $task->id }})" class="bd-card-action" style="flex:1;background:#fee2e2;color:#b42318;border-color:#fecaca">Reject</button>
+                                    </div>
                                 </article>
                             @else
 
@@ -649,6 +673,55 @@
     </div>
 
     <div class="bd-toast" x-show="toast" x-transition x-text="toast" style="display:none"></div>
+
+    @if($confirmModalOpen)
+        <style>
+            .confirm-modal-overlay{position:fixed;inset:0;background:rgba(15,17,22,.52);display:flex;align-items:center;justify-content:center;z-index:9998;padding:20px;backdrop-filter:blur(2px)}
+            .confirm-modal-box{background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:90vh;overflow:auto;box-shadow:0 28px 70px rgba(0,0,0,.28)}
+            .confirm-modal-head{padding:18px 20px;border-bottom:1px solid var(--line)}
+            .confirm-modal-head h2{margin:0;font-size:16px;font-weight:900}
+            .confirm-modal-body{padding:20px;display:grid;gap:14px}
+            .confirm-modal-hint{border:1px solid #e4e7ec;background:#fafafa;border-radius:10px;padding:10px 12px;font-size:10px;color:#475467;line-height:1.5}
+            .confirm-modal-foot{display:flex;justify-content:flex-end;gap:9px;padding:16px 20px;border-top:1px solid var(--line)}
+            .confirm-modal-box .muted{color:#7c8492;font-size:10px}
+            .confirm-modal-box .field-error{color:#b4232f;font-size:10px;margin-top:5px}
+        </style>
+        <div class="confirm-modal-overlay" wire:key="confirm-modal-{{ $confirmTaskId }}">
+            <div class="confirm-modal-box">
+                <div class="confirm-modal-head">
+                    <h2>{{ $confirmAction === 'reject' ? 'Reject this task request?' : 'Approve this task request?' }}</h2>
+                    <div class="muted" style="margin-top:3px">{{ $confirmTaskLabel }}</div>
+                </div>
+                <div class="confirm-modal-body">
+                    @if($confirmAction === 'reject')
+                        <div class="confirm-modal-hint">
+                            The Designer will be notified with your reason. The task will not move into the normal pipeline.
+                        </div>
+                        <div>
+                            <label class="label">Reason for rejection *</label>
+                            <textarea class="premium-textarea" rows="3" wire:model="confirmComment" placeholder="Explain why this task request is rejected..."></textarea>
+                            @error('confirmComment') <div class="field-error">{{ $message }}</div> @enderror
+                        </div>
+                    @else
+                        <div class="confirm-modal-hint">
+                            The task will move to New Assignments and the Designer can start working on it.
+                        </div>
+                        <div>
+                            <label class="label">Comment (optional)</label>
+                            <textarea class="premium-textarea" rows="3" wire:model="confirmComment" placeholder="Optional note for the Designer..."></textarea>
+                            @error('confirmComment') <div class="field-error">{{ $message }}</div> @enderror
+                        </div>
+                    @endif
+                </div>
+                <div class="confirm-modal-foot">
+                    <button type="button" class="btn btn-secondary" wire:click="cancelConfirmModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" wire:click="submitConfirmDecision" wire:loading.attr="disabled">
+                        {{ $confirmAction === 'reject' ? 'Reject Task' : 'Approve Task' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @once
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>

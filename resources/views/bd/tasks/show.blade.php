@@ -185,6 +185,9 @@
         </div>
     </div>
 
+    @if($task->status === 'pending_bd_approval')
+        <livewire:bd.task-confirmation-actions :task="$task" />
+    @endif
 
     <div class="bd-detail-tabs">
         <button class="bd-detail-tab" :class="{active:tab==='overview'}" @click="tab='overview'">Overview</button>

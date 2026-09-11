@@ -156,7 +156,12 @@ class AssignedTaskController extends Controller
 
         return view('bd.tasks.show', [
             'task' => $task,
-            'statuses' => DesignTaskStatusService::STATUSES,
+            // Additive merge for display only — pending_bd_approval/bd_rejected are
+            // deliberately kept out of DesignTaskStatusService::STATUSES itself.
+            'statuses' => DesignTaskStatusService::STATUSES + [
+                'pending_bd_approval' => 'Waiting for Confirmation',
+                'bd_rejected' => 'Rejected by BD',
+            ],
             'comments' => $comments,
             'generalComments' => $generalComments,
             'clarificationComments' => $clarificationComments,

@@ -395,7 +395,23 @@ class TaskKanban extends Component
         unset($statuses['decline_tasks']);
         $statuses['self_declined'] = 'Self Declined';
 
-        $tasks = $visibleOwnTasks->concat($this->selfDeclinedTasks);
+        // Tasks this Designer created themselves and submitted for BD
+        // confirmation — deliberately excluded from the shared board query
+        // (see DesignerHeadTaskBoardService) so they only ever show here, as
+        // the first Kanban column, until the BD decides.
+        $ownPendingConfirmations = DesignTask::query()
+            ->with(['assigner:id,name'])
+            ->whereIn('status', ['pending_bd_approval', 'bd_rejected'])
+            ->where('designer_id', Auth::id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        $statuses = [
+            'pending_bd_approval' => 'Waiting for Confirmation',
+            'bd_rejected' => 'Rejected by BD',
+        ] + $statuses;
+
+        $tasks = $visibleOwnTasks->concat($this->selfDeclinedTasks)->concat($ownPendingConfirmations);
 
         return view('livewire.designer.task-kanban', [
             'statuses' => $statuses,
@@ -407,7 +423,7 @@ class TaskKanban extends Component
             'appliedFilters' => $this->appliedFilters($bds, $periodLabel),
             'activeBreakdown' => $board['activeBreakdown'],
             'stats' => [
-                'total' => $ownTasks->count(),
+                'total' => $ownTasks->count() + $ownPendingConfirmations->count(),
                 'active' => $ownTasks->whereNotIn('status', ['completed'])->count(),
                 'waiting' => $ownTasks->where('status', 'waiting_confirmation')->count(),
                 'completed' => $ownTasks->where('status', 'completed')->count(),

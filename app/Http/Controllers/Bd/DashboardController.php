@@ -445,6 +445,10 @@ class DashboardController extends Controller
             'rework_tasks' => $scopedTasks->where('status', 'rework')->count(),
             'pending_reviews' => $scopedTasks->where('status', 'waiting_confirmation')->count(),
             'clarification_tickets' => $scopedTasks->where('status', 'need_clarification')->count(),
+            // Designer-created tasks awaiting THIS BD's confirmation decision —
+            // uses the unscoped $tasks (not the month-filtered $scopedTasks) so
+            // this always reflects the true outstanding count, not just this month's.
+            'pending_bd_approval' => $tasks->where('status', 'pending_bd_approval')->count(),
         ];
 
         $months = collect(range(11, 0))->map(fn (int $offset) => [

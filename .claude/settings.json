@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vendor/bin/pint --test app/Services/DesignTaskBdApprovalService.php app/Livewire/Bd/TaskKanban.php app/Livewire/Bd/TaskConfirmationActions.php app/Http/Controllers/Bd/AssignedTaskController.php)"
+    ]
+  }
+}

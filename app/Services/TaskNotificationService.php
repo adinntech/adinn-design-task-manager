@@ -34,7 +34,7 @@ class TaskNotificationService
      * each Notification::toArray()'s 'category' key, so the bell/refresh-flag
      * and the actual notification rows always agree on the same taxonomy.
      */
-    public const LIST_CATEGORIES = ['assignment', 'status', 'rework', 'rating', 'split', 'swap', 'decline', 'status_change'];
+    public const LIST_CATEGORIES = ['assignment', 'status', 'rework', 'rating', 'split', 'swap', 'decline', 'status_change', 'bd_approval'];
 
     public function taskAssigned(DesignTask $task, User $assignedBy, User $designer): void
     {
@@ -77,6 +77,39 @@ class TaskNotificationService
             $this->send($recipient, new TaskStatusChangedNotification($task, $toStatus, $changedBy));
             $this->flag($recipient, 'status');
         }
+    }
+
+    /**
+     * A Designer created a task and picked this BD to confirm it — reuses the
+     * same generic TaskRequestNotification already used for split/swap/decline/
+     * status_change requests (see its 'bd_approval' copy branch) instead of a
+     * dedicated notification class.
+     */
+    public function bdApprovalRequested(DesignTask $task, User $designer): void
+    {
+        $bd = $task->assigner ?? User::find($task->assigned_by);
+
+        if (! $bd) {
+            return;
+        }
+
+        $this->send($bd, new TaskRequestNotification($task, 'bd_approval', 'submitted', $designer));
+        $this->flag($bd, 'bd_approval');
+    }
+
+    /**
+     * The BD approved or rejected a Designer-created task's confirmation request.
+     */
+    public function bdApprovalDecided(DesignTask $task, string $event, User $bd, ?string $comment = null): void
+    {
+        $designer = $task->designer ?? User::find($task->designer_id);
+
+        if (! $designer) {
+            return;
+        }
+
+        $this->send($designer, new TaskRequestNotification($task, 'bd_approval', $event, $bd, $comment));
+        $this->flag($designer, 'bd_approval');
     }
 
     public function reworkRequested(DesignTask $task, int $reworkCount, int $reworkCreatives, string $comment, User $bd): void

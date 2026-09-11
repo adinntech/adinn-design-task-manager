@@ -52,6 +52,11 @@ class DashboardController extends Controller
             'in_progress' => $tasks->where('status', 'in_progress')->count(),
             'completed' => $tasks->where('status', 'completed')->count(),
             'pending_approval' => $pendingRequests->count(),
+            // Tasks THIS designer created themselves, still awaiting the
+            // selected BD's confirmation decision — separate from
+            // 'pending_approval' above (which is decline/split/swap/status_change
+            // requests awaiting Designer Head/Admin).
+            'waiting_bd_confirmation' => $tasks->where('status', 'pending_bd_approval')->count(),
             // "Waiting for BD Review" = designer's own work is done and sitting in
             // waiting_confirmation; every task only reaches 'completed' once BD rates
             // it (same DB transaction in Bd\AssignedTaskController::completeWithRating),

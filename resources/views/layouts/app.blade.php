@@ -131,8 +131,9 @@
                 <a href="{{ route('bd.tasks.create') }}" class="{{ request()->routeIs('bd.tasks.create') ? 'active' : '' }}"><span>＋</span>Create Task</a>
             @elseif($role === 'designer')
                 <a href="{{ route('designer.dashboard') }}" class="{{ request()->routeIs('designer.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
-                <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.*') ? 'active' : '' }}"><span>▤</span>My Tasks</a>
+                <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.index','designer.tasks.show') ? 'active' : '' }}"><span>▤</span>My Tasks</a>
                 <a href="{{ route('profile.show') }}" class="{{ request()->routeIs('profile.show') ? 'active' : '' }}"><span>◉</span>My Profile</a>
+                <a href="{{ route('designer.tasks.create') }}" class="{{ request()->routeIs('designer.tasks.create') ? 'active' : '' }}"><span>＋</span>Create Task</a>
             @elseif($role === 'designer_head')
                 <a href="{{ route('designer-head.dashboard') }}" class="{{ request()->routeIs('designer-head.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
                 <a href="{{ route('designer-head.assigned-tasks') }}" class="{{ request()->routeIs('designer-head.assigned-tasks','designer-head.tasks.*') ? 'active' : '' }}"><span>▤</span>Assigned Tasks</a>

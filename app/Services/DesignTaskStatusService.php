@@ -128,6 +128,13 @@ class DesignTaskStatusService
             return false;
         }
 
+        // Anything not in the ordered pipeline (e.g. a Designer-created task still
+        // pending_bd_approval, or bd_rejected) can never be moved by the Designer
+        // directly — it must go through the BD confirmation action instead.
+        if (! array_key_exists($fromStatus, self::ORDER)) {
+            return false;
+        }
+
         // After BD sends a task to Rework, the corrected ZIP is submitted in the
         // Rework stage and the Designer returns it directly for BD confirmation.
         if ($fromStatus === 'rework') {

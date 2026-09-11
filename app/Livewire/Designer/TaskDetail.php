@@ -749,7 +749,13 @@ class TaskDetail extends Component
         }
 
         return view('livewire.designer.task-detail', [
-            'statuses' => DesignTaskStatusService::STATUSES,
+            // Additive merge for display only — pending_bd_approval/bd_rejected are
+            // deliberately kept out of DesignTaskStatusService::STATUSES (the real
+            // state machine), same as the 'draft' status is.
+            'statuses' => DesignTaskStatusService::STATUSES + [
+                'pending_bd_approval' => 'Waiting for Confirmation',
+                'bd_rejected' => 'Rejected by BD',
+            ],
             'nextStatus' => ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly || $this->splitRequesterReadOnly)
                 ? null
                 : app(DesignTaskStatusService::class)->nextDesignerStatus($this->task->status),
