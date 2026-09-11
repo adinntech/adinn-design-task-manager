@@ -95,8 +95,13 @@
                 </div>
 
                 <div class="request-modal-foot">
-                    <button type="button" class="btn btn-secondary" wire:click="close">Cancel</button>
-                    <button type="button" class="btn btn-primary" wire:click="submit" wire:loading.attr="disabled">Submit Request</button>
+                    <button type="button" class="btn btn-secondary" wire:click="close" wire:loading.attr="disabled" wire:target="submit">Cancel</button>
+                    <button type="button" class="btn btn-primary" wire:click="submit" wire:loading.attr="disabled" wire:target="submit">
+                        <span wire:loading.remove wire:target="submit">Submit Request</span>
+                        <span wire:loading wire:target="submit">
+                            <span class="btn-spinner"></span>{{ match($type) { 'split' => 'Splitting...', 'swap' => 'Swapping...', 'decline' => 'Declining...', default => 'Submitting...' } }}
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>

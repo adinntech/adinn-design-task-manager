@@ -492,8 +492,11 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                     </div>
                 </div>
                 <div class="backward-modal-foot">
-                    <button type="button" class="btn btn-secondary" wire:click="cancelBackwardMove">No</button>
-                    <button type="button" class="btn btn-primary" wire:click="submitBackwardRequest" wire:loading.attr="disabled">Yes</button>
+                    <button type="button" class="btn btn-secondary" wire:click="cancelBackwardMove" wire:loading.attr="disabled" wire:target="submitBackwardRequest">No</button>
+                    <button type="button" class="btn btn-primary" wire:click="submitBackwardRequest" wire:loading.attr="disabled" wire:target="submitBackwardRequest">
+                        <span wire:loading.remove wire:target="submitBackwardRequest">Yes</span>
+                        <span wire:loading wire:target="submitBackwardRequest"><span class="btn-spinner"></span>Submitting...</span>
+                    </button>
                 </div>
             </div>
         </div>

@@ -4,5 +4,5 @@
 @section('workspace-subtitle','Update account details and access')
 @section('content')
 <div class="page-head"><div><h1>Edit {{ $user->name }}</h1><p>Update role, status or reset the password.</p></div><a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Back to Users</a></div>
-<div class="panel" style="max-width:900px"><div class="panel-body"><form method="POST" action="{{ route('admin.users.update',$user) }}">@csrf @method('PUT') @include('admin.users.partials.form',['user'=>$user])</form></div></div>
+<div class="panel" style="max-width:900px"><div class="panel-body"><form method="POST" action="{{ route('admin.users.update',$user) }}" onsubmit="const b=this.querySelector('button[type=submit],button:not([type])');if(b){b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Saving...';}">@csrf @method('PUT') @include('admin.users.partials.form',['user'=>$user])</form></div></div>
 @endsection

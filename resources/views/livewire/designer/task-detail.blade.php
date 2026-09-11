@@ -313,11 +313,14 @@
                             wire:target="moveToNextStatus"
                         @endif
                     >
-                        @if($nextStatus === 'waiting_confirmation')
-                            Move to Waiting for BD Review
-                        @else
-                            Move to {{ $statuses[$nextStatus] ?? ucwords(str_replace('_', ' ', $nextStatus)) }}
-                        @endif
+                        <span wire:loading.remove wire:target="moveToNextStatus">
+                            @if($nextStatus === 'waiting_confirmation')
+                                Move to Waiting for BD Review
+                            @else
+                                Move to {{ $statuses[$nextStatus] ?? ucwords(str_replace('_', ' ', $nextStatus)) }}
+                            @endif
+                        </span>
+                        <span wire:loading wire:target="moveToNextStatus"><span class="btn-spinner"></span>Moving...</span>
                     </button>
                     @if($moveBlocked)
                         <div class="progress-gate-note">{{ $moveBlockedReason }}</div>
@@ -607,7 +610,8 @@
                                             wire:target="addClarification,clarificationAttachments"
                                             wire:loading.class="is-loading"
                                         >
-                                            Send Clarification
+                                            <span wire:loading.remove wire:target="addClarification,clarificationAttachments">Send Clarification</span>
+                                            <span wire:loading wire:target="addClarification,clarificationAttachments"><span class="btn-spinner"></span>Sending...</span>
                                         </button>
                                     </div>
                                 </div>
@@ -674,7 +678,8 @@
                                 wire:target="moveToNextStatus"
                                 @disabled($sidebarMoveBlocked)
                             >
-                                {{ $nextStatus === 'waiting_confirmation' ? 'Move to Waiting for BD Review' : 'Move to Next Stage' }}
+                                <span wire:loading.remove wire:target="moveToNextStatus">{{ $nextStatus === 'waiting_confirmation' ? 'Move to Waiting for BD Review' : 'Move to Next Stage' }}</span>
+                                <span wire:loading wire:target="moveToNextStatus"><span class="btn-spinner"></span>Moving...</span>
                             </button>
 
                             @if($sidebarMoveBlocked)
@@ -732,7 +737,8 @@
                             wire:target="addComment,attachments"
                             wire:loading.class="is-loading"
                         >
-                            Add Comment
+                            <span wire:loading.remove wire:target="addComment,attachments">Add Comment</span>
+                            <span wire:loading wire:target="addComment,attachments"><span class="btn-spinner"></span>Posting...</span>
                         </button>
                     </div>
                 </div>
@@ -953,7 +959,8 @@
                                     wire:loading.class="is-loading"
                                     @disabled(! $reworkUploadId)
                                 >
-                                    Submit Rework Progress
+                                    <span wire:loading.remove wire:target="submitReworkUpdate">Submit Rework Progress</span>
+                                    <span wire:loading wire:target="submitReworkUpdate"><span class="btn-spinner"></span>Submitting...</span>
                                 </button>
 
                                 <script>
@@ -1041,7 +1048,8 @@
                                 wire:loading.class="is-loading"
                                 @disabled(! $taskUpdateUploadId)
                             >
-                                Submit Progress Update
+                                <span wire:loading.remove wire:target="submitEod">Submit Progress Update</span>
+                                <span wire:loading wire:target="submitEod"><span class="btn-spinner"></span>Submitting...</span>
                             </button>
 
                             <script>

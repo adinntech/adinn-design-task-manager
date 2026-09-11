@@ -512,8 +512,14 @@
                                     </a>
 
                                     <div class="bd-card-actions" style="display:flex;gap:8px;margin-top:10px">
-                                        <button type="button" wire:click="openApproveConfirmation({{ $task->id }})" class="bd-card-action bd-card-complete" style="flex:1">Approve</button>
-                                        <button type="button" wire:click="openRejectConfirmation({{ $task->id }})" class="bd-card-action" style="flex:1;background:#fee2e2;color:#b42318;border-color:#fecaca">Reject</button>
+                                        <button type="button" wire:click="openApproveConfirmation({{ $task->id }})" wire:loading.attr="disabled" wire:target="openApproveConfirmation({{ $task->id }})" class="bd-card-action bd-card-complete" style="flex:1">
+                                            <span wire:loading.remove wire:target="openApproveConfirmation({{ $task->id }})">Approve</span>
+                                            <span wire:loading wire:target="openApproveConfirmation({{ $task->id }})"><span class="btn-spinner is-dark"></span>Approving...</span>
+                                        </button>
+                                        <button type="button" wire:click="openRejectConfirmation({{ $task->id }})" wire:loading.attr="disabled" wire:target="openRejectConfirmation({{ $task->id }})" class="bd-card-action" style="flex:1;background:#fee2e2;color:#b42318;border-color:#fecaca">
+                                            <span wire:loading.remove wire:target="openRejectConfirmation({{ $task->id }})">Reject</span>
+                                            <span wire:loading wire:target="openRejectConfirmation({{ $task->id }})"><span class="btn-spinner is-dark"></span>Rejecting...</span>
+                                        </button>
                                     </div>
                                 </article>
                             @else
@@ -715,8 +721,9 @@
                 </div>
                 <div class="confirm-modal-foot">
                     <button type="button" class="btn btn-secondary" wire:click="cancelConfirmModal">Cancel</button>
-                    <button type="button" class="btn btn-primary" wire:click="submitConfirmDecision" wire:loading.attr="disabled">
-                        {{ $confirmAction === 'reject' ? 'Reject Task' : 'Approve Task' }}
+                    <button type="button" class="btn btn-primary" wire:click="submitConfirmDecision" wire:loading.attr="disabled" wire:target="submitConfirmDecision">
+                        <span wire:loading.remove wire:target="submitConfirmDecision">{{ $confirmAction === 'reject' ? 'Reject Task' : 'Approve Task' }}</span>
+                        <span wire:loading wire:target="submitConfirmDecision"><span class="btn-spinner"></span>{{ $confirmAction === 'reject' ? 'Rejecting...' : 'Approving...' }}</span>
                     </button>
                 </div>
             </div>

@@ -906,7 +906,7 @@ taskForm.addEventListener('submit',event=>{
   draftBtn.dataset.submitting='1';
   draftBtn.dataset.originalText=draftBtn.textContent;
   draftBtn.disabled=true;submit.disabled=true;
-  draftBtn.textContent='Saving Draft...';
+  draftBtn.innerHTML='<span class="btn-spinner is-dark"></span>Saving Draft...';
   return;
  }
  let valid=true;
@@ -918,7 +918,7 @@ taskForm.addEventListener('submit',event=>{
  submit.dataset.submitting='1';
  submit.dataset.originalText=submit.textContent;
  submit.disabled=true;draftBtn.disabled=true;
- submit.textContent='Creating Task...';
+ submit.innerHTML='<span class="btn-spinner"></span>{{ $isDesignerActor ? 'Submitting...' : 'Creating Task...' }}';
 });
 
 // bfcache restore (e.g. browser back after a failed submit elsewhere) must not

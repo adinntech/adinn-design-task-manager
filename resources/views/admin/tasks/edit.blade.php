@@ -36,7 +36,7 @@
         <div class="flash flash-error" style="margin-bottom:14px">{{ $errors->first() }}</div>
     @endif
 
-    <form method="POST" action="{{ route('admin.tasks.update', $task) }}">
+    <form method="POST" action="{{ route('admin.tasks.update', $task) }}" onsubmit="const b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Saving...';}">
         @csrf
         @method('PUT')
 

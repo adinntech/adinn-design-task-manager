@@ -238,7 +238,7 @@
                         method="POST"
                         action="{{ route('bd.tasks.comments.store', $task) }}"
                         enctype="multipart/form-data"
-                        onsubmit="const b=this.querySelector('button[type=submit]');b.disabled=true;b.innerText='Posting...';"
+                        onsubmit="const b=this.querySelector('button[type=submit]');b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Posting...';"
                     >
                         @csrf
 
@@ -686,9 +686,16 @@ document.addEventListener('submit', function (event) {
 
     var button = form.querySelector('button[type="submit"]');
     if (button) {
+        var label = button.textContent.trim().toLowerCase();
+        var loadingText = 'Processing...';
+        if (label.indexOf('approve') !== -1) loadingText = 'Approving...';
+        else if (label.indexOf('reject') !== -1) loadingText = 'Rejecting...';
+        else if (label.indexOf('accept') !== -1) loadingText = 'Accepting...';
+        else if (label.indexOf('decline') !== -1) loadingText = 'Declining...';
+
         button.dataset.originalText = button.textContent;
         button.disabled = true;
-        button.textContent = 'Processing...';
+        button.innerHTML = '<span class="btn-spinner"></span>' + loadingText;
     }
 });
 </script>

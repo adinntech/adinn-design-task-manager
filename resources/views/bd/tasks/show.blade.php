@@ -321,7 +321,7 @@
                                 action="{{ route('bd.tasks.comments.store', $task) }}"
                                 enctype="multipart/form-data"
                                 style="margin-top:14px;padding-top:14px;border-top:1px solid #eef0f3"
-                                onsubmit="const b=this.querySelector('button[type=submit]');b.disabled=true;b.innerText='Sending...';"
+                                onsubmit="const b=this.querySelector('button[type=submit]');b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Sending...';"
                             >
                                 @csrf
                                 <input type="hidden" name="redirect_tab" value="overview">
@@ -418,7 +418,7 @@
                             method="POST"
                             action="{{ route('bd.tasks.comments.store', $task) }}"
                             enctype="multipart/form-data"
-                            onsubmit="const b=this.querySelector('button[type=submit]');b.disabled=true;b.innerText='Posting...';"
+                            onsubmit="const b=this.querySelector('button[type=submit]');b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Posting...';"
                         >
                             @csrf
                             <label class="label">Comment</label>
@@ -687,8 +687,11 @@
                                 </div>
                             </div>
                             <div class="bd-review-actions">
-                                <button type="submit" class="btn bd-danger-btn" :disabled="submitting">Confirm Rework</button>
-                                <button type="button" class="btn btn-secondary" @click="panel = null">Cancel</button>
+                                <button type="submit" class="btn bd-danger-btn" :disabled="submitting">
+                                    <span x-show="!submitting">Confirm Rework</span>
+                                    <span x-show="submitting" x-cloak><span class="btn-spinner"></span>Submitting...</span>
+                                </button>
+                                <button type="button" class="btn btn-secondary" @click="panel = null" :disabled="submitting">Cancel</button>
                             </div>
                         </form>
 
@@ -739,8 +742,11 @@
                                 <div class="error" x-show="overall() === 0" style="display:none">Please provide a star rating before completing this task.</div>
 
                                 <div class="bd-review-actions">
-                                    <button type="submit" class="btn bd-complete-btn" :disabled="submitting || overall() === 0">Submit Rating & Complete Task</button>
-                                    <button type="button" class="btn btn-secondary" @click="panel = null">Cancel</button>
+                                    <button type="submit" class="btn bd-complete-btn" :disabled="submitting || overall() === 0">
+                                        <span x-show="!submitting">Submit Rating &amp; Complete Task</span>
+                                        <span x-show="submitting" x-cloak><span class="btn-spinner"></span>Submitting...</span>
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" @click="panel = null" :disabled="submitting">Cancel</button>
                                 </div>
                             </form>
                         </div>

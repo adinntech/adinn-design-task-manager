@@ -14,7 +14,7 @@
         <div><label class="label">Last Login</label><input class="premium-input" value="{{ optional($user->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}" disabled></div>
     </div>
 
-    <form method="POST" action="{{ route('profile.password.update') }}">
+    <form method="POST" action="{{ route('profile.password.update') }}" onsubmit="const b=this.querySelector('button[type=submit],button:not([type])');if(b){b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Updating...';}">
         @csrf
         @method('PUT')
         @if($errors->any())<div class="flash flash-error">{{ $errors->first() }}</div>@endif
@@ -48,6 +48,7 @@
         <form
             method="POST"
             action="{{ route('profile.designer-profile.update') }}"
+            onsubmit="const b=this.querySelector('button[type=submit],button:not([type])');if(b){b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Saving...';}"
             x-data="{
                 verticalLabels: @js(\App\Http\Controllers\Bd\TaskController::VERTICALS),
                 verticals: @js(old('experienced_verticals', $user->experienced_verticals ?? [])),
