@@ -25,6 +25,8 @@ class TaskKanban extends Component
 
     public string $designerId = '';
 
+    public string $projectNumber = '';
+
     /** current_month | last_month | custom — scopes only the historical/final columns below. */
     public string $period = 'current_month';
 
@@ -118,6 +120,7 @@ class TaskKanban extends Component
             'priority' => $isOverdue ? '' : $this->priority,
             'designerId' => $this->designerId,
             'bdId' => (string) Auth::id(),
+            'projectNumber' => $this->projectNumber,
             'period' => $this->period,
             'dateFrom' => $this->dateFrom,
             'dateTo' => $this->dateTo,
@@ -131,6 +134,7 @@ class TaskKanban extends Component
         $this->vertical = '';
         $this->priority = '';
         $this->designerId = '';
+        $this->projectNumber = '';
         $this->period = 'current_month';
         $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
         $this->dateTo = now()->endOfMonth()->format('Y-m-d');
@@ -149,6 +153,9 @@ class TaskKanban extends Component
         }
         if ($this->designerId !== '') {
             $chips->push(['label' => 'Designer', 'value' => $designers->firstWhere('id', (int) $this->designerId)?->name ?? '—']);
+        }
+        if ($this->projectNumber !== '') {
+            $chips->push(['label' => 'Zoho Project Number', 'value' => $this->projectNumber]);
         }
         if ($this->vertical !== '') {
             $chips->push(['label' => 'Vertical', 'value' => ucwords(str_replace('_', ' ', $this->vertical))]);

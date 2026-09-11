@@ -161,6 +161,7 @@ class TaskController extends Controller
         $rules = [
             'task_name' => ['required', 'string', 'max:180'],
             'vertical' => ['required', Rule::in($verticals)],
+            'zoho_project_number' => ['nullable', 'string', 'max:60'],
             'task_nature' => [
                 'required',
                 function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
@@ -192,7 +193,7 @@ class TaskController extends Controller
         $data = $request->validate($rules);
 
         $baseKeys = [
-            'task_name', 'vertical', 'task_nature', 'party_type', 'party_name', 'contact_person',
+            'task_name', 'vertical', 'zoho_project_number', 'task_nature', 'party_type', 'party_name', 'contact_person',
             'mobile_number', 'priority', 'due_at', 'designer_id', 'total_creatives',
         ];
 
@@ -358,6 +359,7 @@ class TaskController extends Controller
                     'assigned_by' => auth()->id(),
                     'task_name' => $data['task_name'],
                     'vertical' => $data['vertical'],
+                    'zoho_project_number' => $data['zoho_project_number'] ?? null,
                     'task_nature' => $data['task_nature'],
                     'party_type' => $data['party_type'],
                     'party_name' => $data['party_name'],
@@ -409,6 +411,7 @@ class TaskController extends Controller
                 'assigned_by' => auth()->id(),
                 'task_name' => $data['task_name'],
                 'vertical' => $data['vertical'],
+                'zoho_project_number' => $data['zoho_project_number'] ?? null,
                 'task_nature' => $data['task_nature'],
                 'party_type' => $data['party_type'],
                 'party_name' => $data['party_name'],
@@ -514,6 +517,7 @@ class TaskController extends Controller
             'assigned_by' => auth()->id(),
             'task_name' => $data['task_name'] ?? '',
             'vertical' => $data['vertical'] ?? '',
+            'zoho_project_number' => $data['zoho_project_number'] ?? null,
             'task_nature' => $data['task_nature'] ?? '',
             'party_type' => $data['party_type'] ?? 'client',
             'party_name' => $data['party_name'] ?? '',
@@ -546,6 +550,7 @@ class TaskController extends Controller
         $task->update([
             'task_name' => $data['task_name'] ?? $task->task_name,
             'vertical' => $data['vertical'] ?? $task->vertical,
+            'zoho_project_number' => array_key_exists('zoho_project_number', $data) ? $data['zoho_project_number'] : $task->zoho_project_number,
             'task_nature' => $data['task_nature'] ?? $task->task_nature,
             'party_type' => $data['party_type'] ?? $task->party_type,
             'party_name' => $data['party_name'] ?? $task->party_name,
@@ -715,6 +720,7 @@ class TaskController extends Controller
         $rules = [
             'task_name' => ['required', 'string', 'max:180'],
             'vertical' => ['required', Rule::in($verticals)],
+            'zoho_project_number' => ['nullable', 'string', 'max:60'],
             'task_nature' => ['required', 'string', 'max:120'],
             'party_type' => ['nullable', Rule::in(['client', 'agency'])],
             'party_name' => ['nullable', 'string', 'max:180'],
@@ -738,7 +744,7 @@ class TaskController extends Controller
     private function collectRequirementValues(Request $request, array $data): array
     {
         $baseKeys = [
-            'task_name', 'vertical', 'task_nature', 'party_type', 'party_name', 'contact_person',
+            'task_name', 'vertical', 'zoho_project_number', 'task_nature', 'party_type', 'party_name', 'contact_person',
             'mobile_number', 'priority', 'due_at', 'designer_id', 'total_creatives', 'draft_id',
             '_token', '_method',
         ];

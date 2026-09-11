@@ -18,7 +18,9 @@
 <div class="panel">
     <div class="panel-body">
         <form method="GET" class="filter-bar" style="margin-bottom:14px">
-            <input class="premium-input" name="search" value="{{ request('search') }}" placeholder="Search Task ID, task name or client">
+            <input class="premium-input" name="search" value="{{ request('search') }}" placeholder="Search Task ID, Zoho Project Number, task name or client">
+
+            <input class="premium-input" name="project_number" value="{{ request('project_number') }}" placeholder="Zoho Project Number">
 
             <select class="premium-select" name="vertical">
                 <option value="">All Verticals</option>
@@ -56,6 +58,7 @@
                 <thead>
                     <tr>
                         <th>Task</th>
+                        <th>Project Number</th>
                         <th>Client</th>
                         <th>BD</th>
                         <th>Designer</th>
@@ -73,6 +76,7 @@
                                 <strong>{{ $task->task_id }}</strong>
                                 <div style="margin-top:3px">{{ $task->display_task_name ?? $task->task_name }}</div>
                             </td>
+                            <td>{{ $task->zoho_project_number ?: '-' }}</td>
                             <td>{{ $task->party_name }}</td>
                             <td>{{ $task->assigner?->name ?? '—' }}</td>
                             <td>{{ $task->designer?->name ?? '—' }}</td>
@@ -103,7 +107,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="empty-state">No tasks match the selected filters.</td></tr>
+                        <tr><td colspan="10" class="empty-state">No tasks match the selected filters.</td></tr>
                     @endforelse
                 </tbody>
             </table>

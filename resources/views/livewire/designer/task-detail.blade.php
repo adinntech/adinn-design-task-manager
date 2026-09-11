@@ -373,6 +373,12 @@
                     <summary>Task Information</summary>
                     <div class="collapse-body">
                         <div class="info-grid">
+                            @if($task->zoho_project_number)
+                                <div class="info-item">
+                                    <span>Zoho Project Number</span>
+                                    <strong>{{ $task->zoho_project_number }}</strong>
+                                </div>
+                            @endif
                             @foreach([
                                 'Client / Agency' => ucfirst($task->party_type).' · '.$task->party_name,
                                 'Contact Person' => $task->contact_person,

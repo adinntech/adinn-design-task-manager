@@ -13,6 +13,7 @@ class DesignTask extends Model
     protected $fillable = [
         'task_id','assigned_at','assigned_by','task_name','vertical','task_nature','party_type','party_name',
         'contact_person','mobile_number','priority','due_at','designer_id','total_creatives','status','requirements',
+        'zoho_project_number',
     ];
 
     protected function casts(): array

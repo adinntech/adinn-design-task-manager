@@ -105,7 +105,7 @@
             <table class="dh-table">
                 <thead>
                 <tr>
-                    <th>Task ID</th><th>Task Name</th><th>Designer</th><th>Assigned By (BD)</th><th>Assigned At</th><th>Deadline</th>
+                    <th>Task ID</th><th>Project Number</th><th>Task Name</th><th>Designer</th><th>Assigned By (BD)</th><th>Assigned At</th><th>Deadline</th>
                     <th>Progress</th><th>Creatives</th><th>Status</th><th>Completed At</th><th>Overdue</th><th>Rework</th><th>Rating</th>
                 </tr>
                 </thead>
@@ -114,6 +114,7 @@
                     @php $task = $row['task']; @endphp
                     <tr>
                         <td><a class="dh-task-link" href="{{ route('bd.tasks.show', $task) }}">{{ $task->task_id }}</a></td>
+                        <td>{{ $task->zoho_project_number ?: '-' }}</td>
                         <td class="dh-cell-main">{{ $task->display_task_name ?? $task->task_name }}</td>
                         <td>{{ $task->designer?->name ?? '—' }}</td>
                         <td>{{ $task->assigner?->name ?? '—' }}</td>
@@ -154,7 +155,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="13"><div class="dh-empty">No tickets found for this period.</div></td></tr>
+                    <tr><td colspan="14"><div class="dh-empty">No tickets found for this period.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -201,12 +202,13 @@
         <div class="dh-table-wrap">
             <table class="dh-table">
                 <thead>
-                <tr><th>Task</th><th>Designer</th><th>BD</th><th>Deadline</th><th>Days Overdue</th><th>Progress</th><th>Status</th></tr>
+                <tr><th>Task</th><th>Project Number</th><th>Designer</th><th>BD</th><th>Deadline</th><th>Days Overdue</th><th>Progress</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                 @forelse($overdue as $row)
                     <tr>
                         <td><a class="dh-task-link" href="{{ route('bd.tasks.show', $row['task']) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
+                        <td>{{ $row['task']->zoho_project_number ?: '-' }}</td>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td>{{ $row['task']->assigner?->name ?? '—' }}</td>
                         <td class="dh-danger">{{ $row['task']->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
@@ -217,7 +219,7 @@
                         <td>{!! $statusPill($row['task']->status) !!}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7"><div class="dh-empty">{{ $selectedDesignerName ?? 'All Designers' }} — {{ $selectedMonthLabel }}: No overdue tasks.</div></td></tr>
+                    <tr><td colspan="8"><div class="dh-empty">{{ $selectedDesignerName ?? 'All Designers' }} — {{ $selectedMonthLabel }}: No overdue tasks.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -236,12 +238,13 @@
         <div class="dh-table-wrap">
             <table class="dh-table">
                 <thead>
-                <tr><th>Task</th><th>Designer</th><th>Rework #</th><th>Rework Assigned At</th><th>Rework Creative Count</th><th>Designer Rework Time</th><th>Current Status</th></tr>
+                <tr><th>Task</th><th>Project Number</th><th>Designer</th><th>Rework #</th><th>Rework Assigned At</th><th>Rework Creative Count</th><th>Designer Rework Time</th><th>Current Status</th></tr>
                 </thead>
                 <tbody>
                 @forelse($reworkRows as $row)
                     <tr>
                         <td><a class="dh-task-link" href="{{ route('bd.tasks.show', $row['task']) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
+                        <td>{{ $row['task']->zoho_project_number ?: '-' }}</td>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td><span class="dh-strong">Rework {{ $row['rework_number'] }}</span></td>
                         <td>{{ optional($row['rework_assigned_at'])->format('d M Y · h:i A') ?? '—' }}</td>
@@ -250,7 +253,7 @@
                         <td>{!! $statusPill($row['task']->status) !!}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7"><div class="dh-empty">No rework records found for your tickets.</div></td></tr>
+                    <tr><td colspan="8"><div class="dh-empty">No rework records found for your tickets.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -287,12 +290,13 @@
         <div class="dh-table-wrap">
             <table class="dh-table">
                 <thead>
-                <tr><th>Task</th><th>Designer</th><th>Assigned At</th><th>Due Date</th><th>Completed At</th><th>Duration</th><th>Rating</th><th>Rework</th></tr>
+                <tr><th>Task</th><th>Project Number</th><th>Designer</th><th>Assigned At</th><th>Due Date</th><th>Completed At</th><th>Duration</th><th>Rating</th><th>Rework</th></tr>
                 </thead>
                 <tbody>
                 @forelse($completions as $row)
                     <tr>
                         <td><a class="dh-task-link" href="{{ route('bd.tasks.show', $row['task']) }}">{{ $row['task']->task_id }}</a><div class="dh-cell-sub">{{ $row['task']->display_task_name ?? $row['task']->task_name }}</div></td>
+                        <td>{{ $row['task']->zoho_project_number ?: '-' }}</td>
                         <td>{{ $row['task']->designer?->name ?? '—' }}</td>
                         <td>{{ $row['task']->assigned_at?->format('d M Y · h:i A') ?? '—' }}</td>
                         <td>{{ $row['task']->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
@@ -306,7 +310,7 @@
                         <td>{{ $row['rework_count'] }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="8"><div class="dh-empty">No completions recorded yet.</div></td></tr>
+                    <tr><td colspan="9"><div class="dh-empty">No completions recorded yet.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -336,6 +340,7 @@
                     <tr>
                         <td>
                             <a class="dh-task-link" href="{{ route('bd.tasks.show', $task) }}">{{ $task->task_id }}</a>
+                            @if($task->zoho_project_number)<div class="dh-cell-sub">{{ $task->zoho_project_number }}</div>@endif
                             <div class="dh-cell-sub">{{ $task->display_task_name ?? $task->task_name }}</div>
                             <div class="dh-cell-sub">{{ $task->designer?->name ?? '—' }}</div>
                         </td>

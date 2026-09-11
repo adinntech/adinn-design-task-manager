@@ -62,6 +62,7 @@ class TaskMonitoringController extends Controller
 
                 $query->where(function ($q) use ($term) {
                     $q->where('task_id', 'like', $term)
+                        ->orWhere('zoho_project_number', 'like', $term)
                         ->orWhere('task_name', 'like', $term)
                         ->orWhere('party_name', 'like', $term);
                 });
@@ -70,6 +71,7 @@ class TaskMonitoringController extends Controller
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->input('status')))
             ->when($request->filled('priority'), fn ($query) => $query->where('priority', $request->input('priority')))
             ->when($request->filled('designer_id'), fn ($query) => $query->where('designer_id', $request->input('designer_id')))
+            ->when($request->filled('project_number'), fn ($query) => $query->where('zoho_project_number', 'like', '%'.trim((string) $request->input('project_number')).'%'))
             ->latest('assigned_at')
             ->paginate(20)
             ->withQueryString();

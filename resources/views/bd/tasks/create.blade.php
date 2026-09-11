@@ -27,6 +27,7 @@
         $draftValues = [
             'task_name' => $draft->task_name,
             'vertical' => $draft->vertical,
+            'zoho_project_number' => $draft->zoho_project_number,
             'task_nature' => $draft->task_nature,
             'party_type' => $draft->party_type,
             'party_name' => $draft->party_name,
@@ -240,6 +241,26 @@
             max="{{ $maxDueDateInput }}"
         ></div>
         <div>
+            <label class="label" for="zoho_project_number">Zoho Project Number</label>
+            <input class="field" id="zoho_project_number" name="zoho_project_number" type="text" maxlength="60" placeholder="ZOHO-12345" value="{{ $formValues['zoho_project_number'] ?? '' }}">
+        </div>
+
+        <div>
+            <label class="label" for="total_creatives">Total Number of Creatives *</label>
+            <input class="field" id="total_creatives" name="total_creatives" type="number"
+                   min="1" max="9999" step="1" inputmode="numeric"
+                   value="{{ $formValues['total_creatives'] ?? '' }}" placeholder="Enter total creatives"
+                   oninput="if(this.value!==''){this.value=Math.max(1,Math.min(9999,Math.trunc(Number(this.value)||1)));}" required>
+        </div>
+
+        <div>
+            <label class="label" for="taskNature">Task Nature *</label>
+            <select class="field" id="taskNature" name="task_nature" required disabled>
+                <option value="">Select vertical first</option>
+            </select>
+        </div>
+
+        <div>
             <label class="label">Designer Name *</label>
             <select class="field" id="designerSelect" name="designer_id" required><option value="">Select designer</option>@foreach($designers as $designer)<option value="{{ $designer->id }}" @selected((string)($formValues['designer_id']??'')===(string)$designer->id)>{{ $designer->name }}</option>@endforeach</select>
             <div id="designerProfiles" class="designer-profile-list">
@@ -262,21 +283,6 @@
                 @endforeach
             </div>
             <div id="designerAvailability" class="designer-availability hidden"></div>
-        </div>
-
-        <div>
-            <label class="label" for="total_creatives">Total Number of Creatives *</label>
-            <input class="field" id="total_creatives" name="total_creatives" type="number"
-                   min="1" max="9999" step="1" inputmode="numeric"
-                   value="{{ $formValues['total_creatives'] ?? '' }}" placeholder="Enter total creatives"
-                   oninput="if(this.value!==''){this.value=Math.max(1,Math.min(9999,Math.trunc(Number(this.value)||1)));}" required>
-        </div>
-
-        <div>
-            <label class="label" for="taskNature">Task Nature *</label>
-            <select class="field" id="taskNature" name="task_nature" required disabled>
-                <option value="">Select vertical first</option>
-            </select>
         </div>
     </div>
 </section>

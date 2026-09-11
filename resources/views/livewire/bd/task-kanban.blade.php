@@ -346,7 +346,7 @@
                 <input
                     class="premium-input"
                     type="search"
-                    placeholder="Search Task ID, task name, client, Designer, BD..."
+                    placeholder="Search Task ID, Zoho Project Number, task name, client, Designer, BD..."
                     wire:model.live.debounce.350ms="search"
                 >
 
@@ -377,6 +377,13 @@
                     @endforeach
                 </select>
 
+                <input
+                    class="premium-input"
+                    type="search"
+                    placeholder="Zoho Project Number"
+                    wire:model.live.debounce.350ms="projectNumber"
+                >
+
                 <select class="premium-select" wire:model.live="period">
                     <option value="current_month">Current Month</option>
                     <option value="last_month">Last Month</option>
@@ -390,7 +397,7 @@
 
                 <a class="btn btn-secondary" href="{{ route('bd.tasks.export', [
                     'search' => $search, 'vertical' => $vertical, 'priority' => $priority,
-                    'designer_id' => $designerId, 'period' => $period,
+                    'designer_id' => $designerId, 'project_number' => $projectNumber, 'period' => $period,
                     'date_from' => $dateFrom, 'date_to' => $dateTo,
                 ]) }}">Export Report</a>
             </div>

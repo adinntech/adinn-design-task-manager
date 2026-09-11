@@ -28,6 +28,7 @@ class TaskExportController extends Controller
             'priority' => $isOverdue ? '' : $priority,
             'designerId' => (string) $request->query('designer_id', ''),
             'bdId' => (string) $request->user()->id,
+            'projectNumber' => (string) $request->query('project_number', ''),
             'period' => (string) $request->query('period', 'current_month'),
             'dateFrom' => (string) $request->query('date_from', ''),
             'dateTo' => (string) $request->query('date_to', ''),

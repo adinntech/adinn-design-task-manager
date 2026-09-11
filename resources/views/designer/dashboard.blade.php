@@ -186,6 +186,7 @@
                 <thead>
                 <tr>
                     <th>Task ID</th>
+                    <th>Project Number</th>
                     <th>Task</th>
                     <th>Client / Agency</th>
                     <th>Vertical</th>
@@ -211,6 +212,7 @@
                     @endphp
                     <tr>
                         <td><a class="bd-task-link" href="{{ route('designer.tasks.index', ['focus' => $task->status, 'task' => $task->task_id]) }}">{{ $task->task_id }}</a></td>
+                        <td>{{ $task->zoho_project_number ?: '-' }}</td>
                         <td>{{ $task->display_task_name ?? $task->task_name }}</td>
                         <td>{{ $task->party_name }}</td>
                         <td>{{ ucwords(str_replace('_',' ',$task->vertical)) }}</td>
@@ -225,7 +227,7 @@
                         <td style="{{ $isOverdue ? 'color:#c01048;font-weight:850' : '' }}">{{ $task->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="9"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
+                    <tr><td colspan="10"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -238,7 +240,7 @@
             <table class="bd-table">
                 <thead>
                 <tr>
-                    <th>Task ID</th><th>Task Name</th><th>Assigned At</th><th>Status</th><th>Progress</th>
+                    <th>Task ID</th><th>Project Number</th><th>Task Name</th><th>Assigned At</th><th>Status</th><th>Progress</th>
                     <th>Creatives</th><th>Deadline</th><th>Completed At</th><th>Overdue</th><th>Rework</th><th>Rating</th>
                 </tr>
                 </thead>
@@ -250,6 +252,7 @@
                     @endphp
                     <tr>
                         <td><a class="bd-task-link" href="{{ route('designer.tasks.index', ['focus' => $task->status, 'task' => $task->task_id]) }}">{{ $task->task_id }}</a></td>
+                        <td>{{ $task->zoho_project_number ?: '-' }}</td>
                         <td>{{ $task->display_task_name ?? $task->task_name }}</td>
                         <td>{{ $task->assigned_at?->format('d M Y') ?? '—' }}</td>
                         <td>
@@ -289,7 +292,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="11"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
+                    <tr><td colspan="12"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
                 @endforelse
                 </tbody>
             </table>

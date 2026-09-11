@@ -43,13 +43,13 @@ class DesignTaskExportService
     private const GREEN_TEXT = '006100';
 
     /** 1-based column index of the "Status" header — where the completed-late green indicator is applied. */
-    private const STATUS_COLUMN = 12;
+    private const STATUS_COLUMN = 13;
 
     /** Rows above the column header on the Tasks sheet, reserved for the Report Summary block. */
     private const SUMMARY_ROWS = 6;
 
     private const HEADER = [
-        'S.NO', 'Task ID', 'Task Name', 'Designer', 'BD', 'Vertical', 'Task Type',
+        'S.NO', 'Task ID', 'Project Number', 'Task Name', 'Designer', 'BD', 'Vertical', 'Task Type',
         'Created At', 'Assigned At', 'Due Date', 'Completed At', 'Status',
         'Creatives', 'Progress Details', 'Rework Details',
         'Split/Swap/Decline Details', 'Ratings', 'Deadline Result', 'Cross-Month Info',
@@ -57,7 +57,7 @@ class DesignTaskExportService
     ];
 
     private const COLUMN_WIDTHS = [
-        6, 14, 28, 18, 18, 14, 24, 12, 12, 12, 12, 18, 18, 28, 24, 22, 32, 24, 22,
+        6, 14, 16, 28, 18, 18, 14, 24, 12, 12, 12, 12, 18, 18, 28, 24, 22, 32, 24, 22,
     ];
 
     public function __construct(
@@ -200,6 +200,7 @@ class DesignTaskExportService
             $rows[] = [
                 $rowNumber,
                 $task->task_id,
+                $task->zoho_project_number ?: '-',
                 $task->display_task_name ?? $task->task_name,
                 $task->designer?->name ?? '—',
                 $task->assigner?->name ?? '—',

@@ -38,7 +38,7 @@ class DesignerHeadTaskBoardService
     ];
 
     /**
-     * @param  array{search:string,vertical:string,priority:string,designerId:string,bdId:string,period:string,dateFrom:string,dateTo:string,overdue?:bool}  $filters
+     * @param  array{search:string,vertical:string,priority:string,designerId:string,bdId:string,period:string,dateFrom:string,dateTo:string,overdue?:bool,projectNumber?:string}  $filters
      */
     public function build(array $filters): array
     {
@@ -270,6 +270,7 @@ class DesignerHeadTaskBoardService
 
                 $query->where(function ($query) use ($term) {
                     $query->where('task_id', 'like', $term)
+                        ->orWhere('zoho_project_number', 'like', $term)
                         ->orWhere('task_name', 'like', $term)
                         ->orWhere('party_name', 'like', $term)
                         ->orWhere('vertical', 'like', $term)
@@ -281,7 +282,8 @@ class DesignerHeadTaskBoardService
             ->when($filters['vertical'] !== '', fn ($query) => $query->where('vertical', $filters['vertical']))
             ->when($filters['priority'] !== '', fn ($query) => $query->where('priority', $filters['priority']))
             ->when($filters['designerId'] !== '', fn ($query) => $query->where('designer_id', $filters['designerId']))
-            ->when($filters['bdId'] !== '', fn ($query) => $query->where('assigned_by', $filters['bdId']));
+            ->when($filters['bdId'] !== '', fn ($query) => $query->where('assigned_by', $filters['bdId']))
+            ->when(($filters['projectNumber'] ?? '') !== '', fn ($query) => $query->where('zoho_project_number', 'like', '%'.trim($filters['projectNumber']).'%'));
     }
 
     /**

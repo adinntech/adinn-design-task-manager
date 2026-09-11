@@ -69,6 +69,9 @@
         <div class="detail-grid">
             <div>
                 <details class="collapse-panel"><summary>Task Information</summary><div class="collapse-body"><div class="info-grid">
+                    @if($task->zoho_project_number)
+                        <div class="info-item"><span>Zoho Project Number</span><strong>{{ $task->zoho_project_number }}</strong></div>
+                    @endif
                     @foreach(['Client / Agency'=>ucfirst($task->party_type).' · '.$task->party_name,'Contact'=>$task->contact_person.' · '.$task->mobile_number,'Vertical'=>ucwords(str_replace('_',' ',$task->vertical)),'Task Nature'=>ucwords(str_replace('_',' ',$task->task_nature)),'Priority'=>ucfirst($task->priority),'Designer'=>$task->designer?->name ?? '—','Assigned By'=>$task->assigner?->name ?? '—','Due Date'=>$task->due_at?->format('d M Y'),'Total Creatives'=>$task->total_creatives,'Assigned At'=>$task->assigned_at?->format('d M Y')] as $k=>$v)
                         <div class="info-item"><span>{{ $k }}</span><strong>{{ $v }}</strong></div>
                     @endforeach
