@@ -31,21 +31,33 @@ class DesignTaskProgressService
         return max(0, min((int) $task->total_creatives, $completed));
     }
 
-    public function percentage(DesignTask $task): int
+    /**
+     * $completed accepts an already-computed completed() result so callers
+     * that need several of these figures for the same task (every task-detail
+     * page) can compute completed() once and reuse it, instead of each of
+     * these methods re-running its 3 SUM queries from scratch. Optional and
+     * defaults to recomputing, so existing single-value callers are unaffected.
+     */
+    public function percentage(DesignTask $task, ?int $completed = null): int
     {
         $total = max(1, (int) $task->total_creatives);
+        $completed ??= $this->completed($task);
 
-        return min(100, (int) round(($this->completed($task) / $total) * 100));
+        return min(100, (int) round(($completed / $total) * 100));
     }
 
-    public function remaining(DesignTask $task): int
+    public function remaining(DesignTask $task, ?int $completed = null): int
     {
-        return max(0, (int) $task->total_creatives - $this->completed($task));
+        $completed ??= $this->completed($task);
+
+        return max(0, (int) $task->total_creatives - $completed);
     }
 
-    public function isComplete(DesignTask $task): bool
+    public function isComplete(DesignTask $task, ?int $completed = null): bool
     {
-        return $this->completed($task) >= (int) $task->total_creatives;
+        $completed ??= $this->completed($task);
+
+        return $completed >= (int) $task->total_creatives;
     }
 
     /**
@@ -97,11 +109,11 @@ class DesignTaskProgressService
         return $requested > 0 ? min($requested, $submitted) : $submitted;
     }
 
-    public function currentReworkPending(DesignTask $task): int
+    public function currentReworkPending(DesignTask $task, ?int $completed = null): int
     {
         // Overall 100% is the final source of truth. This also self-heals
         // legacy Rework rows whose cycle metadata no longer matches progress.
-        if ($this->isComplete($task)) {
+        if ($this->isComplete($task, $completed)) {
             return 0;
         }
 
@@ -113,10 +125,10 @@ class DesignTaskProgressService
      * A rework cycle is considered complete only after every creative sent by BD
      * in that cycle has been resubmitted by the Designer.
      */
-    public function currentReworkHasUpload(DesignTask $task): bool
+    public function currentReworkHasUpload(DesignTask $task, ?int $completed = null): bool
     {
         return $this->currentReworkRequested($task) > 0
-            && ($this->isComplete($task) || $this->currentReworkPending($task) === 0);
+            && ($this->isComplete($task, $completed) || $this->currentReworkPending($task, $completed) === 0);
     }
 
     public function colorKey(int $percentage): string

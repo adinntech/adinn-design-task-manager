@@ -78,47 +78,36 @@ class AssignedTaskController extends Controller
             'adminActor:id,name,role',
         ];
 
-        $splitRequests = DesignTaskRequest::query()
+        // Split/swap/decline/status_change were previously 4 separate queries
+        // (each re-loading the same 5 relations) — fetched together here since
+        // they all read the same table, then split back into the same 4
+        // collections in PHP. ->latest() ordering survives Collection::where()
+        // filtering (it preserves relative order), so each subset is ordered
+        // identically to before.
+        $splitOriginRequestId = data_get($task->requirements, '_split_request_id');
+        $swapOriginRequestId = data_get($task->requirements, '_swap_request_id');
+
+        $allRequests = DesignTaskRequest::query()
             ->with($requestRelations)
-            ->where('request_type', 'split')
-            ->where(function ($query) use ($task) {
+            ->whereIn('request_type', ['split', 'swap', 'decline', 'status_change'])
+            ->where(function ($query) use ($task, $splitOriginRequestId, $swapOriginRequestId) {
                 $query->where('design_task_id', $task->id);
 
-                $originatingRequestId = data_get($task->requirements, '_split_request_id');
-                if ($originatingRequestId) {
-                    $query->orWhere('id', $originatingRequestId);
+                if ($splitOriginRequestId) {
+                    $query->orWhere('id', $splitOriginRequestId);
+                }
+
+                if ($swapOriginRequestId) {
+                    $query->orWhere('id', $swapOriginRequestId);
                 }
             })
             ->latest()
             ->get();
 
-        $swapRequests = DesignTaskRequest::query()
-            ->with($requestRelations)
-            ->where('request_type', 'swap')
-            ->where(function ($query) use ($task) {
-                $query->where('design_task_id', $task->id);
-
-                $swapRequestId = data_get($task->requirements, '_swap_request_id');
-                if ($swapRequestId) {
-                    $query->orWhere('id', $swapRequestId);
-                }
-            })
-            ->latest()
-            ->get();
-
-        $declineRequests = DesignTaskRequest::query()
-            ->with($requestRelations)
-            ->where('request_type', 'decline')
-            ->where('design_task_id', $task->id)
-            ->latest()
-            ->get();
-
-        $statusChangeRequests = DesignTaskRequest::query()
-            ->with($requestRelations)
-            ->where('request_type', 'status_change')
-            ->where('design_task_id', $task->id)
-            ->latest()
-            ->get();
+        $splitRequests = $allRequests->where('request_type', 'split')->values();
+        $swapRequests = $allRequests->where('request_type', 'swap')->values();
+        $declineRequests = $allRequests->where('request_type', 'decline')->values();
+        $statusChangeRequests = $allRequests->where('request_type', 'status_change')->values();
 
         $eodRecords = DesignTaskEodRecord::query()
             ->with('designer:id,name,role')
@@ -128,8 +117,8 @@ class AssignedTaskController extends Controller
 
         $progressService = app(DesignTaskProgressService::class);
         $eodCompletedTotal = $progressService->completed($task);
-        $eodRemaining = $progressService->remaining($task);
-        $progressPercentage = $progressService->percentage($task);
+        $eodRemaining = $progressService->remaining($task, $eodCompletedTotal);
+        $progressPercentage = $progressService->percentage($task, $eodCompletedTotal);
         $progressColorKey = $progressService->colorKey($progressPercentage);
         $reworkCount = $progressService->reworkCount($task);
 

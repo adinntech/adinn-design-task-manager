@@ -718,13 +718,6 @@ class TaskDetail extends Component
             ->latest()
             ->get();
 
-        $swapRequests = DesignTaskRequest::query()
-            ->with($requestRelations)
-            ->where('design_task_id', $this->task->id)
-            ->where('request_type', 'swap')
-            ->latest()
-            ->get();
-
         $originTaskCode = data_get($this->task->requirements, '_split_from_task_id');
         $splitOriginTask = $originTaskCode
             ? DesignTask::query()->with('designer:id,name')->where('task_id', $originTaskCode)->first()
@@ -738,11 +731,11 @@ class TaskDetail extends Component
 
         $progressService = app(DesignTaskProgressService::class);
         $eodCompletedTotal = $progressService->completed($this->task);
-        $eodRemaining = $progressService->remaining($this->task);
-        $progressPercentage = $progressService->percentage($this->task);
+        $eodRemaining = $progressService->remaining($this->task, $eodCompletedTotal);
+        $progressPercentage = $progressService->percentage($this->task, $eodCompletedTotal);
         $progressColorKey = $progressService->colorKey($progressPercentage);
         $reworkCount = $progressService->reworkCount($this->task);
-        $currentReworkHasUpload = $progressService->currentReworkHasUpload($this->task);
+        $currentReworkHasUpload = $progressService->currentReworkHasUpload($this->task, $eodCompletedTotal);
 
         $editHistory = collect();
 
@@ -779,7 +772,7 @@ class TaskDetail extends Component
             'currentReworkHasUpload' => $currentReworkHasUpload,
             'currentReworkRequested' => $progressService->currentReworkRequested($this->task),
             'currentReworkCompleted' => $progressService->currentReworkCompleted($this->task),
-            'currentReworkPending' => $progressService->currentReworkPending($this->task),
+            'currentReworkPending' => $progressService->currentReworkPending($this->task, $eodCompletedTotal),
             'latestReworkReview' => DesignTaskBdReview::query()
                 ->where('design_task_id', $this->task->id)
                 ->where('action', 'rework')
@@ -792,14 +785,10 @@ class TaskDetail extends Component
                 ->latest()
                 ->first(),
             'isCommentOnlySwap' => $this->isSwapShadowTask(),
+            // Also picks up 'task', matching what swapRequests below needs — this
+            // query used to be duplicated separately just to get that relation.
             'requests' => $requests = DesignTaskRequest::query()
-                ->with([
-                    'requester:id,name',
-                    'targetDesigner:id,name',
-                    'approvedDesigner:id,name',
-                    'designerHeadActor:id,name',
-                    'adminActor:id,name',
-                ])
+                ->with($requestRelations)
                 ->where('design_task_id', $this->task->id)
                 ->latest()
                 ->get(),
@@ -817,7 +806,7 @@ class TaskDetail extends Component
             'splitRequesterReadOnly' => $this->splitRequesterReadOnly,
             'showTaskUpdation' => $this->canViewTaskUpdation(),
             'splitRequests' => $splitRequests,
-            'swapRequests' => $swapRequests,
+            'swapRequests' => $requests->where('request_type', 'swap')->values(),
             'statusChangeRequests' => $requests->where('request_type', 'status_change')->values(),
             'splitOriginTask' => $splitOriginTask,
             'requirementAttachmentGroups' => $requirementAttachmentGroups,
