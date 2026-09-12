@@ -119,4 +119,53 @@
         </form>
     </div></div>
 @endif
+
+@if($user->role === 'bd')
+    <div class="panel" style="max-width:640px;margin-top:18px"><div class="panel-body">
+        <h2 style="font-size:14px;font-weight:900;margin:0 0 4px">Working Verticals</h2>
+        <p style="font-size:11px;color:#667085;margin:0 0 16px">Keep this up to date so Designers can see which verticals you handle before selecting you.</p>
+
+        <form
+            method="POST"
+            action="{{ route('profile.bd-profile.update') }}"
+            onsubmit="const b=this.querySelector('button[type=submit],button:not([type])');if(b){b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Saving...';}"
+            x-data="{
+                verticalLabels: @js(\App\Http\Controllers\Bd\TaskController::VERTICALS),
+                verticals: @js(old('experienced_verticals', $user->experienced_verticals ?? [])),
+                verticalToAdd: '',
+                addVertical(){
+                    if(!this.verticalToAdd) return;
+                    if(!this.verticals.includes(this.verticalToAdd)) this.verticals.push(this.verticalToAdd);
+                    this.verticalToAdd = '';
+                }
+            }"
+        >
+            @csrf
+            @method('PUT')
+
+            <div class="form-grid">
+                <div>
+                    <label class="label">Working Verticals</label>
+                    <select class="premium-select" x-model="verticalToAdd" @change="addVertical()">
+                        <option value="">Add a vertical…</option>
+                        @foreach(\App\Http\Controllers\Bd\TaskController::VERTICALS as $vKey=>$vLabel)
+                            <option value="{{ $vKey }}" :disabled="verticals.includes('{{ $vKey }}')">{{ $vLabel }}</option>
+                        @endforeach
+                    </select>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+                        <template x-for="(v, index) in verticals" :key="v">
+                            <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#f2f4f7;border:1px solid #e4e7ec;font-size:11px;font-weight:700">
+                                <span x-text="verticalLabels[v] ?? v"></span>
+                                <button type="button" @click="verticals.splice(index,1)" style="border:0;background:transparent;padding:0;margin:0;cursor:pointer;font-size:13px;line-height:1;color:#667085">&times;</button>
+                                <input type="hidden" name="experienced_verticals[]" :value="v">
+                            </span>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions"><button class="btn btn-primary">Save Working Verticals</button></div>
+        </form>
+    </div></div>
+@endif
 @endsection

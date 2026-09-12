@@ -30,7 +30,7 @@ class TaskController extends BdTaskController
             ->where('role', 'bd')
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'experienced_verticals']);
 
         return view('bd.tasks.create', [
             'actorRole' => 'designer',

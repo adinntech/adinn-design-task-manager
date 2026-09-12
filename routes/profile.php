@@ -17,3 +17,9 @@ Route::middleware(['auth', 'role:designer,designer_head,bd'])
 Route::middleware(['auth', 'role:designer'])
     ->put('/profile/designer-profile', [ProfileController::class, 'updateDesignerProfile'])
     ->name('profile.designer-profile.update');
+
+// BD-only self-service editing of working verticals (reuses the same
+// experienced_verticals column as Designer — no separate field/table).
+Route::middleware(['auth', 'role:bd'])
+    ->put('/profile/bd-profile', [ProfileController::class, 'updateBdProfile'])
+    ->name('profile.bd-profile.update');

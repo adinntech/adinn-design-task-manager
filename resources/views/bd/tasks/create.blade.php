@@ -269,12 +269,18 @@
             <select class="field" id="designerSelect" name="bd_id" required><option value="">Select BD</option>@foreach($assignees as $bd)<option value="{{ $bd->id }}" @selected((string)($formValues['bd_id']??'')===(string)$bd->id)>{{ $bd->name }}</option>@endforeach</select>
             <div id="designerProfiles" class="designer-profile-list">
                 @foreach($assignees as $bd)
+                    @php
+                        $bdVerticalLabels = collect($bd->experienced_verticals ?? [])
+                            ->map(fn ($v) => \App\Http\Controllers\Bd\TaskController::VERTICALS[$v] ?? $v)
+                            ->implode(', ');
+                    @endphp
                     <button
                         type="button"
                         class="designer-profile-card {{ (string)($formValues['bd_id']??'')===(string)$bd->id ? 'is-selected' : '' }}"
                         data-designer-id="{{ $bd->id }}"
                     >
                         <div class="designer-profile-name">{{ $bd->name }}</div>
+                        <div class="designer-profile-meta"><strong>Verticals:</strong> {{ $bdVerticalLabels ?: 'No verticals assigned' }}</div>
                     </button>
                 @endforeach
             </div>

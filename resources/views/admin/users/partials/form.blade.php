@@ -70,5 +70,21 @@
         </div>
     </div>
 </div>
+
+<div x-show="role === 'bd'" x-cloak style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line, #e4e7ec)">
+    <div class="form-grid">
+        <div>
+            <label class="label">Working Verticals</label>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px 12px;border:1px solid #e4e7ec;border-radius:10px">
+                @foreach(\App\Http\Controllers\Bd\TaskController::VERTICALS as $vKey=>$vLabel)
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700">
+                        <input type="checkbox" name="bd_experienced_verticals[]" value="{{ $vKey }}" @checked(in_array($vKey, old('bd_experienced_verticals', $user?->role === 'bd' ? ($user?->experienced_verticals ?? []) : []), true))>
+                        {{ $vLabel }}
+                    </label>
+                @endforeach
+            </div>
+        </div>
+    </div>
+</div>
 </div>
 <div class="form-actions"><a class="btn btn-secondary" href="{{ route('admin.users.index') }}">Cancel</a><button class="btn btn-primary">{{ $user ? 'Save Changes' : 'Create User' }}</button></div>

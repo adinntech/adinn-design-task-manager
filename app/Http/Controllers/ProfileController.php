@@ -61,4 +61,25 @@ class ProfileController extends Controller
 
         return back()->with('success', 'Profile details updated successfully.');
     }
+
+    /**
+     * BD-only self-service edit of Working Verticals — reuses the same
+     * experienced_verticals column/normalizer as Designer's profile above,
+     * just without the skills field (BD has no skills concept).
+     */
+    public function updateBdProfile(Request $request, DesignerProfileService $normalizer): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'bd', 403);
+
+        $data = $request->validate([
+            'experienced_verticals' => ['nullable', 'array'],
+            'experienced_verticals.*' => [Rule::in(array_keys(BdTaskController::VERTICALS))],
+        ]);
+
+        $request->user()->update([
+            'experienced_verticals' => $normalizer->normalizeVerticals($data['experienced_verticals'] ?? []),
+        ]);
+
+        return back()->with('success', 'Working verticals updated successfully.');
+    }
 }

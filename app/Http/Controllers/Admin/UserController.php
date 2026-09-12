@@ -6,6 +6,7 @@ use App\Http\Controllers\Bd\TaskController as BdTaskController;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\DesignerProfileService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -66,7 +67,7 @@ class UserController extends Controller
                 'password' => Hash::make($data['password']),
                 'is_active' => $request->boolean('is_active'),
             ], $this->designerProfileData($data)));
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) {
             return back()->withInput()->withErrors([
                 'username' => 'That username, email or employee code is already taken.',
             ]);
@@ -94,26 +95,42 @@ class UserController extends Controller
             'experienced_verticals.*' => [Rule::in(array_keys(BdTaskController::VERTICALS))],
             'skills' => ['nullable', 'array'],
             'skills.*' => ['string', 'max:100'],
+            // BD's "Working Verticals" checkbox block uses its own field name
+            // (rather than reusing experienced_verticals[]) so that switching
+            // the role dropdown between Designer/BD in the same form submit
+            // never lets one role's hidden, unchanged checkboxes leak into
+            // the other's stored value.
+            'bd_experienced_verticals' => ['nullable', 'array'],
+            'bd_experienced_verticals.*' => [Rule::in(array_keys(BdTaskController::VERTICALS))],
         ]);
     }
 
     /**
-     * Experienced Verticals / Skills are Designer-only profile data — stored
-     * only when role=designer so switching a user to another role clears any
-     * stale designer-profile values rather than leaving them orphaned.
+     * Experienced Verticals / Skills are Designer-only profile data; Working
+     * Verticals (same underlying column, no skills) are BD-only — both stored
+     * only for their matching role so switching a user's role clears any
+     * stale profile values rather than leaving them orphaned.
      */
     private function designerProfileData(array $data): array
     {
-        if (($data['role'] ?? null) !== 'designer') {
-            return ['experienced_verticals' => null, 'skills' => null];
+        $normalizer = app(DesignerProfileService::class);
+        $role = $data['role'] ?? null;
+
+        if ($role === 'designer') {
+            return [
+                'experienced_verticals' => $normalizer->normalizeVerticals($data['experienced_verticals'] ?? []),
+                'skills' => $normalizer->normalizeSkills($data['skills'] ?? []),
+            ];
         }
 
-        $normalizer = app(DesignerProfileService::class);
+        if ($role === 'bd') {
+            return [
+                'experienced_verticals' => $normalizer->normalizeVerticals($data['bd_experienced_verticals'] ?? []),
+                'skills' => null,
+            ];
+        }
 
-        return [
-            'experienced_verticals' => $normalizer->normalizeVerticals($data['experienced_verticals'] ?? []),
-            'skills' => $normalizer->normalizeSkills($data['skills'] ?? []),
-        ];
+        return ['experienced_verticals' => null, 'skills' => null];
     }
 
     private function duplicateMessages(): array
@@ -174,7 +191,7 @@ class UserController extends Controller
 
         try {
             $user->update($update);
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) {
             return back()->withInput()->withErrors([
                 'username' => 'That username, email or employee code is already taken.',
             ]);
