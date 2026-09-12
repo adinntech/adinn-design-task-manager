@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\DesignerHead;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\DesignTaskExportService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -27,6 +28,12 @@ class TaskExportController extends Controller
             'dateFrom' => (string) $request->query('date_from', ''),
             'dateTo' => (string) $request->query('date_to', ''),
             'overdue' => $isOverdue,
+            'headDesignerIds' => User::query()
+                ->where('role', 'designer')
+                ->where('designer_head_id', $request->user()->id)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all(),
         ];
 
         return $exportService->export($filters, 'designer-head-tasks');

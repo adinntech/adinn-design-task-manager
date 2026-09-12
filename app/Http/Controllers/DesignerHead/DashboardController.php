@@ -40,11 +40,23 @@ class DashboardController extends Controller
      * but rendered inside the AJAX-refreshed #dh-root zone (below Designer
      * Analytics), so both index() and fragment() need it.
      */
+    /** All designer ids (active or not) assigned to this Designer Head, for scoping historical data. */
+    private function teamDesignerIds(int $headId): array
+    {
+        return User::query()
+            ->where('role', 'designer')
+            ->where('designer_head_id', $headId)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
     private function teamDesignerLogins(): Collection
     {
         return User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
+            ->where('designer_head_id', auth()->id())
             ->orderByDesc('last_login_at')
             ->get(['id', 'name', 'username', 'last_login_at']);
     }
@@ -68,7 +80,7 @@ class DashboardController extends Controller
     {
         abort_unless($request->user()?->role === 'designer_head', 403);
 
-        $designers = User::query()->where('role', 'designer')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $designers = User::query()->where('role', 'designer')->where('is_active', true)->where('designer_head_id', $request->user()->id)->orderBy('name')->get(['id', 'name']);
         $activeIds = $designers->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $selectedDesigner = $request->query('designer', 'all');
@@ -85,7 +97,7 @@ class DashboardController extends Controller
         $month = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
         $monthEnd = $month->copy()->endOfMonth();
 
-        $data = $this->completedRatings($designerId, $page, 10, $month, $monthEnd);
+        $data = $this->completedRatings($designerId, $page, 10, $month, $monthEnd, $this->teamDesignerIds($request->user()->id));
         $data['designerName'] = $designerId ? $designers->firstWhere('id', $designerId)?->name : null;
         $data['monthLabel'] = $month->format('F Y');
 
@@ -95,11 +107,14 @@ class DashboardController extends Controller
     private function analytics(Request $request): array
     {
         $now = now();
+        $headId = (int) $request->user()->id;
+        $teamDesignerIds = $this->teamDesignerIds($headId);
 
-        $totalDesigners = (int) User::query()->where('role', 'designer')->count();
+        $totalDesigners = count($teamDesignerIds);
         $designers = User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
+            ->where('designer_head_id', $headId)
             ->orderBy('name')
             ->get(['id', 'name']);
         $activeIds = $designers->pluck('id')->map(fn ($id) => (int) $id)->all();
@@ -120,6 +135,7 @@ class DashboardController extends Controller
         /* ---- Tasks scoped to current assignee (split/swap shadow rows removed) ---- */
         $tasks = DesignTask::query()
             ->with(['designer:id,name', 'assigner:id,name,role'])
+            ->whereIn('designer_id', $teamDesignerIds)
             ->when($designerId, fn ($query) => $query->where('designer_id', $designerId))
             ->get()
             ->reject(fn (DesignTask $task) => (bool) data_get($task->requirements, '_swap_shadow', false))
@@ -229,8 +245,9 @@ class DashboardController extends Controller
                 ? $this->reporting->reviewCyclesFor($taskKeyById->get((int) $taskId), $historyRows, $reworkCyclesByTask, $reworkReviewCount, $reworkHistoryCount)
                 : []);
 
-        /* ---- All requests in one pass (approvals stay global, not filter-scoped) ---- */
+        /* ---- All requests raised by this Head's team designers ---- */
         $allRequests = DesignTaskRequest::query()
+            ->whereIn('requested_by', $teamDesignerIds)
             ->with([
                 'task:id,task_id,task_name,designer_id,status,priority,due_at,total_creatives',
                 'task.designer:id,name',
@@ -454,7 +471,7 @@ class DashboardController extends Controller
         /* ---- Completed Task Ratings section: own Designer filter/pagination on top of
          * the page-wide Designer + Month, so it starts in the same context as the rest
          * of the dashboard while still letting the user refine it independently. ---- */
-        $completedRatings = $this->completedRatings($designerId, 1, 10, $month, $monthEnd);
+        $completedRatings = $this->completedRatings($designerId, 1, 10, $month, $monthEnd, $teamDesignerIds);
         $completedRatings['designerName'] = $designerId ? $designers->firstWhere('id', $designerId)?->name : null;
         $completedRatings['monthLabel'] = $month->format('F Y');
 
@@ -542,11 +559,12 @@ class DashboardController extends Controller
      * shared by the initial dashboard render and the AJAX ratings endpoint so
      * both agree on data/ordering/exclusions.
      */
-    private function completedRatings(?int $designerId, int $page, int $perPage, ?Carbon $monthStart = null, ?Carbon $monthEnd = null): array
+    private function completedRatings(?int $designerId, int $page, int $perPage, ?Carbon $monthStart = null, ?Carbon $monthEnd = null, array $teamDesignerIds = []): array
     {
         $reviews = DesignTaskBdReview::query()
             ->with(['submitter:id,name', 'task:id,task_id,task_name,designer_id,status,requirements', 'task.designer:id,name'])
             ->where('action', 'completed')
+            ->whereHas('task', fn ($q) => $q->whereIn('designer_id', $teamDesignerIds))
             ->when($designerId, fn ($query) => $query->whereHas('task', fn ($q) => $q->where('designer_id', $designerId)))
             ->when($monthStart && $monthEnd, fn ($query) => $query->whereBetween('created_at', [$monthStart, $monthEnd]))
             ->orderByDesc('created_at')

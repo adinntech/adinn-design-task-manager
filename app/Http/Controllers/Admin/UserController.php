@@ -47,6 +47,8 @@ class UserController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $request->merge(['designer_head_id' => $request->input('designer_head_id') ?: null]);
+
         $data = $request->validate($this->designerProfileRules([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'unique:users,username'],
@@ -55,6 +57,11 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['admin', 'bd', 'designer', 'designer_head'])],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'is_active' => ['nullable', 'boolean'],
+            'designer_head_id' => [
+                'nullable',
+                'required_if:role,designer',
+                Rule::exists('users', 'id')->where(fn ($q) => $q->where('role', 'designer_head')),
+            ],
         ]), $this->duplicateMessages());
 
         try {
@@ -120,6 +127,7 @@ class UserController extends Controller
             return [
                 'experienced_verticals' => $normalizer->normalizeVerticals($data['experienced_verticals'] ?? []),
                 'skills' => $normalizer->normalizeSkills($data['skills'] ?? []),
+                'designer_head_id' => $data['designer_head_id'] ?? null,
             ];
         }
 
@@ -127,10 +135,11 @@ class UserController extends Controller
             return [
                 'experienced_verticals' => $normalizer->normalizeVerticals($data['bd_experienced_verticals'] ?? []),
                 'skills' => null,
+                'designer_head_id' => null,
             ];
         }
 
-        return ['experienced_verticals' => null, 'skills' => null];
+        return ['experienced_verticals' => null, 'skills' => null, 'designer_head_id' => null];
     }
 
     private function duplicateMessages(): array
@@ -149,6 +158,8 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        $request->merge(['designer_head_id' => $request->input('designer_head_id') ?: null]);
+
         $data = $request->validate($this->designerProfileRules([
             'name' => ['required', 'string', 'max:255'],
             'username' => [
@@ -168,6 +179,10 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['admin', 'bd', 'designer', 'designer_head'])],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active' => ['nullable', 'boolean'],
+            'designer_head_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where(fn ($q) => $q->where('role', 'designer_head')),
+            ],
         ]), $this->duplicateMessages());
 
         if ($user->is(auth()->user()) && ! $request->boolean('is_active')) {
@@ -253,6 +268,7 @@ class UserController extends Controller
             ['design_task_requests', 'approved_designer_id'],
             ['design_task_eod_records', 'designer_id'],
             ['design_task_edit_histories', 'edited_by'],
+            ['users', 'designer_head_id'],
         ];
 
         foreach ($references as [$table, $column]) {

@@ -28,11 +28,24 @@ use Illuminate\View\View;
 
 class TaskController extends Controller
 {
+    /**
+     * Backend enforcement of team scope — a Designer Head must never reach a
+     * task belonging to another Head's team, even via a direct/guessed URL.
+     */
+    private function authorizeTeamTask(DesignTask $task, User $head): void
+    {
+        $designerHeadId = $task->designer?->designer_head_id
+            ?? User::query()->whereKey($task->designer_id)->value('designer_head_id');
+
+        abort_unless((int) $designerHeadId === (int) $head->id, 403);
+    }
+
     public function show(Request $request, DesignTask $task): View
     {
         abort_unless($request->user()?->role === 'designer_head', 403);
 
-        $task->load(['designer:id,name,email,role,experienced_verticals,skills', 'assigner:id,name,email,role']);
+        $task->load(['designer:id,name,email,role,experienced_verticals,skills,designer_head_id', 'assigner:id,name,email,role']);
+        $this->authorizeTeamTask($task, $request->user());
 
         $readState = app(CommentReadStateService::class);
         $commentUnreadCount = $readState->unreadCountFor($request->user(), $task);
@@ -92,6 +105,7 @@ class TaskController extends Controller
         $designers = User::query()
             ->where('role', 'designer')
             ->where('is_active', true)
+            ->where('designer_head_id', $request->user()->id)
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -169,6 +183,7 @@ class TaskController extends Controller
     public function addComment(Request $request, DesignTask $task): RedirectResponse
     {
         abort_unless($request->user()?->role === 'designer_head', 403);
+        $this->authorizeTeamTask($task, $request->user());
 
         $data = $request->validate([
             'comment' => ['required', 'string', 'max:10000'],

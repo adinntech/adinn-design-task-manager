@@ -1,4 +1,5 @@
 @if($errors->any())<div class="flash flash-error">{{ $errors->first() }}</div>@endif
+@php($designerHeads = \App\Models\User::query()->where('role','designer_head')->where('is_active', true)->orderBy('name')->get(['id','name']))
 <div x-data="{ role: '{{ old('role',$user?->role ?? 'designer') }}' }">
 <div class="form-grid">
 <div><label class="label">Full Name</label><input class="premium-input" name="name" value="{{ old('name',$user?->name) }}" required></div>
@@ -25,6 +26,15 @@
 
 <div x-show="role === 'designer'" x-cloak style="margin-top:18px;padding-top:18px;border-top:1px solid var(--line, #e4e7ec)">
     <div class="form-grid">
+        <div>
+            <label class="label">Designer Head</label>
+            <select class="premium-select" name="designer_head_id" :required="role === 'designer' && {{ $user ? 'false' : 'true' }}">
+                <option value="">— Select Designer Head —</option>
+                @foreach($designerHeads as $head)
+                    <option value="{{ $head->id }}" @selected((string) old('designer_head_id', $user?->designer_head_id) === (string) $head->id)>{{ $head->name }}</option>
+                @endforeach
+            </select>
+        </div>
         <div>
             <label class="label">Experienced Verticals</label>
             <div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px 12px;border:1px solid #e4e7ec;border-radius:10px">

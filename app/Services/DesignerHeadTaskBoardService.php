@@ -283,7 +283,11 @@ class DesignerHeadTaskBoardService
             ->when($filters['priority'] !== '', fn ($query) => $query->where('priority', $filters['priority']))
             ->when($filters['designerId'] !== '', fn ($query) => $query->where('designer_id', $filters['designerId']))
             ->when($filters['bdId'] !== '', fn ($query) => $query->where('assigned_by', $filters['bdId']))
-            ->when(($filters['projectNumber'] ?? '') !== '', fn ($query) => $query->where('zoho_project_number', 'like', '%'.trim($filters['projectNumber']).'%'));
+            ->when(($filters['projectNumber'] ?? '') !== '', fn ($query) => $query->where('zoho_project_number', 'like', '%'.trim($filters['projectNumber']).'%'))
+            // Designer Head team scope — only set by the Designer Head board/export
+            // (their team's designer ids); absent/null for Designer's own board and
+            // BD's board, which stay unaffected.
+            ->when(($filters['headDesignerIds'] ?? null) !== null, fn ($query) => $query->whereIn('designer_id', $filters['headDesignerIds']));
     }
 
     /**

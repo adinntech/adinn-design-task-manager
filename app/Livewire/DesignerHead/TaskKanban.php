@@ -71,7 +71,19 @@ class TaskKanban extends Component
             'dateFrom' => $this->dateFrom,
             'dateTo' => $this->dateTo,
             'overdue' => $isOverdue,
+            'headDesignerIds' => $this->teamDesignerIds(),
         ];
+    }
+
+    /** Ids of designers assigned to this Designer Head's team. */
+    private function teamDesignerIds(): array
+    {
+        return User::query()
+            ->where('role', 'designer')
+            ->where('designer_head_id', Auth::id())
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     public function clearFilters(): void
@@ -126,6 +138,7 @@ class TaskKanban extends Component
         return DesignTaskRequest::query()
             ->pending()
             ->whereIn('request_type', ['decline', 'split', 'swap', 'status_change'])
+            ->whereIn('requested_by', $this->teamDesignerIds())
             ->with([
                 'task:id,task_id,task_name,status,priority,due_at,designer_id,party_name,vertical',
                 'task.designer:id,name',
@@ -251,7 +264,7 @@ class TaskKanban extends Component
             ? $periodStart->format('d M Y').' – '.$periodEnd->format('d M Y')
             : $periodStart->format('M Y');
 
-        $designers = User::query()->where('role', 'designer')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $designers = User::query()->where('role', 'designer')->where('is_active', true)->where('designer_head_id', Auth::id())->orderBy('name')->get(['id', 'name']);
         $bds = User::query()->where('role', 'bd')->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
         $pendingRequests = $this->pendingRequests;

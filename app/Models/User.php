@@ -10,7 +10,7 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'username', 'employee_code', 'email', 'password', 'role', 'is_active', 'last_login_at', 'experienced_verticals', 'skills'];
+    protected $fillable = ['name', 'username', 'employee_code', 'email', 'password', 'role', 'is_active', 'last_login_at', 'experienced_verticals', 'skills', 'designer_head_id'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -34,5 +34,15 @@ class User extends Authenticatable
     public function createdTasks()
     {
         return $this->hasMany(DesignTask::class, 'assigned_by');
+    }
+
+    public function designerHead()
+    {
+        return $this->belongsTo(User::class, 'designer_head_id');
+    }
+
+    public function managedDesigners()
+    {
+        return $this->hasMany(User::class, 'designer_head_id');
     }
 }

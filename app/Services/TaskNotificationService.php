@@ -166,6 +166,12 @@ class TaskNotificationService
         }
     }
 
+    /**
+     * Routed to the requester's assigned Designer Head only (not every Head)
+     * — falls back to every active Head only when the requester has no Head
+     * assigned yet (legacy/unassigned Designer), so a request never goes
+     * unnoticed. Admin recipients (split/swap) are unchanged.
+     */
     public function requestSubmitted(DesignTaskRequest $taskRequest): void
     {
         $task = $taskRequest->task ?? DesignTask::find($taskRequest->design_task_id);
@@ -175,11 +181,17 @@ class TaskNotificationService
         }
 
         $requester = $taskRequest->requester;
-        $approverRoles = in_array($taskRequest->request_type, ['decline', 'status_change'], true)
-            ? ['designer_head']
-            : ['designer_head', 'admin'];
+        $headOnly = in_array($taskRequest->request_type, ['decline', 'status_change'], true);
 
-        $approvers = User::query()->whereIn('role', $approverRoles)->where('is_active', true)->get();
+        $heads = User::query()
+            ->where('role', 'designer_head')
+            ->where('is_active', true)
+            ->when($requester?->designer_head_id, fn ($query) => $query->whereKey($requester->designer_head_id))
+            ->get();
+
+        $approvers = $headOnly
+            ? $heads
+            : $heads->concat(User::query()->where('role', 'admin')->where('is_active', true)->get());
 
         foreach ($approvers as $approver) {
             $this->send($approver, new TaskRequestNotification($task, $taskRequest->request_type, 'submitted', $requester));

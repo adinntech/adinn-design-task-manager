@@ -111,7 +111,7 @@ class DesignTaskRequestService
 
     public function approve(DesignTaskRequest $request, User $approver, ?int $approvedDesignerId = null, ?int $approvedSplitCount = null, ?string $decisionComment = null): DesignTaskRequest
     {
-        $this->guardApprover($approver, $request->request_type);
+        $this->guardApprover($approver, $request);
 
         return DB::transaction(function () use ($request, $approver, $approvedDesignerId, $approvedSplitCount, $decisionComment) {
             $lockedRequest = DesignTaskRequest::query()->lockForUpdate()->findOrFail($request->id);
@@ -177,7 +177,7 @@ class DesignTaskRequestService
 
     public function reject(DesignTaskRequest $request, User $approver, string $reason): DesignTaskRequest
     {
-        $this->guardApprover($approver, $request->request_type);
+        $this->guardApprover($approver, $request);
         $reason = trim($reason);
 
         if ($reason === '') {
@@ -221,7 +221,6 @@ class DesignTaskRequestService
             return $lockedRequest->fresh();
         });
     }
-
 
     /**
      * Automatically close pending requests that are no longer valid after
@@ -358,17 +357,28 @@ class DesignTaskRequestService
         }
     }
 
-    private function guardApprover(User $approver, string $requestType): void
+    private function guardApprover(User $approver, DesignTaskRequest $request): void
     {
+        $requestType = $request->request_type;
+
         if (in_array($requestType, ['decline', 'status_change'], true)) {
             if ($approver->role !== 'designer_head') {
                 throw new AuthorizationException('Only Designer Head can decide '.($requestType === 'status_change' ? 'backward status' : 'Decline').' requests.');
             }
-            return;
+        } elseif (! in_array($approver->role, ['admin', 'designer_head'], true)) {
+            throw new AuthorizationException('Only Admin or Designer Head can decide Designer requests.');
         }
 
-        if (! in_array($approver->role, ['admin', 'designer_head'], true)) {
-            throw new AuthorizationException('Only Admin or Designer Head can decide Designer requests.');
+        // Team scope: a Designer Head may only decide requests raised by a
+        // Designer assigned to them — even if the request/task id is guessed
+        // directly in the URL. Admin approvals stay unrestricted (unchanged).
+        if ($approver->role === 'designer_head') {
+            $requesterHeadId = $request->requester?->designer_head_id
+                ?? User::query()->whereKey($request->requested_by)->value('designer_head_id');
+
+            if ((int) $requesterHeadId !== (int) $approver->id) {
+                throw new AuthorizationException('You can only decide requests raised by your own team.');
+            }
         }
     }
 
@@ -389,6 +399,7 @@ class DesignTaskRequestService
                 'designer_head_status' => 'not_required',
             ];
         }
+
         return [
             'designer_head_status' => $decision,
             'designer_head_action_by' => $approver->id,
@@ -409,6 +420,7 @@ class DesignTaskRequestService
         if ((int) $designer->id === (int) $task->designer_id) {
             throw ValidationException::withMessages(['approved_designer_id' => 'Please select a different Designer from the current assignee.']);
         }
+
         return $designer;
     }
 
