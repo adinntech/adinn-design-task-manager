@@ -611,7 +611,7 @@
                                             wire:loading.class="is-loading"
                                         >
                                             <span wire:loading.remove wire:target="addClarification,clarificationAttachments">Send Clarification</span>
-                                            <span wire:loading wire:target="addClarification,clarificationAttachments"><span class="btn-spinner"></span>Sending...</span>
+                                            <span wire:loading wire:target="addClarification,clarificationAttachments">Sending...</span>
                                         </button>
                                     </div>
                                 </div>
@@ -738,7 +738,7 @@
                             wire:loading.class="is-loading"
                         >
                             <span wire:loading.remove wire:target="addComment,attachments">Add Comment</span>
-                            <span wire:loading wire:target="addComment,attachments"><span class="btn-spinner"></span>Posting...</span>
+                            <span wire:loading wire:target="addComment,attachments">Posting...</span>
                         </button>
                     </div>
                 </div>
@@ -960,7 +960,7 @@
                                     @disabled(! $reworkUploadId)
                                 >
                                     <span wire:loading.remove wire:target="submitReworkUpdate">Submit Rework Progress</span>
-                                    <span wire:loading wire:target="submitReworkUpdate"><span class="btn-spinner"></span>Submitting...</span>
+                                    <span wire:loading wire:target="submitReworkUpdate">Submitting...</span>
                                 </button>
 
                                 <script>
@@ -1049,7 +1049,7 @@
                                 @disabled(! $taskUpdateUploadId)
                             >
                                 <span wire:loading.remove wire:target="submitEod">Submit Progress Update</span>
-                                <span wire:loading wire:target="submitEod"><span class="btn-spinner"></span>Submitting...</span>
+                                <span wire:loading wire:target="submitEod">Submitting...</span>
                             </button>
 
                             <script>
