@@ -1028,8 +1028,8 @@
                                             <div class="large-upload-percent" id="eodUploadPercent"></div>
                                         </div>
                                         <div class="large-upload-info">
-                                            <input type="file" id="eodUploadInput" accept=".zip,application/zip">
-                                            <div class="muted" style="margin-top:5px">ZIP only · Maximum 6 GB</div>
+                                            <input type="file" id="eodUploadInput">
+                                            <div class="muted" style="margin-top:5px">Below 350 MB: supported file types · 350 MB+: ZIP only · Maximum 6 GB</div>
                                             <div class="muted" id="eodUploadDetail" style="margin-top:2px"></div>
                                             <div class="muted" id="eodUploadEta" style="margin-top:2px"></div>
                                             <div id="eodUploadStatus"></div>

@@ -26,6 +26,9 @@ class CloudMultipartUploadService
 
     public const MAX_SIZE_BYTES = 6 * 1024 * 1024 * 1024; // 6 GB — matches the app-wide cap
 
+    /** Progress Update only: below this, existing supported file types are allowed; at/above, ZIP only. */
+    public const PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES = 350 * 1024 * 1024; // 350 MB
+
     public const PART_SIZE_BYTES = 64 * 1024 * 1024; // 64 MB (S3 minimum is 5 MB)
 
     private const DISK = 'spaces';
@@ -42,8 +45,14 @@ class CloudMultipartUploadService
             throw ValidationException::withMessages(['file' => 'Maximum file size is 6 GB.']);
         }
 
-        if (strtolower((string) pathinfo($filename, PATHINFO_EXTENSION)) !== 'zip') {
-            throw ValidationException::withMessages(['file' => 'Only ZIP files are accepted.']);
+        $extension = strtolower((string) pathinfo($filename, PATHINFO_EXTENSION));
+
+        if ($purpose === 'rework') {
+            if ($extension !== 'zip') {
+                throw ValidationException::withMessages(['file' => 'Only ZIP files are accepted.']);
+            }
+        } elseif ($sizeBytes >= self::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES && $extension !== 'zip') {
+            throw ValidationException::withMessages(['file' => 'Files below 350 MB can use the supported file types. Files 350 MB or larger must be ZIP format.']);
         }
 
         $existing = FileUpload::query()
@@ -159,7 +168,12 @@ class CloudMultipartUploadService
             ],
         ]);
 
-        if (! $this->looksLikeZip($upload)) {
+        $extension = strtolower((string) pathinfo($upload->original_filename, PATHINFO_EXTENSION));
+        $mustBeZip = $upload->purpose === 'rework'
+            || $extension === 'zip'
+            || (int) $upload->size_bytes >= self::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES;
+
+        if ($mustBeZip && ! $this->looksLikeZip($upload)) {
             $this->deleteObject($upload->cloud_key);
             $upload->update(['status' => 'failed']);
 

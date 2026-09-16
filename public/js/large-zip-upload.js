@@ -135,7 +135,18 @@
             return;
         }
 
-        if (!/\.zip$/i.test(file.name)) {
+        var isZip = /\.zip$/i.test(file.name);
+        var PROGRESS_ZIP_THRESHOLD = 350 * 1024 * 1024;
+
+        if (this.purpose === 'progress_update') {
+            if (!isZip && file.size >= PROGRESS_ZIP_THRESHOLD) {
+                this.setWireProp('');
+                this.setSubmitEnabled(false);
+                this.showError('Files below 350 MB can use the supported file types. Files 350 MB or larger must be ZIP format.');
+                this.input.value = '';
+                return;
+            }
+        } else if (!isZip) {
             this.setWireProp('');
             this.setSubmitEnabled(false);
             this.showError('Only ZIP files are allowed.');

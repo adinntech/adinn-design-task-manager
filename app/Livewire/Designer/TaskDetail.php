@@ -442,7 +442,8 @@ class TaskDetail extends Component
             $remainingAfter = max(0, (int) $task->total_creatives - $cumulativeCompleted);
             $root = trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/');
             $directory = implode('/', [$root, now()->format('Y'), $task->vertical, $task->task_id.'_'.Str::slug($task->task_name), Str::slug($task->task_nature), 'task-updation']);
-            $fileName = $task->task_id.'__task-updation__'.now()->format('Ymd-His-v').'.zip';
+            $extension = strtolower(pathinfo($fileUpload->original_filename, PATHINFO_EXTENSION)) ?: 'zip';
+            $fileName = $task->task_id.'__task-updation__'.now()->format('Ymd-His-v').'.'.$extension;
             $path = $directory.'/'.$fileName;
             app(CloudMultipartUploadService::class)->promoteToFinalPath($fileUpload, $path);
 
