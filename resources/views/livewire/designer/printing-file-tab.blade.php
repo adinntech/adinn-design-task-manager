@@ -10,8 +10,7 @@
         .pf-panel{background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:16px}
         .pf-panel + .pf-panel{margin-top:16px}
         .pf-section-title{font-size:11px;font-weight:800;color:#344054;letter-spacing:.02em;text-transform:uppercase;margin-bottom:8px}
-        .pf-dropzone{border:1.5px dashed #cbd5e1;border-radius:8px;padding:16px;text-align:center;cursor:pointer;font-size:10px;color:#667085;transition:border-color .15s ease}
-        .pf-dropzone.is-dragover{border-color:#2970ff;color:#2970ff}
+        .pf-file-input{font-size:10px;color:#344054}
         .pf-helper{font-size:9px;color:#667085;margin-top:6px}
         .pf-attachment-row{border:1px solid #e4e7ec;border-radius:8px;padding:8px 10px;margin-top:8px}
         .pf-attachment-row-top{display:flex;justify-content:space-between;gap:8px;font-size:10px;font-weight:700;color:#344054}
@@ -71,10 +70,7 @@
             <div class="pf-panel">
                 <div class="pf-section-title">Mail Attachments</div>
                 <div wire:ignore>
-                    <div class="pf-dropzone" id="pfDropzone">
-                        Drag &amp; drop files here, or click to browse
-                        <input type="file" id="pfFileInput" multiple style="display:none">
-                    </div>
+                    <input type="file" id="pfFileInput" class="pf-file-input" multiple>
                     <div class="pf-helper">Files smaller than 1 GB can be uploaded in any supported format. Files that are 1 GB or larger must be in ZIP format.</div>
 
                     <div id="pfAttachmentRows"></div>
@@ -163,10 +159,21 @@
                             <span>{{ $attachment['name'] }} <span style="color:#667085">({{ number_format($attachment['size_bytes'] / 1048576, 1) }} MB)</span></span>
                             <span style="display:flex;gap:8px;align-items:center">
                                 @if(($pfComposeIsImage || $pfComposeIsPdf) && ! empty($attachment['url']))
-                                    <button type="button" class="pf-chip" @click="previewSrc = @js($attachment['url']); previewName = @js($attachment['name']); previewType = @js($pfComposeIsPdf ? 'pdf' : 'image')">View</button>
+                                    @php
+                                        // Resend-prefilled attachment: url is already the promoted,
+                                        // correctly-named permanent path — resend flow untouched.
+                                        $pfComposePreviewUrl = ! empty($attachment['reused'])
+                                            ? $attachment['url']
+                                            : route('designer.uploads.preview', $attachment['id']);
+                                    @endphp
+                                    <button type="button" class="pf-chip" @click="previewSrc = @js($pfComposePreviewUrl); previewName = @js($attachment['name']); previewType = @js($pfComposeIsPdf ? 'pdf' : 'image')">View</button>
                                 @endif
-                                @if(! empty($attachment['url']))
+                                @if(! empty($attachment['reused']) && ! empty($attachment['url']))
+                                    {{-- Resend-prefilled attachment: url is already the promoted,
+                                         correctly-named permanent path — resend flow untouched. --}}
                                     <a class="pf-chip" href="{{ $attachment['url'] }}" download="{{ $attachment['name'] }}" target="_blank" rel="noopener">Download</a>
+                                @elseif(! empty($attachment['id']))
+                                    <a class="pf-chip" href="{{ route('designer.uploads.download', $attachment['id']) }}" download="{{ $attachment['name'] }}" target="_blank" rel="noopener">Download</a>
                                 @endif
                                 <button type="button" class="pf-chip" style="background:none;color:#b4232f" wire:click="removeAttachment({{ $attachment['id'] }})">Remove</button>
                             </span>
@@ -312,13 +319,12 @@
     <script>
     (function () {
         if (typeof AdinnMailAttachmentUpload === 'undefined') return;
-        var dropzone = document.getElementById('pfDropzone');
-        if (!dropzone || dropzone.dataset.pfBound) return;
-        dropzone.dataset.pfBound = '1';
+        var input = document.getElementById('pfFileInput');
+        if (!input || input.dataset.pfBound) return;
+        input.dataset.pfBound = '1';
 
         AdinnMailAttachmentUpload.init({
-            dropzone: dropzone,
-            input: document.getElementById('pfFileInput'),
+            input: input,
             rowsContainer: document.getElementById('pfAttachmentRows'),
             rowTemplate: document.getElementById('pfAttachmentRowTemplate'),
             taskId: {{ (int) $task->id }},
@@ -328,6 +334,8 @@
                 partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
                 parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
                 complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
+                download: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/download'; },
+                preview: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/preview'; },
             },
             onCountChange: function (count) {
                 window.dispatchEvent(new CustomEvent('mail-attachment-pending', { detail: { count: count } }));

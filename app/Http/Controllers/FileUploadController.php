@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\Mime\MimeTypes;
 
 /**
  * Orchestrates direct browser-to-Spaces multipart uploads for the Progress
@@ -102,6 +103,57 @@ class FileUploadController extends Controller
         $this->uploads->abort($upload);
 
         return response()->json(['status' => 'abandoned']);
+    }
+
+    /**
+     * Printing File mail attachments only: downloads the staging object
+     * (still under its {uuid}.zip storage key) with the real original
+     * filename/extension, since the staging key's own URL can't be used
+     * for a same-origin `download` filename.
+     */
+    public function download(FileUpload $upload)
+    {
+        $upload = $this->authorizedMailAttachment($upload);
+
+        return Storage::disk($upload->cloud_disk)->download(
+            $upload->cloud_key,
+            $upload->original_filename,
+            ['Content-Type' => $this->guessContentType($upload)]
+        );
+    }
+
+    /**
+     * Printing File mail attachments only: same staging object as
+     * download(), served inline (no `attachment` disposition) with the
+     * real content-type, so an image/PDF View opens/renders instead of
+     * being offered as a download of the {uuid}.zip staging key (whose
+     * object has no content-type set on it).
+     */
+    public function preview(FileUpload $upload)
+    {
+        $upload = $this->authorizedMailAttachment($upload);
+
+        return Storage::disk($upload->cloud_disk)->response(
+            $upload->cloud_key,
+            $upload->original_filename,
+            ['Content-Type' => $this->guessContentType($upload)]
+        );
+    }
+
+    private function authorizedMailAttachment(FileUpload $upload): FileUpload
+    {
+        $this->authorizedUpload($upload);
+
+        abort_unless($upload->purpose === 'mail_attachment' && $upload->status === 'completed', 404);
+
+        return $upload;
+    }
+
+    private function guessContentType(FileUpload $upload): string
+    {
+        $extension = strtolower((string) pathinfo($upload->original_filename, PATHINFO_EXTENSION));
+
+        return MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? 'application/octet-stream';
     }
 
     private function authorizedTask(int $taskId): DesignTask

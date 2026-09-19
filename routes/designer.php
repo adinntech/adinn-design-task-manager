@@ -38,4 +38,6 @@ Route::middleware(['auth', 'role:designer'])
         Route::get('/uploads/{upload}/parts', [FileUploadController::class, 'parts'])->name('uploads.parts');
         Route::post('/uploads/{upload}/complete', [FileUploadController::class, 'complete'])->name('uploads.complete');
         Route::post('/uploads/{upload}/abort', [FileUploadController::class, 'abort'])->name('uploads.abort');
+        Route::get('/uploads/{upload}/download', [FileUploadController::class, 'download'])->name('uploads.download');
+        Route::get('/uploads/{upload}/preview', [FileUploadController::class, 'preview'])->name('uploads.preview');
     });
