@@ -15,7 +15,7 @@
     .bd-eod-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}.bd-eod-card{padding:13px;border-radius:12px;background:#fff;border:1px solid #e7e9ef}.bd-eod-card span{display:block;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.05em;color:#7c8492}.bd-eod-card strong{display:block;font-size:18px;margin-top:5px;color:#111827}.bd-eod-card:nth-child(1){background:#f8fafc;border-color:#e2e8f0}.bd-eod-card:nth-child(2){background:#ecfdf3;border-color:#bbf7d0}.bd-eod-card:nth-child(3){background:#fff7ed;border-color:#fed7aa}.bd-eod-card.rework-stat{background:#fff9eb;border-color:#f5d16a}.bd-eod-card.rework-stat span{color:#9a6700}.bd-eod-card.rework-stat strong{color:#7a5200}.bd-eod-overall{margin-bottom:16px;padding:14px;border:1px solid #e7e9ef;border-radius:12px;background:#f9fafb}.bd-eod-overall-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px;font-weight:850;color:#344054}.bd-eod-overall-head strong{font-size:15px;color:#111827}.bd-eod-row{border:1px solid #e7e9ef;border-radius:12px;padding:13px 14px;background:#fff;margin-bottom:10px;font-size:10px}.bd-eod-row.is-rework{border-color:#f2ce68;background:linear-gradient(180deg,#fffdf7,#fff9e8);box-shadow:inset 4px 0 0 #f5b301}.bd-eod-row.is-progress{border-left:4px solid #d9dee7}.bd-eod-row-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid #f2f4f7}.bd-eod-row-meta strong{display:block;font-size:11px;color:#111827;margin-top:2px}.bd-eod-row-meta span{display:block;margin-top:3px;font-size:9px;color:#7c8492}.bd-eod-grid{display:grid;grid-template-columns:repeat(4,minmax(90px,1fr));gap:10px}.bd-eod-grid div span{display:block;font-size:8px;text-transform:uppercase;color:#98a2b3;font-weight:800;letter-spacing:.04em}.bd-eod-grid div strong{display:block;margin-top:3px;font-size:11px;color:#344054}.bd-eod-type-badge{display:inline-flex;align-items:center;min-height:21px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:900;margin-bottom:5px}.bd-eod-type-badge.rework{background:#fff0c2;color:#7a5200;border:1px solid #f2cf68}.bd-eod-type-badge.progress{background:#f2f4f7;color:#475467;border:1px solid #e4e7ec}@media(max-width:900px){.bd-eod-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.bd-eod-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.bd-eod-summary{grid-template-columns:1fr}}
     .bd-attachment-group{border:1px solid #e8eaef;border-radius:11px;padding:11px;margin-bottom:9px}.bd-attachment-title{font-size:10px;font-weight:850;margin-bottom:8px}.bd-file{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:8px 9px;background:#f8f9fb;border-radius:8px;margin-top:6px}.bd-file-name{font-size:9px;font-weight:750;overflow-wrap:anywhere}.bd-comment{border:1px solid #e8eaef;border-left:4px solid #98a2b3;border-radius:11px;padding:11px 12px;margin-bottom:9px}.bd-comment.role-bd{border-left-color:#e30613}.bd-comment.role-designer{border-left-color:#2563eb}.bd-comment-head{display:flex;justify-content:space-between;gap:10px;font-size:9px;color:#667085}.bd-comment-head strong{font-size:10px;color:#344054}.bd-comment-message{margin-top:8px;font-size:11px;line-height:1.55;font-weight:450;white-space:pre-wrap;color:#111827}
     .bd-review-box{margin-top:16px;border:1px solid #e4e7ec;border-radius:13px;background:#fcfcfd;padding:14px}.bd-review-box h3{margin:0 0 4px;font-size:11px;font-weight:900;color:#101828}.bd-review-box p{margin:0 0 12px;font-size:9px;color:#667085}.bd-review-grid{display:grid;grid-template-columns:180px minmax(0,1fr);gap:10px}.bd-review-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.bd-danger-btn{background:#dc2626!important;color:#fff!important;border-color:#dc2626!important}.bd-complete-btn{background:#16a34a!important;color:#fff!important;border-color:#16a34a!important}.bd-rating-panel{margin-top:12px;border-top:1px solid #eaecf0;padding-top:14px}.rating-row{display:grid;grid-template-columns:180px minmax(220px,1fr) 52px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid #f2f4f7}.rating-label{font-size:9px;font-weight:850;color:#344054}.star-picker{display:flex;gap:4px;align-items:center}.star-unit{position:relative;width:25px;height:25px;font-size:24px;line-height:25px;color:#d0d5dd;display:inline-block;user-select:none}.star-unit .star-empty{position:absolute;inset:0}.star-unit .star-fill{position:absolute;inset:0;color:#f59e0b;overflow:hidden;white-space:nowrap;pointer-events:none}.star-half-hit{position:absolute;top:0;bottom:0;width:50%;border:0;background:transparent;cursor:pointer;padding:0;z-index:2}.star-half-hit.left{left:0}.star-half-hit.right{right:0}.star-unit::after{content:'';position:absolute;top:22%;bottom:22%;left:50%;width:1px;background:rgba(15,23,42,.25);pointer-events:none;z-index:3}.rating-value{font-size:9px;font-weight:900;color:#344054}.overall-rating-card{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:11px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e4e7ec}.overall-rating-card span{font-size:9px;font-weight:850;color:#475467}.overall-rating-card strong{font-size:18px;color:#101828}.rating-static-star{--star-fill:0%;display:inline-block;width:17px;height:17px;flex:0 0 17px;font-size:17px;line-height:17px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-    .completion-type-section{margin-top:16px;padding-top:14px;border-top:1px solid #eaecf0}.completion-option-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:10px}.completion-option{display:flex;align-items:flex-start;gap:9px;padding:12px 13px;border:1.5px solid #e4e7ec;border-radius:11px;background:#fff;cursor:pointer;transition:.15s}.completion-option:hover{border-color:#cbd5e1}.completion-option input[type=radio]{margin-top:2px;flex:0 0 auto}.completion-option strong{display:block;font-size:11px;font-weight:900;color:#101828}.completion-option span{display:block;margin-top:4px;font-size:9px;color:#667085;line-height:1.5}.completion-option.is-selected{border-color:#16a34a;background:#f0fdf4;box-shadow:0 0 0 1px #16a34a inset}
+    .bdc-card{border:1px solid #e4e7ec;border-radius:14px;background:#fff;overflow:hidden}.bdc-header{display:flex;align-items:flex-start;gap:11px;padding:15px 16px 13px;border-bottom:1px solid #eef0f3}.bdc-header-icon{width:34px;height:34px;border-radius:10px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 34px}.bdc-title{font-size:12px;font-weight:900;color:#101828}.bdc-subtitle{font-size:10px;color:#667085;margin-top:2px}.bdc-close{margin-left:auto;border:0;background:transparent;color:#98a2b3;font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}.bdc-close:hover{color:#667085}.bdc-body{padding:14px 16px 16px}.bdc-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #eef0f3;border-radius:11px;background:#fff;margin-bottom:8px;flex-wrap:wrap}.bdc-row-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex:0 0 32px}.bdc-row-text{flex:1 1 140px;min-width:0}.bdc-row-label{font-size:10px;font-weight:850;color:#101828}.bdc-row-sub{font-size:8px;color:#8a95a6;margin-top:2px}.bdc-row-stars{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto}.bdc-row-value{font-size:10px;font-weight:850;color:#344054;min-width:38px;text-align:right}.bdc-row-overall{background:#f8fafc}.bdc-section{margin-top:14px}.bdc-section-label{font-size:10px;font-weight:900;color:#101828;display:flex;align-items:center;gap:6px}.bdc-section-label .bdc-optional{font-weight:650;color:#98a2b3}.bdc-char-count{text-align:right;font-size:8px;color:#98a2b3;margin-top:4px}.bdc-option{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border:1.5px solid #e4e7ec;border-radius:11px;background:#fff;cursor:pointer;margin-top:8px}.bdc-option:hover{border-color:#cbd5e1}.bdc-option input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}.bdc-option-radio{width:17px;height:17px;border-radius:999px;border:2px solid #cbd5e1;flex:0 0 17px;margin-top:1px;display:flex;align-items:center;justify-content:center}.bdc-option.is-selected{border-color:#16a34a;background:#f0fdf4}.bdc-option.is-selected .bdc-option-radio{border-color:#16a34a}.bdc-option.is-selected .bdc-option-radio::after{content:'';width:9px;height:9px;border-radius:999px;background:#16a34a}.bdc-option strong{display:block;font-size:10px;font-weight:900;color:#101828}.bdc-option span{display:block;margin-top:3px;font-size:9px;color:#667085;line-height:1.5}.bdc-actions{display:flex;gap:9px;align-items:center;margin-top:16px}.bdc-btn-cancel{padding:9px 16px;border-radius:9px;border:1px solid #e4e7ec;background:#fff;color:#344054;font-size:10px;font-weight:850;cursor:pointer}.bdc-btn-confirm{padding:9px 18px;border-radius:9px;border:0;background:#16a34a;color:#fff;font-size:10px;font-weight:850;cursor:pointer;display:inline-flex;align-items:center;gap:6px}.bdc-btn-confirm:disabled,.bdc-btn-cancel:disabled{opacity:.6;cursor:not-allowed}@media(max-width:560px){.bdc-row-stars{width:100%;margin-left:0;justify-content:space-between}}
     .ratings-card{border:1px solid #eef0f3;border-radius:14px;background:#fff;overflow:hidden}
     .ratings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
     .ratings-grid-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border-bottom:1px solid #eef0f3}
@@ -704,83 +704,111 @@
                             </div>
                         </form>
 
-                        <div class="bd-rating-panel" style="margin-top:12px" x-show="panel === 'rating'" x-cloak>
+                        <div class="bdc-card" style="margin-top:12px" x-show="panel === 'rating'" x-cloak x-data="{ ratingComment: @js(old('rating_comment', '')) }">
+                            <div class="bdc-header">
+                                <div class="bdc-header-icon">📋</div>
+                                <div>
+                                    <div class="bdc-title">BD Confirmation</div>
+                                    <div class="bdc-subtitle">Please rate the designer and choose how you want to proceed.</div>
+                                </div>
+                                <button type="button" class="bdc-close" @click="panel = null" :disabled="submitting" aria-label="Close">×</button>
+                            </div>
+
                             <form method="POST" action="{{ route('bd.tasks.complete-with-rating', $task) }}" @submit="onCompleteSubmit($event)">
                                 @csrf
+                                <div class="bdc-body">
 
                                 @php
                                     $ratingFields = [
-                                        ['key' => 'designer_attitude', 'label' => 'Designer Attitude', 'model' => 'designerAttitude'],
-                                        ['key' => 'design_satisfaction', 'label' => 'Design Satisfaction', 'model' => 'designSatisfaction'],
-                                        ['key' => 'rework_iteration', 'label' => 'Rework Iteration', 'model' => 'reworkIteration'],
-                                        ['key' => 'meeting_deadline', 'label' => 'Meeting Deadline', 'model' => 'meetingDeadline'],
-                                        ['key' => 'client_satisfaction', 'label' => 'Client Satisfaction', 'model' => 'clientSatisfaction'],
+                                        ['key' => 'designer_attitude', 'label' => 'Designer Attitude', 'sub' => 'Professionalism & communication', 'model' => 'designerAttitude', 'icon' => '👤', 'bg' => '#eff6ff', 'fg' => '#2563eb'],
+                                        ['key' => 'design_satisfaction', 'label' => 'Design Satisfaction', 'sub' => 'Quality, creativity & alignment', 'model' => 'designSatisfaction', 'icon' => '🎨', 'bg' => '#ecfdf3', 'fg' => '#16a34a'],
+                                        ['key' => 'rework_iteration', 'label' => 'Rework Iteration', 'sub' => 'Responsiveness to feedback', 'model' => 'reworkIteration', 'icon' => '↺', 'bg' => '#f5f3ff', 'fg' => '#7c3aed'],
+                                        ['key' => 'meeting_deadline', 'label' => 'Meeting Deadline', 'sub' => 'Timely delivery', 'model' => 'meetingDeadline', 'icon' => '📅', 'bg' => '#fff7ed', 'fg' => '#ea580c'],
+                                        ['key' => 'client_satisfaction', 'label' => 'Client Satisfaction', 'sub' => 'Client feedback & acceptance', 'model' => 'clientSatisfaction', 'icon' => '♥', 'bg' => '#fdf2f8', 'fg' => '#db2777'],
                                     ];
                                 @endphp
 
                                 @foreach($ratingFields as $ratingField)
-                                    <div class="rating-row">
-                                        <div class="rating-label">{{ $ratingField['label'] }}</div>
-                                        <div class="star-picker">
-                                            <input type="hidden" name="{{ $ratingField['key'] }}" x-model.number="{{ $ratingField['model'] }}">
-                                            @for($star = 1; $star <= 5; $star++)
-                                                <span class="star-unit">
-                                                    <span class="star-empty">★</span>
-                                                    <span class="star-fill" :style="`width:${Math.max(0, Math.min(1, {{ $ratingField['model'] }} - {{ $star - 1 }})) * 100}%`">★</span>
-                                                    <button type="button" class="star-half-hit left" aria-label="{{ $star - 0.5 }} stars" @click="{{ $ratingField['model'] }}={{ $star - 0.5 }}"></button>
-                                                    <button type="button" class="star-half-hit right" aria-label="{{ $star }} stars" @click="{{ $ratingField['model'] }}={{ $star }}"></button>
-                                                </span>
-                                            @endfor
+                                    <div class="bdc-row">
+                                        <div class="bdc-row-icon" style="background:{{ $ratingField['bg'] }};color:{{ $ratingField['fg'] }}">{{ $ratingField['icon'] }}</div>
+                                        <div class="bdc-row-text">
+                                            <div class="bdc-row-label">{{ $ratingField['label'] }}</div>
+                                            <div class="bdc-row-sub">{{ $ratingField['sub'] }}</div>
                                         </div>
-                                        <div class="rating-value" x-text="{{ $ratingField['model'] }} ? Number({{ $ratingField['model'] }}) : '—'"></div>
+                                        <div class="bdc-row-stars">
+                                            <input type="hidden" name="{{ $ratingField['key'] }}" x-model.number="{{ $ratingField['model'] }}">
+                                            <div class="star-picker">
+                                                @for($star = 1; $star <= 5; $star++)
+                                                    <span class="star-unit">
+                                                        <span class="star-empty">★</span>
+                                                        <span class="star-fill" :style="`width:${Math.max(0, Math.min(1, {{ $ratingField['model'] }} - {{ $star - 1 }})) * 100}%`">★</span>
+                                                        <button type="button" class="star-half-hit left" aria-label="{{ $star - 0.5 }} stars" @click="{{ $ratingField['model'] }}={{ $star - 0.5 }}"></button>
+                                                        <button type="button" class="star-half-hit right" aria-label="{{ $star }} stars" @click="{{ $ratingField['model'] }}={{ $star }}"></button>
+                                                    </span>
+                                                @endfor
+                                            </div>
+                                            <div class="bdc-row-value" x-text="{{ $ratingField['model'] }} ? Number({{ $ratingField['model'] }}) + ' / 5' : '— / 5'"></div>
+                                        </div>
                                     </div>
                                     @error($ratingField['key'])<div class="error">{{ $message }}</div>@enderror
                                 @endforeach
 
-                                <div class="overall-rating-card">
-                                    <span>Overall Rating</span>
-                                    <strong><span x-text="overall() || 0"></span> / 5</strong>
-                                </div>
-
-                                <div style="margin-top:12px">
-                                    <label class="label">Comments <span x-show="overall() > 0 && overall() < 3" style="color:#dc2626">(Required below 3 stars)</span></label>
-                                    <textarea class="premium-input" name="rating_comment" rows="4" maxlength="10000" :required="overall() > 0 && overall() < 3" placeholder="Add rating comments...">{{ old('rating_comment') }}</textarea>
-                                    @error('rating_comment')<div class="error">{{ $message }}</div>@enderror
+                                <div class="bdc-row bdc-row-overall">
+                                    <div class="bdc-row-icon" style="background:#eef1f5;color:#475467">📊</div>
+                                    <div class="bdc-row-text">
+                                        <div class="bdc-row-label">Overall Rating</div>
+                                    </div>
+                                    <div class="bdc-row-stars">
+                                        @for($star = 1; $star <= 5; $star++)
+                                            <span class="rating-static-star" :style="`--star-fill:${Math.max(0, Math.min(1, overall() - {{ $star - 1 }})) * 100}%`" aria-hidden="true">★</span>
+                                        @endfor
+                                        <div class="bdc-row-value" x-text="(overall() || 0) + ' / 5'"></div>
+                                    </div>
                                 </div>
 
                                 <div class="error" x-show="overall() === 0" style="display:none">Please provide a star rating before completing this task.</div>
 
-                                <div class="completion-type-section">
-                                    <div style="font-size:11px;font-weight:900;color:#101828">Task Completion Type</div>
-                                    <div style="font-size:9px;color:#667085;margin-top:3px">Select how you want to proceed</div>
-
-                                    <div class="completion-option-grid">
-                                        <label class="completion-option" :class="{'is-selected': completionType === 'completed'}">
-                                            <input type="radio" name="completion_type_choice" value="completed" x-model="completionType" @change="completionTypeError = false">
-                                            <div>
-                                                <strong>Move to Completed</strong>
-                                                <span>Mark this task as completed. It will not move to the printing preparation process.</span>
-                                            </div>
-                                        </label>
-                                        <label class="completion-option" :class="{'is-selected': completionType === 'prepare_printing_file'}">
-                                            <input type="radio" name="completion_type_choice" value="prepare_printing_file" x-model="completionType" @change="completionTypeError = false">
-                                            <div>
-                                                <strong>Move to Prepare Printing File</strong>
-                                                <span>The Designer must prepare the printing file, then raise the required mail and continue the printing process.</span>
-                                            </div>
-                                        </label>
+                                <div class="bdc-section">
+                                    <div class="bdc-section-label">💬 Comments <span class="bdc-optional">(Optional)</span></div>
+                                    <div style="margin-top:7px">
+                                        <textarea class="premium-input" name="rating_comment" rows="3" maxlength="10000" x-model="ratingComment" :required="overall() > 0 && overall() < 3" placeholder="Add your rating comments...">{{ old('rating_comment') }}</textarea>
+                                        <div class="bdc-char-count" x-text="ratingComment.length + '/300'"></div>
                                     </div>
+                                    <div x-show="overall() > 0 && overall() < 3" style="color:#dc2626;font-size:9px;margin-top:2px">Comments are required below 3 stars.</div>
+                                    @error('rating_comment')<div class="error">{{ $message }}</div>@enderror
+                                </div>
+
+                                <div class="bdc-section">
+                                    <div class="bdc-section-label">↗ Task Completion Type</div>
+
+                                    <label class="bdc-option" :class="{'is-selected': completionType === 'completed'}">
+                                        <input type="radio" name="completion_type_choice" value="completed" x-model="completionType" @change="completionTypeError = false">
+                                        <span class="bdc-option-radio"></span>
+                                        <div>
+                                            <strong>Move to Completed</strong>
+                                            <span>Mark this task as completed. It will not move to the printing preparation process.</span>
+                                        </div>
+                                    </label>
+                                    <label class="bdc-option" :class="{'is-selected': completionType === 'prepare_printing_file'}">
+                                        <input type="radio" name="completion_type_choice" value="prepare_printing_file" x-model="completionType" @change="completionTypeError = false">
+                                        <span class="bdc-option-radio"></span>
+                                        <div>
+                                            <strong>Move to Prepare Printing File</strong>
+                                            <span>Designer prepares the printing file, raises the required mail, and continues the printing process.</span>
+                                        </div>
+                                    </label>
 
                                     <input type="hidden" name="completion_type" x-model="completionType">
                                     <div class="error" x-show="completionTypeError" x-cloak style="margin-top:8px">Please select a completion type.</div>
                                 </div>
 
-                                <div class="bd-review-actions">
-                                    <button type="submit" class="btn bd-complete-btn" :disabled="submitting || overall() === 0">
-                                        <span x-show="!submitting">Confirm</span>
+                                <div class="bdc-actions">
+                                    <button type="button" class="bdc-btn-cancel" @click="panel = null" :disabled="submitting">Cancel</button>
+                                    <button type="submit" class="bdc-btn-confirm" :disabled="submitting || overall() === 0">
+                                        <span x-show="!submitting">✓ Confirm</span>
                                         <span x-show="submitting" x-cloak><span class="btn-spinner"></span>Processing...</span>
                                     </button>
-                                    <button type="button" class="btn btn-secondary" @click="panel = null" :disabled="submitting">Cancel</button>
+                                </div>
                                 </div>
                             </form>
                         </div>
