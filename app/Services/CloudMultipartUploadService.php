@@ -22,12 +22,15 @@ use Throwable;
  */
 class CloudMultipartUploadService
 {
-    public const PURPOSES = ['progress_update', 'rework'];
+    public const PURPOSES = ['progress_update', 'rework', 'mail_attachment'];
 
     public const MAX_SIZE_BYTES = 6 * 1024 * 1024 * 1024; // 6 GB — matches the app-wide cap
 
     /** Progress Update only: below this, existing supported file types are allowed; at/above, ZIP only. */
     public const PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES = 350 * 1024 * 1024; // 350 MB
+
+    /** Printing File mail attachments only: below this, existing supported file types are allowed; at/above, ZIP only. */
+    public const MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
 
     public const PART_SIZE_BYTES = 64 * 1024 * 1024; // 64 MB (S3 minimum is 5 MB)
 
@@ -50,6 +53,10 @@ class CloudMultipartUploadService
         if ($purpose === 'rework') {
             if ($extension !== 'zip') {
                 throw ValidationException::withMessages(['file' => 'Only ZIP files are accepted.']);
+            }
+        } elseif ($purpose === 'mail_attachment') {
+            if ($sizeBytes >= self::MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES && $extension !== 'zip') {
+                throw ValidationException::withMessages(['file' => 'Files smaller than 1 GB can be uploaded in any supported format. Files that are 1 GB or larger must be in ZIP format.']);
             }
         } elseif ($sizeBytes >= self::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES && $extension !== 'zip') {
             throw ValidationException::withMessages(['file' => 'Files below 350 MB can use the supported file types. Files 350 MB or larger must be ZIP format.']);
@@ -169,9 +176,12 @@ class CloudMultipartUploadService
         ]);
 
         $extension = strtolower((string) pathinfo($upload->original_filename, PATHINFO_EXTENSION));
+        $zipOnlyThreshold = $upload->purpose === 'mail_attachment'
+            ? self::MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES
+            : self::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES;
         $mustBeZip = $upload->purpose === 'rework'
             || $extension === 'zip'
-            || (int) $upload->size_bytes >= self::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES;
+            || (int) $upload->size_bytes >= $zipOnlyThreshold;
 
         if ($mustBeZip && ! $this->looksLikeZip($upload)) {
             $this->deleteObject($upload->cloud_key);

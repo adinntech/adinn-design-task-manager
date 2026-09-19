@@ -46,12 +46,15 @@
     }
 
     function AdinnZipUpload(options) {
-        this.input = options.input;
+        this.input = options.input || null;
         this.purpose = options.purpose;
         this.taskId = options.taskId;
         this.wireProp = options.wireProp;
         this.urls = options.urls;
         this.els = options.els; // { status, percent, detail, eta, circle, submitBtn }
+        this.onComplete = options.onComplete || null;
+        this.onError = options.onError || null;
+        this.onProgress = options.onProgress || null;
 
         this.uploadedBytesBase = 0;
         this.uploadedBytesSession = 0;
@@ -64,7 +67,9 @@
         this.currentUploadId = null;
 
         var self = this;
-        this.input.addEventListener('change', function () { self.onFileSelected(); });
+        if (this.input) {
+            this.input.addEventListener('change', function () { self.onFileSelected(); });
+        }
         this.checkActive();
 
         // Fired by TaskDetail::submitEod()/submitReworkUpdate() after a
@@ -86,7 +91,7 @@
         this.smoothedSpeed = 0;
         this.lastSampleTime = 0;
         this.lastSampleBytes = 0;
-        this.input.value = '';
+        if (this.input) this.input.value = '';
 
         if (this.els.status) this.els.status.innerHTML = '';
         if (this.els.percent) this.els.percent.textContent = '';
@@ -135,22 +140,40 @@
             return;
         }
 
+        this.startUpload(file);
+    };
+
+    // Runs the same validate → initiate → upload-parts → complete pipeline
+    // as onFileSelected, but callable directly with a File object — used by
+    // the multi-file Printing File mail attachment picker, which drives
+    // several independent AdinnZipUpload instances not tied to a single
+    // <input>.
+    AdinnZipUpload.prototype.startUpload = function (file) {
         var isZip = /\.zip$/i.test(file.name);
         var PROGRESS_ZIP_THRESHOLD = 350 * 1024 * 1024;
+        var MAIL_ATTACHMENT_ZIP_THRESHOLD = 1024 * 1024 * 1024;
 
         if (this.purpose === 'progress_update') {
             if (!isZip && file.size >= PROGRESS_ZIP_THRESHOLD) {
                 this.setWireProp('');
                 this.setSubmitEnabled(false);
                 this.showError('Files below 350 MB can use the supported file types. Files 350 MB or larger must be ZIP format.');
-                this.input.value = '';
+                if (this.input) this.input.value = '';
+                return;
+            }
+        } else if (this.purpose === 'mail_attachment') {
+            if (!isZip && file.size >= MAIL_ATTACHMENT_ZIP_THRESHOLD) {
+                this.setWireProp('');
+                this.setSubmitEnabled(false);
+                this.showError('Files smaller than 1 GB can be uploaded in any supported format. Files that are 1 GB or larger must be in ZIP format.');
+                if (this.input) this.input.value = '';
                 return;
             }
         } else if (!isZip) {
             this.setWireProp('');
             this.setSubmitEnabled(false);
             this.showError('Only ZIP files are allowed.');
-            this.input.value = '';
+            if (this.input) this.input.value = '';
             return;
         }
 
@@ -158,7 +181,7 @@
             this.setWireProp('');
             this.setSubmitEnabled(false);
             this.showError('Maximum file size is 6 GB.');
-            this.input.value = '';
+            if (this.input) this.input.value = '';
             return;
         }
 
@@ -192,10 +215,12 @@
                 self.setWireProp(String(upload.id));
                 self.showState('completed', upload);
                 self.setSubmitEnabled(true);
+                if (self.onComplete) self.onComplete(upload);
             })
             .catch(function (err) {
                 self.setSubmitEnabled(false);
                 self.showState('failed', null, err && err.message);
+                if (self.onError) self.onError(err);
             });
     };
 
@@ -292,6 +317,7 @@
         if (this.els.detail) this.els.detail.textContent = formatBytes(uploaded) + ' / ' + formatBytes(this.totalBytes);
         if (this.els.eta) this.els.eta.textContent = pct >= 100 ? '' : formatEta(eta);
         if (this.els.circle) this.els.circle.setAttribute('stroke-dasharray', pct + ', 100');
+        if (this.onProgress) this.onProgress(pct, uploaded, this.totalBytes);
     };
 
     AdinnZipUpload.prototype.showState = function (state, upload, errorMessage) {
@@ -331,6 +357,7 @@
     };
 
     AdinnZipUpload.prototype.setWireProp = function (value) {
+        if (!this.input || !this.wireProp) return;
         var wire = findWire(this.input);
         if (wire) wire.set(this.wireProp, value);
     };

@@ -8,6 +8,7 @@ use App\Services\CloudMultipartUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
@@ -123,7 +124,7 @@ class FileUploadController extends Controller
 
     private function uploadPayload(FileUpload $upload): array
     {
-        return [
+        $payload = [
             'id' => $upload->id,
             'purpose' => $upload->purpose,
             'original_filename' => $upload->original_filename,
@@ -132,5 +133,16 @@ class FileUploadController extends Controller
             'uploaded_bytes' => (int) $upload->uploaded_bytes,
             'status' => $upload->status,
         ];
+
+        // Printing File mail attachments only: lets the Printing File tab
+        // offer a View/Download action as soon as the upload completes,
+        // using the same public Spaces URL convention already used
+        // elsewhere — no new signing mechanism, no impact on Progress
+        // Update / Rework which never read this field.
+        if ($upload->purpose === 'mail_attachment' && $upload->status === 'completed') {
+            $payload['url'] = Storage::disk($upload->cloud_disk)->url($upload->cloud_key);
+        }
+
+        return $payload;
     }
 }

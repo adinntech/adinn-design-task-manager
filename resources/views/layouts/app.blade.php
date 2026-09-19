@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ asset('css/adinn-premium.css') }}">
     <script src="{{ asset('js/large-zip-upload.js') }}"></script>
+    <script src="{{ asset('js/mail-attachment-upload.js') }}"></script>
     @livewireStyles
     @stack('styles')
 

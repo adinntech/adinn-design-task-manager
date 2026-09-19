@@ -52,6 +52,11 @@ class DesignTask extends Model
         return $this->hasMany(DesignTaskEodRecord::class, 'design_task_id');
     }
 
+    public function printingFileMails()
+    {
+        return $this->hasMany(DesignTaskPrintingFileMail::class, 'design_task_id');
+    }
+
     public function getDisplayTaskNameAttribute(): string
     {
         return trim((string) preg_replace('/\s*\((?:split|swap|swapped)\)\s*$/i', '', (string) $this->task_name));
