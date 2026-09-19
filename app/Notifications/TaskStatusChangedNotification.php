@@ -39,6 +39,24 @@ class TaskStatusChangedNotification extends Notification
             ];
         }
 
+        if ($this->toStatus === 'prepare_printing_file') {
+            $taskName = $this->task->display_task_name ?? $this->task->task_name;
+
+            $message = match ($notifiable->role ?? null) {
+                'designer' => "{$this->task->task_id} — {$taskName} moved to Prepare Printing File by {$this->changedBy->name}.\nPlease prepare printing files.\n".now()->format('d M Y \a\t h:i A'),
+                default => "{$this->task->task_id} moved to Prepare Printing File by {$this->changedBy->name}.",
+            };
+
+            return [
+                'title' => 'Prepare Printing File',
+                'message' => $message,
+                'task_id' => $this->task->id,
+                'task_ref' => $this->task->task_id,
+                'task_name' => $this->task->display_task_name ?? $this->task->task_name,
+                'category' => 'status',
+            ];
+        }
+
         $label = DesignTaskStatusService::STATUSES[$this->toStatus] ?? ucwords(str_replace('_', ' ', $this->toStatus));
 
         return [

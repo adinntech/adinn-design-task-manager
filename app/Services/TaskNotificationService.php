@@ -65,6 +65,25 @@ class TaskNotificationService
         }
     }
 
+    /**
+     * BD chose "Move to Prepare Printing File" on task completion — reuses the
+     * same TaskStatusChangedNotification/notifyRoleOfStatusChange() plumbing as
+     * statusChanged() above, just with the Designer (not BD) as the primary
+     * recipient since this move is BD-initiated rather than Designer-initiated.
+     */
+    public function preparePrintingFile(DesignTask $task, User $bd): void
+    {
+        $designer = $task->designer ?? User::find($task->designer_id);
+
+        if ($designer) {
+            $this->send($designer, new TaskStatusChangedNotification($task, 'prepare_printing_file', $bd));
+            $this->flag($designer, 'status');
+        }
+
+        $this->notifyRoleOfStatusChange('designer_head', $task, 'prepare_printing_file', $bd);
+        $this->notifyRoleOfStatusChange('admin', $task, 'prepare_printing_file', $bd);
+    }
+
     private function notifyRoleOfStatusChange(string $role, DesignTask $task, string $toStatus, User $changedBy): void
     {
         $recipients = User::query()->where('role', $role)->where('is_active', true)->get();

@@ -146,6 +146,7 @@
         <div class="bd-kpi"><div class="bd-kpi-label">Rework Creatives</div><div class="bd-kpi-value">{{ $stats['rework_creatives'] }}</div><div class="bd-kpi-note">Creatives pending resubmission</div></div>
         <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'completed']) }}"><div class="bd-kpi-label">Completed</div><div class="bd-kpi-value">{{ $stats['completed'] }}</div><div class="bd-kpi-note">Finished tasks</div></a>
         <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'waiting_confirmation']) }}"><div class="bd-kpi-label">Waiting for BD Review</div><div class="bd-kpi-value">{{ $stats['waiting_bd_review'] }}</div><div class="bd-kpi-note">Completed by you, awaiting BD</div></a>
+        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'prepare_printing_file']) }}"><div class="bd-kpi-label">Prepare Printing File Tasks</div><div class="bd-kpi-value">{{ $stats['prepare_printing_file'] }}</div><div class="bd-kpi-note">Assigned back to you for printing files</div></a>
         <div class="bd-kpi"><div class="bd-kpi-label">Waiting for BD Confirmation</div><div class="bd-kpi-value">{{ $stats['waiting_bd_confirmation'] }}</div><div class="bd-kpi-note">New tickets you created, pending BD approval</div></div>
         <div class="bd-kpi">
             <div class="bd-kpi-label">Overall Rating</div>

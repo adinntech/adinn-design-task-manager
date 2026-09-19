@@ -361,10 +361,10 @@
         @endif
         <button class="detail-tab" :class="{ active: tab === 'history' }" @click="tab = 'history'">History</button>
         @if($clarificationComments->isNotEmpty())<button class="detail-tab" @click="tab = 'overview'; $nextTick(() => { $refs.clarificationSection.open = true; $refs.clarificationSection.scrollIntoView({behavior:'smooth'}); })">Clarification</button>@endif
-        @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
+        @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed','prepare_printing_file'], true))
             <button class="detail-tab" :class="{ active: tab === 'eod' }" @click="tab = 'eod'">Progress Updates</button>
         @endif
-        @if($task->status === 'completed')
+        @if(in_array($task->status, ['completed','prepare_printing_file'], true))
             <button class="detail-tab" :class="{ active: tab === 'ratings' }" @click="tab = 'ratings'">Ratings</button>
         @endif
     </div>
@@ -821,7 +821,7 @@
     </section>
 
 
-        @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
+        @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed','prepare_printing_file'], true))
     <section x-show="tab === 'eod'" style="display:none">
             <div class="panel">
                 <div class="panel-header">
@@ -1079,7 +1079,7 @@
                             })();
                             </script>
                         </div>
-                    @elseif(in_array($task->status, ['waiting_confirmation','completed'], true))
+                    @elseif(in_array($task->status, ['waiting_confirmation','completed','prepare_printing_file'], true))
                         <div class="empty-state" style="margin-bottom:14px">
                             Creative progress is complete. Progress Updates history is view-only in this stage.
                         </div>
@@ -1094,7 +1094,7 @@
 
     @endif
 
-    @if($task->status === 'completed')
+    @if(in_array($task->status, ['completed','prepare_printing_file'], true))
         <section x-show="tab === 'ratings'" style="display:none">
             <div class="panel">
                 <div class="panel-header"><div><div class="panel-title">Ratings</div><div style="font-size:9px;color:#667085;margin-top:3px">Final BD rating submitted when the task was completed.</div></div></div>

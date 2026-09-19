@@ -41,6 +41,7 @@
         .kanban-column.status-waiting_confirmation .kanban-column-header{border-top-color:#db2777;background:#fdf2f8}
         .kanban-column.status-rework .kanban-column-header{border-top-color:#ea580c;background:#fff7ed}
         .kanban-column.status-completed .kanban-column-header{border-top-color:#16a34a;background:#f0fdf4}
+        .kanban-column.status-prepare_printing_file .kanban-column-header{border-top-color:#9333ea;background:#faf5ff}
         .kanban-column.status-swap_tasks .kanban-column-header{border-top-color:#0f766e;background:#f0fdfa}
         .kanban-column.status-decline_tasks .kanban-column-header{border-top-color:#b42318;background:#fff5f5}
         .kanban-column.status-draft .kanban-column-header{border-top-color:#eab308;background:#fefce8}
@@ -54,6 +55,7 @@
         .kanban-column.status-waiting_confirmation .kanban-count{background:#fce7f3;color:#be185d}
         .kanban-column.status-rework .kanban-count{background:#ffedd5;color:#c2410c}
         .kanban-column.status-completed .kanban-count{background:#dcfce7;color:#15803d}
+        .kanban-column.status-prepare_printing_file .kanban-count{background:#f3e8ff;color:#7e22ce}
         .kanban-column.status-swap_tasks .kanban-count{background:#ccfbf1;color:#0f766e}
         .kanban-column.status-decline_tasks .kanban-count{background:#fee4e2;color:#b42318}
         .kanban-column.status-draft .kanban-count{background:#fef9c3;color:#a16207}

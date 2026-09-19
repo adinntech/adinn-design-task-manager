@@ -62,6 +62,7 @@ class DashboardController extends Controller
             // it (same DB transaction in Bd\AssignedTaskController::completeWithRating),
             // so there is no "completed but unrated" state to detect separately.
             'waiting_bd_review' => $tasks->where('status', 'waiting_confirmation')->count(),
+            'prepare_printing_file' => $tasks->where('status', 'prepare_printing_file')->count(),
             'overdue' => $tasks
                 ->filter(fn (DesignTask $task) => $task->status !== 'completed' && $task->due_at && $task->due_at->lt($now))
                 ->count(),

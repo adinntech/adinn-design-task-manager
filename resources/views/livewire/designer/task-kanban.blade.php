@@ -14,6 +14,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 .kanban-column.status-waiting_confirmation .kanban-column-header{border-top-color:#db2777;background:#fdf2f8}
 .kanban-column.status-rework .kanban-column-header{border-top-color:#ea580c;background:#fff7ed}
 .kanban-column.status-completed .kanban-column-header{border-top-color:#16a34a;background:#f0fdf4}
+.kanban-column.status-prepare_printing_file .kanban-column-header{border-top-color:#9333ea;background:#faf5ff}
 .kanban-column.status-swap_tasks .kanban-column-header{border-top-color:#0f766e;background:#f0fdfa}
 .kanban-column.status-self_declined .kanban-column-header{border-top-color:#6b7280;background:#f9fafb}
 
@@ -25,6 +26,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
 .kanban-column.status-waiting_confirmation .kanban-count{background:#fce7f3;color:#be185d}
 .kanban-column.status-rework .kanban-count{background:#ffedd5;color:#c2410c}
 .kanban-column.status-completed .kanban-count{background:#dcfce7;color:#15803d}
+.kanban-column.status-prepare_printing_file .kanban-count{background:#f3e8ff;color:#7e22ce}
 .kanban-column.status-swap_tasks .kanban-count{background:#ccfbf1;color:#0f766e}
 .kanban-column.status-self_declined .kanban-count{background:#e5e7eb;color:#4b5563}
 

@@ -522,6 +522,7 @@ class DashboardController extends Controller
             'split' => $approvedInMonthFor('split'),
             'swapped' => $approvedInMonthFor('swap'),
             'rework_tasks' => $scopedTasks->where('status', 'rework')->count(),
+            'prepare_printing_file' => $scopedTasks->where('status', 'prepare_printing_file')->count(),
             'approval_pending' => $pendingRequests->count(),
         ];
 

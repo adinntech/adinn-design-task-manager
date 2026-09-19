@@ -47,6 +47,7 @@
         <a class="dh-kpi dh-kpi-link" href="{{ route('designer-head.assigned-tasks', ['focus' => 'requests']) }}"><div class="dh-kpi-icon">✂</div><div class="dh-kpi-label">Split</div><div class="dh-kpi-value">{{ $stats['split'] }}</div><div class="dh-kpi-note">Approved splits</div></a>
         <a class="dh-kpi dh-kpi-link" href="{{ route('designer-head.assigned-tasks', ['focus' => 'swap_tasks']) }}"><div class="dh-kpi-icon">⇄</div><div class="dh-kpi-label">Swapped</div><div class="dh-kpi-value">{{ $stats['swapped'] }}</div><div class="dh-kpi-note">Approved transfers</div></a>
         <a class="dh-kpi dh-kpi-link" href="{{ route('designer-head.assigned-tasks', ['focus' => 'rework']) }}"><div class="dh-kpi-icon">↻</div><div class="dh-kpi-label">Rework Tasks</div><div class="dh-kpi-value">{{ $stats['rework_tasks'] }}</div><div class="dh-kpi-note">In rework now</div></a>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('designer-head.assigned-tasks', ['focus' => 'prepare_printing_file']) }}"><div class="dh-kpi-icon">⎙</div><div class="dh-kpi-label">Prepare Printing File</div><div class="dh-kpi-value">{{ $stats['prepare_printing_file'] }}</div><div class="dh-kpi-note">Team tasks preparing print files</div></a>
         <a class="dh-kpi dh-kpi-link dh-kpi-accent" href="{{ route('designer-head.assigned-tasks', ['focus' => 'requests']) }}"><div class="dh-kpi-icon">◇</div><div class="dh-kpi-label">Pending Approval</div><div class="dh-kpi-value">{{ $stats['approval_pending'] }}</div><div class="dh-kpi-note">Requests awaiting you</div></a>
     </div>
 

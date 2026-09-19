@@ -59,10 +59,10 @@
         @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Split Details</button>@endif
         @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Swap Details</button>@endif
         <button class="bd-detail-tab" :class="{active:tab==='history'}" @click="tab='history'">History</button>
-        @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
+        @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed','prepare_printing_file'], true))
             <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates</button>
         @endif
-        @if($task->status === 'completed')<button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings</button>@endif
+        @if(in_array($task->status, ['completed','prepare_printing_file'], true))<button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings</button>@endif
     </div>
 
     <section class="bd-tab-panel" x-show="tab==='overview'">
@@ -233,7 +233,7 @@
         </div>
     </section>
 
-    @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed'], true))
+    @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed','prepare_printing_file'], true))
     <section class="bd-tab-panel" x-show="tab==='eod'" x-cloak>
         <div class="panel">
             <div class="panel-header"><div><div class="panel-title">Progress Updates</div><div style="font-size:10px;color:#667085;margin-top:3px">Designer Progress Updates records and Rework uploads.</div></div></div>
@@ -283,7 +283,7 @@
     </section>
     @endif
 
-    @if($task->status === 'completed')
+    @if(in_array($task->status, ['completed','prepare_printing_file'], true))
     <section class="bd-tab-panel" x-show="tab==='ratings'" x-cloak><div class="panel"><div class="panel-header"><div><div class="panel-title">Ratings</div><div style="font-size:9px;color:#667085;margin-top:3px">Final BD rating submitted when the task was completed.</div></div></div><div class="panel-body">
         @if(! $taskRating)
             <div class="empty-state">No rating available.</div>

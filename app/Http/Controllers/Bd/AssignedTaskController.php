@@ -304,13 +304,17 @@ class AssignedTaskController extends Controller
             'meeting_deadline' => ['required', 'numeric', $halfStarRule],
             'client_satisfaction' => ['required', 'numeric', $halfStarRule],
             'rating_comment' => ['nullable', 'string', 'max:10000'],
+            'completion_type' => ['required', 'in:completed,prepare_printing_file'],
         ], [
             'designer_attitude.required' => $missingRatingMessage,
             'design_satisfaction.required' => $missingRatingMessage,
             'rework_iteration.required' => $missingRatingMessage,
             'meeting_deadline.required' => $missingRatingMessage,
             'client_satisfaction.required' => $missingRatingMessage,
+            'completion_type.required' => 'Choose Move to Completed or Move to Prepare Printing File.',
         ]);
+
+        $targetStatus = $data['completion_type'] === 'prepare_printing_file' ? 'prepare_printing_file' : 'completed';
 
         // Snap the average to the nearest 0.5 so the stored overall rating is always
         // a valid half-star value (0.5, 1, 1.5 ... 5) — averaging five independently
@@ -329,7 +333,7 @@ class AssignedTaskController extends Controller
                 ->withInput();
         }
 
-        DB::transaction(function () use ($request, $task, $data, $overall) {
+        DB::transaction(function () use ($request, $task, $data, $overall, $targetStatus) {
             $lockedTask = DesignTask::query()->lockForUpdate()->findOrFail($task->id);
 
             if ($lockedTask->status !== 'waiting_confirmation') {
@@ -360,17 +364,27 @@ class AssignedTaskController extends Controller
             ]);
 
             $fromStatus = $lockedTask->status;
-            $lockedTask->update(['status' => 'completed']);
+            $lockedTask->update(['status' => $targetStatus]);
 
             DesignTaskStatusHistory::create([
                 'design_task_id' => $lockedTask->id,
                 'from_status' => $fromStatus,
-                'to_status' => 'completed',
+                'to_status' => $targetStatus,
                 'changed_by' => $request->user()->id,
-                'change_source' => 'bd_completion_rating',
-                'note' => 'Task completed by BD with an overall rating of '.number_format($overall, 2).' / 5.',
+                'change_source' => $targetStatus === 'completed' ? 'bd_completion_rating' : 'bd_prepare_printing_file',
+                'note' => $targetStatus === 'completed'
+                    ? 'Task completed by BD with an overall rating of '.number_format($overall, 2).' / 5.'
+                    : 'Task moved to Prepare Printing File by BD with an overall rating of '.number_format($overall, 2).' / 5. Reassigned to the Designer for printing file preparation.',
             ]);
         });
+
+        if ($targetStatus === 'prepare_printing_file') {
+            app(TaskNotificationService::class)->preparePrintingFile($task->fresh(), $request->user());
+
+            return redirect()
+                ->route('bd.tasks.show', ['task' => $task, 'tab' => 'eod'])
+                ->with('success', $task->task_id.' moved to Prepare Printing File.');
+        }
 
         $review = DesignTaskBdReview::query()
             ->with('submitter:id,name,role')

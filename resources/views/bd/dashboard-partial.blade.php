@@ -48,6 +48,7 @@
         <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'swap_tasks']) }}"><div class="dh-kpi-icon">⇄</div><div class="dh-kpi-label">Swapped</div><div class="dh-kpi-value">{{ $stats['swapped'] }}</div><div class="dh-kpi-note">Approved transfers</div></a>
         <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'rework']) }}"><div class="dh-kpi-icon">↻</div><div class="dh-kpi-label">Rework Tasks</div><div class="dh-kpi-value">{{ $stats['rework_tasks'] }}</div><div class="dh-kpi-note">In rework now</div></a>
         <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'waiting_confirmation']) }}"><div class="dh-kpi-icon">◇</div><div class="dh-kpi-label">Pending Reviews</div><div class="dh-kpi-value">{{ $stats['pending_reviews'] }}</div><div class="dh-kpi-note">Awaiting your review</div></a>
+        <a class="dh-kpi dh-kpi-link" href="{{ route('bd.tasks.index', ['focus' => 'prepare_printing_file']) }}"><div class="dh-kpi-icon">⎙</div><div class="dh-kpi-label">Prepare Printing File</div><div class="dh-kpi-value">{{ $stats['prepare_printing_file'] }}</div><div class="dh-kpi-note">Moved by you for printing</div></a>
         <div class="dh-kpi"><div class="dh-kpi-icon">◌</div><div class="dh-kpi-label">Clarification Tickets</div><div class="dh-kpi-value">{{ $stats['clarification_tickets'] }}</div><div class="dh-kpi-note">Clarification status</div></div>
     </div>
 

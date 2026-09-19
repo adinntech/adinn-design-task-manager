@@ -444,6 +444,7 @@ class DashboardController extends Controller
             'swapped' => $approvedInMonthFor('swap'),
             'rework_tasks' => $scopedTasks->where('status', 'rework')->count(),
             'pending_reviews' => $scopedTasks->where('status', 'waiting_confirmation')->count(),
+            'prepare_printing_file' => $scopedTasks->where('status', 'prepare_printing_file')->count(),
             'clarification_tickets' => $scopedTasks->where('status', 'need_clarification')->count(),
             // Designer-created tasks awaiting THIS BD's confirmation decision —
             // uses the unscoped $tasks (not the month-filtered $scopedTasks) so

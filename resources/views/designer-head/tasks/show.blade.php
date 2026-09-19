@@ -134,7 +134,7 @@
         @if($statusChangeRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='status-change-request'}" @click="tab='status-change-request'">Status Change Request</button>@endif
         <button class="bd-detail-tab" :class="{active:tab==='history'}" @click="tab='history'">History</button>
         <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates</button>
-        @if($task->status === 'completed')<button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings</button>@endif
+        @if(in_array($task->status, ['completed','prepare_printing_file'], true))<button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings</button>@endif
     </div>
 
     <section class="bd-tab-panel" x-show="tab==='overview'">
@@ -661,7 +661,7 @@
         @include('partials.progress-timeline', ['timeline' => $progressTimeline, 'task' => $task])
     </div></div></section>
 
-    @if($task->status === 'completed')
+    @if(in_array($task->status, ['completed','prepare_printing_file'], true))
     <section class="bd-tab-panel" x-show="tab==='ratings'" x-cloak><div class="panel"><div class="panel-header"><div><div class="panel-title">Ratings</div><div style="font-size:9px;color:#667085;margin-top:3px">Final BD rating submitted when the task was completed.</div></div></div><div class="panel-body">
         @include('partials.task-ratings', ['taskRating' => $taskRating])
     </div></div></section>
