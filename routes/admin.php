@@ -30,6 +30,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::delete('/tasks/{task}', [TaskMonitoringController::class, 'destroy'])->name('tasks.destroy');
 
         Route::get('/manage-email', [ManageEmailController::class, 'index'])->name('manage-email.index');
+        Route::get('/manage-email/table', [ManageEmailController::class, 'table'])->name('manage-email.table');
         Route::post('/manage-email', [ManageEmailController::class, 'store'])->name('manage-email.store');
         Route::post('/manage-email/import', [ManageEmailController::class, 'import'])->name('manage-email.import');
         Route::get('/manage-email/{allUsersMail}/edit', [ManageEmailController::class, 'edit'])->name('manage-email.edit');

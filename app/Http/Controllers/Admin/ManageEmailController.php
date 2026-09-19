@@ -21,15 +21,47 @@ class ManageEmailController extends Controller
 {
     public function index(Request $request): View
     {
-        $records = AllUsersMail::query()
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
-
         return view('admin.manage-email.index', [
-            'records' => $records,
+            'records' => $this->filteredRecords($request),
             'excelImportEnabled' => (bool) config('features.manage_email_excel_import'),
         ]);
+    }
+
+    /**
+     * Live search fragment — fetched via debounced JS from the search box on
+     * the index page (see admin.manage-email.index) and swapped into the
+     * table container, same "fetch + replaceChildren" pattern already used by
+     * Bd\DashboardController::fragment(). Reuses filteredRecords() so both
+     * routes always agree on filtering/pagination.
+     */
+    public function table(Request $request): View
+    {
+        return view('admin.manage-email.table-partial', [
+            'records' => $this->filteredRecords($request),
+        ]);
+    }
+
+    /**
+     * Pagination links are pinned to the index route (not whichever route
+     * actually rendered the paginator) so a link clicked after a live-search
+     * fragment swap still lands on the real page — never on this raw partial.
+     */
+    private function filteredRecords(Request $request)
+    {
+        return AllUsersMail::query()
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $term = '%'.trim((string) $request->input('search')).'%';
+
+                $query->where(
+                    fn ($q) => $q
+                        ->where('name', 'like', $term)
+                        ->orWhere('mail', 'like', $term)
+                );
+            })
+            ->latest()
+            ->paginate(15)
+            ->withQueryString()
+            ->withPath(route('admin.manage-email.index'));
     }
 
     public function store(Request $request): RedirectResponse
