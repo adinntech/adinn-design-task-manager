@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ManageEmailController;
 use App\Http\Controllers\Admin\MasterController;
 use App\Http\Controllers\Admin\RequestActionController;
 use App\Http\Controllers\Admin\TaskMonitoringController;
@@ -27,6 +28,13 @@ Route::middleware(['auth', 'role:admin'])
         Route::put('/tasks/{task}', [TaskMonitoringController::class, 'update'])->name('tasks.update');
         Route::get('/tasks/{task}', [TaskMonitoringController::class, 'show'])->name('tasks.show');
         Route::delete('/tasks/{task}', [TaskMonitoringController::class, 'destroy'])->name('tasks.destroy');
+
+        Route::get('/manage-email', [ManageEmailController::class, 'index'])->name('manage-email.index');
+        Route::post('/manage-email', [ManageEmailController::class, 'store'])->name('manage-email.store');
+        Route::post('/manage-email/import', [ManageEmailController::class, 'import'])->name('manage-email.import');
+        Route::get('/manage-email/{allUsersMail}/edit', [ManageEmailController::class, 'edit'])->name('manage-email.edit');
+        Route::put('/manage-email/{allUsersMail}', [ManageEmailController::class, 'update'])->name('manage-email.update');
+        Route::delete('/manage-email/{allUsersMail}', [ManageEmailController::class, 'destroy'])->name('manage-email.destroy');
 
         Route::get('/master-controls', [MasterController::class, 'index'])->name('master.index');
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
