@@ -135,6 +135,15 @@ class DesignTaskStatusService
             return false;
         }
 
+        // Printing File mail send is the one sanctioned exit from
+        // prepare_printing_file (entered only via BD's completeWithRating(),
+        // per the STATUSES comment above) — straight to completed once the
+        // mail succeeds, never anywhere else. Not part of ORDER, so it must
+        // be special-cased before the ORDER-pipeline gate below.
+        if ($fromStatus === 'prepare_printing_file') {
+            return $targetStatus === 'completed';
+        }
+
         // Anything not in the ordered pipeline (e.g. a Designer-created task still
         // pending_bd_approval, or bd_rejected) can never be moved by the Designer
         // directly — it must go through the BD confirmation action instead.

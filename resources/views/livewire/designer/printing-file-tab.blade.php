@@ -35,6 +35,7 @@
         .pf-modal-backdrop{position:fixed;inset:0;background:rgba(16,24,40,.5);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px}
         .pf-modal{background:#fff;border-radius:12px;padding:20px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto}
         .pf-success{background:#eafbf0;border:1px solid #b7ebc6;color:#067647;border-radius:8px;padding:10px 12px;font-size:11px;font-weight:700;margin-bottom:12px}
+        .pf-error{background:#fef3f2;border:1px solid #fecdca;color:#b42318;border-radius:8px;padding:10px 12px;font-size:11px;font-weight:700;margin-bottom:12px}
         .pf-attachment-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
         .pf-att-card{display:flex;align-items:center;gap:8px;border:1px solid #e4e7ec;border-radius:8px;padding:6px 8px;width:220px}
         .pf-att-thumb{width:44px;height:44px;border-radius:6px;object-fit:cover;cursor:pointer;flex:0 0 auto}
@@ -53,6 +54,11 @@
         .mail-attachment-row-actions .pf-chip{cursor:pointer;border:none}
     </style>
 
+    {{-- Compose/send UI only for an active task; once Completed the tab is a
+         read-only history view — except while an explicit Resend is in
+         progress (resendFrom() populates toRecipients), so resend keeps
+         working exactly as it already does. --}}
+    @if($task->status !== 'completed' || count($toRecipients) > 0)
     <div class="pf-grid">
         {{-- LEFT: Printing inputs --}}
         <div>
@@ -98,6 +104,9 @@
                         Mail sent successfully<br>
                         Sent: {{ $sentAtLabel }}
                     </div>
+                @endif
+                @if($mailError)
+                    <div class="pf-error">{{ $mailError }}</div>
                 @endif
 
                 <div class="pf-section-title">To</div>
@@ -195,6 +204,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- Mail History --}}
     <div class="pf-panel" style="margin-top:16px">
@@ -228,12 +238,12 @@
         <div class="pf-modal-backdrop" wire:click.self="closeHistoryModal">
             <div class="pf-modal" x-data="{ previewSrc: null, previewName: '' }">
                 <div class="panel-title" style="margin-bottom:10px">Mail Details</div>
-                @foreach($viewingRecord->to_recipients ?? [] as $recipient)
-                    <div style="font-size:10px"><strong>To:</strong> {{ $recipient['name'] }} &lt;{{ $recipient['mail'] }}&gt;</div>
-                @endforeach
-                @foreach($viewingRecord->cc_recipients ?? [] as $recipient)
-                    <div style="font-size:10px"><strong>CC:</strong> {{ $recipient['name'] }} &lt;{{ $recipient['mail'] }}&gt;</div>
-                @endforeach
+                @if(! empty($viewingRecord->to_recipients))
+                    <div style="font-size:10px"><strong>To:</strong> {{ collect($viewingRecord->to_recipients)->map(fn ($r) => $r['name'].' <'.$r['mail'].'>')->implode(', ') }}</div>
+                @endif
+                @if(! empty($viewingRecord->cc_recipients))
+                    <div style="font-size:10px"><strong>CC:</strong> {{ collect($viewingRecord->cc_recipients)->map(fn ($r) => $r['name'].' <'.$r['mail'].'>')->implode(', ') }}</div>
+                @endif
                 <div style="font-size:10px;margin-top:8px"><strong>Subject:</strong> {{ $viewingRecord->subject }}</div>
                 <div style="font-size:10px;margin-top:8px;white-space:pre-wrap">{{ $viewingRecord->body }}</div>
                 @if($viewingRecord->transfer_url)

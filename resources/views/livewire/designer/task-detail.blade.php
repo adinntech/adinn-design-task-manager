@@ -367,7 +367,7 @@
         @if(in_array($task->status, ['completed','prepare_printing_file'], true))
             <button class="detail-tab" :class="{ active: tab === 'ratings' }" @click="tab = 'ratings'">Ratings</button>
         @endif
-        @if($task->status === 'prepare_printing_file')
+        @if($task->status === 'prepare_printing_file' || ($task->status === 'completed' && $task->printingFileMails()->exists()))
             <button class="detail-tab" :class="{ active: tab === 'printing-file' }" @click="tab = 'printing-file'">Printing File</button>
         @endif
     </div>
@@ -1108,7 +1108,7 @@
         </section>
     @endif
 
-    @if($task->status === 'prepare_printing_file')
+    @if($task->status === 'prepare_printing_file' || ($task->status === 'completed' && $task->printingFileMails()->exists()))
         <section x-show="tab === 'printing-file'" style="display:none">
             <livewire:designer.printing-file-tab :task="$task" :key="'printing-file-tab-'.$task->id" />
         </section>

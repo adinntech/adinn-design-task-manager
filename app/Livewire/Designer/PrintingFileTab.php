@@ -2,27 +2,31 @@
 
 namespace App\Livewire\Designer;
 
-use App\Mail\PrintingFileMail;
 use App\Models\AllUsersMail;
 use App\Models\DesignTask;
 use App\Models\DesignTaskPrintingFileMail;
 use App\Models\FileUpload;
 use App\Services\CloudMultipartUploadService;
+use App\Services\DesignTaskStatusService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Component;
+use Throwable;
 
 /**
  * Designer-only "Printing File" tab — compose + send the printing-handoff
  * mail (WeTransfer link + cloud attachments) for a task in the
  * prepare_printing_file status, with per-task send history and resend.
- * Fully isolated from TaskDetail so the existing tabs/status flows are
- * never touched by this feature.
+ * Sending calls the external mail API directly (no local Mailable/SMTP);
+ * on success the task auto-completes via DesignTaskStatusService.
  */
 class PrintingFileTab extends Component
 {
+    private const MAIL_API_URL = 'https://adinndigital.com/api/printing_request_mail/index.php';
+
     public DesignTask $task;
 
     public string $weTransferLink = '';
@@ -58,6 +62,8 @@ class PrintingFileTab extends Component
 
     public ?int $viewingHistoryId = null;
 
+    public ?string $mailError = null;
+
     public function mount(DesignTask $task): void
     {
         abort_unless(
@@ -65,7 +71,9 @@ class PrintingFileTab extends Component
             && (int) $task->designer_id === (int) Auth::id(),
             403
         );
-        abort_unless($task->status === 'prepare_printing_file', 403);
+        // 'completed' stays reachable so Mail History/Resend keep working
+        // after the auto-completion sendMail() now performs (see below).
+        abort_unless(in_array($task->status, ['prepare_printing_file', 'completed'], true), 403);
 
         $this->task = $task;
         $this->subject = $this->buildDefaultSubject();
@@ -208,7 +216,7 @@ class PrintingFileTab extends Component
         }
 
         $this->task->refresh();
-        abort_unless($this->task->status === 'prepare_printing_file', 403);
+        abort_unless(in_array($this->task->status, ['prepare_printing_file', 'completed'], true), 403);
 
         $this->validate([
             'toRecipients' => ['required', 'array', 'min:1'],
@@ -220,13 +228,15 @@ class PrintingFileTab extends Component
         ]);
 
         $this->sending = true;
+        $this->mailError = null;
 
         try {
             $attachmentMeta = array_map(fn ($a) => $this->resolveAttachment($a), $this->attachments);
+            $wasPreparePrintingFile = $this->task->status === 'prepare_printing_file';
 
-            Mail::to(array_column($this->toRecipients, 'mail'))
-                ->cc(array_column($this->ccRecipients, 'mail'))
-                ->send(new PrintingFileMail($this->subject, $this->body, $this->weTransferLink ?: null, $attachmentMeta));
+            if (! $this->callPrintingRequestApi($attachmentMeta)) {
+                return;
+            }
 
             $sentAt = now();
 
@@ -242,12 +252,59 @@ class PrintingFileTab extends Component
                 'sent_at' => $sentAt,
             ]);
 
+            // Auto-complete on the first successful send only — a resend
+            // against an already-completed task must never repeat/replay
+            // this transition (moveAsDesigner() would reject it anyway
+            // since 'completed' is terminal, but this avoids the call).
+            if ($wasPreparePrintingFile) {
+                app(DesignTaskStatusService::class)->moveAsDesigner(
+                    $this->task, Auth::user(), 'completed', 'printing_file_mail'
+                );
+                $this->task->refresh();
+            }
+
             $this->sentAtLabel = $sentAt->format('d M Y').' • '.$sentAt->format('h:i A');
             $this->sent = true;
             $this->attachments = [];
         } finally {
             $this->sending = false;
         }
+    }
+
+    /** @param array<int, array{url:string}> $attachmentMeta */
+    private function callPrintingRequestApi(array $attachmentMeta): bool
+    {
+        try {
+            $response = Http::timeout(30)->post(self::MAIL_API_URL, [
+                'mailtype' => 'printing_request',
+                'to' => array_column($this->toRecipients, 'mail'),
+                'cc' => array_column($this->ccRecipients, 'mail'),
+                'subject' => $this->subject,
+                'mail_content' => $this->body,
+                'attachments' => array_column($attachmentMeta, 'url'),
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Printing request mail API request failed', [
+                'design_task_id' => $this->task->id,
+                'error' => $e->getMessage(),
+            ]);
+            $this->mailError = 'Could not send the printing request mail — please try again.';
+
+            return false;
+        }
+
+        if (! $response->successful() || $response->json('status') !== 'success') {
+            Log::warning('Printing request mail API returned failure', [
+                'design_task_id' => $this->task->id,
+                'status_code' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            $this->mailError = 'Could not send the printing request mail — please try again.';
+
+            return false;
+        }
+
+        return true;
     }
 
     /** @return array{id: ?int, name: string, size_bytes: int, url: string} */
