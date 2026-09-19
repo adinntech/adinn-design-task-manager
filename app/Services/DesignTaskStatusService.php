@@ -20,13 +20,14 @@ class DesignTaskStatusService
         'in_progress' => 'In Progress',
         'waiting_confirmation' => 'Waiting for BD Review',
         'rework' => 'Rework',
-        'completed' => 'Completed',
         // BD-initiated branch off completion — assigned back to the Designer to
         // prepare final print files. Never entered via moveAsDesigner()/ORDER
         // (see designerCanMove()); only Bd\AssignedTaskController::completeWithRating()
         // sets it, the same hand-rolled lock/update/history pattern BD's other
         // waiting_confirmation-only actions (rework/completed) already use.
+        // Kept immediately after 'rework' so it renders as the next Kanban column.
         'prepare_printing_file' => 'Prepare Printing File',
+        'completed' => 'Completed',
         'swap_tasks' => 'Transferred Tasks',
     ];
 

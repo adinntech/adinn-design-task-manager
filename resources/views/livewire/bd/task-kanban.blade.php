@@ -938,6 +938,13 @@
                         this.toastTimer = setTimeout(() => this.toast = '', 2600);
                     },
 
+                    // Dashboard cards link here with ?focus=<status>. Scrolls the shell
+                    // however far is actually needed on EACH axis to bring the target
+                    // column fully into view — never assumes a single row/column layout,
+                    // so this still works if the board ever wraps into extra rows on a
+                    // narrower viewport. The blink only starts once scrolling has fully
+                    // stopped (native `scrollend` where supported, otherwise a
+                    // scroll-event debounce with a safety timeout).
                     focusRequestedColumn(){
                         const focus = new URLSearchParams(window.location.search).get('focus');
                         if (!focus) return;
@@ -956,7 +963,8 @@
 
                         const highlight = (column) => {
                             column.classList.add('kanban-column-focus');
-                            const finish = () => {
+                            const finish = (event) => {
+                                if (event.animationName !== 'kanbanColumnFocusBlink') return;
                                 column.classList.remove('kanban-column-focus');
                                 column.removeEventListener('animationend', finish);
                             };
@@ -964,9 +972,55 @@
                         };
 
                         const scrollTo = (column) => {
-                            const targetLeft = column.offsetLeft - (shell.clientWidth - column.offsetWidth) / 2;
-                            shell.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
-                            highlight(column);
+                            const shellRect = shell.getBoundingClientRect();
+                            const colRect = column.getBoundingClientRect();
+                            const buffer = 12;
+
+                            let left = shell.scrollLeft;
+                            if (colRect.left < shellRect.left) {
+                                left += colRect.left - shellRect.left - buffer;
+                            } else if (colRect.right > shellRect.right) {
+                                left += colRect.right - shellRect.right + buffer;
+                            }
+
+                            let top = shell.scrollTop;
+                            if (colRect.top < shellRect.top) {
+                                top += colRect.top - shellRect.top - buffer;
+                            } else if (colRect.bottom > shellRect.bottom) {
+                                top += colRect.bottom - shellRect.bottom + buffer;
+                            }
+
+                            left = Math.max(0, left);
+                            top = Math.max(0, top);
+
+                            if (Math.abs(shell.scrollLeft - left) < 2 && Math.abs(shell.scrollTop - top) < 2) {
+                                highlight(column);
+                                return;
+                            }
+
+                            let finished = false;
+                            let debounce = null;
+
+                            const finish = () => {
+                                if (finished) return;
+                                finished = true;
+                                clearTimeout(debounce);
+                                clearTimeout(safety);
+                                shell.removeEventListener('scroll', onScroll);
+                                shell.removeEventListener('scrollend', finish);
+                                highlight(column);
+                            };
+
+                            const onScroll = () => {
+                                clearTimeout(debounce);
+                                debounce = setTimeout(finish, 120);
+                            };
+
+                            shell.addEventListener('scroll', onScroll, { passive: true });
+                            shell.addEventListener('scrollend', finish);
+                            const safety = setTimeout(finish, 1500);
+
+                            shell.scrollTo({ left, top, behavior: 'smooth' });
                         };
 
                         const tryFocus = () => {

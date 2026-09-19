@@ -4,7 +4,7 @@
 .kanban-shell{position:relative}
 body[data-kanban-dragging="1"] .kanban-shell::before,
 body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z-index:50;top:0;width:34px;height:100%;pointer-events:none;opacity:.2}
-.kanban-shell .task-card,.kanban-shell input,.kanban-shell select,.kanban-shell button,.kanban-shell a{user-select:auto}.kanban-board{display:grid;grid-template-columns:repeat(10,270px);gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3;border-radius:13px 13px 0 0;position:sticky;top:0;z-index:3}.kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}
+.kanban-shell .task-card,.kanban-shell input,.kanban-shell select,.kanban-shell button,.kanban-shell a{user-select:auto}.kanban-board{display:grid;grid-template-columns:repeat(10,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3;border-radius:13px 13px 0 0;position:sticky;top:0;z-index:3}.kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}
 
 .kanban-column.status-assigned_tasks .kanban-column-header{border-top-color:#667085;background:#f9fafb}
 .kanban-column.status-review_analysis .kanban-column-header{border-top-color:#2563eb;background:#eff6ff}
@@ -586,7 +586,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                             };
 
                             if (shell && column) {
-                                this.scrollShellTo(shell, Math.max(0, column.offsetLeft - 12), afterScroll);
+                                this.scrollShellToColumn(shell, column, afterScroll);
                             } else {
                                 afterScroll();
                             }
@@ -595,13 +595,37 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         attempt(0);
                     },
 
-                    // Smooth-scrolls the shell, then calls `done` once movement actually
-                    // stops (native `scrollend` where supported, otherwise a scroll-event
-                    // debounce) so the blink never starts mid-scroll. A generous safety
-                    // timer guarantees `done` still fires if neither signal arrives.
-                    scrollShellTo(shell, left, done){
-                        if (Math.abs(shell.scrollLeft - left) < 2) {
-                            shell.scrollTo({ left, behavior: 'smooth' });
+                    // Scrolls the shell however far is actually needed on EACH axis to bring
+                    // `column` fully into view — never assumes a single row/column layout,
+                    // so this works whether the board wraps into extra rows (narrower
+                    // viewports) or only ever grows horizontally. Skips an axis entirely
+                    // when the column is already visible on it. Calls `done` only once
+                    // movement actually stops (native `scrollend` where supported,
+                    // otherwise a scroll-event debounce with a safety timeout), so the
+                    // blink never starts mid-scroll.
+                    scrollShellToColumn(shell, column, done){
+                        const shellRect = shell.getBoundingClientRect();
+                        const colRect = column.getBoundingClientRect();
+                        const buffer = 12;
+
+                        let left = shell.scrollLeft;
+                        if (colRect.left < shellRect.left) {
+                            left += colRect.left - shellRect.left - buffer;
+                        } else if (colRect.right > shellRect.right) {
+                            left += colRect.right - shellRect.right + buffer;
+                        }
+
+                        let top = shell.scrollTop;
+                        if (colRect.top < shellRect.top) {
+                            top += colRect.top - shellRect.top - buffer;
+                        } else if (colRect.bottom > shellRect.bottom) {
+                            top += colRect.bottom - shellRect.bottom + buffer;
+                        }
+
+                        left = Math.max(0, left);
+                        top = Math.max(0, top);
+
+                        if (Math.abs(shell.scrollLeft - left) < 2 && Math.abs(shell.scrollTop - top) < 2) {
                             done();
                             return;
                         }
@@ -628,7 +652,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         shell.addEventListener('scrollend', finish);
                         const safety = setTimeout(finish, 1500);
 
-                        shell.scrollTo({ left, behavior: 'smooth' });
+                        shell.scrollTo({ left, top, behavior: 'smooth' });
                     },
 
                     refreshSortable(){

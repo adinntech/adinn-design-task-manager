@@ -757,7 +757,7 @@
                             };
 
                             if (shell && column) {
-                                this.scrollShellTo(shell, Math.max(0, column.offsetLeft - 12), afterScroll);
+                                this.scrollShellToColumn(shell, column, afterScroll);
                             } else {
                                 afterScroll();
                             }
@@ -766,13 +766,37 @@
                         attempt(0);
                     },
 
-                    // Smooth-scrolls the shell, then calls `done` once movement actually
-                    // stops (native `scrollend` where supported, otherwise a scroll-event
-                    // debounce) so the blink never starts mid-scroll. A generous safety
-                    // timer guarantees `done` still fires if neither signal arrives.
-                    scrollShellTo(shell, left, done){
-                        if (Math.abs(shell.scrollLeft - left) < 2) {
-                            shell.scrollTo({ left, behavior: 'smooth' });
+                    // Scrolls the shell however far is actually needed on EACH axis to bring
+                    // `column` fully into view — never assumes a single row/column layout,
+                    // so this works whether the board wraps into extra rows (narrower
+                    // viewports) or only ever grows horizontally. Skips an axis entirely
+                    // when the column is already visible on it. Calls `done` only once
+                    // movement actually stops (native `scrollend` where supported,
+                    // otherwise a scroll-event debounce with a safety timeout), so the
+                    // blink never starts mid-scroll.
+                    scrollShellToColumn(shell, column, done){
+                        const shellRect = shell.getBoundingClientRect();
+                        const colRect = column.getBoundingClientRect();
+                        const buffer = 12;
+
+                        let left = shell.scrollLeft;
+                        if (colRect.left < shellRect.left) {
+                            left += colRect.left - shellRect.left - buffer;
+                        } else if (colRect.right > shellRect.right) {
+                            left += colRect.right - shellRect.right + buffer;
+                        }
+
+                        let top = shell.scrollTop;
+                        if (colRect.top < shellRect.top) {
+                            top += colRect.top - shellRect.top - buffer;
+                        } else if (colRect.bottom > shellRect.bottom) {
+                            top += colRect.bottom - shellRect.bottom + buffer;
+                        }
+
+                        left = Math.max(0, left);
+                        top = Math.max(0, top);
+
+                        if (Math.abs(shell.scrollLeft - left) < 2 && Math.abs(shell.scrollTop - top) < 2) {
                             done();
                             return;
                         }
@@ -799,7 +823,7 @@
                         shell.addEventListener('scrollend', finish);
                         const safety = setTimeout(finish, 1500);
 
-                        shell.scrollTo({ left, behavior: 'smooth' });
+                        shell.scrollTo({ left, top, behavior: 'smooth' });
                     },
 
                     refreshSortable(){
