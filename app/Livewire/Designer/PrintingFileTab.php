@@ -224,7 +224,10 @@ class PrintingFileTab extends Component
             'ccRecipients.*.mail' => ['nullable', 'email'],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string'],
-            'weTransferLink' => ['nullable', 'url'],
+            'weTransferLink' => ['required', 'url'],
+        ], [
+            'weTransferLink.required' => 'WeTransfer Link is required.',
+            'weTransferLink.url' => 'Please enter a valid WeTransfer URL.',
         ]);
 
         $this->sending = true;
