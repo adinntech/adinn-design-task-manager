@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Bd\TaskController as BdTaskController;
 use App\Services\DesignerProfileService;
 use Illuminate\Http\RedirectResponse;
@@ -14,10 +15,12 @@ use Illuminate\View\View;
 /**
  * Shared "My Profile" page for Admin, Designer, Designer Head and BD —
  * self-service editing of Name/Username/Employee Code/Role Name plus a
- * password change; Email and Phone Number stay read-only everywhere (admin
- * manages those two via Admin\UserController). Designer additionally gets
- * self-service editing of experienced verticals + skills via
- * updateDesignerProfile() below.
+ * password change. Email stays read-only for everyone (admin-managed via
+ * Admin\UserController); Phone Number is also admin-managed for every role
+ * except Designer, who may self-edit it (reuses Admin\UserController's
+ * phone regex/uniqueness rule). Designer additionally gets self-service
+ * editing of experienced verticals + skills via updateDesignerProfile()
+ * below.
  */
 class ProfileController extends Controller
 {
@@ -28,24 +31,43 @@ class ProfileController extends Controller
 
     /**
      * Name/Username/Employee Code/Role Name — self-service for every role.
-     * Email and Phone Number are intentionally excluded (admin-managed only).
+     * Email is intentionally excluded (admin-managed only) for everyone.
+     * Phone Number is admin-managed only, except for Designer, who may edit
+     * it here (same regex/uniqueness rule as Admin User Management).
      */
     public function updateBasicInfo(Request $request): RedirectResponse
     {
         $user = $request->user();
 
-        $data = $request->validate([
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($user->id)],
             'employee_code' => ['required', 'string', 'max:100', Rule::unique('users', 'employee_code')->ignore($user->id)],
             'role_name' => ['nullable', 'string', 'max:255'],
-        ], [
+        ];
+
+        $messages = [
             'username.unique' => 'Username already exists.',
             'employee_code.unique' => 'Employee Code already exists.',
-        ]);
+        ];
+
+        if ($user->role === 'designer') {
+            if ($request->filled('phone_number')) {
+                $request->merge(['phone_number' => trim($request->input('phone_number'))]);
+            }
+
+            $rules['phone_number'] = [
+                'required', 'regex:'.AdminUserController::PHONE_REGEX,
+                Rule::unique('users', 'phone_number')->ignore($user->id),
+            ];
+            $messages['phone_number.unique'] = 'Phone Number already exists.';
+            $messages['phone_number.regex'] = 'Enter a valid 10-digit phone number.';
+        }
+
+        $data = $request->validate($rules, $messages);
 
         // Always the authenticated user — never a submitted id, so one account
-        // can never edit another's profile through this form.
+        // can never edit another's profile (or phone number) through this form.
         $user->update($data);
 
         return back()->with('success', 'Profile details updated successfully.');

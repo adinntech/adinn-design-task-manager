@@ -17,8 +17,8 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
-    /** Indian mobile number: exactly 10 digits, starting 6-9. */
-    private const PHONE_REGEX = '/^[6-9]\d{9}$/';
+    /** Indian mobile number: exactly 10 digits, starting 6-9. Reused by ProfileController for Designer self-edit. */
+    public const PHONE_REGEX = '/^[6-9]\d{9}$/';
 
     public function index(Request $request): View
     {
