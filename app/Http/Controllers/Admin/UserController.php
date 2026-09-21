@@ -17,6 +17,9 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
+    /** Indian mobile number: exactly 10 digits, starting 6-9. */
+    private const PHONE_REGEX = '/^[6-9]\d{9}$/';
+
     public function index(Request $request): View
     {
         $users = User::query()
@@ -55,6 +58,8 @@ class UserController extends Controller
             'employee_code' => ['required', 'string', 'max:100', 'unique:users,employee_code'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'role' => ['required', Rule::in(['admin', 'bd', 'designer', 'designer_head'])],
+            'role_name' => ['required', 'string', 'max:255'],
+            'phone_number' => ['required', 'regex:'.self::PHONE_REGEX, 'unique:users,phone_number'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'is_active' => ['nullable', 'boolean'],
             'designer_head_id' => [
@@ -71,6 +76,8 @@ class UserController extends Controller
                 'employee_code' => $data['employee_code'],
                 'email' => $data['email'],
                 'role' => $data['role'],
+                'role_name' => $data['role_name'],
+                'phone_number' => $data['phone_number'],
                 'password' => Hash::make($data['password']),
                 'is_active' => $request->boolean('is_active'),
             ], $this->designerProfileData($data)));
@@ -148,6 +155,8 @@ class UserController extends Controller
             'username.unique' => 'Username already exists.',
             'email.unique' => 'Email already exists.',
             'employee_code.unique' => 'Employee Code already exists.',
+            'phone_number.unique' => 'Phone Number already exists.',
+            'phone_number.regex' => 'Enter a valid 10-digit phone number.',
         ];
     }
 
@@ -177,6 +186,11 @@ class UserController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'role' => ['required', Rule::in(['admin', 'bd', 'designer', 'designer_head'])],
+            'role_name' => ['required', 'string', 'max:255'],
+            'phone_number' => [
+                'required', 'regex:'.self::PHONE_REGEX,
+                Rule::unique('users', 'phone_number')->ignore($user->id),
+            ],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'is_active' => ['nullable', 'boolean'],
             'designer_head_id' => [
@@ -197,6 +211,8 @@ class UserController extends Controller
             'employee_code' => $data['employee_code'],
             'email' => $data['email'],
             'role' => $data['role'],
+            'role_name' => $data['role_name'],
+            'phone_number' => $data['phone_number'],
             'is_active' => $request->boolean('is_active'),
         ], $this->designerProfileData($data));
 

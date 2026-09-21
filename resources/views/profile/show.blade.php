@@ -3,17 +3,29 @@
 @section('workspace-title','My Profile')
 @section('workspace-subtitle','Your account details and password')
 @section('content')
-<div class="page-head"><div><h1>My Profile</h1><p>Account details are managed by an administrator. You can update your password here.</p></div></div>
+<div class="page-head"><div><h1>My Profile</h1><p>Update your profile details below. Email and Phone Number are fixed and cannot be changed here.</p></div></div>
 
 <div class="panel" style="max-width:640px"><div class="panel-body">
-    <div class="form-grid" style="margin-bottom:18px">
-        <div><label class="label">Full Name</label><input class="premium-input" value="{{ $user->name }}" disabled></div>
-        <div><label class="label">Username</label><input class="premium-input" value="{{ $user->username ?? '—' }}" disabled></div>
-        <div><label class="label">Employee Code</label><input class="premium-input" value="{{ $user->employee_code ?? '—' }}" disabled></div>
-        <div><label class="label">Email Address</label><input class="premium-input" value="{{ $user->email }}" disabled></div>
-        <div><label class="label">Last Login</label><input class="premium-input" value="{{ optional($user->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}" disabled></div>
-    </div>
+    <form method="POST" action="{{ route('profile.basic-info.update') }}" onsubmit="const b=this.querySelector('button[type=submit],button:not([type])');if(b){b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Saving...';}">
+        @csrf
+        @method('PUT')
+        @if($errors->any())<div class="flash flash-error">{{ $errors->first() }}</div>@endif
 
+        <div class="form-grid" style="margin-bottom:18px">
+            <div><label class="label">Full Name</label><input class="premium-input" name="name" value="{{ old('name',$user->name) }}" required></div>
+            <div><label class="label">Username</label><input class="premium-input" name="username" value="{{ old('username',$user->username) }}" required></div>
+            <div><label class="label">Employee Code</label><input class="premium-input" name="employee_code" value="{{ old('employee_code',$user->employee_code) }}" required></div>
+            <div><label class="label">Role Name</label><input class="premium-input" name="role_name" value="{{ old('role_name',$user->role_name) }}"></div>
+            <div><label class="label">Email Address</label><input class="premium-input" value="{{ $user->email }}" disabled></div>
+            <div><label class="label">Phone Number</label><input class="premium-input" value="{{ $user->phone_number ?? '—' }}" disabled></div>
+            <div><label class="label">Last Login</label><input class="premium-input" value="{{ optional($user->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}" disabled></div>
+        </div>
+
+        <div class="form-actions"><button class="btn btn-primary">Save Profile Details</button></div>
+    </form>
+</div></div>
+
+<div class="panel" style="max-width:640px;margin-top:18px"><div class="panel-body">
     <form method="POST" action="{{ route('profile.password.update') }}" onsubmit="const b=this.querySelector('button[type=submit],button:not([type])');if(b){b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Updating...';}">
         @csrf
         @method('PUT')

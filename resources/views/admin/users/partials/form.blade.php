@@ -6,6 +6,8 @@
 <div><label class="label">Username</label><input class="premium-input" name="username" value="{{ old('username',$user?->username) }}" required></div>
 <div><label class="label">Employee Code</label><input class="premium-input" name="employee_code" value="{{ old('employee_code',$user?->employee_code) }}" required></div>
 <div><label class="label">Email Address</label><input class="premium-input" type="email" name="email" value="{{ old('email',$user?->email) }}" required></div>
+<div><label class="label">Role Name</label><input class="premium-input" name="role_name" value="{{ old('role_name',$user?->role_name) }}" required></div>
+<div><label class="label">Phone Number</label><input class="premium-input" type="tel" name="phone_number" value="{{ old('phone_number',$user?->phone_number) }}" maxlength="10" pattern="[6-9][0-9]{9}" required></div>
 <div><label class="label">Role</label><select class="premium-select" name="role" x-model="role" required>@foreach(['admin'=>'Admin','bd'=>'BD','designer'=>'Designer','designer_head'=>'Designer Head'] as $k=>$v)<option value="{{ $k }}" @selected(old('role',$user?->role ?? 'designer')===$k)>{{ $v }}</option>@endforeach</select></div>
 <div style="display:flex;align-items:end"><label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800"><input type="checkbox" name="is_active" value="1" @checked(old('is_active',$user?->is_active ?? true))> Active account</label></div>
 <div>

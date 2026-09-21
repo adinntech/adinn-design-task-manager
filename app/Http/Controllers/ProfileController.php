@@ -12,17 +12,43 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
- * Shared "My Profile" page for Designer, Designer Head and BD — read-only
- * identity fields (name/username/employee_code/email) plus a password-only
- * self-service change. Designer additionally gets self-service editing of
- * experienced verticals + skills via updateDesignerProfile() below. Not used
- * by Admin, which manages users through Admin\UserController instead.
+ * Shared "My Profile" page for Admin, Designer, Designer Head and BD —
+ * self-service editing of Name/Username/Employee Code/Role Name plus a
+ * password change; Email and Phone Number stay read-only everywhere (admin
+ * manages those two via Admin\UserController). Designer additionally gets
+ * self-service editing of experienced verticals + skills via
+ * updateDesignerProfile() below.
  */
 class ProfileController extends Controller
 {
     public function show(Request $request): View
     {
         return view('profile.show', ['user' => $request->user()]);
+    }
+
+    /**
+     * Name/Username/Employee Code/Role Name — self-service for every role.
+     * Email and Phone Number are intentionally excluded (admin-managed only).
+     */
+    public function updateBasicInfo(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:255', Rule::unique('users', 'username')->ignore($user->id)],
+            'employee_code' => ['required', 'string', 'max:100', Rule::unique('users', 'employee_code')->ignore($user->id)],
+            'role_name' => ['nullable', 'string', 'max:255'],
+        ], [
+            'username.unique' => 'Username already exists.',
+            'employee_code.unique' => 'Employee Code already exists.',
+        ]);
+
+        // Always the authenticated user — never a submitted id, so one account
+        // can never edit another's profile through this form.
+        $user->update($data);
+
+        return back()->with('success', 'Profile details updated successfully.');
     }
 
     public function updatePassword(Request $request): RedirectResponse
