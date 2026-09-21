@@ -291,6 +291,8 @@ class PrintingFileTab extends Component
     /** @param array<int, array{url:string}> $attachmentMeta */
     private function callPrintingRequestApi(array $attachmentMeta): bool
     {
+        $sender = Auth::user();
+
         try {
             $response = Http::timeout(30)->post(self::MAIL_API_URL, [
                 'mailtype' => 'printing_request',
@@ -299,6 +301,10 @@ class PrintingFileTab extends Component
                 'subject' => $this->subject,
                 'mail_content' => $this->body,
                 'attachments' => array_column($attachmentMeta, 'url'),
+                'username' => $sender->name,
+                'email' => $sender->email,
+                'rolename' => $sender->role_name,
+                'phone' => $sender->phone_number,
             ]);
         } catch (Throwable $e) {
             Log::error('Printing request mail API request failed', [
@@ -393,8 +399,23 @@ class PrintingFileTab extends Component
 
     private function buildDefaultBody(): string
     {
-        return "Hi team,\n\nPlease process the following URL to proceed printing.\n\n{$this->weTransferLink}\n\nThanks and regards\n"
-            .(Auth::user()->email ?? '');
+        return "Hi team,\n\nPlease process the following URL to proceed printing.\n\n{$this->weTransferLink}";
+    }
+
+    /**
+     * Display-only "Thanks and regards" block for the Mail Preview. The
+     * external API generates the real signature itself from the
+     * username/email/rolename/phone payload fields, so this must never be
+     * written into $body — $body is sent verbatim as mail_content.
+     */
+    public function previewSignature(): string
+    {
+        $user = Auth::user();
+
+        return "Thanks and regards\n"
+            .($user->name ?? '').' ('.($user->email ?? '').'),'."\n"
+            .($user->role_name ?? '').",\n"
+            .($user->phone_number ?? '');
     }
 
     public function render()

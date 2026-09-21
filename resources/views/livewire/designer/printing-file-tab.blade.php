@@ -156,6 +156,12 @@
                 <textarea class="premium-input" rows="7" wire:model.blur="body"></textarea>
                 @error('body')<div class="error">{{ $message }}</div>@enderror
 
+                {{-- Display-only preview — the API generates this signature itself from
+                     the username/email/rolename/phone payload fields, so it is never
+                     part of $body/mail_content. --}}
+                <div class="pf-section-title" style="margin-top:14px">Signature Preview <span style="text-transform:none;font-weight:600;color:#98a2b3;letter-spacing:0">(added automatically, not part of Mail Body)</span></div>
+                <div style="border:1px solid #e4e7ec;border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.6;color:#475467;white-space:pre-wrap;background:#f9fafb">{{ $this->previewSignature() }}</div>
+
                 @if(count($attachments) > 0)
                     <div class="pf-section-title" style="margin-top:14px">Attachments</div>
                     @foreach($attachments as $attachment)
