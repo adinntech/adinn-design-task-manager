@@ -17,11 +17,7 @@
             <div><label class="label">Employee Code</label><input class="premium-input" name="employee_code" value="{{ old('employee_code',$user->employee_code) }}" required></div>
             <div><label class="label">Role Name</label><input class="premium-input" name="role_name" value="{{ old('role_name',$user->role_name) }}"></div>
             <div><label class="label">Email Address</label><input class="premium-input" value="{{ $user->email }}" disabled></div>
-            @if($user->role === 'designer')
-                <div><label class="label">Phone Number</label><input class="premium-input" type="tel" name="phone_number" value="{{ old('phone_number',$user->phone_number) }}" maxlength="10" pattern="[6-9][0-9]{9}" required></div>
-            @else
-                <div><label class="label">Phone Number</label><input class="premium-input" value="{{ $user->phone_number ?? '—' }}" disabled></div>
-            @endif
+            <div><label class="label">Phone Number</label><input class="premium-input" type="tel" name="phone_number" value="{{ old('phone_number',$user->phone_number) }}" maxlength="10" pattern="[6-9][0-9]{9}" required></div>
             <div><label class="label">Last Login</label><input class="premium-input" value="{{ optional($user->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}" disabled></div>
         </div>
 
