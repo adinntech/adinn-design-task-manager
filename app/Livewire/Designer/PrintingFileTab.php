@@ -27,6 +27,14 @@ class PrintingFileTab extends Component
 {
     private const MAIL_API_URL = 'https://adinndigital.com/api/printing_request_mail/index.php';
 
+    /** Always prefilled in the visible To field on a fresh compose. */
+    private const DEFAULT_TO_NAME = 'Printfil .';
+
+    private const DEFAULT_TO_MAIL = 'printfiles@adinn.co.in';
+
+    /** Always sent in cc[], but intentionally never shown in the visible CC field. */
+    private const DEFAULT_CC_MAILS = ['srbedev@adinn.co.in', 'automation-executive@adinn.co.in'];
+
     public DesignTask $task;
 
     public string $weTransferLink = '';
@@ -78,6 +86,12 @@ class PrintingFileTab extends Component
         $this->task = $task;
         $this->subject = $this->buildDefaultSubject();
         $this->body = $this->buildDefaultBody();
+
+        // Only for a fresh compose — an already-completed task with no Resend
+        // in progress must stay in history-only view (toRecipients empty).
+        if ($task->status === 'prepare_printing_file') {
+            $this->toRecipients = [['name' => self::DEFAULT_TO_NAME, 'mail' => self::DEFAULT_TO_MAIL]];
+        }
     }
 
     public function updatedWeTransferLink(): void
@@ -113,6 +127,71 @@ class PrintingFileTab extends Component
             ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'mail' => $u->mail])
             ->values()
             ->all();
+    }
+
+    /** @param array<int, array{name:string,mail:string}> $recipients */
+    private function withDefaultToRecipient(array $recipients): array
+    {
+        $hasDefault = collect($recipients)->contains(fn ($r) => strtolower($r['mail']) === self::DEFAULT_TO_MAIL);
+
+        return $hasDefault
+            ? $recipients
+            : array_merge([['name' => self::DEFAULT_TO_NAME, 'mail' => self::DEFAULT_TO_MAIL]], $recipients);
+    }
+
+    /** @param array<int, array{name:string,mail:string}> $recipients */
+    private function withoutDefaultCcRecipients(array $recipients): array
+    {
+        $hidden = array_map('strtolower', self::DEFAULT_CC_MAILS);
+
+        return array_values(array_filter($recipients, fn ($r) => ! in_array(strtolower($r['mail']), $hidden, true)));
+    }
+
+    /**
+     * The full CC list actually sent (hidden defaults + Designer-chosen),
+     * for storing in history — the visible $ccRecipients stays user-only.
+     *
+     * @return array<int, array{name:string,mail:string}>
+     */
+    private function actualCcRecipients(): array
+    {
+        $defaults = array_map(fn ($mail) => ['name' => $mail, 'mail' => $mail], self::DEFAULT_CC_MAILS);
+
+        return $this->dedupeRecipients(array_merge($defaults, $this->ccRecipients));
+    }
+
+    /** @param array<int, array{name:string,mail:string}> $recipients */
+    private function dedupeRecipients(array $recipients): array
+    {
+        $seen = [];
+        $result = [];
+
+        foreach ($recipients as $recipient) {
+            $key = strtolower($recipient['mail']);
+            if (! isset($seen[$key])) {
+                $seen[$key] = true;
+                $result[] = $recipient;
+            }
+        }
+
+        return $result;
+    }
+
+    /** @param array<int, string> $emails */
+    private function dedupeEmails(array $emails): array
+    {
+        $seen = [];
+        $result = [];
+
+        foreach ($emails as $email) {
+            $key = strtolower($email);
+            if (! isset($seen[$key])) {
+                $seen[$key] = true;
+                $result[] = $email;
+            }
+        }
+
+        return $result;
     }
 
     public function addRecipient(string $type, int $id): void
@@ -192,8 +271,11 @@ class PrintingFileTab extends Component
             ->where('design_task_id', $this->task->id)
             ->findOrFail($historyId);
 
-        $this->toRecipients = $history->to_recipients ?? [];
-        $this->ccRecipients = $history->cc_recipients ?? [];
+        $this->toRecipients = $this->withDefaultToRecipient($history->to_recipients ?? []);
+        // History may have stored the hidden CC defaults (they were actually
+        // sent) — strip them back out so the visible CC field only ever shows
+        // recipients the Designer explicitly chose, same as a fresh compose.
+        $this->ccRecipients = $this->withoutDefaultCcRecipients($history->cc_recipients ?? []);
         $this->subject = $history->subject;
         $this->body = $history->body;
         $this->weTransferLink = (string) $history->transfer_url;
@@ -246,8 +328,8 @@ class PrintingFileTab extends Component
             DesignTaskPrintingFileMail::create([
                 'design_task_id' => $this->task->id,
                 'sender_id' => Auth::id(),
-                'to_recipients' => $this->toRecipients,
-                'cc_recipients' => $this->ccRecipients,
+                'to_recipients' => $this->dedupeRecipients($this->toRecipients),
+                'cc_recipients' => $this->actualCcRecipients(),
                 'subject' => $this->subject,
                 'body' => $this->body,
                 'transfer_url' => $this->weTransferLink ?: null,
@@ -296,8 +378,8 @@ class PrintingFileTab extends Component
         try {
             $response = Http::timeout(30)->post(self::MAIL_API_URL, [
                 'mailtype' => 'printing_request',
-                'to' => array_column($this->toRecipients, 'mail'),
-                'cc' => array_column($this->ccRecipients, 'mail'),
+                'to' => $this->dedupeEmails(array_column($this->toRecipients, 'mail')),
+                'cc' => $this->dedupeEmails(array_merge(self::DEFAULT_CC_MAILS, array_column($this->ccRecipients, 'mail'))),
                 'subject' => $this->subject,
                 'mail_content' => $this->body,
                 'attachments' => array_column($attachmentMeta, 'url'),
