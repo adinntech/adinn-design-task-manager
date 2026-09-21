@@ -43,7 +43,13 @@ class TaskDetail extends Component
 
     public array $clarificationAttachments = [];
 
-    protected $listeners = ['request-created' => '$refresh'];
+    protected $listeners = [
+        'request-created' => '$refresh',
+        // Dispatched by the nested PrintingFileTab component after its mail
+        // send auto-completes the task, so this page's status pill/tabs
+        // reflect Completed immediately without a browser reload.
+        'task-status-changed' => '$refresh',
+    ];
 
     public ?int $eodCompletedCount = null;
 

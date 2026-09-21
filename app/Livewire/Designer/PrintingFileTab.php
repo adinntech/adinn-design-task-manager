@@ -261,11 +261,25 @@ class PrintingFileTab extends Component
                     $this->task, Auth::user(), 'completed', 'printing_file_mail'
                 );
                 $this->task->refresh();
+
+                // Notify the parent Ticket Details component (task-status-changed
+                // is already the app-wide convention for this) so its own status
+                // pill/tabs refresh without a browser reload.
+                $this->dispatch('task-status-changed', message: 'Mail sent. Task marked as Completed.');
             }
 
             $this->sentAtLabel = $sentAt->format('d M Y').' • '.$sentAt->format('h:i A');
             $this->sent = true;
             $this->attachments = [];
+
+            // Once the task is Completed, the compose form must give way to the
+            // history-only view immediately (not just after a refresh). The view's
+            // visibility check keys off count($toRecipients), so it must be cleared
+            // here — resendFrom() repopulates it explicitly when Resend is used.
+            if ($this->task->status === 'completed') {
+                $this->toRecipients = [];
+                $this->ccRecipients = [];
+            }
         } finally {
             $this->sending = false;
         }
