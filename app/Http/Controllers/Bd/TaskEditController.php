@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Bd;
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskEditHistory;
+use App\Models\DesignTaskStatusHistory;
 use App\Services\DesignTaskProgressService;
+use App\Services\DesignTaskRequestService;
+use App\Services\TaskNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -1893,6 +1896,7 @@ class TaskEditController extends Controller
 
         $batchId = (string) Str::uuid();
         $historyRows = [];
+        $autoMovedToReview = false;
 
         DB::transaction(function () use (
             $task,
@@ -1900,7 +1904,8 @@ class TaskEditController extends Controller
             $request,
             $batchId,
             $allowedRequirementFields,
-            &$historyRows
+            &$historyRows,
+            &$autoMovedToReview
         ): void {
             $task->refresh();
             $this->assertTaskIsEditable($task);
@@ -2050,10 +2055,40 @@ class TaskEditController extends Controller
                 $task->save();
             }
 
+            // Raising completed creatives above the (now lower) total can finish
+            // the task without the Designer submitting more progress — reconcile
+            // status the same way the Designer's 100%-completion flow does.
+            if (array_key_exists('total_creatives', $coreUpdates)
+                && $task->status === 'in_progress'
+                && app(DesignTaskProgressService::class)->isComplete($task)
+            ) {
+                $fromStatus = $task->status;
+                $task->update(['status' => 'waiting_confirmation']);
+
+                app(DesignTaskRequestService::class)->autoRejectPendingForStatus(
+                    $task, 'waiting_confirmation', $request->user()
+                );
+
+                DesignTaskStatusHistory::create([
+                    'design_task_id' => $task->id,
+                    'from_status' => $fromStatus,
+                    'to_status' => 'waiting_confirmation',
+                    'changed_by' => $request->user()->id,
+                    'change_source' => 'bd_edit_progress_reconciled',
+                    'note' => 'Creative count updated to '.$task->total_creatives.'; all creatives already completed. Automatically moved to Waiting for BD Review.',
+                ]);
+
+                $autoMovedToReview = true;
+            }
+
             if ($historyRows !== []) {
                 DesignTaskEditHistory::query()->insert($historyRows);
             }
         });
+
+        if ($autoMovedToReview) {
+            app(TaskNotificationService::class)->statusChanged($task->fresh(), 'waiting_confirmation', $request->user());
+        }
 
         if ($historyRows === []) {
             return redirect()
@@ -2063,7 +2098,9 @@ class TaskEditController extends Controller
 
         return redirect()
             ->route('bd.tasks.show', ['task' => $task, 'tab' => 'history'])
-            ->with('success', 'Task updated successfully. Edit History has been recorded.');
+            ->with('success', $autoMovedToReview
+                ? 'Task updated successfully. Creative count is complete — moved to Waiting for BD Review.'
+                : 'Task updated successfully. Edit History has been recorded.');
     }
 
     private function authorizeBdTask(Request $request, DesignTask $task): void
