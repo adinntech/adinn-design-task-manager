@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Bd;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClientDetail;
 use App\Models\DesignTask;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
@@ -154,6 +155,27 @@ class TaskController extends Controller
         ]);
     }
 
+    /**
+     * Live client-name autocomplete for the task-create form. BD-authenticated
+     * via the enclosing route group; returns only the fields the form needs.
+     */
+    public function searchClients(Request $request)
+    {
+        $term = trim((string) $request->query('q', ''));
+
+        if ($term === '') {
+            return response()->json([]);
+        }
+
+        $clients = ClientDetail::query()
+            ->where('client_name', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], $term).'%')
+            ->orderBy('client_name')
+            ->limit(10)
+            ->get(['id', 'client_name', 'contact_person_name', 'mobile_number']);
+
+        return response()->json($clients);
+    }
+
     public function store(Request $request)
     {
         $verticals = array_keys(self::NATURES);
@@ -300,6 +322,8 @@ class TaskController extends Controller
 
             app(TaskNotificationService::class)->taskAssigned($task, auth()->user(), $task->designer ?? User::find($task->designer_id));
 
+            ClientDetail::rememberFromTask($data['party_name'], $data['contact_person'] ?? null, $data['mobile_number'] ?? null);
+
             return redirect()
                 ->route('bd.tasks.show', $task)
                 ->with('success', 'Design task created successfully.');
@@ -389,6 +413,8 @@ class TaskController extends Controller
         }
 
         app(TaskNotificationService::class)->taskAssigned($task, auth()->user(), $task->designer ?? User::find($task->designer_id));
+
+        ClientDetail::rememberFromTask($data['party_name'], $data['contact_person'] ?? null, $data['mobile_number'] ?? null);
 
         return redirect()
             ->route('bd.tasks.show', $task)

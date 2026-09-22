@@ -222,7 +222,11 @@
         </div>
 
         <div><label class="label">Client / Agency *</label><select class="field" name="party_type" id="partyType" required><option value="client" @selected(($formValues['party_type']??'')==='client')>Client</option><option value="agency" @selected(($formValues['party_type']??'')==='agency')>Agency</option></select></div>
-        <div><label class="label" id="partyNameLabel">Client Name *</label><input class="field" name="party_name" value="{{ $formValues['party_name'] ?? '' }}" required></div>
+        <div style="position:relative">
+            <label class="label" id="partyNameLabel">Client Name *</label>
+            <input class="field" id="party_name" name="party_name" value="{{ $formValues['party_name'] ?? '' }}" autocomplete="off" required>
+            <div id="clientSuggestions" style="display:none;position:absolute;z-index:20;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;max-height:220px;overflow-y:auto;box-shadow:0 4px 10px rgba(0,0,0,.08)"></div>
+        </div>
         <div>
             <label class="label" for="contact_person">Contact Person Name</label>
             <input class="field" id="contact_person" name="contact_person" type="text" maxlength="100"
@@ -815,6 +819,50 @@ function renderFields(){
 vertical.addEventListener('change',()=>populateNatures());
 nature.addEventListener('change',renderFields);
 document.getElementById('partyType').addEventListener('change',e=>document.getElementById('partyNameLabel').textContent=(e.target.value==='agency'?'Agency':'Client')+' Name *');
+
+(function(){
+ const nameInput=document.getElementById('party_name');
+ const contactInput=document.getElementById('contact_person');
+ const mobileInput=document.getElementById('mobile_number');
+ const box=document.getElementById('clientSuggestions');
+ let debounceTimer=null,activeRequest=0;
+ function hideSuggestions(){box.style.display='none';box.innerHTML='';}
+ function renderSuggestions(clients){
+  if(!clients.length){hideSuggestions();return;}
+  box.innerHTML=clients.map(c=>{
+   const meta=[c.contact_person_name,c.mobile_number].filter(Boolean).join(' • ');
+   return `<div class="client-suggestion" data-id="${c.id}" data-name="${(c.client_name||'').replace(/"/g,'&quot;')}" data-contact="${(c.contact_person_name||'').replace(/"/g,'&quot;')}" data-mobile="${(c.mobile_number||'').replace(/"/g,'&quot;')}" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid #f1f5f9">
+     <div style="font-size:14px;color:#111827">${c.client_name}</div>
+     ${meta?`<div style="font-size:12px;color:#6b7280">${meta}</div>`:''}
+    </div>`;
+  }).join('');
+  box.style.display='block';
+ }
+ box.addEventListener('mousedown',e=>{
+  const row=e.target.closest('.client-suggestion');
+  if(!row)return;
+  e.preventDefault();
+  nameInput.value=row.dataset.name;
+  contactInput.value=row.dataset.contact;
+  mobileInput.value=row.dataset.mobile;
+  hideSuggestions();
+ });
+ nameInput.addEventListener('input',()=>{
+  const q=nameInput.value.trim();
+  clearTimeout(debounceTimer);
+  if(!q){hideSuggestions();return;}
+  debounceTimer=setTimeout(()=>{
+   const requestId=++activeRequest;
+   fetch(`{{ route('bd.clients.search') }}?q=${encodeURIComponent(q)}`,{headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(r=>r.ok?r.json():[])
+    .then(clients=>{if(requestId===activeRequest)renderSuggestions(clients);})
+    .catch(()=>{});
+  },350);
+ });
+ document.addEventListener('click',e=>{
+  if(e.target!==nameInput && !box.contains(e.target))hideSuggestions();
+ });
+})();
 
 @if(!$isDesignerActor)
 // Designer Availability meter — informational only; never blocks or alters task creation.

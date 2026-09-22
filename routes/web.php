@@ -25,6 +25,8 @@ Route::middleware(['auth', 'role:bd'])
 
         Route::get('/designers/{designer}/availability', [TaskController::class, 'availability'])->name('designers.availability');
 
+        Route::get('/clients/search', [TaskController::class, 'searchClients'])->name('clients.search');
+
         // Registered ahead of the /tasks/{task} wildcard below (same group, same
         // request cycle) so "export" is never swallowed by task-show's route model
         // binding — see the matching /tasks/export registration in premium-ui.php.
