@@ -8,10 +8,49 @@ use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use App\Services\DesignTaskStatusService;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    /**
+     * Global dashboard search — Admin has no scope restriction (sees every
+     * task, same as index()'s unscoped stats), so this is a plain DB-side
+     * query rather than an in-memory filter (nothing is preloaded here).
+     */
+    public function fragment(Request $request): View
+    {
+        $search = trim((string) $request->query('search', ''));
+
+        $recentTasks = DesignTask::query()
+            ->with(['designer:id,name', 'assigner:id,name'])
+            ->when($search !== '', function ($query) use ($search) {
+                $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $search).'%';
+                $query->where(function ($q) use ($term) {
+                    $q->where('task_id', 'like', $term)
+                        ->orWhere('zoho_project_number', 'like', $term)
+                        ->orWhere('task_name', 'like', $term)
+                        ->orWhere('party_name', 'like', $term)
+                        ->orWhere('contact_person', 'like', $term)
+                        ->orWhere('mobile_number', 'like', $term)
+                        ->orWhere('vertical', 'like', $term)
+                        ->orWhere('task_nature', 'like', $term)
+                        ->orWhere('priority', 'like', $term)
+                        ->orWhere('status', 'like', $term)
+                        ->orWhereHas('designer', fn ($dq) => $dq->where('name', 'like', $term))
+                        ->orWhereHas('assigner', fn ($aq) => $aq->where('name', 'like', $term));
+                });
+            })
+            ->latest('assigned_at')
+            ->limit($search !== '' ? 50 : 8)
+            ->get();
+
+        return view('admin.dashboard-recent-tasks', [
+            'recentTasks' => $recentTasks,
+            'search' => $search,
+        ]);
+    }
+
     public function index(): View
     {
         $now = now();

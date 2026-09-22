@@ -157,7 +157,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="14"><div class="dh-empty">No tickets found for this period.</div></td></tr>
+                    <tr><td colspan="14"><div class="dh-empty">{{ ($search ?? '') !== '' ? 'No matching tasks found.' : 'No tickets found for this period.' }}</div></td></tr>
                 @endforelse
                 </tbody>
             </table>

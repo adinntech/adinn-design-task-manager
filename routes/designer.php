@@ -13,6 +13,7 @@ Route::middleware(['auth', 'role:designer'])
     ->name('designer.')
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/task-rows', [DashboardController::class, 'fragment'])->name('dashboard.taskRows');
 
         // Designer-initiated task creation — sits in pending_bd_approval until the
         // selected BD confirms it (App\Livewire\Bd\TaskKanban::approveConfirmation()).

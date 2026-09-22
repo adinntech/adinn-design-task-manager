@@ -238,8 +238,11 @@
     </section>
 
     <section class="bd-card">
-        <div class="bd-card-head"><div class="bd-card-title">Your Task Details</div></div>
-        <div class="bd-table-wrap">
+        <div class="bd-card-head" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="bd-card-title">Your Task Details</div>
+            <input type="text" id="designer-task-search" style="min-width:240px;border:1px solid #d0d5dd;border-radius:8px;padding:8px 12px;font-size:13px" placeholder="Search tasks, project, client, designer, BD..." autocomplete="off">
+        </div>
+        <div class="bd-table-wrap" id="designer-task-rows-wrap">
             <table class="bd-table">
                 <thead>
                 <tr>
@@ -247,60 +250,36 @@
                     <th>Creatives</th><th>Deadline</th><th>Completed At</th><th>Overdue</th><th>Rework</th><th>Rating</th>
                 </tr>
                 </thead>
-                <tbody>
-                @forelse($taskRows as $row)
-                    @php
-                        $task = $row['task'];
-                        $rowRatingValue = $row['rating'] !== null ? max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($row['rating']))) : null;
-                    @endphp
-                    <tr>
-                        <td><a class="bd-task-link" href="{{ route('designer.tasks.index', ['focus' => $task->status, 'task' => $task->task_id]) }}">{{ $task->task_id }}</a></td>
-                        <td>{{ $task->zoho_project_number ?: '-' }}</td>
-                        <td>{{ $task->display_task_name ?? $task->task_name }}</td>
-                        <td>{{ $task->assigned_at?->format('d M Y') ?? '—' }}</td>
-                        <td>
-                            @if($row['overdue'])
-                                <span class="bd-pill pill-overdue">Overdue</span>
-                            @else
-                                <span class="bd-pill pill-{{ $task->status === 'rework' ? 'rework' : ($task->status === 'completed' ? 'completed' : ($task->status === 'waiting_confirmation' ? 'waiting' : ($task->status === 'in_progress' ? 'progress' : 'default'))) }}">{{ ucwords(str_replace('_',' ',$task->status)) }}</span>
-                            @endif
-                        </td>
-                        <td>{{ $row['percentage'] }}%</td>
-                        <td><span style="font-weight:850">{{ $row['done'] }} / {{ $task->total_creatives }}</span><div style="color:#98a2b3">{{ $row['remaining'] }} remaining</div></td>
-                        <td style="{{ $row['overdue'] ? 'color:#c01048;font-weight:850' : '' }}">{{ $task->due_at?->format('d M Y · h:i A') ?? '—' }}</td>
-                        <td>{{ $row['completed_at']?->format('d M Y') ?? '—' }}</td>
-                        <td>
-                            @if($row['completion']['status'] === 'overdue')
-                                <span class="bd-pill pill-overdue">{{ $row['completion']['days'] }}d overdue</span>
-                            @elseif($row['completion']['status'] === 'late')
-                                <span class="bd-pill pill-rework">Completed {{ $row['completion']['days'] }}d after due</span>
-                            @elseif($row['completion']['status'] === 'on_time')
-                                <span class="bd-pill pill-completed">On time</span>
-                            @else
-                                <span style="color:#98a2b3">—</span>
-                            @endif
-                        </td>
-                        <td>{{ $row['rework_count'] }}@if($row['rework_count'] > 0)<span style="color:#98a2b3"> · {{ $row['rework_creatives'] }} creatives</span>@endif</td>
-                        <td>
-                            @if($rowRatingValue !== null)
-                                <span aria-label="{{ number_format($rowRatingValue, 1) }} out of 5 stars">
-                                    @for($i = 1; $i <= 5; $i++)
-                                        @php $fill = $rowRatingValue >= $i ? 100 : ($rowRatingValue >= $i - 0.5 ? 50 : 0); @endphp
-                                        <span class="bd-review-star" style="--star-fill:{{ $fill }}%">★</span>
-                                    @endfor
-                                </span>
-                            @else
-                                <span style="color:#98a2b3">—</span>
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="12"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
-                @endforelse
-                </tbody>
+                <tbody id="designer-task-rows">@include('designer.dashboard-task-rows')</tbody>
             </table>
         </div>
     </section>
+
+    <script>
+    (function () {
+        var input = document.getElementById('designer-task-search');
+        var tbody = document.getElementById('designer-task-rows');
+        var wrap = document.getElementById('designer-task-rows-wrap');
+        var base = "{{ route('designer.dashboard.taskRows') }}";
+        var debounceTimer = null;
+
+        function reload() {
+            wrap.style.opacity = '0.5';
+            fetch(base + '?search=' + encodeURIComponent(input.value), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (res) { return res.text(); })
+                .then(function (html) {
+                    tbody.innerHTML = html;
+                    wrap.style.opacity = '';
+                })
+                .catch(function () { wrap.style.opacity = ''; });
+        }
+
+        input.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(reload, 350);
+        });
+    })();
+    </script>
 
     <section class="bd-card">
         <div class="bd-card-head"><div class="bd-card-title">Performance Trend</div></div>

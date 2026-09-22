@@ -195,6 +195,7 @@
                 <a class="bd-dash-btn secondary" href="{{ route('bd.tasks.index') }}">View All Tasks</a>
                 <a class="bd-dash-btn primary" href="{{ route('bd.tasks.create') }}">+ Create Task</a>
             </div>
+            <input type="text" class="dh-select" id="dh-search" style="min-width:240px" placeholder="Search tasks, project, client, designer, BD..." value="{{ $search ?? '' }}" autocomplete="off">
             <select class="dh-select" id="dh-designer" aria-label="Filter by Designer">
                 <option value="all">All Designers</option>
                 @foreach($designers as $designer)
@@ -226,6 +227,7 @@
             'overdue' => $overdue,
             'pendingRequests' => $pendingRequests,
             'recentDecisions' => $recentDecisions,
+            'search' => $search,
         ])
     </div>
 </div>
@@ -238,8 +240,9 @@
     function reload() {
         var designer = document.getElementById('dh-designer').value;
         var month = document.getElementById('dh-month').value;
+        var search = document.getElementById('dh-search').value;
         root.classList.add('dh-loading');
-        fetch(base + '?designer=' + encodeURIComponent(designer) + '&month=' + encodeURIComponent(month), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch(base + '?designer=' + encodeURIComponent(designer) + '&month=' + encodeURIComponent(month) + '&search=' + encodeURIComponent(search), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (res) { return res.text(); })
             .then(function (html) {
                 var tmp = document.createElement('div');
@@ -252,6 +255,12 @@
 
     document.getElementById('dh-designer').addEventListener('change', reload);
     document.getElementById('dh-month').addEventListener('change', reload);
+
+    var searchDebounce = null;
+    document.getElementById('dh-search').addEventListener('input', function () {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(reload, 350);
+    });
 
     root.addEventListener('click', function (e) {
         var el = e.target.closest('[data-dh-design]');

@@ -371,7 +371,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="14"><div class="dh-empty">No Designer tasks found.</div></td></tr>
+                    <tr><td colspan="14"><div class="dh-empty">{{ ($search ?? '') !== '' ? 'No matching tasks found.' : 'No Designer tasks found.' }}</div></td></tr>
                 @endforelse
                 </tbody>
             </table>

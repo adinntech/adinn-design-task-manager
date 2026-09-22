@@ -11,6 +11,7 @@ use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskStatusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -312,6 +313,98 @@ class DashboardController extends Controller
             'trendCards' => $trendCards,
             'trendContext' => $trendContext,
         ]);
+    }
+
+    /**
+     * Global dashboard search — AJAX-only, returns just the "Your Task Details"
+     * rows. Deliberately a separate lightweight query rather than reusing
+     * index()'s big pipeline, so the normal (non-search) page load never pays
+     * for extra queries and index() stays untouched.
+     */
+    public function fragment(Request $request): View
+    {
+        abort_unless($request->user()?->role === 'designer', 403);
+
+        $search = trim((string) $request->query('search', ''));
+
+        return view('designer.dashboard-task-rows', [
+            'taskRows' => $this->buildTaskRows((int) $request->user()->id, $search),
+            'search' => $search,
+        ]);
+    }
+
+    private function buildTaskRows(int $designerId, string $search = ''): Collection
+    {
+        $tasks = DesignTask::query()
+            ->with(['assigner:id,name'])
+            ->where('designer_id', $designerId)
+            ->latest('assigned_at')
+            ->get();
+
+        if ($search !== '') {
+            $tasks = $tasks->filter(fn (DesignTask $task) => $this->taskMatchesSearch($task, $search))->values();
+        }
+
+        $taskIds = $tasks->pluck('id');
+        $now = now();
+        $progressService = app(DesignTaskProgressService::class);
+
+        $completedAtByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskStatusHistory::query()
+                ->where('to_status', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->pluck('created_at', 'design_task_id');
+
+        $reworkCreativesByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->where('action', 'rework')
+                ->whereIn('design_task_id', $taskIds)
+                ->selectRaw('design_task_id, SUM(number_of_creatives) as total')
+                ->groupBy('design_task_id')
+                ->pluck('total', 'design_task_id')
+                ->map(fn ($value) => (int) $value);
+
+        $reviewByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->where('action', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->latest()
+                ->get()
+                ->keyBy('design_task_id');
+
+        return $tasks->map(fn (DesignTask $task) => [
+            'task' => $task,
+            'done' => $progressService->completed($task),
+            'remaining' => $progressService->remaining($task),
+            'percentage' => $progressService->percentage($task),
+            'rework_count' => $progressService->reworkCount($task),
+            'rework_creatives' => (int) ($reworkCreativesByTask[$task->id] ?? 0),
+            'completed_at' => $completedAtByTask->get($task->id),
+            'overdue' => $task->status !== 'completed' && $task->due_at && $task->due_at->lt($now),
+            'completion' => $this->completionInfo($task, $completedAtByTask->get($task->id), $now),
+            'rating' => $reviewByTask->get($task->id)?->overall_rating,
+        ])->values();
+    }
+
+    /** Same field set as the BD/Designer Head dashboard search. */
+    private function taskMatchesSearch(DesignTask $task, string $term): bool
+    {
+        $haystacks = [
+            $task->task_id, $task->zoho_project_number, $task->task_name, $task->party_name,
+            $task->contact_person, $task->mobile_number, $task->vertical, $task->task_nature,
+            $task->priority, $task->status, $task->assigner?->name,
+        ];
+
+        foreach ($haystacks as $value) {
+            if ($value !== null && stripos((string) $value, $term) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

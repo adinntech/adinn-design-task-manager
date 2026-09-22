@@ -136,9 +136,37 @@
 
 <div class="content-grid-3">
     <section class="panel">
-        <div class="panel-header"><div class="panel-title">Recent Tasks</div></div>
-        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody>@forelse($recentTasks as $task)<tr><td><a class="file-link" href="{{ route('admin.tasks.show',$task) }}">{{ $task->task_id }}</a><div style="margin-top:3px;font-weight:700">{{ $task->task_name }}</div></td><td>{{ $task->designer?->name ?? '—' }}</td><td><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$task->status)) }}</span></td><td>{{ $task->due_at?->format('d M Y · h:i A') }}</td></tr>@empty<tr><td colspan="4" class="empty-state">No tasks available.</td></tr>@endforelse</tbody></table></div></div>
+        <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="panel-title">Recent Tasks</div>
+            <input type="text" id="admin-task-search" style="min-width:220px;border:1px solid #d0d5dd;border-radius:8px;padding:7px 10px;font-size:13px" placeholder="Search tasks, project, client, designer, BD..." autocomplete="off">
+        </div>
+        <div class="panel-body" style="padding:0"><div class="table-wrap" style="border:0;border-radius:0 0 16px 16px"><table class="premium-table" style="min-width:650px"><thead><tr><th>Task</th><th>Designer</th><th>Status</th><th>Due</th></tr></thead><tbody id="admin-recent-tasks">@include('admin.dashboard-recent-tasks')</tbody></table></div></div>
     </section>
+
+    <script>
+    (function () {
+        var input = document.getElementById('admin-task-search');
+        var tbody = document.getElementById('admin-recent-tasks');
+        var base = "{{ route('admin.dashboard.recentTasks') }}";
+        var debounceTimer = null;
+
+        function reload() {
+            tbody.parentElement.parentElement.style.opacity = '0.5';
+            fetch(base + '?search=' + encodeURIComponent(input.value), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (res) { return res.text(); })
+                .then(function (html) {
+                    tbody.innerHTML = html;
+                    tbody.parentElement.parentElement.style.opacity = '';
+                })
+                .catch(function () { tbody.parentElement.parentElement.style.opacity = ''; });
+        }
+
+        input.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(reload, 350);
+        });
+    })();
+    </script>
 
     <section class="panel">
         <div class="panel-header"><div class="panel-title">Designer Workload</div></div>

@@ -132,6 +132,8 @@ class DashboardController extends Controller
         $month = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
         $monthEnd = $month->copy()->endOfMonth();
 
+        $search = trim((string) $request->query('search', ''));
+
         /* ---- Tasks scoped to current assignee (split/swap shadow rows removed) ---- */
         $tasks = DesignTask::query()
             ->with(['designer:id,name', 'assigner:id,name,role'])
@@ -398,8 +400,13 @@ class DashboardController extends Controller
             ];
         })->sortByDesc('assigned')->values();
 
-        /* ---- Task details table committed to the current assignee, scoped to the period ---- */
-        $taskRows = $scopedTasks
+        /* ---- Task details table committed to the current assignee, scoped to the period
+         * (search applies only to this table — stats/charts/workload above stay unaffected) ---- */
+        $searchedTasks = $search === ''
+            ? $scopedTasks
+            : $scopedTasks->filter(fn (DesignTask $task) => $this->taskMatchesSearch($task, $search))->values();
+
+        $taskRows = $searchedTasks
             ->sortByDesc('assigned_at')
             ->values()
             ->map(function (DesignTask $task) use ($eodProgress, $eodRework, $reworkSentBack, $isOverdue, $completedAtByTask, $reworkReviewCount, $reworkHistoryCount, $reviewByTaskId, $reviewCyclesByTask) {
@@ -552,7 +559,30 @@ class DashboardController extends Controller
             'overdue' => $overdue,
             'pendingRequests' => $pendingRequests,
             'recentDecisions' => $recentDecisions,
+            'search' => $search,
         ];
+    }
+
+    /**
+     * Global dashboard search — in-memory match against the already-loaded,
+     * already team-scoped task collection (designer/assigner are eager-loaded
+     * already), so this never issues an extra query or widens scope.
+     */
+    private function taskMatchesSearch(DesignTask $task, string $term): bool
+    {
+        $haystacks = [
+            $task->task_id, $task->zoho_project_number, $task->task_name, $task->party_name,
+            $task->contact_person, $task->mobile_number, $task->vertical, $task->task_nature,
+            $task->priority, $task->status, $task->designer?->name, $task->assigner?->name,
+        ];
+
+        foreach ($haystacks as $value) {
+            if ($value !== null && stripos((string) $value, $term) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
