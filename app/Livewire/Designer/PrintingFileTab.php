@@ -37,7 +37,10 @@ class PrintingFileTab extends Component
 
     public DesignTask $task;
 
-    public string $weTransferLink = '';
+    /** @var array<int, string> */
+    public array $weTransferLinks = [];
+
+    public string $weTransferLinkInput = '';
 
     /** @var array<int, array{id:?int, name:string, size_bytes:int, url?:string, reused?:bool}> */
     public array $attachments = [];
@@ -94,8 +97,52 @@ class PrintingFileTab extends Component
         }
     }
 
-    public function updatedWeTransferLink(): void
+    /**
+     * Adds one or more WeTransfer links from the current input buffer —
+     * splitting on whitespace/commas so a multi-URL paste (or Enter/comma/
+     * space typed between pasted URLs) captures each as its own link.
+     * Invalid URLs are rejected with a validation error; duplicates
+     * (case-insensitive) are silently skipped.
+     */
+    public function addWeTransferLink(): void
     {
+        $raw = $this->weTransferLinkInput;
+        $this->weTransferLinkInput = '';
+        $this->resetErrorBag('weTransferLinkInput');
+
+        $tokens = array_filter(preg_split('/[\s,]+/', trim($raw)) ?: []);
+
+        foreach ($tokens as $token) {
+            $this->addSingleWeTransferLink($token);
+        }
+
+        $this->body = $this->buildDefaultBody();
+    }
+
+    private function addSingleWeTransferLink(string $value): void
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return;
+        }
+
+        if (! filter_var($value, FILTER_VALIDATE_URL)) {
+            $this->addError('weTransferLinkInput', 'Please enter a valid WeTransfer URL.');
+
+            return;
+        }
+
+        $exists = collect($this->weTransferLinks)->contains(fn ($link) => strtolower($link) === strtolower($value));
+        if (! $exists) {
+            $this->weTransferLinks[] = $value;
+        }
+    }
+
+    public function removeWeTransferLink(int $index): void
+    {
+        $list = $this->weTransferLinks;
+        unset($list[$index]);
+        $this->weTransferLinks = array_values($list);
         $this->body = $this->buildDefaultBody();
     }
 
@@ -278,7 +325,9 @@ class PrintingFileTab extends Component
         $this->ccRecipients = $this->withoutDefaultCcRecipients($history->cc_recipients ?? []);
         $this->subject = $history->subject;
         $this->body = $history->body;
-        $this->weTransferLink = (string) $history->transfer_url;
+        // Old single-link rows never had transfer_urls populated — fall back
+        // to wrapping the legacy transfer_url so Resend keeps working for them.
+        $this->weTransferLinks = $history->transfer_urls ?? array_values(array_filter([$history->transfer_url]));
         $this->attachments = collect($history->attachments ?? [])
             ->map(fn ($a) => [
                 'id' => $a['id'] ?? null,
@@ -307,7 +356,8 @@ class PrintingFileTab extends Component
     {
         abort_unless($this->task->status === 'completed', 403);
 
-        $this->weTransferLink = '';
+        $this->weTransferLinks = [];
+        $this->weTransferLinkInput = '';
         $this->attachments = [];
         $this->toRecipients = $this->withDefaultToRecipient([]);
         $this->ccRecipients = [];
@@ -353,10 +403,12 @@ class PrintingFileTab extends Component
             'ccRecipients.*.mail' => ['nullable', 'email'],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string'],
-            'weTransferLink' => ['required', 'url'],
+            'weTransferLinks' => ['required', 'array', 'min:1'],
+            'weTransferLinks.*' => ['url'],
         ], [
-            'weTransferLink.required' => 'WeTransfer Link is required.',
-            'weTransferLink.url' => 'Please enter a valid WeTransfer URL.',
+            'weTransferLinks.required' => 'WeTransfer Link is required.',
+            'weTransferLinks.min' => 'WeTransfer Link is required.',
+            'weTransferLinks.*.url' => 'Please enter a valid WeTransfer URL.',
         ]);
 
         $this->sending = true;
@@ -379,7 +431,11 @@ class PrintingFileTab extends Component
                 'cc_recipients' => $this->actualCcRecipients(),
                 'subject' => $this->subject,
                 'body' => $this->body,
-                'transfer_url' => $this->weTransferLink ?: null,
+                // transfer_url keeps the first link for backward-compatible
+                // single-link readers; transfer_urls is the authoritative
+                // full list going forward.
+                'transfer_url' => $this->weTransferLinks[0] ?? null,
+                'transfer_urls' => $this->weTransferLinks,
                 'attachments' => $attachmentMeta,
                 'sent_at' => $sentAt,
             ]);
@@ -528,7 +584,9 @@ class PrintingFileTab extends Component
 
     private function buildDefaultBody(): string
     {
-        return "Hi team,\n\nPlease process the following URL to proceed printing.\n\n{$this->weTransferLink}";
+        $linksBlock = collect($this->weTransferLinks)->map(fn ($link) => $link.',')->implode("\n");
+
+        return "Hi team,\n\nPlease process the following URL to proceed printing.\n\n{$linksBlock}";
     }
 
     /**

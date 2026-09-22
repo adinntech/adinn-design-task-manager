@@ -63,14 +63,27 @@
         {{-- LEFT: Printing inputs --}}
         <div>
             <div class="pf-panel">
-                <div class="pf-section-title">WeTransfer Link</div>
-                <input
-                    type="text"
-                    class="premium-input"
-                    placeholder="https://we.tl/..."
-                    wire:model.live.debounce.300ms="weTransferLink"
-                >
-                @error('weTransferLink')<div class="error">{{ $message }}</div>@enderror
+                <div class="pf-section-title">WeTransfer Link(s)</div>
+                <div class="pf-chip-field">
+                    @foreach($weTransferLinks as $i => $link)
+                        <span class="pf-chip">{{ $link }}
+                            <button type="button" wire:click="removeWeTransferLink({{ $i }})">&times;</button>
+                        </span>
+                    @endforeach
+                    <input
+                        type="text"
+                        class="pf-chip-input"
+                        placeholder="Paste a link and press Enter…"
+                        wire:model="weTransferLinkInput"
+                        @keydown.enter.prevent="$wire.addWeTransferLink()"
+                        @keydown.comma.prevent="$wire.addWeTransferLink()"
+                        @keydown.space.prevent="$wire.addWeTransferLink()"
+                        @blur="$wire.addWeTransferLink()"
+                    >
+                </div>
+                <div class="pf-helper">Paste a link, then press Enter (or space/comma) to add another.</div>
+                @error('weTransferLinkInput')<div class="error">{{ $message }}</div>@enderror
+                @error('weTransferLinks')<div class="error">{{ $message }}</div>@enderror
             </div>
 
             <div class="pf-panel">
@@ -264,8 +277,16 @@
                 @endif
                 <div style="font-size:10px;margin-top:8px"><strong>Subject:</strong> {{ $viewingRecord->subject }}</div>
                 <div style="font-size:10px;margin-top:8px;white-space:pre-wrap">{{ $viewingRecord->body }}</div>
-                @if($viewingRecord->transfer_url)
-                    <div style="font-size:10px;margin-top:8px"><strong>WeTransfer:</strong> <a href="{{ $viewingRecord->transfer_url }}" target="_blank" rel="noopener">{{ $viewingRecord->transfer_url }}</a></div>
+                @php
+                    // Old single-link rows never had transfer_urls populated —
+                    // fall back to the legacy transfer_url so History keeps working.
+                    $pfHistoryLinks = $viewingRecord->transfer_urls ?? array_values(array_filter([$viewingRecord->transfer_url]));
+                @endphp
+                @if(! empty($pfHistoryLinks))
+                    <div style="font-size:10px;margin-top:8px"><strong>WeTransfer:</strong></div>
+                    @foreach($pfHistoryLinks as $pfLink)
+                        <div style="font-size:10px"><a href="{{ $pfLink }}" target="_blank" rel="noopener">{{ $pfLink }}</a></div>
+                    @endforeach
                 @endif
 
                 <div style="font-size:10px;margin-top:8px"><strong>Attachments:</strong></div>

@@ -14,6 +14,7 @@ class DesignTaskPrintingFileMail extends Model
         'subject',
         'body',
         'transfer_url',
+        'transfer_urls',
         'attachments',
         'sent_at',
     ];
@@ -23,6 +24,7 @@ class DesignTaskPrintingFileMail extends Model
         return [
             'to_recipients' => 'array',
             'cc_recipients' => 'array',
+            'transfer_urls' => 'array',
             'attachments' => 'array',
             'sent_at' => 'datetime',
         ];
