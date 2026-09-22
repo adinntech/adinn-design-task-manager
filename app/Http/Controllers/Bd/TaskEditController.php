@@ -9,6 +9,7 @@ use App\Services\DesignTaskProgressService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,11 +18,18 @@ use Illuminate\View\View;
 
 class TaskEditController extends Controller
 {
-    private const LOCKED_EDIT_STATUSES = [
-        'waiting_confirmation',
-        'rework',
-        'completed',
-    ];
+    /**
+     * The single source of truth for BD edit eligibility — used both to gate
+     * the update() action here and to decide whether the "Edit Task" button
+     * renders (see isEditable()), so the two can never drift apart.
+     */
+    public const LOCKED_EDIT_STATUSES = ['completed'];
+
+    /** Canonical status check reused by the "Edit Task" button in bd.tasks.show. */
+    public static function isEditable(DesignTask $task): bool
+    {
+        return ! in_array($task->status, self::LOCKED_EDIT_STATUSES, true);
+    }
 
     private const EDITABLE_CORE_FIELDS = [
         'priority' => 'Priority',
@@ -1838,7 +1846,7 @@ class TaskEditController extends Controller
         $completedCreatives = app(DesignTaskProgressService::class)->completed($task);
         $allowedRequirementFields = collect($this->requirementFieldsFor($task))->keyBy('key');
 
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'due_at' => [
                 'required',
@@ -1881,7 +1889,7 @@ class TaskEditController extends Controller
             'new_requirement_files' => ['nullable', 'array'],
             'new_requirement_files.*' => ['nullable', 'array', 'max:10'],
             'new_requirement_files.*.*' => ['file', 'max:102400'],
-        ]);
+        ], $this->dynamicRequirementRules($allowedRequirementFields)));
 
         $batchId = (string) Str::uuid();
         $historyRows = [];
@@ -2069,11 +2077,7 @@ class TaskEditController extends Controller
 
     private function assertTaskIsEditable(DesignTask $task): void
     {
-        abort_if(
-            in_array($task->status, self::LOCKED_EDIT_STATUSES, true),
-            403,
-            'Tasks in Waiting for Confirmation, Rework or Completed cannot be edited.'
-        );
+        abort_unless(self::isEditable($task), 403, 'Completed tasks cannot be edited.');
     }
 
     private function requirementFieldsFor(DesignTask $task): array
@@ -2087,6 +2091,42 @@ class TaskEditController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Without an explicit rule per key, Laravel's validate() silently drops
+     * any requirements.* value that has no rule of its own — only
+     * board_details/size_details/creative_size_details had one, so every
+     * other dynamic field (text/select/number/url/location, across every
+     * vertical) was discarded before the change-detection loop ever saw it,
+     * which is why edits to those fields showed "No changes were detected."
+     * Rules are generated from the same requirementFieldsFor() config the
+     * edit form itself is built from, so every vertical/nature is covered
+     * without a hardcoded field list.
+     *
+     * @param  Collection<string, array{key:string,label:string,type:string,options:array}>  $allowedRequirementFields
+     */
+    private function dynamicRequirementRules(Collection $allowedRequirementFields): array
+    {
+        $rules = [];
+
+        foreach ($allowedRequirementFields as $key => $definition) {
+            $type = (string) ($definition['type'] ?? 'text');
+
+            // Structured tables and file fields already have their own
+            // dedicated rules / upload handling elsewhere in update().
+            if (in_array($type, ['file', 'files', 'mediafiles', 'audio', 'dimensions', 'sizes', 'media_sizes'], true)) {
+                continue;
+            }
+
+            $rules["requirements.{$key}"] = match ($type) {
+                'number' => ['nullable', 'numeric'],
+                'url' => ['nullable', 'url', 'max:2048'],
+                default => ['nullable', 'string', 'max:10000'],
+            };
+        }
+
+        return $rules;
     }
 
     private function displayValue(string $field, mixed $value): string

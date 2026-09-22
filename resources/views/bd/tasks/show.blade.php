@@ -180,7 +180,7 @@
         </div>
         <div class="page-actions">
             <a href="{{ route('bd.tasks.index') }}" class="btn btn-secondary">Back to My Tasks</a>
-            @if(!in_array($task->status, ['waiting_confirmation','rework','completed','prepare_printing_file'], true))
+            @if(\App\Http\Controllers\Bd\TaskEditController::isEditable($task))
                 <a href="{{ route('bd.tasks.edit',$task) }}" class="btn btn-primary">Edit Task</a>
             @endif
         </div>
@@ -567,7 +567,7 @@
                                     {{ $firstChange->editor?->name ?? 'User' }}
                                 </div>
                                 <div class="history-task-time">
-                                    {{ $firstChange->created_at?->format('d M Y') }}
+                                    {{ $firstChange->created_at?->format('d M Y · h:i A') }}
                                 </div>
                             </div>
 
