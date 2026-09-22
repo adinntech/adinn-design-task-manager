@@ -289,6 +289,53 @@ class PrintingFileTab extends Component
             ])
             ->all();
         $this->sent = false;
+
+        // See startNewMail() — the compose block (and its file input) is
+        // only now being added to the DOM by this very Livewire update.
+        $this->dispatch('printing-file-compose-ready');
+    }
+
+    /**
+     * "Send New Mail" for an already-Completed task — opens the same
+     * compose UI as the original send, reset to fresh defaults (not loaded
+     * from any history record, unlike resendFrom()). sendMail() already
+     * skips the status transition whenever the task isn't
+     * prepare_printing_file, so a task completed this way stays Completed
+     * with no extra status-history row.
+     */
+    public function startNewMail(): void
+    {
+        abort_unless($this->task->status === 'completed', 403);
+
+        $this->weTransferLink = '';
+        $this->attachments = [];
+        $this->toRecipients = $this->withDefaultToRecipient([]);
+        $this->ccRecipients = [];
+        $this->subject = $this->buildDefaultSubject();
+        $this->body = $this->buildDefaultBody();
+        $this->sent = false;
+        $this->mailError = null;
+
+        // The compose block (and its file input) is only now being added to
+        // the DOM by this very Livewire update — tells the upload widget to
+        // (re-)bind once that DOM update lands (see the <script> in the view).
+        $this->dispatch('printing-file-compose-ready');
+    }
+
+    /**
+     * Bails out of an in-progress Resend / Send New Mail back to the
+     * Completed history-only view — no API call, no history row, no status
+     * change. Only meaningful once the task is Completed; the original
+     * compose (still prepare_printing_file) has no history view to return to.
+     */
+    public function cancelCompose(): void
+    {
+        abort_unless($this->task->status === 'completed', 403);
+
+        $this->toRecipients = [];
+        $this->ccRecipients = [];
+        $this->attachments = [];
+        $this->mailError = null;
     }
 
     public function sendMail(): void

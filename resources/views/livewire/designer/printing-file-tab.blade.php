@@ -55,9 +55,9 @@
     </style>
 
     {{-- Compose/send UI only for an active task; once Completed the tab is a
-         read-only history view — except while an explicit Resend is in
-         progress (resendFrom() populates toRecipients), so resend keeps
-         working exactly as it already does. --}}
+         read-only history view — except while an explicit Resend or Send New
+         Mail is in progress (resendFrom()/startNewMail() populate
+         toRecipients), so both keep working exactly as before. --}}
     @if($task->status !== 'completed' || count($toRecipients) > 0)
     <div class="pf-grid">
         {{-- LEFT: Printing inputs --}}
@@ -196,17 +196,24 @@
                     @endforeach
                 @endif
 
-                <button
-                    class="btn btn-primary"
-                    style="margin-top:16px;width:100%"
-                    wire:click="sendMail"
-                    wire:loading.attr="disabled"
-                    wire:target="sendMail"
-                    :disabled="pendingUploads > 0"
-                >
-                    <span wire:loading.remove wire:target="sendMail">Send Mail</span>
-                    <span wire:loading wire:target="sendMail">Sending...</span>
-                </button>
+                <div style="display:flex;gap:8px;margin-top:16px">
+                    <button
+                        class="btn btn-primary"
+                        style="width:100%"
+                        wire:click="sendMail"
+                        wire:loading.attr="disabled"
+                        wire:target="sendMail"
+                        :disabled="pendingUploads > 0"
+                    >
+                        <span wire:loading.remove wire:target="sendMail">Send Mail</span>
+                        <span wire:loading wire:target="sendMail">Sending...</span>
+                    </button>
+                    {{-- Only Resend / Send New Mail (both only reachable once Completed)
+                         have a history-only view to back out to. --}}
+                    @if($task->status === 'completed')
+                        <button type="button" class="btn" wire:click="cancelCompose">Cancel</button>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
@@ -214,7 +221,12 @@
 
     {{-- Mail History --}}
     <div class="pf-panel" style="margin-top:16px">
-        <div class="pf-section-title">Mail History</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">
+            <div class="pf-section-title" style="margin-bottom:0">Mail History</div>
+            @if($task->status === 'completed' && count($toRecipients) === 0)
+                <button type="button" class="btn btn-primary" wire:click="startNewMail">Send New Mail</button>
+            @endif
+        </div>
         @if($history->isEmpty())
             <div class="empty-state">No printing file mail sent yet.</div>
         @else
@@ -334,29 +346,44 @@
 
     <script>
     (function () {
-        if (typeof AdinnMailAttachmentUpload === 'undefined') return;
-        var input = document.getElementById('pfFileInput');
-        if (!input || input.dataset.pfBound) return;
-        input.dataset.pfBound = '1';
+        function initPfUpload() {
+            if (typeof AdinnMailAttachmentUpload === 'undefined') return;
+            var input = document.getElementById('pfFileInput');
+            if (!input || input.dataset.pfBound) return;
+            input.dataset.pfBound = '1';
 
-        AdinnMailAttachmentUpload.init({
-            input: input,
-            rowsContainer: document.getElementById('pfAttachmentRows'),
-            rowTemplate: document.getElementById('pfAttachmentRowTemplate'),
-            taskId: {{ (int) $task->id }},
-            urls: {
-                initiate: '{{ route('designer.uploads.initiate') }}',
-                active: '{{ route('designer.uploads.active') }}',
-                partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
-                parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
-                complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
-                download: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/download'; },
-                preview: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/preview'; },
-            },
-            onCountChange: function (count) {
-                window.dispatchEvent(new CustomEvent('mail-attachment-pending', { detail: { count: count } }));
-            },
-        });
+            AdinnMailAttachmentUpload.init({
+                input: input,
+                rowsContainer: document.getElementById('pfAttachmentRows'),
+                rowTemplate: document.getElementById('pfAttachmentRowTemplate'),
+                taskId: {{ (int) $task->id }},
+                urls: {
+                    initiate: '{{ route('designer.uploads.initiate') }}',
+                    active: '{{ route('designer.uploads.active') }}',
+                    partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
+                    parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
+                    complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
+                    download: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/download'; },
+                    preview: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/preview'; },
+                },
+                onCountChange: function (count) {
+                    window.dispatchEvent(new CustomEvent('mail-attachment-pending', { detail: { count: count } }));
+                },
+            });
+        }
+
+        // Runs immediately for the original compose (already in the DOM on
+        // first page load — this covers the flow that already worked).
+        initPfUpload();
+
+        // The compose block (and a brand-new #pfFileInput) can also appear
+        // later via a Livewire AJAX morph — Resend or Send New Mail — after
+        // this <script> tag has already run once on initial page load. An
+        // unchanged inline <script> node is not re-executed by Livewire's
+        // morph, so without this the new input never gets its upload
+        // listener attached. resendFrom()/startNewMail() dispatch this
+        // event (after the DOM update) to (re-)init the new input instead.
+        window.addEventListener('printing-file-compose-ready', initPfUpload);
     })();
     </script>
 </div>
