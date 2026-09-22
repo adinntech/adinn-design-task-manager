@@ -32,7 +32,14 @@ Route::middleware(['auth', 'role:bd'])
         // binding — see the matching /tasks/export registration in premium-ui.php.
         Route::get('/tasks/export', [TaskExportController::class, 'export'])->name('tasks.export');
 
+        // Also ahead of /tasks/{task} for the same reason — "clone-search" is a
+        // literal single-segment path and would otherwise be swallowed by show's
+        // route model binding.
+        Route::get('/tasks/clone-search', [TaskController::class, 'cloneSearch'])->name('tasks.cloneSearch');
+
         Route::get('/tasks/{task}', [AssignedTaskController::class, 'show'])->name('tasks.show');
+
+        Route::get('/tasks/{task}/clone-data', [TaskController::class, 'cloneData'])->name('tasks.cloneData');
     });
 
 require __DIR__.'/auth.php';

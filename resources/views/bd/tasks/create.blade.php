@@ -198,11 +198,28 @@
 </div>
 @endif
 
+@unless($isDesignerActor || (isset($draft) && $draft))
+<section class="panel panel-body mb-6" id="cloneTicketPanel">
+    <h2 class="text-lg font-bold mb-1">Clone Existing Ticket</h2>
+    <p class="text-sm text-gray-500 mb-3">Search one of your previous tickets to prefill this form. You can change anything before creating the new task.</p>
+    <div style="position:relative;max-width:560px">
+        <input type="text" id="cloneSearchInput" class="field" placeholder="Search Task ID, Zoho No., Task Name, Client, Mobile, Agency" autocomplete="off">
+        <div id="cloneSuggestions" style="display:none;position:absolute;z-index:20;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;max-height:260px;overflow-y:auto;box-shadow:0 4px 10px rgba(0,0,0,.08)"></div>
+    </div>
+    <div id="cloneActiveBanner" class="hidden" style="margin-top:10px;padding:8px 12px;background:#eff8ff;border:1px solid #b2ddff;border-radius:8px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <span id="cloneActiveText"></span>
+        <button type="button" id="clearCloneBtn" class="btn btn-secondary" style="padding:4px 10px;font-size:11px">Clear Clone</button>
+    </div>
+</section>
+@endunless
+
 <form method="POST" action="{{ route($isDesignerActor ? 'designer.tasks.store' : 'bd.tasks.store') }}" enctype="multipart/form-data" id="taskForm" class="space-y-6" novalidate>
 @csrf
 <input type="hidden" name="draft_id" id="draftIdInput" value="{{ old('draft_id', isset($draft) && $draft ? $draft->id : '') }}">
 <input type="hidden" name="_method" id="methodInput" value="">
 <input type="hidden" name="removed_files_json" id="removedFilesInput" value="{}">
+<input type="hidden" name="cloned_from_task_id" id="clonedFromTaskId" value="">
+<input type="hidden" name="cloned_source_files_json" id="clonedSourceFilesInput" value="{}">
 <section class="panel panel-body">
     <h2 class="text-lg font-bold mb-5">Common Task Details</h2>
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -364,6 +381,7 @@ const draftUpdateUrlTemplate=@json(route('bd.drafts.update',['task'=>'__DRAFT_ID
 const draftFiles=@json($draftFiles ?? []);
 const removedFilesInput=document.getElementById('removedFilesInput');
 const removedDraftFiles={};
+let cloneSourceTaskId=null;
 
 function esc(value=''){return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));}
 function previous(name){return oldValues[name]??'';}
@@ -864,6 +882,114 @@ document.getElementById('partyType').addEventListener('change',e=>document.getEl
  });
 })();
 
+// Clone Existing Ticket — search + prefill. No-ops when the panel isn't
+// rendered (Designer actor flow, or editing an existing draft).
+(function(){
+ const searchInput=document.getElementById('cloneSearchInput');
+ if(!searchInput)return;
+ const box=document.getElementById('cloneSuggestions');
+ const banner=document.getElementById('cloneActiveBanner');
+ const bannerText=document.getElementById('cloneActiveText');
+ const clearBtn=document.getElementById('clearCloneBtn');
+ const searchUrl=@json(route('bd.tasks.cloneSearch'));
+ const dataUrlTemplate=@json(route('bd.tasks.cloneData',['task'=>'__TASK_ID__']));
+ let debounceTimer=null,activeRequest=0;
+
+ function hideSuggestions(){box.style.display='none';box.innerHTML='';}
+ function renderSuggestions(tasks){
+  if(!tasks.length){hideSuggestions();return;}
+  box.innerHTML=tasks.map(t=>{
+   const parts=[t.task_id,t.zoho_project_number,t.task_name].filter(Boolean).join(' / ');
+   return `<div class="clone-suggestion" data-id="${t.id}" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid #f1f5f9">
+     <div style="font-size:13px;color:#111827;font-weight:600">${esc(parts)}</div>
+     ${t.party_name?`<div style="font-size:11px;color:#6b7280">${esc(t.party_name)}</div>`:''}
+    </div>`;
+  }).join('');
+  box.style.display='block';
+ }
+
+ box.addEventListener('mousedown',e=>{
+  const row=e.target.closest('.clone-suggestion');
+  if(!row)return;
+  e.preventDefault();
+  hideSuggestions();
+  searchInput.value='';
+  loadClone(row.dataset.id);
+ });
+
+ searchInput.addEventListener('input',()=>{
+  const q=searchInput.value.trim();
+  clearTimeout(debounceTimer);
+  if(!q){hideSuggestions();return;}
+  debounceTimer=setTimeout(()=>{
+   const requestId=++activeRequest;
+   fetch(`${searchUrl}?q=${encodeURIComponent(q)}`,{headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(r=>r.ok?r.json():[])
+    .then(tasks=>{if(requestId===activeRequest)renderSuggestions(tasks);})
+    .catch(()=>{});
+  },350);
+ });
+
+ document.addEventListener('click',e=>{
+  if(e.target!==searchInput && !box.contains(e.target))hideSuggestions();
+ });
+
+ function setField(name,value){
+  const el=taskForm.querySelector(`[name="${name}"]`);
+  if(el)el.value=value??'';
+ }
+
+ function loadClone(taskId){
+  fetch(dataUrlTemplate.replace('__TASK_ID__',encodeURIComponent(taskId)),{headers:{'Accept':'application/json'}})
+   .then(r=>{if(!r.ok)throw new Error('bad_response');return r.json();})
+   .then(payload=>applyClone(taskId,payload))
+   .catch(()=>{});
+ }
+
+ function applyClone(taskId,payload){
+  const t=payload.task||{};
+  cloneSourceTaskId=taskId;
+
+  setField('task_name',t.task_name);
+  setField('zoho_project_number',t.zoho_project_number);
+  setField('party_type',t.party_type);
+  document.getElementById('partyType')?.dispatchEvent(new Event('change'));
+  setField('party_name',t.party_name);
+  setField('contact_person',t.contact_person);
+  setField('mobile_number',t.mobile_number);
+  setField('priority',t.priority);
+  setField('total_creatives',t.total_creatives);
+  if(t.designer_id){
+   const designerSelect=document.getElementById('designerSelect');
+   if(designerSelect && designerSelect.querySelector(`option[value="${t.designer_id}"]`)){
+    designerSelect.value=t.designer_id;
+    designerSelect.dispatchEvent(new Event('change'));
+   }
+  }
+
+  Object.keys(oldValues).forEach(k=>delete oldValues[k]);
+  Object.assign(oldValues,payload.requirements||{});
+  Object.keys(draftFiles).forEach(k=>delete draftFiles[k]);
+  Object.assign(draftFiles,payload.attachments||{});
+  Object.keys(removedDraftFiles).forEach(k=>delete removedDraftFiles[k]);
+
+  vertical.value=t.vertical||'';
+  populateNatures(t.task_nature||'');
+
+  banner.classList.remove('hidden');
+  bannerText.textContent='Cloned from '+(t.task_name?('"'+t.task_name+'"'):'ticket')+' — review and adjust before creating.';
+ }
+
+ clearBtn.addEventListener('click',()=>{
+  cloneSourceTaskId=null;
+  banner.classList.add('hidden');
+  Object.keys(oldValues).forEach(k=>delete oldValues[k]);
+  Object.keys(draftFiles).forEach(k=>delete draftFiles[k]);
+  Object.keys(removedDraftFiles).forEach(k=>delete removedDraftFiles[k]);
+  taskForm.reset();
+ });
+})();
+
 @if(!$isDesignerActor)
 // Designer Availability meter — informational only; never blocks or alters task creation.
 (function(){
@@ -945,6 +1071,16 @@ taskForm.addEventListener('reset',()=>setTimeout(()=>{vertical.value='';populate
 taskForm.addEventListener('submit',event=>{
  if(submit.dataset.submitting==='1'||draftBtn.dataset.submitting==='1'){event.preventDefault();return;}
  removedFilesInput.value=JSON.stringify(removedDraftFiles);
+ if(cloneSourceTaskId){
+  document.getElementById('clonedFromTaskId').value=cloneSourceTaskId;
+  const kept={};
+  Object.keys(draftFiles).forEach(field=>{
+   const removed=removedDraftFiles[field]||[];
+   const keepPaths=(draftFiles[field]||[]).map(f=>f.path).filter(p=>!removed.includes(p));
+   if(keepPaths.length)kept[field]=keepPaths;
+  });
+  document.getElementById('clonedSourceFilesInput').value=JSON.stringify(kept);
+ }
  const isDraft=event.submitter===draftBtn;
  if(isDraft){
   // Draft saves are intentionally loose: no required-field validation, so a

@@ -176,6 +176,158 @@ class TaskController extends Controller
         return response()->json($clients);
     }
 
+    /**
+     * Live search for "Clone Existing Ticket" — scoped to the requesting BD's
+     * own non-draft tasks only (security-critical: filtered server-side, not
+     * just by the frontend). Returns only the fields the dropdown needs.
+     */
+    public function cloneSearch(Request $request)
+    {
+        $term = trim((string) $request->query('q', ''));
+
+        if ($term === '') {
+            return response()->json([]);
+        }
+
+        $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], $term).'%';
+
+        $tasks = DesignTask::query()
+            ->where('assigned_by', $request->user()->id)
+            ->where('status', '!=', 'draft')
+            ->where(function ($query) use ($like) {
+                $query->where('task_id', 'like', $like)
+                    ->orWhere('zoho_project_number', 'like', $like)
+                    ->orWhere('task_name', 'like', $like)
+                    ->orWhere('party_name', 'like', $like)
+                    ->orWhere('contact_person', 'like', $like)
+                    ->orWhere('mobile_number', 'like', $like);
+            })
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get(['id', 'task_id', 'zoho_project_number', 'task_name', 'party_name', 'party_type']);
+
+        return response()->json($tasks);
+    }
+
+    /**
+     * Full clone payload for one ticket, fetched only after the BD picks it
+     * from the search dropdown. Ownership is enforced here (not just by the
+     * search list) so a crafted request for another BD's ticket is blocked.
+     */
+    public function cloneData(Request $request, DesignTask $task)
+    {
+        abort_unless((int) $task->assigned_by === (int) $request->user()->id, 403);
+
+        $requirements = is_array($task->requirements) ? $task->requirements : [];
+
+        $rowFieldMap = [
+            'board_details' => 'dimension_rows',
+            'size_details' => 'size_rows',
+            'creative_size_details' => 'media_size_rows',
+        ];
+
+        $flatRows = [];
+        foreach ($rowFieldMap as $reqKey => $jsKey) {
+            if (array_key_exists($reqKey, $requirements)) {
+                $flatRows[$jsKey] = $requirements[$reqKey];
+            }
+        }
+
+        $fileFieldKeys = array_values(array_intersect(array_keys($requirements), self::FILE_FIELDS));
+
+        $textRequirements = collect($requirements)
+            ->except(array_merge(array_keys($rowFieldMap), $fileFieldKeys))
+            ->all();
+
+        return response()->json([
+            'task' => [
+                'task_name' => $task->task_name,
+                'vertical' => $task->vertical,
+                'zoho_project_number' => $task->zoho_project_number,
+                'task_nature' => $task->task_nature,
+                'party_type' => $task->party_type,
+                'party_name' => $task->party_name,
+                'contact_person' => $task->contact_person,
+                'mobile_number' => $task->mobile_number,
+                'priority' => $task->priority,
+                'designer_id' => $task->designer_id,
+                'total_creatives' => $task->total_creatives,
+            ],
+            'requirements' => array_merge($flatRows, $textRequirements),
+            'attachments' => collect($this->collectRequirementAttachments($requirements))
+                ->mapWithKeys(fn (array $group) => [$group['key'] => $group['files']])
+                ->all(),
+            'source_task_id' => $task->id,
+        ]);
+    }
+
+    /**
+     * Validates the posted "kept cloned attachment" paths against the source
+     * task's OWN stored requirement files — the security boundary that stops
+     * a crafted request from copying an arbitrary Spaces path, or another
+     * BD's ticket's files, into the new task.
+     */
+    private function resolveClonedAttachments(Request $request): array
+    {
+        $sourceTaskId = (int) $request->input('cloned_from_task_id', 0);
+        $requested = json_decode((string) $request->input('cloned_source_files_json', '{}'), true);
+
+        if ($sourceTaskId <= 0 || ! is_array($requested) || $requested === []) {
+            return ['source_id' => null, 'fields' => []];
+        }
+
+        $sourceTask = DesignTask::query()
+            ->where('assigned_by', $request->user()->id)
+            ->find($sourceTaskId);
+
+        if (! $sourceTask) {
+            return ['source_id' => null, 'fields' => []];
+        }
+
+        $sourceGroups = collect($this->collectRequirementAttachments(
+            is_array($sourceTask->requirements) ? $sourceTask->requirements : []
+        ))->keyBy('key');
+
+        $resolved = [];
+
+        foreach ($requested as $field => $paths) {
+            if (! in_array($field, self::FILE_FIELDS, true) || ! is_array($paths)) {
+                continue;
+            }
+
+            $allowedPaths = collect($sourceGroups->get((string) $field)['files'] ?? [])->pluck('path')->all();
+            $keep = array_values(array_intersect($paths, $allowedPaths));
+
+            if ($keep !== []) {
+                $resolved[$field] = $keep;
+            }
+        }
+
+        return ['source_id' => $sourceTask->id, 'fields' => $resolved];
+    }
+
+    /**
+     * Server-side object copy (no download/re-upload) so a cloned reference
+     * file becomes an independent object under the new task's own folder,
+     * named with the same convention storeSingleFile() uses for new uploads.
+     */
+    private function copyClonedFile(string $sourcePath, string $directory, string $taskId, string $fieldName, int $sequence): string
+    {
+        $cleanOriginalName = Str::slug(pathinfo($sourcePath, PATHINFO_FILENAME)) ?: 'cloned-file';
+        $cleanFieldName = Str::slug(str_replace('_', '-', $fieldName));
+        $extension = strtolower(pathinfo($sourcePath, PATHINFO_EXTENSION)) ?: 'bin';
+        $timestamp = now()->format('Ymd-His-v');
+
+        $fileName = sprintf('%s__%s__%s__%s__%02d.%s', $taskId, $cleanFieldName, $cleanOriginalName, $timestamp, $sequence, $extension);
+        $destination = trim($directory, '/').'/'.$fileName;
+
+        if (! Storage::disk('spaces')->copy($sourcePath, $destination)) {
+            throw new \RuntimeException('A cloned reference file could not be copied.');
+        }
+
+        return $destination;
+    }
+
     public function store(Request $request)
     {
         $verticals = array_keys(self::NATURES);
@@ -329,7 +481,9 @@ class TaskController extends Controller
                 ->with('success', 'Design task created successfully.');
         }
 
-        $task = DB::transaction(function () use ($data): DesignTask {
+        $clonedAttachments = $this->resolveClonedAttachments($request);
+
+        $task = DB::transaction(function () use ($data, $clonedAttachments): DesignTask {
             $task = DesignTask::create([
                 'task_id' => 'PENDING-'.Str::uuid(),
                 'assigned_at' => now(),
@@ -348,6 +502,7 @@ class TaskController extends Controller
                 'total_creatives' => $data['total_creatives'],
                 'status' => 'assigned_tasks',
                 'requirements' => [],
+                'cloned_from_task_id' => $clonedAttachments['source_id'],
             ]);
 
             $task->update([
@@ -389,13 +544,27 @@ class TaskController extends Controller
 
         try {
             foreach (self::FILE_FIELDS as $field) {
-                if ($request->hasFile($field)) {
-                    $requirements[$field] = $this->storeMultipleFiles(
+                $paths = $request->hasFile($field)
+                    ? $this->storeMultipleFiles(
                         files: $request->file($field),
                         directory: "{$taskFolder}/{$field}",
                         taskId: $task->task_id,
                         fieldName: $field
+                    )
+                    : [];
+
+                foreach ($clonedAttachments['fields'][$field] ?? [] as $sourcePath) {
+                    $paths[] = $this->copyClonedFile(
+                        sourcePath: $sourcePath,
+                        directory: "{$taskFolder}/{$field}",
+                        taskId: $task->task_id,
+                        fieldName: $field,
+                        sequence: count($paths) + 1
                     );
+                }
+
+                if ($paths !== []) {
+                    $requirements[$field] = $paths;
                 }
             }
 
