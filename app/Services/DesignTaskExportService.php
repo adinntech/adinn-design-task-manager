@@ -71,6 +71,24 @@ class DesignTaskExportService
     ) {}
 
     /**
+     * Builds a "<BD>_<Designer>_Report" filename prefix from whichever of the
+     * two names is known (BD first, then Designer, matching the order both
+     * callers resolve their filters in), falling back to $default when
+     * neither is selected. Shared by Designer\TaskExportController and
+     * Admin\ReportController so the naming rule lives in exactly one place.
+     */
+    public function filenamePrefix(?string $bdName, ?string $designerName, string $default): string
+    {
+        $slug = collect([$bdName, $designerName])
+            ->filter(fn (?string $name) => $name !== null && trim($name) !== '')
+            ->map(fn (string $name) => trim(preg_replace('/[^A-Za-z0-9]+/', '_', $name), '_'))
+            ->filter(fn (string $name) => $name !== '')
+            ->implode('_');
+
+        return $slug !== '' ? $slug.'_Report' : $default;
+    }
+
+    /**
      * @param  array{search:string,vertical:string,priority:string,designerId:string,bdId:string,period:string,dateFrom:string,dateTo:string}  $filters
      */
     public function export(array $filters, string $filenamePrefix): StreamedResponse

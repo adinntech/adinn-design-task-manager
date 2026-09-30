@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Designer;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\DesignTaskExportService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -33,6 +34,9 @@ class TaskExportController extends Controller
             'overdue' => $isOverdue,
         ];
 
-        return $exportService->export($filters, 'designer-tasks');
+        $bdName = $filters['bdId'] !== '' ? User::find($filters['bdId'])?->name : null;
+        $prefix = $exportService->filenamePrefix($bdName, $request->user()->name, 'designer-tasks');
+
+        return $exportService->export($filters, $prefix);
     }
 }

@@ -33,7 +33,12 @@ class ReportController extends Controller
     {
         abort_unless($request->user()?->role === 'admin', 403);
 
-        return $exportService->export($this->filtersFromRequest($request), 'admin-overall-report');
+        $filters = $this->filtersFromRequest($request);
+        $bdName = $filters['bdId'] !== '' ? User::find($filters['bdId'])?->name : null;
+        $designerName = $filters['designerId'] !== '' ? User::find($filters['designerId'])?->name : null;
+        $prefix = $exportService->filenamePrefix($bdName, $designerName, 'admin-overall-report');
+
+        return $exportService->export($filters, $prefix);
     }
 
     /**
