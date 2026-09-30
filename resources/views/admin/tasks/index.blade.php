@@ -8,6 +8,12 @@
 @section('content')
 
 <style>
+    /* Refresh lives in the top bar on this page; icon-only on phones so the bar fits. */
+    @media(max-width:600px){
+        /* .btn sets font-size:14px!important in adinn-premium.css */
+        .topbar-actions .refresh-btn{font-size:0!important;gap:0;padding:9px 11px;min-height:38px}
+        .topbar-actions .refresh-btn .refresh-btn-icon{font-size:16px}
+    }
     #task-monitoring-filters{grid-template-columns:minmax(200px,1.5fr) minmax(130px,.8fr) repeat(5,minmax(120px,.7fr))}
     @media(max-width:1280px){#task-monitoring-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
     @media(max-width:900px){#task-monitoring-filters{grid-template-columns:minmax(0,1fr)}}

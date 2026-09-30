@@ -47,8 +47,8 @@
     }'
     style="border:1px solid #e4e7ec;border-radius:12px;overflow:hidden;background:#fff"
 >
-    <div style="overflow-x:auto">
-        <table style="width:100%;min-width:720px;border-collapse:collapse;font-size:10px">
+    <div class="sticky-head-wrap" style="overflow-x:auto">
+        <table class="sticky-head" style="width:100%;min-width:720px;border-collapse:collapse;font-size:10px">
             <thead>
                 <tr style="background:#f8fafc">
                     <th style="padding:9px 10px;text-align:left;border-bottom:1px solid #e4e7ec">{{ $rowLabel }} Name</th>

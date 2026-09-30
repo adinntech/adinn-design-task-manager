@@ -229,3 +229,14 @@ td{font-size:14px!important;line-height:1.5}
 .refresh-btn{display:inline-flex;align-items:center;gap:7px;transform-origin:50% 50%}
 .refresh-btn.is-shaking{animation:adinn-shake .9s ease-in-out infinite}
 .refresh-btn-icon{display:inline-block}
+
+/* Sticky table headers — the table's wrapper is the scroll area (capped to the
+   viewport), so the header row stays pinned while the rows scroll beneath it.
+   Horizontal scrolling inside the wrapper keeps working as before. The role
+   dashboards' .dh-table/.bd-table already do this in their own views. */
+.table-wrap{max-height:max(360px,calc(100vh - 160px))}
+.premium-table thead th{position:sticky;top:0;z-index:2;box-shadow:inset 0 -1px 0 var(--line)}
+.board-table-shell{max-height:420px;overflow:auto}
+.board-details-table thead th{position:sticky;top:0;z-index:1;box-shadow:inset 0 -1px 0 #e4e7ec}
+.sticky-head-wrap{max-height:420px;overflow:auto}
+.sticky-head thead th{position:sticky;top:0;z-index:1;background:#f8fafc;box-shadow:inset 0 -1px 0 #e4e7ec}
