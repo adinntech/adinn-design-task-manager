@@ -171,6 +171,7 @@
             </div>
 
             <div class="topbar-right">
+                @hasSection('topbar-actions')<div class="topbar-actions" style="display:flex;align-items:center;gap:8px">@yield('topbar-actions')</div>@endif
                 <div class="topbar-role-pill">{{ ucwords(str_replace('_', ' ', $role)) }}</div>
                 @livewire('notification-bell')
                 <div class="topbar-avatar" title="{{ auth()->user()->name }}">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>

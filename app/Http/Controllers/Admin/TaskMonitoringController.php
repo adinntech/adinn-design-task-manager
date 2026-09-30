@@ -55,7 +55,7 @@ class TaskMonitoringController extends Controller
 
     public function index(Request $request): View
     {
-        $tasks = DesignTask::query()
+        $filtered = DesignTask::query()
             ->with(['designer:id,name', 'assigner:id,name'])
             ->where('status', '!=', 'draft')
             ->when($request->filled('search'), function ($query) use ($request) {
@@ -72,7 +72,10 @@ class TaskMonitoringController extends Controller
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->input('status')))
             ->when($request->filled('priority'), fn ($query) => $query->where('priority', $request->input('priority')))
             ->when($request->filled('designer_id'), fn ($query) => $query->where('designer_id', $request->input('designer_id')))
-            ->when($request->filled('project_number'), fn ($query) => $query->where('zoho_project_number', 'like', '%'.trim((string) $request->input('project_number')).'%'))
+            ->when($request->filled('bd_id'), fn ($query) => $query->where('assigned_by', $request->input('bd_id')))
+            ->when($request->filled('project_number'), fn ($query) => $query->where('zoho_project_number', 'like', '%'.trim((string) $request->input('project_number')).'%'));
+
+        $tasks = (clone $filtered)
             ->latest('assigned_at')
             ->paginate(20)
             ->withQueryString();
@@ -82,7 +85,16 @@ class TaskMonitoringController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $bds = User::query()
+            ->where('role', 'bd')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         $statuses = DesignTaskStatusService::STATUSES;
+
+        // BD × Designer relationship summary — same filters as the table, so
+        // the numbers always describe exactly the tasks listed below.
+        $relationship = $this->relationshipSummary($filtered, $statuses);
 
         // The shake state is a temporary in-page attention cue, not restored
         // history — a full page load (including a browser reload) always
@@ -90,7 +102,92 @@ class TaskMonitoringController extends Controller
         // event received while this page stays open shakes it again.
         $needsRefresh = false;
 
-        return view('admin.tasks.index', compact('tasks', 'designers', 'statuses', 'needsRefresh'));
+        return view('admin.tasks.index', compact('tasks', 'designers', 'bds', 'statuses', 'needsRefresh', 'relationship'));
+    }
+
+    /**
+     * Totals, per-status counts and a BD × Designer pair breakdown for the
+     * filtered task set (all BDs × all designers, one BD × all designers,
+     * all BDs × one designer, or a single pair — whatever the filters select).
+     */
+    private function relationshipSummary($filtered, array $statuses): array
+    {
+        $now = now();
+        $base = fn () => (clone $filtered)->reorder()->setEagerLoads([]);
+
+        $statusCounts = $base()
+            ->selectRaw('status, COUNT(*) AS aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status')
+            ->map(fn ($count) => (int) $count);
+
+        // "Cancelled" = approved decline (the boards' / reports' "Decline Tasks"),
+        // same rule as DesignerHeadTaskBoardService. Active excludes it, along
+        // with completed and swapped (terminal) tasks.
+        $declinedIds = DesignTaskRequest::query()
+            ->where('request_type', 'decline')
+            ->where('overall_status', 'approved')
+            ->whereNotNull('approved_designer_id')
+            ->pluck('design_task_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $notDeclinedSql = $declinedIds === [] ? '1 = 1' : 'id NOT IN ('.implode(',', $declinedIds).')';
+        $activeSql = "status NOT IN ('completed', 'swap_tasks') AND {$notDeclinedSql}";
+
+        $pairs = $base()
+            ->selectRaw(
+                "assigned_by, designer_id, COUNT(*) AS total,
+                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+                 SUM(CASE WHEN {$activeSql} THEN 1 ELSE 0 END) AS active,
+                 SUM(CASE WHEN status <> 'completed' AND due_at < ? THEN 1 ELSE 0 END) AS overdue",
+                [$now]
+            )
+            ->groupBy('assigned_by', 'designer_id')
+            ->orderByDesc('total')
+            ->get();
+
+        $names = User::query()
+            ->whereIn('id', $pairs->pluck('assigned_by')->merge($pairs->pluck('designer_id'))->filter()->unique())
+            ->pluck('name', 'id');
+
+        $total = $statusCounts->sum();
+        $completed = $statusCounts->get('completed', 0);
+
+        return [
+            'total' => $total,
+            'completed' => $completed,
+            'active' => $base()->whereRaw($activeSql)->count(),
+            'in_progress' => $statusCounts->get('in_progress', 0),
+            'waiting_confirmation' => $statusCounts->get('waiting_confirmation', 0),
+            'prepare_printing_file' => $statusCounts->get('prepare_printing_file', 0),
+            'cancelled' => $declinedIds === [] ? 0 : $base()->whereIn('id', $declinedIds)->count(),
+            'swapped' => $statusCounts->get('swap_tasks', 0),
+            'split' => $base()->where(fn ($query) => $query
+                ->whereNotNull('requirements->_split_from_task_id')
+                ->orWhereNotNull('requirements->_split_request_id'))->count(),
+            'overdue' => $base()->where('status', '!=', 'completed')->where('due_at', '<', $now)->count(),
+            'statuses' => collect($statuses)
+                ->map(fn ($label, $key) => ['key' => $key, 'label' => $label, 'count' => $statusCounts->get($key, 0)])
+                ->merge($statusCounts->keys()->diff(array_keys($statuses))->map(fn ($key) => [
+                    'key' => $key,
+                    'label' => Str::headline((string) $key),
+                    'count' => $statusCounts->get($key),
+                ]))
+                ->filter(fn ($item) => $item['count'] > 0)
+                ->values(),
+            'pairs' => $pairs->map(fn ($pair) => [
+                'bd_id' => $pair->assigned_by,
+                'designer_id' => $pair->designer_id,
+                'bd' => $names->get($pair->assigned_by, '—'),
+                'designer' => $names->get($pair->designer_id, '—'),
+                'total' => (int) $pair->total,
+                'completed' => (int) $pair->completed,
+                'active' => (int) $pair->active,
+                'overdue' => (int) $pair->overdue,
+            ]),
+        ];
     }
 
     public function show(Request $request, DesignTask $task): View

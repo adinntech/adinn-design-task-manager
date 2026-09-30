@@ -93,6 +93,40 @@ class DesignTaskExportService
      */
     public function export(array $filters, string $filenamePrefix): StreamedResponse
     {
+        $report = $this->buildReport($filters);
+
+        $spreadsheet = $this->buildSpreadsheet(
+            $report['rows'],
+            $report['summary'],
+            $report['reportSummary'],
+            $report['overdueCompletedRowNumbers'],
+            $report['activeOverdueRowNumbers'],
+            $report['carryForwardRowNumbers']
+        );
+        $filename = $filenamePrefix.'-'.now()->format('Y-m-d-His').'.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            (new Xlsx($spreadsheet))->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /** Tasks-sheet column headings, in order. */
+    public function header(): array
+    {
+        return self::HEADER;
+    }
+
+    /**
+     * The Tasks-sheet rows, Summary-sheet metrics and row-highlight positions
+     * exactly as export() writes them — also used by the Admin report preview
+     * so the on-page table and the downloaded file can never disagree.
+     *
+     * @return array{rows:array,summary:array,reportSummary:array,overdueCompletedRowNumbers:int[],activeOverdueRowNumbers:int[],carryForwardRowNumbers:int[],tasks:Collection,statuses:array}
+     */
+    public function buildReport(array $filters): array
+    {
         $board = $this->boardService->build($filters);
         // Origin-period tasks + their swap-shadow counterparts only — excludes the
         // board's read-only "continuation from" extras (tasks that originated in an
@@ -277,14 +311,16 @@ class DesignTaskExportService
             ['Average Rating', $ratingCount > 0 ? DesignTaskBdReview::formatRating($ratingSum / $ratingCount) : '—'],
         ];
 
-        $spreadsheet = $this->buildSpreadsheet($rows, $summary, $reportSummary, $overdueCompletedRowNumbers, $activeOverdueRowNumbers, $carryForwardRowNumbers);
-        $filename = $filenamePrefix.'-'.now()->format('Y-m-d-His').'.xlsx';
-
-        return response()->streamDownload(function () use ($spreadsheet) {
-            (new Xlsx($spreadsheet))->save('php://output');
-        }, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ]);
+        return compact(
+            'rows',
+            'summary',
+            'reportSummary',
+            'overdueCompletedRowNumbers',
+            'activeOverdueRowNumbers',
+            'carryForwardRowNumbers',
+            'tasks',
+            'statuses'
+        );
     }
 
     /**

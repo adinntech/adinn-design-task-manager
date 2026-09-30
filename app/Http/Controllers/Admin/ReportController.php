@@ -57,6 +57,45 @@ class ReportController extends Controller
         return response()->json(['count' => $count]);
     }
 
+    /**
+     * Split view data for a selected BD: per-status task counts plus the exact
+     * Tasks-sheet rows (and their highlight flags) the export would write.
+     */
+    public function preview(Request $request, DesignTaskExportService $exportService): JsonResponse
+    {
+        abort_unless($request->user()?->role === 'admin', 403);
+
+        $report = $exportService->buildReport($this->filtersFromRequest($request));
+
+        $counts = $report['tasks']->countBy('status');
+        $statusCounts = collect($report['statuses'])
+            ->map(fn ($label, $key) => ['key' => $key, 'label' => $label, 'count' => (int) $counts->get($key, 0)])
+            ->values();
+        foreach ($counts as $key => $count) {
+            if (! array_key_exists($key, $report['statuses'])) {
+                $statusCounts->push(['key' => $key, 'label' => ucwords(str_replace('_', ' ', (string) $key)), 'count' => $count]);
+            }
+        }
+
+        $rowFlags = [];
+        foreach (array_keys($report['rows']) as $index) {
+            $rowNumber = $index + 1;
+            $rowFlags[] = [
+                'carryForward' => in_array($rowNumber, $report['carryForwardRowNumbers'], true),
+                'overdue' => in_array($rowNumber, $report['activeOverdueRowNumbers'], true),
+                'completedLate' => in_array($rowNumber, $report['overdueCompletedRowNumbers'], true),
+            ];
+        }
+
+        return response()->json([
+            'statusCounts' => $statusCounts->values(),
+            'total' => count($report['rows']),
+            'header' => $exportService->header(),
+            'rows' => $report['rows'],
+            'rowFlags' => $rowFlags,
+        ]);
+    }
+
     private function filtersFromRequest(Request $request): array
     {
         return [

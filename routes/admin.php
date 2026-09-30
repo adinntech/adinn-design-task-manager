@@ -45,6 +45,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
         Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
+        Route::get('/reports/preview', [ReportController::class, 'preview'])->name('reports.preview');
 
         Route::post('/requests/{taskRequest}/approve', [RequestActionController::class, 'approve'])->name('requests.approve');
         Route::post('/requests/{taskRequest}/reject', [RequestActionController::class, 'reject'])->name('requests.reject');
