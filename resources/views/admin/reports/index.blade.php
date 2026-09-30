@@ -24,14 +24,14 @@
     <div class="panel-body">
         <div class="filter-bar" style="margin-bottom:0">
             <select class="premium-select" id="reportBd">
-                <option value="">All BDs</option>
+                <option value="">All BD's ({{ $bds->count() }})</option>
                 @foreach($bds as $bd)
                     <option value="{{ $bd->id }}" @selected($bdId === (string) $bd->id)>{{ $bd->name }}</option>
                 @endforeach
             </select>
 
             <select class="premium-select" id="reportDesigner">
-                <option value="">All Designers</option>
+                <option value="">All Designers ({{ $designers->count() }})</option>
                 @foreach($designers as $designer)
                     <option value="{{ $designer->id }}" @selected($designerId === (string) $designer->id)>{{ $designer->name }}</option>
                 @endforeach
@@ -55,6 +55,7 @@
         </div>
 
         <p class="muted" id="reportMatchCount" style="margin-top:14px"></p>
+        <p class="error" id="reportExportError" style="display:none;margin-top:6px"></p>
         <p class="muted" style="margin-top:6px">
             The exported sheet includes tasks from the selected period, plus any still-open task carried forward from an earlier month (Current Month only) — those rows are highlighted in amber.
         </p>
@@ -71,6 +72,7 @@
     var clearBtn = document.getElementById('reportClearBtn');
     var exportBtn = document.getElementById('reportExportBtn');
     var matchCount = document.getElementById('reportMatchCount');
+    var exportError = document.getElementById('reportExportError');
 
     var summaryUrl = @json(route('admin.reports.summary'));
     var exportUrlBase = @json(route('admin.reports.export'));
@@ -150,7 +152,7 @@
     dateFrom.addEventListener('change', scheduleReload);
     dateTo.addEventListener('change', scheduleReload);
 
-    clearBtn.addEventListener('click', function () {
+    function resetFiltersAndReload() {
         bdSelect.value = '';
         designerSelect.value = '';
         periodSelect.value = 'current_month';
@@ -158,10 +160,46 @@
         dateTo.value = '';
         togglePeriodInputs();
         reload();
-    });
+    }
+
+    clearBtn.addEventListener('click', resetFiltersAndReload);
 
     exportBtn.addEventListener('click', function (e) {
-        if (isLoading) e.preventDefault();
+        e.preventDefault();
+        if (isLoading) return;
+
+        var href = exportBtn.getAttribute('href');
+        exportError.style.display = 'none';
+        setLoading(true);
+
+        fetch(href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (res) {
+                if (!res.ok) throw new Error('export_failed');
+                var disposition = res.headers.get('Content-Disposition') || '';
+                var match = disposition.match(/filename="?([^";]+)"?/);
+                var filename = match ? match[1] : 'report.xlsx';
+                return res.blob().then(function (blob) { return { blob: blob, filename: filename }; });
+            })
+            .then(function (result) {
+                var blobUrl = window.URL.createObjectURL(result.blob);
+                var link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = result.filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(blobUrl);
+
+                setLoading(false);
+                // Only reset filters after a confirmed successful download —
+                // a failed export (caught below) must leave them untouched.
+                resetFiltersAndReload();
+            })
+            .catch(function () {
+                setLoading(false);
+                exportError.textContent = 'The report could not be exported. Please try again.';
+                exportError.style.display = '';
+            });
     });
 })();
 </script>
