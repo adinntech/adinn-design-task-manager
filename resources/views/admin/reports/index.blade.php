@@ -130,7 +130,7 @@
     </div>
 </div>
 
-{{-- Split view for a selected BD: status counts (left) + export preview (right). Filled by the script below. --}}
+{{-- Split view for the selected BD × Designer (All × All = overall): status counts (left) + export preview (right). Filled by the script below. --}}
 <div class="rpt-split" id="reportSplit" hidden>
     <section class="panel rpt-card rpt-status-card">
         <div class="panel-header"><div><div class="panel-title">Status overview</div><div class="metric-note">Tasks by current status</div></div></div>
@@ -322,8 +322,11 @@
     });
 
     function renderSplit(data) {
-        splitScope.textContent = [selectedText(bdSelect), designerSelect.value ? selectedText(designerSelect) : '', selectedText(periodSelect)]
-            .filter(Boolean).join(' · ');
+        splitScope.textContent = [
+            bdSelect.value ? selectedText(bdSelect) : 'All BDs',
+            designerSelect.value ? selectedText(designerSelect) : 'All Designers',
+            selectedText(periodSelect)
+        ].join(' · ');
 
         // Left: non-zero statuses first (board order), empty ones behind the toggle.
         statusList.textContent = '';
@@ -386,13 +389,7 @@
         if (previewController) previewController.abort();
         var seq = ++previewSeq;
 
-        if (!filters.bd_id) {
-            previewController = null;
-            split.hidden = true;
-            split.classList.remove('is-loading');
-            return;
-        }
-
+        // Always shown: BD and Designer filter independently (All × All = overall).
         previewController = new AbortController();
         split.hidden = false;
         split.classList.add('is-loading');
@@ -477,8 +474,8 @@
             });
     });
 
-    // A BD preselected via the URL opens the split view straight away.
-    if (bdSelect.value) refreshSplit(currentFilters(), buildQuery(currentFilters()));
+    // Load the split view straight away for the current (or URL-preselected) filters.
+    refreshSplit(currentFilters(), buildQuery(currentFilters()));
 })();
 </script>
 @endsection
