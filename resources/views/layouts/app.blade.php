@@ -126,6 +126,7 @@
                 <a href="{{ route('admin.manage-email.index') }}" class="{{ request()->routeIs('admin.manage-email.*') ? 'active' : '' }}"><span>✉</span>Manage Email</a>
                 <a href="{{ route('admin.master.index') }}" class="{{ request()->routeIs('admin.master.*') ? 'active' : '' }}"><span>⌘</span>Master Controls</a>
                 <a href="{{ route('admin.activity.index') }}" class="{{ request()->routeIs('admin.activity.*') ? 'active' : '' }}"><span>↻</span>System Activity</a>
+                <a href="{{ route('admin.reports.index') }}" class="{{ request()->routeIs('admin.reports.*') ? 'active' : '' }}"><span>▥</span>Overall Reports</a>
                 <a href="{{ route('profile.show') }}" class="{{ request()->routeIs('profile.show') ? 'active' : '' }}"><span>◉</span>My Profile</a>
             @elseif($role === 'bd')
                 <a href="{{ route('bd.dashboard') }}" class="{{ request()->routeIs('bd.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>

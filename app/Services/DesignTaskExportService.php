@@ -42,6 +42,11 @@ class DesignTaskExportService
 
     private const GREEN_TEXT = '006100';
 
+    /** Attention color for a "carried forward from a previous period" row (Current Month only). */
+    private const CARRY_FORWARD_ROW_FILL = 'FFEB9C';
+
+    private const CARRY_FORWARD_ROW_TEXT = '9C6500';
+
     /** 1-based column index of the "Status" header — where the completed-late green indicator is applied. */
     private const STATUS_COLUMN = 13;
 
@@ -154,6 +159,7 @@ class DesignTaskExportService
         $rows = [];
         $overdueCompletedRowNumbers = [];
         $activeOverdueRowNumbers = [];
+        $carryForwardRowNumbers = [];
         $rowNumber = 0;
         $totals = [
             'total' => 0, 'completed' => 0, 'active' => 0, 'overdue' => 0,
@@ -196,6 +202,9 @@ class DesignTaskExportService
             } elseif ($completion['status'] === 'overdue') {
                 $activeOverdueRowNumbers[] = $rowNumber;
             }
+            if ((bool) ($task->is_previous_month_task ?? false)) {
+                $carryForwardRowNumbers[] = $rowNumber;
+            }
 
             $rows[] = [
                 $rowNumber,
@@ -218,7 +227,7 @@ class DesignTaskExportService
                 $this->ratingCell($rating),
                 $this->completionText($completion),
                 $this->crossMonthCell($task->assigned_at?->format('M Y'), $terminalAt?->format('M Y')),
-                $task->continuation_label ?? 'No',
+                $task->previous_month_label ?? $task->continuation_label ?? 'No',
             ];
 
             $totals['total']++;
@@ -250,7 +259,7 @@ class DesignTaskExportService
             ['Average Rating', $ratingCount > 0 ? DesignTaskBdReview::formatRating($ratingSum / $ratingCount) : '—'],
         ];
 
-        $spreadsheet = $this->buildSpreadsheet($rows, $summary, $reportSummary, $overdueCompletedRowNumbers, $activeOverdueRowNumbers);
+        $spreadsheet = $this->buildSpreadsheet($rows, $summary, $reportSummary, $overdueCompletedRowNumbers, $activeOverdueRowNumbers, $carryForwardRowNumbers);
         $filename = $filenamePrefix.'-'.now()->format('Y-m-d-His').'.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {
@@ -268,8 +277,12 @@ class DesignTaskExportService
      *                                                    "Status" cell (still overdue on completion, but done).
      * @param  int[]  $activeOverdueRowNumbers           1-based position of each row (within $rows) that is
      *                                                    still open and past its due date — red row only.
+     * @param  int[]  $carryForwardRowNumbers            1-based position of each row that originated in an
+     *                                                    earlier period but is still open (Current Month only)
+     *                                                    — amber "attention" row, overridden by red if also
+     *                                                    overdue.
      */
-    private function buildSpreadsheet(array $rows, array $summary, array $reportSummary, array $overdueCompletedRowNumbers = [], array $activeOverdueRowNumbers = []): Spreadsheet
+    private function buildSpreadsheet(array $rows, array $summary, array $reportSummary, array $overdueCompletedRowNumbers = [], array $activeOverdueRowNumbers = [], array $carryForwardRowNumbers = []): Spreadsheet
     {
         $spreadsheet = new Spreadsheet;
         $columnCount = count(self::HEADER);
@@ -289,6 +302,10 @@ class DesignTaskExportService
         } else {
             $tasksSheet->fromArray($rows, null, 'A'.$firstDataRow);
             $this->styleBodyRows($tasksSheet, $columnCount, $firstDataRow, $firstDataRow + count($rows) - 1, true);
+
+            foreach ($carryForwardRowNumbers as $rowNumber) {
+                $this->styleCarryForwardRow($tasksSheet, $columnCount, $firstDataRow - 1 + $rowNumber);
+            }
 
             foreach ($activeOverdueRowNumbers as $rowNumber) {
                 $this->styleOverdueRow($tasksSheet, $columnCount, $firstDataRow - 1 + $rowNumber);
@@ -355,6 +372,21 @@ class DesignTaskExportService
         $sheet->getStyle($range)->applyFromArray([
             'font' => ['color' => ['rgb' => self::LATE_ROW_TEXT]],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::LATE_ROW_FILL]],
+        ]);
+    }
+
+    /**
+     * Amber "attention" row for a task carried forward from an earlier period
+     * (Current Month only — still open, originated before the period start).
+     * Applied before the overdue loops in buildSpreadsheet(), so a row that is
+     * BOTH carried-forward and overdue ends up red (overdue takes precedence).
+     */
+    private function styleCarryForwardRow(Worksheet $sheet, int $columnCount, int $row): void
+    {
+        $range = 'A'.$row.':'.$this->columnLetter($columnCount).$row;
+        $sheet->getStyle($range)->applyFromArray([
+            'font' => ['color' => ['rgb' => self::CARRY_FORWARD_ROW_TEXT]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::CARRY_FORWARD_ROW_FILL]],
         ]);
     }
 

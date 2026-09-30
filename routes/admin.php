@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ManageEmailController;
 use App\Http\Controllers\Admin\MasterController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RequestActionController;
 use App\Http\Controllers\Admin\TaskMonitoringController;
 use App\Http\Controllers\Admin\UserController;
@@ -40,6 +41,10 @@ Route::middleware(['auth', 'role:admin'])
 
         Route::get('/master-controls', [MasterController::class, 'index'])->name('master.index');
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
+
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
+        Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 
         Route::post('/requests/{taskRequest}/approve', [RequestActionController::class, 'approve'])->name('requests.approve');
         Route::post('/requests/{taskRequest}/reject', [RequestActionController::class, 'reject'])->name('requests.reject');
