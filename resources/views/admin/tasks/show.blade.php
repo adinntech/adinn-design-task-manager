@@ -25,6 +25,15 @@
     .bd-comment-feed{display:flex;flex-direction:column;gap:10px}.bd-comment{margin:0;padding:14px;border-radius:13px;background:#fff;border:1px solid #eaecf0;box-shadow:0 2px 8px rgba(16,24,40,.025)}.bd-comment-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.bd-comment-person{display:flex;align-items:center;gap:9px;min-width:0}.bd-comment-avatar{width:30px;height:30px;border-radius:9px;background:#f2f4f7;display:grid;place-items:center;font-size:10px;font-weight:950;color:#344054;flex:0 0 auto}.bd-comment-name{font-size:10px;font-weight:900;color:#101828}.bd-comment-date{font-size:8px;color:#98a2b3;margin-top:2px}.bd-comment-message{margin-top:8px;font-size:10px;line-height:1.65;color:#344054;font-weight:450;white-space:pre-wrap}.bd-comment-files{margin-top:11px;display:flex;flex-direction:column;gap:6px}.bd-comment-file{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 9px;border:1px solid #eaecf0;border-radius:9px;background:#fafbfc}.bd-comment-file-primary{min-width:0;display:flex;align-items:center;gap:7px}.bd-comment-file-name{font-size:9px;font-weight:750;color:#344054;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}.bd-comment-open{font-size:8px;font-weight:900;color:#e30613;text-decoration:none}.bd-comment-download{font-size:8px;font-weight:800;color:#667085;text-decoration:none}
 
     .rating-summary-shell{border:1px solid #f1d07a;border-radius:14px;background:linear-gradient(180deg,#fffdf7 0%,#fff9e9 100%);padding:14px;box-shadow:0 4px 14px rgba(245,179,1,.06)}.rating-summary-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.rating-summary-kicker{font-size:8px;font-weight:950;letter-spacing:.045em;text-transform:uppercase;color:#8a6200}.rating-summary-score{font-size:14px;font-weight:950;color:#624600;white-space:nowrap}.rating-summary-stars{display:flex;align-items:center;gap:4px;margin-top:7px;line-height:1}.rating-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.rating-compact-item{border:1px solid #eee3bd;border-radius:11px;background:rgba(255,255,255,.74);padding:10px 11px;min-width:0}.rating-compact-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.rating-compact-label{font-size:8px;font-weight:950;color:#5f6470;text-transform:uppercase;letter-spacing:.025em;line-height:1.35}.rating-compact-score{font-size:10px;font-weight:950;color:#5d4300;white-space:nowrap}.rating-compact-stars{display:flex;align-items:center;gap:3px;margin-top:7px;line-height:1}.rating-static-star{--star-fill:0%;display:inline-block;width:17px;height:17px;flex:0 0 17px;font-size:17px;line-height:17px;font-family:Arial,"Segoe UI Symbol",sans-serif;background:linear-gradient(90deg,#f5b301 0%,#f5b301 var(--star-fill),#d8dee8 var(--star-fill),#d8dee8 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}.rating-overall-item{border-color:#efcc69;background:#fffaf0}.rating-meta-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin-top:10px}.rating-comment-compact,.rating-submitted-compact{border:1px solid #e8e2cf;border-radius:10px;background:#fff;padding:10px 11px;font-size:9px;line-height:1.5;color:#475467}.rating-comment-compact strong,.rating-submitted-compact strong{color:#101828;font-weight:900}.rating-submitted-compact{min-width:220px}@media(max-width:760px){.rating-compact-grid{grid-template-columns:1fr}.rating-meta-row{grid-template-columns:1fr}.rating-submitted-compact{min-width:0}}
+
+    .adm-tab-pending{width:7px;height:7px;border-radius:50%;background:#f59e0b;flex:0 0 auto;animation:adm-tab-pulse 1.8s ease-out infinite}
+    @keyframes adm-tab-pulse{0%{box-shadow:0 0 0 0 rgba(245,158,11,.55)}70%{box-shadow:0 0 0 6px rgba(245,158,11,0)}100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}}
+    .adm-pf-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 2px;border-top:1px solid #eef1f5}.adm-pf-row:first-child{border-top:0;padding-top:2px}.adm-pf-subject{font-size:11px;font-weight:850;color:#101828;overflow-wrap:anywhere}.adm-pf-meta{margin-top:4px;font-size:9px;color:#667085}
+    .adm-pf-backdrop{position:fixed;inset:0;z-index:90;background:rgba(16,24,40,.5);display:flex;align-items:center;justify-content:center;padding:16px}.adm-pf-modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 60px rgba(16,24,40,.25)}.adm-pf-modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.adm-pf-close{border:0;background:#f2f4f7;color:#475467;width:28px;height:28px;border-radius:8px;font-size:16px;line-height:1;cursor:pointer}
+    .adm-pf-field{font-size:10px;line-height:1.55;color:#344054;margin-top:7px;overflow-wrap:anywhere}.adm-pf-field strong{color:#101828}.adm-pf-body{margin-top:10px;padding:10px 12px;border:1px solid #eaecf0;border-radius:9px;background:#f9fafb;font-size:10px;line-height:1.6;color:#344054;white-space:pre-wrap;overflow-wrap:anywhere}.adm-pf-link{color:#1d4ed8;text-decoration:none;word-break:break-all}.adm-pf-link:hover{text-decoration:underline}
+    .adm-pf-attachments{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}.adm-pf-att{display:flex;align-items:center;gap:8px;border:1px solid #e4e7ec;border-radius:9px;padding:6px 8px;width:230px;max-width:100%}.adm-pf-thumb{width:44px;height:44px;border-radius:6px;object-fit:cover;cursor:zoom-in;flex:0 0 auto;border:0;padding:0;background:#f5f7fa}.adm-pf-thumb img{width:100%;height:100%;object-fit:cover;border-radius:6px;display:block}.adm-pf-icon{width:44px;height:44px;border-radius:6px;background:#f5f7fa;display:grid;place-items:center;font-size:9px;font-weight:900;color:#667085;flex:0 0 auto}.adm-pf-att-meta{flex:1;min-width:0}.adm-pf-att-name{font-size:10px;font-weight:750;color:#344054;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.adm-pf-att-size{font-size:9px;color:#667085;margin-top:2px}.adm-pf-download{flex:0 0 auto;color:#2970ff;text-decoration:none;font-size:15px;padding:4px}
+    .adm-pf-lightbox{position:fixed;inset:0;z-index:95;background:rgba(16,24,40,.8);display:flex;align-items:center;justify-content:center;padding:20px}.adm-pf-lightbox-inner{display:flex;flex-direction:column;gap:10px;max-width:92vw;max-height:92vh}.adm-pf-lightbox-head{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#fff;font-size:11px;font-weight:750}.adm-pf-lightbox-head span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.adm-pf-lightbox img{max-width:92vw;max-height:80vh;object-fit:contain;border-radius:6px}
+    @media (prefers-reduced-motion: reduce){.adm-tab-pending{animation:none}}
 </style>
 
 <div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview', commentsSeen: new URLSearchParams(window.location.search).get('tab') === 'comments' }">
@@ -59,10 +68,15 @@
         @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Split Details</button>@endif
         @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Swap Details</button>@endif
         <button class="bd-detail-tab" :class="{active:tab==='history'}" @click="tab='history'">History</button>
-        @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed','prepare_printing_file'], true))
-            <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates</button>
-        @endif
-        @if(in_array($task->status, ['completed','prepare_printing_file'], true))<button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings</button>@endif
+        {{-- Always visible for admin; a pulsing dot marks data the owning role has not submitted yet. --}}
+        @php
+            $eodPending = $eodRecords->isEmpty();
+            $ratingPending = ! $taskRating;
+            $printingPending = $printingFileMails->isEmpty();
+        @endphp
+        <button class="bd-detail-tab" :class="{active:tab==='eod'}" @click="tab='eod'">Progress Updates @if($eodPending)<span class="adm-tab-pending" title="Not submitted yet"></span>@endif</button>
+        <button class="bd-detail-tab" :class="{active:tab==='ratings'}" @click="tab='ratings'">Ratings @if($ratingPending)<span class="adm-tab-pending" title="Not submitted yet"></span>@endif</button>
+        <button class="bd-detail-tab" :class="{active:tab==='printing'}" @click="tab='printing'">Printing File @if($printingPending)<span class="adm-tab-pending" title="Not submitted yet"></span>@endif</button>
     </div>
 
     <section class="bd-tab-panel" x-show="tab==='overview'">
@@ -233,11 +247,17 @@
         </div>
     </section>
 
-    @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed','prepare_printing_file'], true))
     <section class="bd-tab-panel" x-show="tab==='eod'" x-cloak>
         <div class="panel">
             <div class="panel-header"><div><div class="panel-title">Progress Updates</div><div style="font-size:10px;color:#667085;margin-top:3px">Designer Progress Updates records and Rework uploads.</div></div></div>
             <div class="panel-body">
+                @if($eodPending)
+                    @include('admin.tasks.partials.pending-submission', [
+                        'title' => 'Progress updates not submitted yet',
+                        'message' => 'The Designer has not submitted any progress or rework update for this task. Records will appear here as soon as the first update is submitted.',
+                        'role' => 'designer',
+                    ])
+                @else
                 <div class="bd-eod-overall">
                     <div class="bd-eod-overall-head"><span>Overall Completion</span><strong>{{ $progressPercentage }}%</strong></div>
                     <div class="progress-track"><x-progress-fill :percentage="$progressPercentage" /></div>
@@ -278,15 +298,18 @@
                 @empty
                     <div class="empty-state">No Progress Updates records have been submitted yet.</div>
                 @endforelse
+                @endif
             </div>
         </div>
     </section>
-    @endif
 
-    @if(in_array($task->status, ['completed','prepare_printing_file'], true))
     <section class="bd-tab-panel" x-show="tab==='ratings'" x-cloak><div class="panel"><div class="panel-header"><div><div class="panel-title">Ratings</div><div style="font-size:9px;color:#667085;margin-top:3px">Final BD rating submitted when the task was completed.</div></div></div><div class="panel-body">
         @if(! $taskRating)
-            <div class="empty-state">No rating available.</div>
+            @include('admin.tasks.partials.pending-submission', [
+                'title' => 'Rating not submitted yet',
+                'message' => 'The BD submits the final rating when the task is completed. It will appear here once submitted.',
+                'role' => 'bd',
+            ])
         @else
             @php $overallRatingValue = max(0, min(5, \App\Models\DesignTaskBdReview::roundToHalfStar($taskRating->overall_rating))); @endphp
             <div class="rating-summary-shell">
@@ -333,7 +356,119 @@
             </div>
         @endif
     </div></div></section>
-    @endif
+
+    {{-- Printing File — read-only mail history for admin (no Resend / Send New Mail / edit). --}}
+    <section class="bd-tab-panel" x-show="tab==='printing'" x-cloak
+        x-data="{ openMail: null, previewSrc: null, previewName: '' }"
+        @keydown.escape.window="if (previewSrc) { previewSrc = null } else { openMail = null }">
+        <div class="panel">
+            <div class="panel-header">
+                <div><div class="panel-title">Printing File</div><div style="font-size:9px;color:#667085;margin-top:3px">Printing file mails sent by the Designer (read-only).</div></div>
+                @unless($printingPending)<span class="bd-tab-count">{{ $printingFileMails->count() }}</span>@endunless
+            </div>
+            <div class="panel-body">
+                @if($printingPending)
+                    @include('admin.tasks.partials.pending-submission', [
+                        'title' => 'Printing file not submitted yet',
+                        'message' => 'The Designer has not sent a printing file mail for this task. The mail history will appear here once the first mail is sent.',
+                        'role' => 'designer',
+                    ])
+                @else
+                    <div style="font-size:11px;font-weight:800;color:#344054;letter-spacing:.02em;text-transform:uppercase;margin-bottom:8px">Mail History</div>
+                    @foreach($printingFileMails as $mail)
+                        <div class="adm-pf-row">
+                            <div style="min-width:0">
+                                <div class="adm-pf-subject">{{ $mail->subject ?: '(No subject)' }}</div>
+                                <div class="adm-pf-meta">{{ $mail->sent_at?->format('d M Y') }} • {{ $mail->sent_at?->format('h:i A') }} · Sent by {{ $mail->sender?->name ?? $mail->sender?->email ?? 'Designer' }}</div>
+                            </div>
+                            <button type="button" class="btn btn-secondary" @click="openMail = {{ $mail->id }}">View Mail Details</button>
+                        </div>
+                    @endforeach
+                @endif
+            </div>
+        </div>
+
+        @php
+            $pfRecipientList = fn ($list) => collect($list ?? [])
+                ->map(fn ($r) => is_array($r)
+                    ? (($r['name'] ?? '') !== '' && ($r['name'] ?? '') !== ($r['mail'] ?? '') ? $r['name'].' <'.($r['mail'] ?? '').'>' : ($r['mail'] ?? $r['name'] ?? ''))
+                    : (string) $r)
+                ->filter()
+                ->implode(', ');
+            $pfImageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+        @endphp
+        @foreach($printingFileMails as $mail)
+            @php
+                // Old single-link rows never had transfer_urls — fall back to transfer_url.
+                $pfLinks = $mail->transfer_urls ?: array_values(array_filter([$mail->transfer_url]));
+                $pfTo = $pfRecipientList($mail->to_recipients);
+                $pfCc = $pfRecipientList($mail->cc_recipients);
+            @endphp
+            <div class="adm-pf-backdrop" x-show="openMail === {{ $mail->id }}" x-cloak @click.self="openMail = null" role="dialog" aria-modal="true" aria-label="Mail details">
+                <div class="adm-pf-modal">
+                    <div class="adm-pf-modal-head">
+                        <div class="panel-title">Mail Details</div>
+                        <button type="button" class="adm-pf-close" @click="openMail = null" aria-label="Close">&times;</button>
+                    </div>
+                    @if($pfTo !== '')<div class="adm-pf-field"><strong>To:</strong> {{ $pfTo }}</div>@endif
+                    @if($pfCc !== '')<div class="adm-pf-field"><strong>CC:</strong> {{ $pfCc }}</div>@endif
+                    <div class="adm-pf-field"><strong>Subject:</strong> {{ $mail->subject }}</div>
+                    @if(filled($mail->body))<div class="adm-pf-body">{{ $mail->body }}</div>@endif
+
+                    @if(! empty($pfLinks))
+                        <div class="adm-pf-field"><strong>WeTransfer:</strong></div>
+                        @foreach($pfLinks as $pfLink)
+                            <div class="adm-pf-field" style="margin-top:2px"><a class="adm-pf-link" href="{{ $pfLink }}" target="_blank" rel="noopener">{{ $pfLink }}</a></div>
+                        @endforeach
+                    @endif
+
+                    <div class="adm-pf-field"><strong>Attachments:</strong></div>
+                    @if(empty($mail->attachments))
+                        <div style="font-size:9px;color:#98a2b3;margin-top:4px">No attachments</div>
+                    @else
+                        <div class="adm-pf-attachments">
+                            @foreach($mail->attachments as $attachment)
+                                @php
+                                    $pfUrl = is_array($attachment) ? ($attachment['url'] ?? '') : (string) $attachment;
+                                    $pfName = is_array($attachment) ? ($attachment['name'] ?? basename($pfUrl)) : basename($pfUrl);
+                                    $pfExt = strtolower(pathinfo($pfName, PATHINFO_EXTENSION));
+                                    $pfSize = is_array($attachment) && ! empty($attachment['size_bytes']) ? number_format($attachment['size_bytes'] / 1048576, 1).' MB' : '';
+                                @endphp
+                                <div class="adm-pf-att">
+                                    @if(in_array($pfExt, $pfImageExts, true) && $pfUrl !== '')
+                                        <button type="button" class="adm-pf-thumb" @click="previewSrc = @js($pfUrl); previewName = @js($pfName)" aria-label="Preview {{ $pfName }}"><img src="{{ $pfUrl }}" alt="{{ $pfName }}" loading="lazy"></button>
+                                    @else
+                                        <div class="adm-pf-icon">{{ $pfExt !== '' ? strtoupper(\Illuminate\Support\Str::limit($pfExt, 4, '')) : 'FILE' }}</div>
+                                    @endif
+                                    <div class="adm-pf-att-meta">
+                                        <div class="adm-pf-att-name" title="{{ $pfName }}">{{ $pfName }}</div>
+                                        @if($pfSize)<div class="adm-pf-att-size">{{ $pfSize }}</div>@endif
+                                    </div>
+                                    @if($pfUrl !== '')<a class="adm-pf-download" href="{{ $pfUrl }}" download="{{ $pfName }}" target="_blank" rel="noopener" title="Download">⬇</a>@endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <div class="adm-pf-field" style="margin-top:12px;color:#667085">Sent by {{ $mail->sender?->name ?? $mail->sender?->email ?? 'Designer' }} · {{ $mail->sent_at?->format('d M Y') }} • {{ $mail->sent_at?->format('h:i A') }}</div>
+                    <button type="button" class="btn btn-secondary" style="margin-top:14px" @click="openMail = null">Close</button>
+                </div>
+            </div>
+        @endforeach
+
+        <div class="adm-pf-lightbox" x-show="previewSrc" x-cloak @click.self="previewSrc = null">
+            <div class="adm-pf-lightbox-inner">
+                <div class="adm-pf-lightbox-head">
+                    <span x-text="previewName"></span>
+                    <span style="display:flex;gap:8px;flex:0 0 auto">
+                        <a class="btn btn-secondary" :href="previewSrc" :download="previewName" target="_blank" rel="noopener">Download</a>
+                        <button type="button" class="btn btn-secondary" @click="previewSrc = null">Close</button>
+                    </span>
+                </div>
+                <img :src="previewSrc" :alt="previewName">
+            </div>
+        </div>
+    </section>
 </div>
 
 <x-formal-confirm-dialog />

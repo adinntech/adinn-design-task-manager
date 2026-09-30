@@ -17,10 +17,10 @@
 
 <div class="panel">
     <div class="panel-body">
-        <form method="GET" class="filter-bar" style="margin-bottom:14px">
-            <input class="premium-input" name="search" value="{{ request('search') }}" placeholder="Search Task ID, Zoho Project Number, task name or client">
+        <form method="GET" id="task-monitoring-filters" class="filter-bar" style="margin-bottom:14px">
+            <input class="premium-input" name="search" value="{{ request('search') }}" placeholder="Search Task ID, Zoho Project Number, task name or client" autocomplete="off">
 
-            <input class="premium-input" name="project_number" value="{{ request('project_number') }}" placeholder="Zoho Project Number">
+            <input class="premium-input" name="project_number" value="{{ request('project_number') }}" placeholder="Zoho Project Number" autocomplete="off">
 
             <select class="premium-select" name="vertical">
                 <option value="">All Verticals</option>
@@ -49,10 +49,9 @@
                     <option value="{{ $k }}" @selected(request('priority')===$k)>{{ $v }}</option>
                 @endforeach
             </select>
-
-            <button class="btn btn-dark">Filter</button>
         </form>
 
+        <div id="task-monitoring-results" style="transition:opacity .15s ease">
         <div class="table-wrap">
             <table class="premium-table">
                 <thead>
@@ -114,8 +113,94 @@
         </div>
 
         <div class="pagination-wrap">{{ $tasks->links() }}</div>
+        </div>
     </div>
 </div>
 
 <x-formal-confirm-dialog />
+
+<script>
+// Real-time filtering: re-fetches this same page with the current filters and
+// swaps only #task-monitoring-results. Filtering itself stays server-side in
+// TaskMonitoringController@index; the URL is kept in sync so Refresh, Back and
+// pagination links keep the active filters.
+(function () {
+    var form = document.getElementById('task-monitoring-filters');
+    var results = document.getElementById('task-monitoring-results');
+    if (!form || !results) return;
+
+    var debounceTimer = null;
+    var controller = null;
+    var requestSeq = 0;
+
+    function buildUrl() {
+        var params = new URLSearchParams();
+        new FormData(form).forEach(function (value, key) {
+            var trimmed = String(value).trim();
+            if (trimmed !== '') params.append(key, trimmed);
+        });
+        var query = params.toString();
+        return window.location.pathname + (query ? '?' + query : '');
+    }
+
+    function refresh() {
+        clearTimeout(debounceTimer);
+        var url = buildUrl();
+        var seq = ++requestSeq;
+
+        if (controller) controller.abort();
+        controller = new AbortController();
+
+        results.style.opacity = '.55';
+        results.setAttribute('aria-busy', 'true');
+
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
+            credentials: 'same-origin',
+            signal: controller.signal,
+        })
+            .then(function (response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.text();
+            })
+            .then(function (html) {
+                if (seq !== requestSeq) return; // a newer request superseded this one
+                var fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('task-monitoring-results');
+                if (!fresh) throw new Error('Results container missing');
+                results.innerHTML = fresh.innerHTML;
+                history.replaceState(history.state, '', url);
+                results.style.opacity = '';
+                results.removeAttribute('aria-busy');
+            })
+            .catch(function (error) {
+                if (error.name === 'AbortError' || seq !== requestSeq) return;
+                window.location = url;
+            });
+    }
+
+    form.addEventListener('input', function (event) {
+        if (event.target.tagName !== 'INPUT') return;
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(refresh, 350);
+    });
+
+    form.addEventListener('change', function (event) {
+        if (event.target.tagName === 'SELECT') refresh();
+    });
+
+    // With several text inputs and no submit button, the browser never submits
+    // implicitly on Enter, so handle it explicitly (and any other submit path).
+    form.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && event.target.tagName === 'INPUT') {
+            event.preventDefault();
+            refresh();
+        }
+    });
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        refresh();
+    });
+})();
+</script>
 @endsection

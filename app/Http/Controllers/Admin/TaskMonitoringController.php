@@ -8,6 +8,7 @@ use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskEodRecord;
+use App\Models\DesignTaskPrintingFileMail;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
@@ -211,6 +212,14 @@ class TaskMonitoringController extends Controller
             ->latest()
             ->first();
 
+        // Read-only Printing File tab — the same history rows the Designer's
+        // PrintingFileTab lists; admin never composes or resends from here.
+        $printingFileMails = DesignTaskPrintingFileMail::query()
+            ->with('sender:id,name,email')
+            ->where('design_task_id', $task->id)
+            ->latest('sent_at')
+            ->get();
+
         return view('admin.tasks.show', compact(
             'task',
             'history',
@@ -233,7 +242,8 @@ class TaskMonitoringController extends Controller
             'progressColorKey',
             'reworkCount',
             'pipelineEvents',
-            'commentUnreadCount'
+            'commentUnreadCount',
+            'printingFileMails'
         ));
     }
 
