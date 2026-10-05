@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Bd;
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskEditHistory;
+use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use App\Models\User;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskRequestService;
 use App\Services\TaskNotificationService;
@@ -17,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class TaskEditController extends Controller
@@ -32,6 +35,26 @@ class TaskEditController extends Controller
     public static function isEditable(DesignTask $task): bool
     {
         return ! in_array($task->status, self::LOCKED_EDIT_STATUSES, true);
+    }
+
+    /**
+     * BD may correct a wrongly-assigned Designer only while the Designer has not
+     * started work — once a task is in_progress or later, progress/EOD records
+     * and comments belong to the current Designer, so a change must go through
+     * the existing Decline/Swap request flow instead.
+     */
+    public const DESIGNER_REASSIGNABLE_STATUSES = ['assigned_tasks', 'review_analysis', 'need_clarification', 'yet_to_start'];
+
+    /** Same pending states DesignTaskRequestService treats as "still open". */
+    private const OPEN_REQUEST_STATUSES = ['pending_approval', 'pending_designer_head', 'pending_admin'];
+
+    public static function canChangeDesigner(DesignTask $task): bool
+    {
+        return in_array($task->status, self::DESIGNER_REASSIGNABLE_STATUSES, true)
+            && ! DesignTaskRequest::query()
+                ->where('design_task_id', $task->id)
+                ->whereIn('overall_status', self::OPEN_REQUEST_STATUSES)
+                ->exists();
     }
 
     private const EDITABLE_CORE_FIELDS = [
@@ -1831,8 +1854,18 @@ class TaskEditController extends Controller
 
         $task->loadMissing(['designer:id,name', 'assigner:id,name']);
 
+        $canChangeDesigner = self::canChangeDesigner($task);
+
         return view('bd.tasks.edit', [
             'task' => $task,
+            'canChangeDesigner' => $canChangeDesigner,
+            'designers' => $canChangeDesigner
+                ? User::query()
+                    ->where('role', 'designer')
+                    ->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $task->designer_id))
+                    ->orderBy('name')
+                    ->get(['id', 'name'])
+                : collect(),
             'requirementFields' => $this->requirementFieldsFor($task),
             'requirementAttachmentGroups' => $this->collectRequirementAttachments($task->requirements ?? []),
             'minDueDate' => now()->format('Y-m-d\TH:i'),
@@ -1868,6 +1901,11 @@ class TaskEditController extends Controller
                     }
                 },
             ],
+            // Optional so existing submissions without the field behave exactly as before.
+            'designer_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'designer')->where('is_active', true)),
+            ],
             'requirements' => ['nullable', 'array'],
             'requirements.board_details' => ['nullable', 'array'],
             'requirements.board_details.*.name' => ['nullable', 'string', 'max:180'],
@@ -1897,6 +1935,8 @@ class TaskEditController extends Controller
         $batchId = (string) Str::uuid();
         $historyRows = [];
         $autoMovedToReview = false;
+        $newDesigner = null;
+        $previousDesignerId = null;
 
         DB::transaction(function () use (
             $task,
@@ -1905,7 +1945,9 @@ class TaskEditController extends Controller
             $batchId,
             $allowedRequirementFields,
             &$historyRows,
-            &$autoMovedToReview
+            &$autoMovedToReview,
+            &$newDesigner,
+            &$previousDesignerId
         ): void {
             $task->refresh();
             $this->assertTaskIsEditable($task);
@@ -2043,6 +2085,50 @@ class TaskEditController extends Controller
                 }
             }
 
+            if (! empty($data['designer_id']) && (int) $data['designer_id'] !== (int) $task->designer_id) {
+                // Re-checked on the freshly-loaded row so a status move or a new
+                // request that landed after the form opened can't slip through.
+                if (! self::canChangeDesigner($task)) {
+                    throw ValidationException::withMessages([
+                        'designer_id' => 'The Assigned Designer can no longer be changed for this task. Use a Decline/Swap request instead.',
+                    ]);
+                }
+
+                $newDesigner = User::query()->findOrFail((int) $data['designer_id']);
+                $previousDesignerId = $task->designer_id;
+                $oldDesignerName = User::query()->whereKey($task->designer_id)->value('name') ?? '—';
+                $fromStatus = $task->status;
+
+                $task->designer_id = $newDesigner->id;
+                $task->assigned_at = now();
+
+                $historyRows[] = [
+                    'design_task_id' => $task->id,
+                    'edited_by' => $request->user()->id,
+                    'edit_batch_id' => $batchId,
+                    'field_name' => 'Assigned Designer',
+                    'old_value' => $oldDesignerName,
+                    'new_value' => $newDesigner->name,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                // The new Designer must see it as a fresh assignment, same as a
+                // Decline-approved reassignment (DesignTaskRequestService::executeDecline).
+                if ($fromStatus !== 'assigned_tasks') {
+                    $task->status = 'assigned_tasks';
+
+                    DesignTaskStatusHistory::create([
+                        'design_task_id' => $task->id,
+                        'from_status' => $fromStatus,
+                        'to_status' => 'assigned_tasks',
+                        'changed_by' => $request->user()->id,
+                        'change_source' => 'bd_edit_designer_changed',
+                        'note' => 'Assigned Designer changed from '.$oldDesignerName.' to '.$newDesigner->name.'. Returned to Assigned Tasks.',
+                    ]);
+                }
+            }
+
             if ($coreUpdates !== []) {
                 $task->fill($coreUpdates);
             }
@@ -2085,6 +2171,11 @@ class TaskEditController extends Controller
                 DesignTaskEditHistory::query()->insert($historyRows);
             }
         });
+
+        if ($newDesigner) {
+            app(TaskNotificationService::class)->taskAssigned($task->fresh(), $request->user(), $newDesigner);
+            app(TaskNotificationService::class)->designerUnassigned($previousDesignerId);
+        }
 
         if ($autoMovedToReview) {
             app(TaskNotificationService::class)->statusChanged($task->fresh(), 'waiting_confirmation', $request->user());

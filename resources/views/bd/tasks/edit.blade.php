@@ -32,7 +32,7 @@
     <div class="page-head">
         <div>
             <h1>Edit Task</h1>
-            <p>{{ $task->task_id }} · Only Deadline, Priority and Creative Count can be changed in Task Information.</p>
+            <p>{{ $task->task_id }} · Only Deadline, Priority, Creative Count{{ $canChangeDesigner ? ' and Assigned Designer' : '' }} can be changed in Task Information.</p>
         </div>
         <div class="page-actions">
             <a href="{{ route('bd.tasks.show', $task) }}" class="btn btn-secondary">Cancel</a>
@@ -41,7 +41,7 @@
 
     <div class="edit-permission-note">
         <strong>Editing rule:</strong>
-        <span>Task Information is protected except for Deadline, Priority and Creative Count. Requirement Details remain editable so missing information can be completed later.</span>
+        <span>Task Information is protected except for Deadline, Priority and Creative Count{{ $canChangeDesigner ? ' (and the Assigned Designer, until the Designer starts work)' : '' }}. Requirement Details remain editable so missing information can be completed later.</span>
     </div>
 
     @if($errors->any())
@@ -94,10 +94,22 @@
                             default => \Illuminate\Support\Str::headline($task->task_nature),
                         },
                     ] as $label => $value)
-                        <div class="edit-readonly">
-                            <span>{{ $label }}</span>
-                            <strong>{{ $value }}</strong>
-                        </div>
+                        @if($label === 'Assigned Designer' && $canChangeDesigner)
+                            <div class="edit-field">
+                                <label for="designer_id">Assigned Designer</label>
+                                <select class="premium-input" id="designer_id" name="designer_id" required>
+                                    @foreach($designers as $designer)
+                                        <option value="{{ $designer->id }}" @selected((int) old('designer_id', $task->designer_id) === (int) $designer->id)>{{ $designer->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="edit-help">Change only if assigned by mistake. If the Designer is changed, the task returns to Assigned Tasks for the new Designer.</div>
+                            </div>
+                        @else
+                            <div class="edit-readonly">
+                                <span>{{ $label }}</span>
+                                <strong>{{ $value }}</strong>
+                            </div>
+                        @endif
                     @endforeach
                 </div>
 

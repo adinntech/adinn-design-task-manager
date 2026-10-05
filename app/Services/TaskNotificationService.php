@@ -43,6 +43,19 @@ class TaskNotificationService
     }
 
     /**
+     * BD corrected a wrong assignment — only flags the previous Designer's board
+     * for refresh (no notification row), so the task disappears from it.
+     */
+    public function designerUnassigned(?int $previousDesignerId): void
+    {
+        $previous = $previousDesignerId ? User::find($previousDesignerId) : null;
+
+        if ($previous) {
+            $this->flag($previous, 'assignment');
+        }
+    }
+
+    /**
      * BD is notified only for movements on their own task (existing behaviour).
      * Designer Head is notified for every movement on every task (no "team"
      * concept in this schema — Head already sees all tasks unscoped). Admin is
