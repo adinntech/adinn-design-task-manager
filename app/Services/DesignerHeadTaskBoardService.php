@@ -31,10 +31,13 @@ class DesignerHeadTaskBoardService
      * excludes completed/swap_tasks (terminal) — decline is excluded further
      * down via the approved-decline-request check, matching how tasksFor()
      * already treats declined tasks as a terminal/historical event.
+     * prepare_printing_file is still open work for the Designer (BD-initiated
+     * after review), so it carries forward too — only completed drops off.
      */
     private const CARRY_FORWARD_STATUSES = [
         'assigned_tasks', 'review_analysis', 'need_clarification',
         'yet_to_start', 'in_progress', 'waiting_confirmation', 'rework',
+        'prepare_printing_file',
     ];
 
     /**
