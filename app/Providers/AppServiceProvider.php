@@ -20,9 +20,8 @@ class AppServiceProvider extends ServiceProvider
             URL::forceRootUrl(config('app.url'));
             URL::forceScheme('https');
 
-              URL::forceRootUrl(
-                'https://adinntech.in/design-workflow'
-            );
+
+
 Livewire::setUpdateRoute(function ($handle) {
                 return Route::post(
                     '/livewire-da2b704c/update',
