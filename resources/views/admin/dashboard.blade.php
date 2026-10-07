@@ -195,7 +195,7 @@
         </div>
     </section>
     <section class="panel">
-        <div class="panel-header"><div><div class="panel-title">Team Snapshots</div><div class="metric-note">Current active users</div></div></div>
+        <div class="panel-header"><div><div class="panel-title">Team Snapshot</div><div class="metric-note">Current active users</div></div></div>
         <div class="panel-body">
             <div class="adm-team">
                 <div class="adm-team-chip">
