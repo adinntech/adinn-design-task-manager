@@ -8,7 +8,7 @@
 <div class="page-head">
     <div>
         <h1>User Management</h1>
-        <p>Manage employee accounts and role-based access</p>
+        <p>Manage employee accounts and role-based access.</p>
     </div>
     <a href="{{ route('admin.users.create') }}" class="btn btn-primary">＋ Add User</a>
 </div>
