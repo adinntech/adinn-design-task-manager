@@ -33,6 +33,7 @@ class TaskController extends Controller
         'pop_offsets' => 'Print / POP',
         'events_activations' => 'Events & Activations',
         'media' => 'Media',
+        'digital_inhouse' => 'Digital / Inhouse',
     ];
 
     protected const NATURES = [
@@ -43,6 +44,7 @@ class TaskController extends Controller
         'pop_offsets' => ['mockup_design', 'design_adaptation', 'creative_design'],
         'events_activations' => ['proposal_designs', 'element_design_with_creative', 'element_design_without_creative', 'three_d_layout'],
         'media' => ['creative_adaptation', 'own_creative'],
+        'digital_inhouse' => ['digital', 'inhouse'],
     ];
 
     protected const FILE_FIELDS = [
@@ -391,6 +393,11 @@ class TaskController extends Controller
                 is_array($existingDraft->requirements) ? $existingDraft->requirements : [],
                 $requirements
             );
+
+            // A draft moved off Digital / Inhouse must not carry its vertical-only values.
+            if ($data['vertical'] !== 'digital_inhouse') {
+                unset($requirements['creative_type'], $requirements['brief']);
+            }
 
             $taskNameSlug = Str::slug($data['task_name']);
             $taskNatureSlug = Str::slug(str_replace('_', '-', $data['task_nature']));
@@ -1413,8 +1420,17 @@ class TaskController extends Controller
             'media.creative_adaptation' => ['media_type', 'description', 'creative'],
             'media.own_creative' => ['media_type', 'description', 'company_details'],
 
+            'digital_inhouse.digital', 'digital_inhouse.inhouse' => ['creative_type', 'brief'],
+
             default => [],
         };
+
+        // Digital / Inhouse-only fields; other verticals never receive these rules.
+        if ($vertical === 'digital_inhouse') {
+            $common['creative_type'] = ['nullable', Rule::in(['Image Creative', 'Video Creative'])];
+            $common['brief'] = ['nullable', 'string', 'max:10000'];
+            $common['attachments.*'] = $this->generalFileRule(zipAtThreshold: true);
+        }
 
         foreach ($required as $field) {
             $common[$field][0] = 'required';
@@ -1476,18 +1492,26 @@ class TaskController extends Controller
      * Laravel's own `mimes:zip` rule (already proven for the Progress Update
      * ZIP field) via a sub-validation instead of hand-rolling a MIME list.
      */
-    protected function generalFileRule(): array
+    protected function generalFileRule(bool $zipAtThreshold = false): array
     {
         return [
             'file',
             'max:'.self::MAX_GENERAL_FILE_KB,
-            function (string $attribute, mixed $value, \Closure $fail): void {
-                if (! $value instanceof UploadedFile || $value->getSize() <= self::ZIP_ONLY_THRESHOLD_BYTES) {
+            function (string $attribute, mixed $value, \Closure $fail) use ($zipAtThreshold): void {
+                if (! $value instanceof UploadedFile) {
+                    return;
+                }
+
+                // Digital / Inhouse: exactly 500 MB already needs ZIP; other verticals keep "> 500 MB".
+                $size = $value->getSize();
+                if ($zipAtThreshold ? $size < self::ZIP_ONLY_THRESHOLD_BYTES : $size <= self::ZIP_ONLY_THRESHOLD_BYTES) {
                     return;
                 }
 
                 if (Validator::make(['file' => $value], ['file' => 'mimes:zip'])->fails()) {
-                    $fail('Files larger than 500 MB must be ZIP format.');
+                    $fail($zipAtThreshold
+                        ? 'Files that are 500 MB or larger must be in ZIP format.'
+                        : 'Files larger than 500 MB must be ZIP format.');
                 }
             },
         ];

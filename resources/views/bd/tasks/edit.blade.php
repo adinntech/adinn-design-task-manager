@@ -80,6 +80,7 @@
                             'roadshow' => 'Road Show',
                             'pop_offsets' => 'Print / POP',
                             'events_activations' => 'Events & Activations',
+                            'digital_inhouse' => 'Digital / Inhouse',
                             default => \Illuminate\Support\Str::headline($task->vertical),
                         },
                         'Task Nature' => match ($task->task_nature) {

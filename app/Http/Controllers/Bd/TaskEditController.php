@@ -1845,6 +1845,20 @@ class TaskEditController extends Controller
                 ],
             ],
         ],
+        'digital_inhouse' => [
+            'digital' => [
+                ['creative_type', 'Creative Type', 'select', ['Image Creative', 'Video Creative']],
+                ['brief', 'Brief', 'textarea', []],
+                ['attachments', 'Attachments', 'files', []],
+                ['client_audio', 'Audio Reference', 'audio', []],
+            ],
+            'inhouse' => [
+                ['creative_type', 'Creative Type', 'select', ['Image Creative', 'Video Creative']],
+                ['brief', 'Brief', 'textarea', []],
+                ['attachments', 'Attachments', 'files', []],
+                ['client_audio', 'Audio Reference', 'audio', []],
+            ],
+        ],
     ];
 
     public function edit(Request $request, DesignTask $task): View
