@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityController;
+use App\Http\Controllers\Admin\DailyReportingController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ManageEmailController;
 use App\Http\Controllers\Admin\MasterController;
@@ -38,6 +39,10 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/manage-email/{allUsersMail}/edit', [ManageEmailController::class, 'edit'])->name('manage-email.edit');
         Route::put('/manage-email/{allUsersMail}', [ManageEmailController::class, 'update'])->name('manage-email.update');
         Route::delete('/manage-email/{allUsersMail}', [ManageEmailController::class, 'destroy'])->name('manage-email.destroy');
+
+        Route::get('/daily-reporting', [DailyReportingController::class, 'index'])->name('daily-reporting.index');
+        Route::get('/daily-reporting/recipients', [DailyReportingController::class, 'recipients'])->name('daily-reporting.recipients');
+        Route::put('/daily-reporting', [DailyReportingController::class, 'update'])->name('daily-reporting.update');
 
         Route::get('/master-controls', [MasterController::class, 'index'])->name('master.index');
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');

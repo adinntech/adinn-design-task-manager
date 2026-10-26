@@ -124,6 +124,7 @@
                 <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}"><span>◉</span>User Management</a>
                 <a href="{{ route('admin.tasks.index') }}" class="{{ request()->routeIs('admin.tasks.*') ? 'active' : '' }}"><span>▤</span>Task Monitoring</a>
                 <a href="{{ route('admin.manage-email.index') }}" class="{{ request()->routeIs('admin.manage-email.*') ? 'active' : '' }}"><span>✉</span>Manage Email</a>
+                <a href="{{ route('admin.daily-reporting.index') }}" class="{{ request()->routeIs('admin.daily-reporting.*') ? 'active' : '' }}"><span>✎</span>Daily Reporting</a>
                 <a href="{{ route('admin.master.index') }}" class="{{ request()->routeIs('admin.master.*') ? 'active' : '' }}"><span>⌘</span>Master Controls</a>
                 <a href="{{ route('admin.activity.index') }}" class="{{ request()->routeIs('admin.activity.*') ? 'active' : '' }}"><span>↻</span>System Activity</a>
                 <a href="{{ route('admin.reports.index') }}" class="{{ request()->routeIs('admin.reports.*') ? 'active' : '' }}"><span>▥</span>Overall Reports</a>
