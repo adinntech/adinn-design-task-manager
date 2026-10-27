@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Controllers\Admin\DailyReportingController;
 use App\Models\AppSetting;
 use App\Models\DailyReportRun;
+use App\Models\DesignTask;
 use App\Models\DesignTaskEodRecord;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -16,10 +17,14 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Nightly Admin "Daily Reporting" mail: simply the names of every active
- * Designer with ZERO persisted progress submissions (design_task_eod_records,
- * progress or rework) during the report day in Asia/Kolkata. Task status is
- * not considered. Read-only against task and progress data.
+ * Nightly Admin "Daily Reporting" mail, two lists of active Designers for the
+ * report day in Asia/Kolkata:
+ *  - "included": ZERO persisted progress submissions (design_task_eod_records,
+ *    progress or rework) — task status does not decide who is listed;
+ *  - "submitted": at least one such submission.
+ * Each Designer row carries a count of their tasks per workflow status
+ * (DesignTaskStatusService::STATUSES; drafts/deleted tasks excluded) as of the
+ * moment the report is built. Read-only against task and progress data.
  *
  * Delivery is idempotent per report date via the scheduled idempotency_key.
  */
@@ -35,7 +40,7 @@ class DailyDesignerProgressReportService
 
     /**
      * @return array{report_date:string, timezone:string, window:array{start:string,end:string},
-     *     designers_evaluated:int, submitters_count:int, counts:array<string,int>, included:array<int,array>}
+     *     designers_evaluated:int, submitters_count:int, counts:array<string,int>, included:array<int,array>, submitted:array<int,array>}
      */
     public function build(string $date): array
     {
@@ -64,15 +69,31 @@ class DailyDesignerProgressReportService
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $included = $designers
-            ->reject(fn (User $d) => in_array((int) $d->id, $submitterIds, true))
-            ->map(fn (User $d) => [
+        // designer_id => [status => count], one grouped query (soft-deleted tasks excluded by the model).
+        $statusCounts = DesignTask::query()
+            ->whereIn('designer_id', $designers->pluck('id'))
+            ->whereIn('status', array_keys(DesignTaskStatusService::STATUSES))
+            ->groupBy('designer_id', 'status')
+            ->get(['designer_id', 'status', DB::raw('COUNT(*) as aggregate')])
+            ->groupBy('designer_id')
+            ->map(fn ($rows) => $rows->pluck('aggregate', 'status')->map(fn ($n) => (int) $n));
+
+        $row = function (User $d) use ($statusCounts): array {
+            $counts = $statusCounts->get($d->id, collect());
+
+            return [
                 'designer_id' => (int) $d->id,
                 'name' => (string) $d->name,
                 'employee_code' => $d->employee_code,
-            ])
-            ->values()
-            ->all();
+                'total_tasks' => (int) $counts->sum(),
+                'status_counts' => collect(DesignTaskStatusService::STATUSES)
+                    ->map(fn (string $label, string $status) => ['status' => $status, 'label' => $label, 'count' => (int) ($counts[$status] ?? 0)])
+                    ->values()
+                    ->all(),
+            ];
+        };
+
+        [$submitted, $notSubmitted] = $designers->partition(fn (User $d) => in_array((int) $d->id, $submitterIds, true));
 
         return [
             'report_date' => $date,
@@ -81,7 +102,8 @@ class DailyDesignerProgressReportService
             'designers_evaluated' => $designers->count(),
             'submitters_count' => count($submitterIds),
             'counts' => [],
-            'included' => $included,
+            'included' => $notSubmitted->map($row)->values()->all(),
+            'submitted' => $submitted->map($row)->values()->all(),
         ];
     }
 
@@ -236,10 +258,22 @@ class DailyDesignerProgressReportService
                 'submitted_progress' => $report['submitters_count'],
                 'included' => count($report['included']),
             ],
-            'designers' => array_map(fn (array $row) => [
-                'name' => $row['name'],
-                'employee_code' => $row['employee_code'],
-            ], $report['included']),
+            'designers' => array_map([$this, 'payloadRow'], $report['included']),
+            'submitted_designers' => array_map([$this, 'payloadRow'], $report['submitted'] ?? []),
+        ];
+    }
+
+    /** One designer in the API payload: name, code and per-status task counts (older snapshots may lack counts). */
+    private function payloadRow(array $row): array
+    {
+        return [
+            'name' => $row['name'],
+            'employee_code' => $row['employee_code'],
+            'total_tasks' => $row['total_tasks'] ?? 0,
+            'status_counts' => array_map(
+                fn (array $c) => ['label' => $c['label'], 'count' => $c['count']],
+                $row['status_counts'] ?? []
+            ),
         ];
     }
 
