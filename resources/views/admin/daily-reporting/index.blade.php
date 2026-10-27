@@ -91,8 +91,8 @@
                 <table class="premium-table" style="width:100%;font-size:12px">
                     <thead>
                         <tr>
-                            <th>Report Date</th><th>Trigger</th><th>Status</th><th>Evaluated</th><th>With Pending Tasks</th>
-                            <th>Submitted an Update</th><th>Listed</th><th>Recipients</th><th>API Result</th><th>Last Attempt</th>
+                            <th>Report Date</th><th>Trigger</th><th>Status</th><th>Designers</th>
+                            <th>Submitted Progress</th><th>Not Submitted</th><th>Recipients</th><th>API Result</th><th>Last Attempt</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -102,9 +102,8 @@
                                 <td>{{ ucfirst($run->trigger) }}</td>
                                 <td><span class="badge {{ $run->status === 'sent' ? 'badge-success' : ($run->status === 'failed' ? 'badge-danger' : 'badge-dark') }}">{{ ucfirst($run->status) }}</span></td>
                                 <td>{{ $run->designers_evaluated }}</td>
-                                <td>{{ $run->active_designers_count }}</td>
                                 <td>{{ $run->submitters_count }}</td>
-                                <td style="white-space:nowrap">{{ $run->included_count }}@if($run->included_count)<br><span class="muted">No pending tasks: {{ $run->no_tasks_count }}</span>@endif</td>
+                                <td>{{ $run->included_count }}</td>
                                 <td>To: {{ count($run->to_recipients ?? []) }} · CC: {{ count($run->cc_recipients ?? []) }}</td>
                                 <td style="max-width:260px">{{ $run->api_status_code ? 'HTTP '.$run->api_status_code.' · ' : '' }}{{ $run->api_message ?: '—' }}</td>
                                 <td style="white-space:nowrap">{{ $run->last_attempt_at?->timezone(config('daily-report.timezone'))->format('d M Y, h:i A') ?? '—' }}<br><span class="muted">Attempts: {{ $run->attempts }}</span></td>

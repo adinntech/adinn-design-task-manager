@@ -124,8 +124,8 @@ class DailyReportingController extends Controller
             'ok' => $ok,
             'message' => $ok
                 ? sprintf(
-                    'Daily report sent to %d To / %d CC recipient(s). %d of %d designer(s) listed as not submitting a progress update today (%d with no pending tasks).',
-                    count($run->to_recipients ?? []), count($run->cc_recipients ?? []), $run->included_count, $run->designers_evaluated, $run->no_tasks_count
+                    'Daily report sent to %d To / %d CC recipient(s). %d of %d designer(s) did not submit any progress today.',
+                    count($run->to_recipients ?? []), count($run->cc_recipients ?? []), $run->included_count, $run->designers_evaluated
                 )
                 : 'Mail was not sent: '.$result['message'],
         ], $ok ? 200 : 422);

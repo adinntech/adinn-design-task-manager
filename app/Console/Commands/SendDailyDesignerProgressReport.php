@@ -61,8 +61,8 @@ class SendDailyDesignerProgressReport extends Command
 
         if ($run) {
             $this->line(sprintf(
-                'Evaluated %d · with pending tasks %d · submitted an update %d · included %d (no pending tasks %d) · attempts %d · API %s',
-                $run->designers_evaluated, $run->active_designers_count, $run->submitters_count, $run->included_count, $run->no_tasks_count,
+                'Designers %d · submitted progress %d · not submitted %d · attempts %d · API %s',
+                $run->designers_evaluated, $run->submitters_count, $run->included_count,
                 $run->attempts, $run->api_status_code ?? '—'
             ));
         }

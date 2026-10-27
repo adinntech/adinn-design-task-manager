@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Http\Controllers\Admin\DailyReportingController;
 use App\Models\AppSetting;
 use App\Models\DailyReportRun;
-use App\Models\DesignTask;
 use App\Models\DesignTaskEodRecord;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -17,16 +16,10 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Nightly Admin "Daily Reporting" mail: lists every active Designer with ZERO
- * persisted progress submissions (design_task_eod_records, progress or rework,
- * on any of their tasks) during the report day in Asia/Kolkata, in one list:
- *  - with PENDING tasks (any status except Completed, Waiting for BD Review or
- *    Transferred; drafts never count) → those tasks are shown;
- *  - with no pending task (free: no tasks / only Completed / only BD Review)
- *    → shown with "No pending tasks".
- * A Designer who submitted any update today is never listed, even if that
- * ticket has since moved to Completed or BD Review. Read-only against task and
- * progress data.
+ * Nightly Admin "Daily Reporting" mail: simply the names of every active
+ * Designer with ZERO persisted progress submissions (design_task_eod_records,
+ * progress or rework) during the report day in Asia/Kolkata. Task status is
+ * not considered. Read-only against task and progress data.
  *
  * Delivery is idempotent per report date via the scheduled idempotency_key.
  */
@@ -35,15 +28,6 @@ class DailyDesignerProgressReportService
     /** Valid daily submission = a successfully committed Task Updation or Rework submission. */
     public const PROGRESS_UPDATE_TYPES = ['progress', 'rework'];
 
-    /** Not pending for the Designer: BD owns the next step, the task is finished, or it was transferred away. */
-    public const NOT_PENDING_STATUSES = ['waiting_confirmation', 'completed', 'swap_tasks'];
-
-    /** @return array<int, string> Every workflow status that still needs the Designer (drafts are not in STATUSES). */
-    public static function pendingStatuses(): array
-    {
-        return array_values(array_diff(array_keys(DesignTaskStatusService::STATUSES), self::NOT_PENDING_STATUSES));
-    }
-
     public function idempotencyKey(string $date): string
     {
         return 'daily-designer-progress-'.$date;
@@ -51,7 +35,7 @@ class DailyDesignerProgressReportService
 
     /**
      * @return array{report_date:string, timezone:string, window:array{start:string,end:string},
-     *     designers_evaluated:int, active_designers:int, submitters_count:int, counts:array<string,int>, included:array<int,array>}
+     *     designers_evaluated:int, submitters_count:int, counts:array<string,int>, included:array<int,array>}
      */
     public function build(string $date): array
     {
@@ -80,53 +64,23 @@ class DailyDesignerProgressReportService
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        // Current pending tasks are shown per Designer; the submission check
-        // above spans all of the Designer's tasks, so an update submitted
-        // earlier today still counts after a status change.
-        $activeTasksByDesigner = DesignTask::query()
-            ->whereIn('designer_id', $designers->pluck('id'))
-            ->whereIn('status', self::pendingStatuses())
-            ->orderBy('due_at')
-            ->get(['id', 'task_id', 'task_name', 'status', 'designer_id'])
-            ->groupBy('designer_id');
-
-        $activeDesigners = $designers->filter(fn (User $d) => $activeTasksByDesigner->has($d->id))->values();
-        $counts = ['active_no_progress' => 0, 'no_pending_tasks' => 0];
-        $included = [];
-
-        foreach ($designers as $designer) {
-            if (in_array((int) $designer->id, $submitterIds, true)) {
-                continue;
-            }
-
-            $active = $activeTasksByDesigner->get($designer->id, collect());
-            $category = $active->isEmpty() ? 'no_pending_tasks' : 'active_no_progress';
-            $counts[$category]++;
-
-            $included[] = [
-                'designer_id' => (int) $designer->id,
-                'name' => (string) $designer->name,
-                'employee_code' => $designer->employee_code,
-                'category' => $category,
-                'active_task_count' => $active->count(),
-                'note' => $active->isEmpty() ? 'No pending tasks' : null,
-                'tasks' => $active->map(fn ($t) => [
-                    'task_id' => (string) $t->task_id,
-                    'task_name' => (string) $t->task_name,
-                    'status' => (string) $t->status,
-                    'status_label' => DesignTaskStatusService::STATUSES[$t->status] ?? Str::headline((string) $t->status),
-                ])->values()->all(),
-            ];
-        }
+        $included = $designers
+            ->reject(fn (User $d) => in_array((int) $d->id, $submitterIds, true))
+            ->map(fn (User $d) => [
+                'designer_id' => (int) $d->id,
+                'name' => (string) $d->name,
+                'employee_code' => $d->employee_code,
+            ])
+            ->values()
+            ->all();
 
         return [
             'report_date' => $date,
             'timezone' => $tz,
             'window' => ['start' => $start->toIso8601String(), 'end' => $end->format('Y-m-d\TH:i:s.vP')],
             'designers_evaluated' => $designers->count(),
-            'active_designers' => $activeDesigners->count(),
             'submitters_count' => count($submitterIds),
-            'counts' => $counts,
+            'counts' => [],
             'included' => $included,
         ];
     }
@@ -196,11 +150,10 @@ class DailyDesignerProgressReportService
                 'designers_evaluated' => $report['designers_evaluated'],
                 'submitters_count' => $report['submitters_count'],
                 'included_count' => count($report['included']),
+                // Legacy breakdown columns — only populated by snapshots built under an older rule.
                 'active_designers_count' => $report['active_designers'] ?? 0,
                 'active_no_progress_count' => $report['counts']['active_no_progress'] ?? 0,
-                // Listed Designers with no pending task (free); older snapshots used "no_tasks".
                 'no_tasks_count' => $report['counts']['no_pending_tasks'] ?? $report['counts']['no_tasks'] ?? 0,
-                // Legacy breakdown columns — only populated by snapshots built under an older rule.
                 'all_completed_count' => $report['counts']['all_completed'] ?? 0,
                 'awaiting_review_count' => $report['counts']['awaiting_review'] ?? 0,
                 'to_recipients' => $to,
@@ -280,16 +233,12 @@ class DailyDesignerProgressReportService
             'phone' => '',
             'summary' => [
                 'designers_evaluated' => $report['designers_evaluated'],
-                'active_designers' => $report['active_designers'] ?? null,
                 'submitted_progress' => $report['submitters_count'],
                 'included' => count($report['included']),
-            ] + $report['counts'],
+            ],
             'designers' => array_map(fn (array $row) => [
                 'name' => $row['name'],
                 'employee_code' => $row['employee_code'],
-                'active_task_count' => $row['active_task_count'],
-                'note' => $row['note'],
-                'tasks' => $row['tasks'],
             ], $report['included']),
         ];
     }
