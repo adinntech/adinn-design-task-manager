@@ -32,6 +32,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // incomplete for 24h+ — aborts the Spaces multipart session so no
         // orphaned parts linger after a user abandons/never returns.
         $schedule->command('uploads:cleanup-abandoned')->hourly();
+
+        // Admin → Daily Reporting: "no progress today" mail at 23:59 IST, plus
+        // retries of a failed night's run. Idempotent per report date, so a
+        // restart/retry never re-delivers an already-sent report.
+        $schedule->command('reports:daily-designer-progress')
+            ->dailyAt('23:59')->timezone('Asia/Kolkata')
+            ->withoutOverlapping(30)->onOneServer();
+        $schedule->command('reports:daily-designer-progress --retry-failed')
+            ->everyThirtyMinutes()->between('00:15', '06:00')->timezone('Asia/Kolkata')
+            ->withoutOverlapping(30)->onOneServer();
     })
     ->withExceptions(function (Exceptions $exceptions): void {})
     ->create();

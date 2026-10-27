@@ -70,10 +70,50 @@
                 </div>
             @endforeach
 
-            <div style="display:flex;justify-content:flex-end">
+            <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">
+                <button type="button" class="btn btn-secondary" id="dailyReportingSendNow" title="Send today's report now to the saved recipients">Send Mail</button>
                 <button type="submit" class="btn btn-primary" id="dailyReportingSave">Save</button>
             </div>
+            <p class="dr-help" style="text-align:right">Send Mail sends today's report immediately to the <strong>saved</strong> recipients. The scheduled {{ config('daily-report.send_at') }} report still runs tonight.</p>
+            <div id="dailyReportingSendResult" class="flash" role="status" aria-live="polite" hidden style="margin-top:10px"></div>
         </form>
+    </div>
+</div>
+
+<div class="panel" style="margin-top:16px" id="dailyReportRuns">
+    <div class="panel-header"><div class="panel-title">Recent Report Runs</div></div>
+    <div class="panel-body">
+        <p class="dr-help" style="margin:0 0 10px">Sent automatically every day at {{ config('daily-report.send_at') }} ({{ config('daily-report.timezone') }}) to the recipients saved above. Failed runs are retried until 06:00.</p>
+        @if($runs->isEmpty())
+            <div class="empty-state">No report has run yet.</div>
+        @else
+            <div style="overflow-x:auto">
+                <table class="premium-table" style="width:100%;font-size:12px">
+                    <thead>
+                        <tr>
+                            <th>Report Date</th><th>Trigger</th><th>Status</th><th>Evaluated</th><th>With Pending Tasks</th>
+                            <th>Submitted an Update</th><th>Listed</th><th>Recipients</th><th>API Result</th><th>Last Attempt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($runs as $run)
+                            <tr>
+                                <td style="white-space:nowrap">{{ $run->report_date->format('d M Y') }}</td>
+                                <td>{{ ucfirst($run->trigger) }}</td>
+                                <td><span class="badge {{ $run->status === 'sent' ? 'badge-success' : ($run->status === 'failed' ? 'badge-danger' : 'badge-dark') }}">{{ ucfirst($run->status) }}</span></td>
+                                <td>{{ $run->designers_evaluated }}</td>
+                                <td>{{ $run->active_designers_count }}</td>
+                                <td>{{ $run->submitters_count }}</td>
+                                <td style="white-space:nowrap">{{ $run->included_count }}@if($run->included_count)<br><span class="muted">No pending tasks: {{ $run->no_tasks_count }}</span>@endif</td>
+                                <td>To: {{ count($run->to_recipients ?? []) }} · CC: {{ count($run->cc_recipients ?? []) }}</td>
+                                <td style="max-width:260px">{{ $run->api_status_code ? 'HTTP '.$run->api_status_code.' · ' : '' }}{{ $run->api_message ?: '—' }}</td>
+                                <td style="white-space:nowrap">{{ $run->last_attempt_at?->timezone(config('daily-report.timezone'))->format('d M Y, h:i A') ?? '—' }}<br><span class="muted">Attempts: {{ $run->attempts }}</span></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 </div>
 
@@ -210,6 +250,60 @@
   saveBtn.dataset.submitting='1';
   saveBtn.disabled=true;
   saveBtn.innerHTML='<span class="btn-spinner"></span>Saving...';
+ });
+
+ // ---- Send Mail: immediate report to the SAVED recipients (no recipients are posted). ----
+ const sendBtn=document.getElementById('dailyReportingSendNow');
+ const sendResult=document.getElementById('dailyReportingSendResult');
+ const sendUrl=@json(route('admin.daily-reporting.send'));
+ const recipientSignature=()=>mailsOf('to').join(',')+'|'+mailsOf('cc').join(',');
+ const savedSignature=recipientSignature();
+ let sending=false;
+
+ function showSendResult(ok,message){
+  sendResult.textContent=message;
+  sendResult.className='flash '+(ok?'flash-success':'flash-error');
+  sendResult.hidden=false;
+ }
+ function refreshRuns(){
+  fetch(window.location.pathname,{headers:{'X-Requested-With':'XMLHttpRequest'}})
+   .then(r=>r.ok?r.text():Promise.reject())
+   .then(html=>{
+    const fresh=new DOMParser().parseFromString(html,'text/html').getElementById('dailyReportRuns');
+    const current=document.getElementById('dailyReportRuns');
+    if(fresh&&current)current.replaceWith(fresh);
+   })
+   .catch(()=>{});
+ }
+
+ sendBtn.addEventListener('click',()=>{
+  if(sending)return;
+  if(recipientSignature()!==savedSignature){
+   showSendResult(false,'You have unsaved recipient changes. Click Save first — Send Mail uses the saved recipients.');
+   return;
+  }
+  sending=true;
+  sendBtn.disabled=true;saveBtn.disabled=true;
+  sendBtn.innerHTML='<span class="btn-spinner is-dark"></span>Sending...';
+  sendResult.hidden=true;
+
+  fetch(sendUrl,{
+   method:'POST',
+   headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},
+  })
+   .then(r=>r.json().catch(()=>({})).then(data=>({ok:r.ok&&data.ok===true,data,status:r.status})))
+   .then(({ok,data,status})=>{
+    const fallback=status===419?'Your session expired. Reload the page and try again.':'Mail was not sent. Please try again.';
+    showSendResult(ok,data.message||fallback);
+    refreshRuns();
+   })
+   .catch(()=>showSendResult(false,'Could not reach the server. Please check your connection and try again.'))
+   .finally(()=>{
+    sending=false;
+    sendBtn.disabled=false;
+    if(saveBtn.dataset.submitting!=='1')saveBtn.disabled=false;
+    sendBtn.textContent='Send Mail';
+   });
  });
 
  // bfcache restore must not leave Save stuck disabled.

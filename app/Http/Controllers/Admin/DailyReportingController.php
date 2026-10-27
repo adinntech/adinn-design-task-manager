@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AllUsersMail;
 use App\Models\AppSetting;
+use App\Models\DailyReportRun;
+use App\Services\DailyDesignerProgressReportService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,6 +33,7 @@ class DailyReportingController extends Controller
         return view('admin.daily-reporting.index', [
             'to' => $saved['to'] ?? [],
             'cc' => $saved['cc'] ?? [],
+            'runs' => DailyReportRun::query()->latest('report_date')->latest('id')->limit(10)->get(),
         ]);
     }
 
@@ -91,6 +95,40 @@ class DailyReportingController extends Controller
         return redirect()
             ->route('admin.daily-reporting.index')
             ->with('success', 'Daily Reporting recipients saved successfully.');
+    }
+
+    /**
+     * "Send Mail" — immediate report for today (IST) to the SAVED recipients
+     * only; any recipients in the request body are ignored. Recorded as a
+     * separate manual run, so tonight's scheduled 23:59 report still goes out.
+     */
+    public function sendNow(Request $request, DailyDesignerProgressReportService $reports): JsonResponse
+    {
+        // Serialises double-clicks / two open tabs; outlives the API timeout.
+        $lock = Cache::lock('daily-reporting:manual-send', 120);
+
+        if (! $lock->get()) {
+            return response()->json(['ok' => false, 'message' => 'A Send Mail request is already in progress. Please wait for it to finish.'], 409);
+        }
+
+        try {
+            $result = $reports->sendManual($request->user()->id);
+        } finally {
+            $lock->release();
+        }
+
+        $run = $result['run'];
+        $ok = $result['outcome'] === 'sent';
+
+        return response()->json([
+            'ok' => $ok,
+            'message' => $ok
+                ? sprintf(
+                    'Daily report sent to %d To / %d CC recipient(s). %d of %d designer(s) listed as not submitting a progress update today (%d with no pending tasks).',
+                    count($run->to_recipients ?? []), count($run->cc_recipients ?? []), $run->included_count, $run->designers_evaluated, $run->no_tasks_count
+                )
+                : 'Mail was not sent: '.$result['message'],
+        ], $ok ? 200 : 422);
     }
 
     /** @return array<int, string> */

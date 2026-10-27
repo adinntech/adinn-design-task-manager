@@ -43,6 +43,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/daily-reporting', [DailyReportingController::class, 'index'])->name('daily-reporting.index');
         Route::get('/daily-reporting/recipients', [DailyReportingController::class, 'recipients'])->name('daily-reporting.recipients');
         Route::put('/daily-reporting', [DailyReportingController::class, 'update'])->name('daily-reporting.update');
+        Route::post('/daily-reporting/send', [DailyReportingController::class, 'sendNow'])->name('daily-reporting.send');
 
         Route::get('/master-controls', [MasterController::class, 'index'])->name('master.index');
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity.index');
