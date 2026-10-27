@@ -174,6 +174,12 @@
             @endif
         </section>
 
+        {{-- Today's submitted progress / designer activity logs — loaded via TaskActivityController with the BD / Designer filters above. --}}
+        <section class="tm-act" id="tm-activity" aria-label="Designer progress and activity"
+                 data-url="{{ route('admin.tasks.activity', array_filter(['bd_id' => request('bd_id'), 'designer_id' => request('designer_id')])) }}">
+            <div class="empty-state" style="padding:18px">Loading progress details…</div>
+        </section>
+
         <div class="table-wrap">
             <table class="premium-table">
                 <thead>
@@ -290,6 +296,7 @@
                 var fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('task-monitoring-results');
                 if (!fresh) throw new Error('Results container missing');
                 results.innerHTML = fresh.innerHTML;
+                if (window.tmActivityLoad) window.tmActivityLoad(); // re-load the tabs for the new BD / Designer filters
                 history.replaceState(history.state, '', url);
                 results.style.opacity = '';
                 results.removeAttribute('aria-busy');
@@ -339,6 +346,92 @@
         event.preventDefault();
         refresh();
     });
+})();
+
+// Progress / activity tabs below the BD × Designer breakdown. Server-rendered
+// fragments from admin.tasks.activity; tab, date, task and type choices are
+// kept here so they survive the page's live filter refresh.
+(function () {
+    var state = { tab: 'progress', date: '', task: '', type: '' };
+    var requestSeq = 0;
+    var taskTimer = null;
+    var refocusTask = false;
+
+    function root() { return document.getElementById('tm-activity'); }
+
+    function urlFor() {
+        var el = root();
+        var url = new URL(el.dataset.url, window.location.origin);
+        Object.keys(state).forEach(function (key) {
+            if (state[key]) url.searchParams.set(key, state[key]); else url.searchParams.delete(key);
+        });
+        if (state.tab !== 'logs') url.searchParams.delete('type');
+        return url.toString();
+    }
+
+    function load(url) {
+        var el = root();
+        if (!el) return;
+        var seq = ++requestSeq;
+        el.setAttribute('aria-busy', 'true');
+        el.style.opacity = '.6';
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' }, credentials: 'same-origin' })
+            .then(function (response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.text();
+            })
+            .then(function (html) {
+                if (seq !== requestSeq || !root()) return;
+                root().innerHTML = html;
+                if (refocusTask) {
+                    refocusTask = false;
+                    var input = root().querySelector('[data-tm-filter="task"]');
+                    if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+                }
+            })
+            .catch(function () {
+                if (seq !== requestSeq || !root()) return;
+                root().dataset.retryUrl = url;
+                root().innerHTML = '<div class="empty-state" style="padding:18px">Could not load progress / activity details. <button type="button" class="btn btn-secondary" data-tm-retry>Retry</button></div>';
+            })
+            .finally(function () {
+                if (seq !== requestSeq || !root()) return;
+                root().removeAttribute('aria-busy');
+                root().style.opacity = '';
+            });
+    }
+
+    window.tmActivityLoad = function () { if (root()) load(urlFor()); };
+
+    document.addEventListener('click', function (event) {
+        var el = root();
+        if (!el || !el.contains(event.target)) return;
+
+        var tab = event.target.closest('[data-tm-tab]');
+        if (tab) { state.tab = tab.getAttribute('data-tm-tab'); window.tmActivityLoad(); return; }
+
+        var retry = event.target.closest('[data-tm-retry]');
+        if (retry) { load(el.dataset.retryUrl || urlFor()); return; }
+
+        var pageLink = event.target.closest('[data-tm-pagination] a[href]');
+        if (pageLink) { event.preventDefault(); load(pageLink.href); }
+    });
+
+    document.addEventListener('change', function (event) {
+        var field = event.target.closest('#tm-activity [data-tm-filter]');
+        if (!field || field.getAttribute('data-tm-filter') === 'task') return;
+        state[field.getAttribute('data-tm-filter')] = field.value;
+        window.tmActivityLoad();
+    });
+
+    document.addEventListener('input', function (event) {
+        var field = event.target.closest('#tm-activity [data-tm-filter="task"]');
+        if (!field) return;
+        clearTimeout(taskTimer);
+        taskTimer = setTimeout(function () { state.task = field.value.trim(); refocusTask = true; window.tmActivityLoad(); }, 400);
+    });
+
+    window.tmActivityLoad();
 })();
 </script>
 @endsection
