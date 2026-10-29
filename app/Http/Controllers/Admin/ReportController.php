@@ -96,19 +96,27 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * vertical / priority / project_number are sent only by Task Monitoring's
+     * "Export Report" tab (same filters as BD's export); the Overall Reports
+     * page omits them, so its results are unchanged.
+     */
     private function filtersFromRequest(Request $request): array
     {
+        $priority = (string) $request->query('priority', '');
+        $isOverdue = $priority === 'overdue';
+
         return [
             'search' => '',
-            'vertical' => '',
-            'priority' => '',
+            'vertical' => (string) $request->query('vertical', ''),
+            'priority' => $isOverdue ? '' : $priority,
             'designerId' => (string) $request->query('designer_id', ''),
             'bdId' => (string) $request->query('bd_id', ''),
-            'projectNumber' => '',
+            'projectNumber' => trim((string) $request->query('project_number', '')),
             'period' => (string) $request->query('period', 'current_month'),
             'dateFrom' => (string) $request->query('date_from', ''),
             'dateTo' => (string) $request->query('date_to', ''),
-            'overdue' => false,
+            'overdue' => $isOverdue,
         ];
     }
 }

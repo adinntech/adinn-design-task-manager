@@ -383,6 +383,7 @@
             .then(function (html) {
                 if (seq !== requestSeq || !root()) return;
                 root().innerHTML = html;
+                if (window.tmDailyInit) window.tmDailyInit();
                 if (refocusTask) {
                     refocusTask = false;
                     var input = root().querySelector('[data-tm-filter="task"]');
@@ -432,6 +433,237 @@
     });
 
     window.tmActivityLoad();
+})();
+
+// "Export Report" tab: show (and require) the From / To dates only for Custom Period.
+document.addEventListener('change', function (event) {
+    var period = event.target.closest('#tm-activity [data-tm-export-period]');
+    if (!period) return;
+    var custom = period.value === 'custom';
+    period.form.querySelectorAll('[data-tm-export-date]').forEach(function (input) {
+        input.hidden = !custom;
+        input.disabled = !custom;
+        input.required = custom;
+    });
+});
+
+// "Daily Report" tab: calendar + Excel download. The tab's HTML is replaced on
+// every tab load, so tmDailyInit() runs after each load and listeners are delegated.
+(function () {
+    var exportUrl = @json(route('admin.tasks.progress-excel'));
+    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // Kept across tab reloads; dates are 'YYYY-MM-DD' strings in IST, so they compare as text.
+    var cal = { period: false, from: '', to: '', pickingEnd: false, y: 0, m: 0, preset: 'today' };
+
+    function root() { return document.querySelector('#tm-activity [data-xl-root]'); }
+    function $(sel) { return root().querySelector(sel); }
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    function key(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
+
+    // Dates in IST regardless of the viewer's clock zone.
+    function istDate(offsetDays) {
+        var p = {};
+        new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' })
+            .formatToParts(new Date(Date.now() + offsetDays * 86400000)).forEach(function (x) { p[x.type] = x.value; });
+        return p.year + '-' + p.month + '-' + p.day;
+    }
+    function pretty(k) {
+        var d = k.split('-');
+        return Number(d[2]) + ' ' + MONTHS[Number(d[1]) - 1].slice(0, 3) + ' ' + d[0];
+    }
+
+    function markPreset(name) {
+        cal.preset = name;
+        root().querySelectorAll('[data-xl-preset]').forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-xl-preset') === name); });
+    }
+
+    function select(from, to, period) {
+        cal.from = from;
+        cal.to = to;
+        cal.period = period;
+        cal.pickingEnd = false;
+        cal.y = Number(to.slice(0, 4));
+        cal.m = Number(to.slice(5, 7)) - 1;
+        render();
+    }
+
+    function render() {
+        var today = istDate(0);
+        var first = new Date(Date.UTC(cal.y, cal.m, 1)).getUTCDay();
+        var days = new Date(Date.UTC(cal.y, cal.m + 1, 0)).getUTCDate();
+        var ranged = cal.period && cal.from && cal.to && cal.from !== cal.to;
+        var html = DOW.map(function (d) { return '<div class="tm-xl-cal-dow">' + d.toUpperCase() + '</div>'; }).join('');
+        for (var i = 0; i < first; i++) html += '<div class="tm-xl-cal-cell"></div>';
+        for (var d = 1; d <= days; d++) {
+            var k = key(cal.y, cal.m, d);
+            var cell = ['tm-xl-cal-cell'];
+            if (ranged && k > cal.from && k < cal.to) cell.push('in-range');
+            if (ranged && k === cal.from) cell.push('range-start');
+            if (ranged && k === cal.to) cell.push('range-end');
+            var btn = ['tm-xl-cal-day'];
+            if (k === cal.from || k === cal.to) btn.push('is-selected');
+            if (k === today) btn.push('is-today');
+            html += '<div class="' + cell.join(' ') + '"><button type="button" class="' + btn.join(' ') + '" data-xl-day="' + k + '"'
+                + (k > today ? ' disabled' : '') + ' aria-label="' + pretty(k) + '"'
+                + (k === cal.from || k === cal.to ? ' aria-pressed="true"' : '') + '>' + d + '</button></div>';
+        }
+        $('[data-xl-cal-grid]').innerHTML = html;
+        $('[data-xl-cal-title]').textContent = MONTHS[cal.m] + ' ' + cal.y;
+        $('[data-xl-nav="1"]').disabled = key(cal.y, cal.m, 1) >= today.slice(0, 8) + '01';
+
+        $('#tm-xl-from').value = cal.from;
+        $('#tm-xl-to').value = cal.period ? cal.to : cal.from;
+        $('[data-xl-picked]').innerHTML = !cal.period
+            ? 'Report for <strong>' + pretty(cal.from) + '</strong>'
+            : (cal.pickingEnd
+                ? 'From <strong>' + pretty(cal.from) + '</strong> — now click the end date'
+                : 'From <strong>' + pretty(cal.from) + '</strong> to <strong>' + pretty(cal.to) + '</strong>');
+
+        // Same rule as DailyWorkReportService::layout().
+        var days = cal.period && !cal.pickingEnd
+            ? Math.round((Date.parse(cal.to + 'T00:00:00Z') - Date.parse(cal.from + 'T00:00:00Z')) / 86400000) + 1
+            : 1;
+        $('[data-xl-layout]').textContent = cal.period && cal.pickingEnd ? '' : 'Excel: ' + (
+            days <= 1 ? 'designer-wise numbers for the day.'
+                : days <= 7 ? 'one row per date — click + to see designers.'
+                    : days <= 31 ? 'one row per week — expand to dates, then designers.'
+                        : 'one row per month — expand to weeks, dates, then designers.');
+    }
+
+    function setPreset(name) {
+        var today = istDate(0);
+        markPreset(name);
+        if (name === 'today') select(today, today, false);
+        if (name === 'yesterday') select(istDate(-1), istDate(-1), false);
+        if (name === 'week') {
+            var weekday = new Date(today + 'T00:00:00Z').getUTCDay(); // 0 = Sunday
+            select(istDate(-((weekday + 6) % 7)), today, true);
+        }
+        if (name === 'month') select(today.slice(0, 8) + '01', today, true);
+        if (name === 'year') select(today.slice(0, 5) + '01-01', today, true);
+        if (name === 'custom') {
+            // Keep the chosen day as the start and wait for the end date.
+            cal.period = true;
+            cal.to = cal.from;
+            cal.pickingEnd = true;
+            render();
+        }
+        showMsg('', '');
+    }
+
+    function pickDay(k) {
+        var today = istDate(0);
+        if (!cal.period) {
+            select(k, k, false);
+            markPreset(k === today ? 'today' : (k === istDate(-1) ? 'yesterday' : ''));
+        } else if (cal.pickingEnd) {
+            var from = k < cal.from ? k : cal.from;
+            cal.to = k < cal.from ? cal.from : k;
+            cal.from = from;
+            cal.pickingEnd = false;
+            render();
+            markPreset('custom');
+        } else {
+            cal.from = k; cal.to = k; cal.pickingEnd = true;
+            render();
+            markPreset('custom');
+        }
+        showMsg('', '');
+    }
+
+    function pageFilters() {
+        var form = document.getElementById('task-monitoring-filters');
+        var pick = function (name) {
+            var el = form && form.elements[name];
+            return el && el.value ? { id: el.value, label: el.options ? el.options[el.selectedIndex].text : el.value } : null;
+        };
+        return { bd: pick('bd_id'), designer: pick('designer_id') };
+    }
+
+    function showMsg(kind, text) {
+        var el = $('[data-xl-msg]');
+        el.className = 'tm-xl-msg' + (kind ? ' is-' + kind : '');
+        el.textContent = text;
+        el.hidden = !text;
+    }
+
+    // Called after every tab load; draws the calendar if the Daily Report tab is showing.
+    window.tmDailyInit = function () {
+        if (!root()) return;
+        if (!cal.from || cal.to > istDate(0)) {
+            select(istDate(0), istDate(0), false);
+            cal.preset = 'today';
+        } else {
+            render();
+        }
+        markPreset(cal.preset);
+        var f = pageFilters();
+        var parts = [];
+        if (f.bd) parts.push('BD: ' + f.bd.label);
+        if (f.designer) parts.push('Designer: ' + f.designer.label);
+        $('[data-xl-filters]').textContent = parts.length
+            ? 'Filters above applied — ' + parts.join(' · ')
+            : 'No BD / Designer filter set above — every designer is included.';
+    };
+
+    function download() {
+        if (cal.period && cal.pickingEnd) return showMsg('error', 'Click the end date of the period first.');
+        var from = $('#tm-xl-from').value;
+        var to = $('#tm-xl-to').value;
+        if (!from || !to) return showMsg('error', 'Choose a date.');
+
+        var f = pageFilters();
+        var url = new URL(exportUrl, window.location.origin);
+        url.searchParams.set('from', from);
+        url.searchParams.set('to', to);
+        if (f.bd) url.searchParams.set('bd_id', f.bd.id);
+        if (f.designer) url.searchParams.set('designer_id', f.designer.id);
+
+        var btn = $('[data-xl-download]');
+        btn.disabled = true;
+        btn.textContent = 'Preparing…';
+        showMsg('', '');
+
+        fetch(url, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+            .then(function (r) {
+                if (r.ok) {
+                    var name = (/filename="?([^";]+)"?/.exec(r.headers.get('Content-Disposition') || '') || [])[1] || 'Daily_Report.xlsx';
+                    return r.blob().then(function (blob) {
+                        var a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = name;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+                        if (root()) showMsg('ok', 'Downloaded ' + name);
+                    });
+                }
+                return r.json().catch(function () { return {}; }).then(function (data) {
+                    var errors = data.errors ? Object.values(data.errors).flat() : [];
+                    throw new Error(errors[0] || data.message || 'Download failed. Please try again.');
+                });
+            })
+            .catch(function (e) { if (root()) showMsg('error', e.message); })
+            .finally(function () { if (!root() || !document.contains(btn)) return; btn.disabled = false; btn.textContent = 'Download Excel'; });
+    }
+
+    document.addEventListener('click', function (e) {
+        var r = root();
+        if (!r || !r.contains(e.target)) return;
+        var preset = e.target.closest('[data-xl-preset]');
+        if (preset) { setPreset(preset.getAttribute('data-xl-preset')); return; }
+        var nav = e.target.closest('[data-xl-nav]');
+        if (nav && !nav.disabled) {
+            var next = new Date(Date.UTC(cal.y, cal.m + Number(nav.getAttribute('data-xl-nav')), 1));
+            cal.y = next.getUTCFullYear(); cal.m = next.getUTCMonth();
+            render();
+            return;
+        }
+        var day = e.target.closest('[data-xl-day]');
+        if (day && !day.disabled) { pickDay(day.getAttribute('data-xl-day')); return; }
+        if (e.target.closest('[data-xl-download]')) download();
+    });
 })();
 </script>
 @endsection

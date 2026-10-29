@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
-use App\Models\DesignTaskEodRecord;
 use App\Models\User;
 use App\Services\DesignTaskStatusService;
+use App\Services\ProgressSubmissionReportService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -23,6 +23,8 @@ use Illuminate\View\View;
  *    every progress/rework submission), comments, BD/Admin field edits,
  *    decline/split/swap requests and their decisions, printing-file mails.
  * Nothing is reconstructed from current task state.
+ * A third "export" tab holds only the Export Report filter form, a fourth
+ * "daily" tab only the Daily Report calendar.
  */
 class TaskActivityController extends Controller
 {
@@ -43,7 +45,7 @@ class TaskActivityController extends Controller
         // A fragment endpoint: never redirect on bad input (fetch would follow the
         // redirect and inject a whole page) — answer 422 so the tab shows its error state.
         $validator = Validator::make($request->query(), [
-            'tab' => ['nullable', 'in:progress,logs'],
+            'tab' => ['nullable', 'in:progress,logs,export,daily'],
             'date' => ['nullable', 'date_format:Y-m-d'],
             'bd_id' => ['nullable', 'integer'],
             'designer_id' => ['nullable', 'integer'],
@@ -73,9 +75,14 @@ class TaskActivityController extends Controller
             'type' => $filters['type'] ?? null,
         ], fn ($v) => $v !== null && $v !== '');
 
-        $data = $tab === 'logs'
-            ? $this->logs($state, $window)
-            : $this->progress($state, $window);
+        $data = match ($tab) {
+            'logs' => $this->logs($state, $window),
+            // Tab 3 — only a filter form posting to admin.reports.export (same report as BD's Export Report).
+            'export' => ['exportDesigners' => User::query()->where('role', 'designer')->orderBy('name')->get(['id', 'name'])],
+            // Tab 4 — calendar only; the Excel comes from admin.tasks.progress-excel.
+            'daily' => [],
+            default => $this->progress($state, $window),
+        };
 
         return view('admin.tasks.partials.activity-tabs', $data + [
             'tab' => $tab,
@@ -92,14 +99,8 @@ class TaskActivityController extends Controller
     /** Tab 1 — one row per persisted submission; counts are the submitted amount, never the task total. */
     private function progress(array $state, array $window): array
     {
-        $base = DesignTaskEodRecord::query()
-            ->whereIn('update_type', ['progress', 'rework'])
-            ->whereBetween('submitted_at', $window)
-            ->when($state['designer_id'] ?? null, fn ($q, $id) => $q->where('designer_id', $id))
-            ->when(isset($state['bd_id']) || isset($state['task']), fn ($q) => $q->whereIn(
-                'design_task_id',
-                $this->taskScope($state, includeDesigner: false)
-            ));
+        // Same query as the Excel download / nightly mail, so the numbers always match.
+        $base = app(ProgressSubmissionReportService::class)->query($state, $window);
 
         $summary = (clone $base)
             ->selectRaw('update_type, COUNT(*) AS submissions, COALESCE(SUM(completed_count), 0) AS creatives, COUNT(DISTINCT designer_id) AS designers')
@@ -240,12 +241,12 @@ class TaskActivityController extends Controller
     }
 
     /** Task ids matching the BD / Designer / Task-ID filters (deleted tasks included, drafts excluded). */
-    private function taskScope(array $state, bool $includeDesigner = true)
+    private function taskScope(array $state)
     {
         return DesignTask::withTrashed()
             ->where('status', '!=', 'draft')
             ->when($state['bd_id'] ?? null, fn ($q, $id) => $q->where('assigned_by', $id))
-            ->when($includeDesigner ? ($state['designer_id'] ?? null) : null, fn ($q, $id) => $q->where('designer_id', $id))
+            ->when($state['designer_id'] ?? null, fn ($q, $id) => $q->where('designer_id', $id))
             ->when($state['task'] ?? null, fn ($q, $term) => $q->where(fn ($w) => $w
                 ->where('task_id', 'like', '%'.$term.'%')
                 ->orWhere('task_name', 'like', '%'.$term.'%')))

@@ -121,9 +121,11 @@
 
     .adm-team{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     .adm-team-chip{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line,#e6e8ec);border-radius:12px;background:#fbfbfc}
-    .adm-team-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:0 0 auto}
+    .adm-team-icon{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:0 0 auto}
+    .adm-team-icon svg{display:block}
     .adm-team-chip strong{display:block;font-size:20px;font-weight:950;line-height:1;letter-spacing:-.03em}
-    .adm-team-chip span{display:block;margin-top:4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#667085}
+    /* Label only — must not hit .adm-team-icon, which is also a span. */
+    .adm-team-chip div span{display:block;margin-top:4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#667085}
 
     .adm-approvals-empty{margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border:1px solid #c8efd9;border-radius:14px;background:#f3fcf7;font-size:12px;color:#344054}
     .adm-approvals-empty strong{font-weight:900;color:#101828}

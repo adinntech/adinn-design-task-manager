@@ -27,13 +27,20 @@
     .tm-act-detail{max-width:360px;white-space:pre-line;word-break:break-word;color:#344054}
     .tm-act-note{padding:10px 14px;font-size:10.5px;color:#98a2b3;border-top:1px solid #f2f4f7}
     .tm-act .badge.rework{background:#fff0c2;color:#7a5200}
+    .tm-export{padding:16px 14px}
+    .tm-act-bar.tm-export .premium-input,.tm-act-bar.tm-export .premium-select{max-width:none;flex:1 1 170px;min-width:150px}
+    .tm-export input[hidden]{display:none}
+    .tm-export-btn{flex:0 0 auto;min-width:150px;font-weight:900}
 </style>
 
 <div class="tm-act-tabs" role="tablist">
     <button type="button" class="tm-act-tab {{ $tab === 'progress' ? 'is-active' : '' }}" role="tab" aria-selected="{{ $tab === 'progress' ? 'true' : 'false' }}" data-tm-tab="progress">{{ $isToday ? "Today's" : $displayDate }} Submitted Progress Details</button>
     <button type="button" class="tm-act-tab {{ $tab === 'logs' ? 'is-active' : '' }}" role="tab" aria-selected="{{ $tab === 'logs' ? 'true' : 'false' }}" data-tm-tab="logs">Designer Activity Logs</button>
+    <button type="button" class="tm-act-tab {{ $tab === 'export' ? 'is-active' : '' }}" role="tab" aria-selected="{{ $tab === 'export' ? 'true' : 'false' }}" data-tm-tab="export">Report Summary</button>
+    <button type="button" class="tm-act-tab {{ $tab === 'daily' ? 'is-active' : '' }}" role="tab" aria-selected="{{ $tab === 'daily' ? 'true' : 'false' }}" data-tm-tab="daily">Daily Report</button>
 </div>
 
+@if(! in_array($tab, ['export', 'daily'], true))
 <div class="tm-act-bar">
     <input class="premium-input" type="date" data-tm-filter="date" value="{{ $date }}" max="{{ now($tz)->toDateString() }}" aria-label="Date (IST)">
     <input class="premium-input" type="search" data-tm-filter="task" value="{{ $state['task'] ?? '' }}" placeholder="Task ID or name" aria-label="Task">
@@ -47,6 +54,7 @@
     @endif
     <span class="muted" style="font-size:11px">{{ $displayDate }}, 00:00 – 23:59 IST · BD / Designer filters above also apply</span>
 </div>
+@endif
 
 @if($tab === 'progress')
     <div class="tm-act-sum">
@@ -97,6 +105,110 @@
     </div>
     <div class="pagination-wrap" data-tm-pagination>{{ $progress->links() }}</div>
     <div class="tm-act-note">Each row is one successfully saved Task Updation / Rework submission; the count is what was submitted in that submission, not the task total. Failed uploads, drafts and comments are not submissions. Video submissions are not a separate type in this system.</div>
+@elseif($tab === 'export')
+    {{-- Same report as BD → Assigned Tasks → Export Report (DesignTaskExportService), across all BDs. --}}
+    <form class="tm-act-bar tm-export" method="GET" action="{{ route('admin.reports.export') }}" data-tm-export>
+        @if(! empty($state['bd_id']))<input type="hidden" name="bd_id" value="{{ $state['bd_id'] }}">@endif
+        <select class="premium-select" name="vertical" aria-label="Vertical">
+            <option value="">All Verticals</option>
+            @foreach(['outdoor' => 'Outdoor', 'roadshow' => 'RoadShow', 'fixtures' => 'Fixtures', 'signage' => 'Signage', 'pop_offsets' => 'POP and Offsets', 'digital_marketing' => 'Digital Marketing', 'events_activations' => 'Events and Activations'] as $k => $v)
+                <option value="{{ $k }}">{{ $v }}</option>
+            @endforeach
+        </select>
+        <select class="premium-select" name="priority" aria-label="Priority">
+            <option value="">All Priorities</option>
+            @foreach(['overdue' => 'Overdue', 'urgent' => 'Urgent', 'high' => 'High', 'medium' => 'Medium', 'low' => 'Low'] as $k => $v)
+                <option value="{{ $k }}">{{ $v }}</option>
+            @endforeach
+        </select>
+        <select class="premium-select" name="designer_id" aria-label="Designer">
+            <option value="">All Designers</option>
+            @foreach($exportDesigners as $designerOption)
+                <option value="{{ $designerOption->id }}" @selected((string) ($state['designer_id'] ?? '') === (string) $designerOption->id)>{{ $designerOption->name }}</option>
+            @endforeach
+        </select>
+        <input class="premium-input" type="search" name="project_number" placeholder="Zoho Project Number" autocomplete="off" aria-label="Zoho Project Number">
+        <select class="premium-select" name="period" aria-label="Period" data-tm-export-period>
+            <option value="current_month">Current Month</option>
+            <option value="last_month">Last Month</option>
+            <option value="custom">Custom Period</option>
+        </select>
+        <input class="premium-input" type="date" name="date_from" aria-label="From date" data-tm-export-date hidden disabled>
+        <input class="premium-input" type="date" name="date_to" aria-label="To date" data-tm-export-date hidden disabled>
+        <button type="submit" class="btn btn-secondary tm-export-btn">Export Report</button>
+    </form>
+    <div class="tm-act-note">
+        Downloads the same Excel report as BD → Assigned Tasks → Export Report, for every BD's tasks.
+        @if(! empty($state['bd_id'])) The BD selected in the filters above also applies. @endif
+    </div>
+@elseif($tab === 'daily')
+    {{-- Calendar + download; behaviour in admin/tasks/index.blade.php (tmDailyInit), Excel from ProgressExcelController. --}}
+    <style>
+        .tm-daily{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;padding:18px 16px}
+        .tm-daily-side{flex:1 1 300px;min-width:260px}
+        .tm-xl-presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+        .tm-xl-preset{border:1px solid #d0d5dd;background:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;color:#344054}
+        .tm-xl-preset.is-active{background:#101828;border-color:#101828;color:#fff}
+        .tm-xl-cal{flex:0 1 340px;width:100%;max-width:340px;border:1px solid #eef0f3;border-radius:16px;padding:14px 12px 10px;box-shadow:0 8px 24px rgba(16,24,40,.07);background:#fff}
+        .tm-xl-cal-head{display:flex;align-items:center;justify-content:space-between;padding:0 4px 10px}
+        .tm-xl-cal-title{font-size:14px;font-weight:800;color:#344054;letter-spacing:.01em}
+        .tm-xl-cal-nav{width:30px;height:30px;border:0;border-radius:50%;background:none;color:#98a2b3;font-size:20px;line-height:1;cursor:pointer;display:grid;place-items:center}
+        .tm-xl-cal-nav:hover:not(:disabled){background:#f2f4f7;color:#344054}
+        .tm-xl-cal-nav:disabled{opacity:.3;cursor:default}
+        .tm-xl-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:4px}
+        .tm-xl-cal-dow{text-align:center;font-size:10px;font-weight:700;letter-spacing:.08em;color:#98a2b3;padding:4px 0 8px}
+        .tm-xl-cal-cell{display:flex;justify-content:center;align-items:center;height:38px}
+        .tm-xl-cal-cell.in-range{background:#fdecee}
+        .tm-xl-cal-cell.range-start{background:linear-gradient(to right,transparent 50%,#fdecee 50%)}
+        .tm-xl-cal-cell.range-end{background:linear-gradient(to left,transparent 50%,#fdecee 50%)}
+        .tm-xl-cal-cell.range-start.range-end{background:none}
+        .tm-xl-cal-day{width:36px;height:36px;border:0;border-radius:50%;background:none;font-size:13.5px;font-weight:600;color:#344054;cursor:pointer;font-variant-numeric:tabular-nums}
+        .tm-xl-cal-day:hover:not(:disabled):not(.is-selected){background:#f2f4f7}
+        .tm-xl-cal-day.is-today:not(.is-selected){box-shadow:inset 0 0 0 1.5px #e30613;color:#e30613;font-weight:800}
+        .tm-xl-cal-day.is-selected{background:#e30613;color:#fff;font-weight:800;box-shadow:0 4px 10px rgba(227,6,19,.3)}
+        .tm-xl-cal-day:disabled{color:#d0d5dd;cursor:default}
+        .tm-xl-cal-day:focus-visible{outline:2px solid #101828;outline-offset:2px}
+        .tm-xl-picked{font-size:14px;color:#475467;margin:0 0 10px}
+        .tm-xl-picked strong{color:#101828}
+        .tm-xl-cols{margin:12px 0 0;padding:10px 12px;background:#f9fafb;border-radius:10px;font-size:11.5px;color:#475467;line-height:1.6}
+        .tm-xl-help{font-size:11px;color:#667085;margin:8px 0 0}
+        .tm-xl-msg{font-size:12px;font-weight:700;margin-top:10px;padding:8px 10px;border-radius:8px}
+        .tm-xl-msg.is-error{background:#fef3f2;color:#b42318}
+        .tm-xl-msg.is-ok{background:#ecfdf3;color:#027a48}
+        @media(max-width:520px){.tm-xl-cal-day{width:34px;height:34px}}
+    </style>
+    <div class="tm-daily" data-xl-root>
+        <input type="hidden" id="tm-xl-from">
+        <input type="hidden" id="tm-xl-to">
+        <div class="tm-xl-cal">
+            <div class="tm-xl-cal-head">
+                <button type="button" class="tm-xl-cal-nav" data-xl-nav="-1" aria-label="Previous month">‹</button>
+                <div class="tm-xl-cal-title" data-xl-cal-title aria-live="polite"></div>
+                <button type="button" class="tm-xl-cal-nav" data-xl-nav="1" aria-label="Next month">›</button>
+            </div>
+            <div class="tm-xl-cal-grid" data-xl-cal-grid></div>
+        </div>
+        <div class="tm-daily-side">
+            <div class="tm-xl-presets">
+                <button type="button" class="tm-xl-preset is-active" data-xl-preset="today">Today</button>
+                <button type="button" class="tm-xl-preset" data-xl-preset="yesterday">Yesterday</button>
+                <button type="button" class="tm-xl-preset" data-xl-preset="week">This week</button>
+                <button type="button" class="tm-xl-preset" data-xl-preset="month">This month</button>
+                <button type="button" class="tm-xl-preset" data-xl-preset="year">This year</button>
+                <button type="button" class="tm-xl-preset" data-xl-preset="custom">Custom Period</button>
+            </div>
+            <p class="tm-xl-picked" data-xl-picked></p>
+            <p class="tm-xl-help" data-xl-layout style="margin:-4px 0 12px"></p>
+            <button type="button" class="btn btn-primary" data-xl-download>Download Excel</button>
+            <div class="tm-xl-msg" data-xl-msg hidden></div>
+            <div class="tm-xl-cols">
+                Designer-wise numbers: <strong>Total Tickets</strong>, Carry from Previous Day / Period,
+                @foreach(app(\App\Services\DailyWorkReportService::class)->statusColumns() as $label){{ $label }}{{ $loop->last ? '.' : ', ' }}@endforeach
+            </div>
+            <p class="tm-xl-help" data-xl-filters></p>
+            <p class="tm-xl-help">A day covers 12:00 AM – 11:59 PM (IST); today covers till now. Longer periods open collapsed in Excel — click + to expand.</p>
+        </div>
+    </div>
 @else
     <div class="table-wrap">
         <table class="premium-table">

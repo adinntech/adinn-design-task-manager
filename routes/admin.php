@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DailyReportingController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ManageEmailController;
 use App\Http\Controllers\Admin\MasterController;
+use App\Http\Controllers\Admin\ProgressExcelController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RequestActionController;
 use App\Http\Controllers\Admin\TaskActivityController;
@@ -30,6 +31,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/tasks', [TaskMonitoringController::class, 'index'])->name('tasks.index');
         // Must stay above /tasks/{task} so "activity" is not bound as a task.
         Route::get('/tasks/activity', [TaskActivityController::class, 'index'])->name('tasks.activity');
+        Route::get('/tasks/progress-excel', [ProgressExcelController::class, 'export'])->name('tasks.progress-excel');
         Route::get('/tasks/{task}/edit', [TaskMonitoringController::class, 'edit'])->name('tasks.edit');
         Route::put('/tasks/{task}', [TaskMonitoringController::class, 'update'])->name('tasks.update');
         Route::get('/tasks/{task}', [TaskMonitoringController::class, 'show'])->name('tasks.show');
