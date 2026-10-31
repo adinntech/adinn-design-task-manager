@@ -186,6 +186,8 @@
         @keyframes tmLiveBlink{0%,100%{opacity:1}50%{opacity:.2}}
         @media (prefers-reduced-motion:reduce){.tm-live-dot{animation:none}}
         .tm-live-panel{position:absolute;right:0;top:calc(100% + 8px);width:360px;max-width:calc(100vw - 32px);background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 16px 40px rgba(16,24,40,.16);padding:16px;font-size:12px;color:#344054}
+        /* The tab card clips its contents (rounded corners); let the open panel hang over its bottom edge. */
+        .tm-act:has(.tm-live-panel:not([hidden])){overflow:visible}
         .tm-live-panel[hidden]{display:none}
         .tm-live-panel h4{margin:0 0 8px;font-size:13px;font-weight:900;color:#101828}
         .tm-live-panel ol{margin:6px 0 0;padding-left:18px;line-height:1.6}
@@ -216,7 +218,7 @@
                     </ol>
                 @elseif($liveOn)
                     <h4>Connected — updates daily at 11:59 PM</h4>
-                    <div>Connected to <strong>{{ $live['title'] ?: 'Google Sheet' }}</strong>. Daily, Weekly, Monthly and Yearly tabs from the start until now (newest first), plus AI Insights with Period / Designer filters. They update automatically every night at 11:59 PM (IST); click Sync now to update them right away. Each period has an "All designers" total row plus one row per designer — filter them via Data → Filter views (works without edit access).</div>
+                    <div>Connected to <strong>{{ $live['title'] ?: 'Google Sheet' }}</strong> — Daily, Weekly, Monthly, Yearly and AI Insights tabs. Updates every night at 11:59 PM (IST), or now with Sync now.</div>
                     <div class="tm-live-meta">Last updated: {{ $live['last_synced_at'] ? \Carbon\CarbonImmutable::parse($live['last_synced_at'])->setTimezone(config('daily-report.timezone'))->format('d M Y, h:i:s A') : 'not yet' }}</div>
                     @if($live['last_error'])<div class="tm-live-err">{{ $live['last_error'] }}</div>@endif
                     <div class="tm-live-row">
