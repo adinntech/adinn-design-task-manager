@@ -176,8 +176,66 @@
         .tm-xl-msg.is-error{background:#fef3f2;color:#b42318}
         .tm-xl-msg.is-ok{background:#ecfdf3;color:#027a48}
         @media(max-width:520px){.tm-xl-cal-day{width:34px;height:34px}}
+        /* Live Excel — top-right of the tab; the dot blinks while the Google Sheet is live. */
+        .tm-daily{position:relative}
+        .tm-live{position:absolute;top:18px;right:16px;z-index:20}
+        .tm-live-btn{display:inline-flex;align-items:center;gap:8px;border:1.5px solid #1d6f42;background:#fff;color:#1d6f42;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:900;cursor:pointer}
+        .tm-live-btn.is-on{background:#1d6f42;color:#fff}
+        .tm-live-dot{width:9px;height:9px;border-radius:50%;background:#e30613;animation:tmLiveBlink 1.1s ease-in-out infinite}
+        .tm-live-btn.is-on .tm-live-dot{background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.25)}
+        @keyframes tmLiveBlink{0%,100%{opacity:1}50%{opacity:.2}}
+        @media (prefers-reduced-motion:reduce){.tm-live-dot{animation:none}}
+        .tm-live-panel{position:absolute;right:0;top:calc(100% + 8px);width:360px;max-width:calc(100vw - 32px);background:#fff;border:1px solid #e6e8ec;border-radius:14px;box-shadow:0 16px 40px rgba(16,24,40,.16);padding:16px;font-size:12px;color:#344054}
+        .tm-live-panel[hidden]{display:none}
+        .tm-live-panel h4{margin:0 0 8px;font-size:13px;font-weight:900;color:#101828}
+        .tm-live-panel ol{margin:6px 0 0;padding-left:18px;line-height:1.6}
+        .tm-live-panel code{background:#f2f4f7;border-radius:5px;padding:1px 5px;font-size:11px;word-break:break-all}
+        .tm-live-email{display:flex;gap:6px;align-items:center;margin:6px 0 12px}
+        .tm-live-email code{flex:1;padding:6px 8px}
+        .tm-live-panel .premium-input{width:100%;margin:4px 0 10px}
+        .tm-live-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px}
+        .tm-live-meta{color:#667085;font-size:11px;margin-top:6px}
+        .tm-live-err{background:#fef3f2;color:#b42318;border-radius:8px;padding:7px 9px;margin-top:8px;font-weight:700;font-size:11px}
+        @media(min-width:901px){.tm-daily .tm-xl-presets{padding-right:140px}}
+        @media(max-width:900px){.tm-live{position:static;width:100%;display:flex;justify-content:flex-end}.tm-live-panel{position:absolute;top:auto;right:16px}}
     </style>
     <div class="tm-daily" data-xl-root>
+        @php $liveOn = $live['enabled'] && $live['spreadsheet_id'] && $liveConfigured; @endphp
+        <div class="tm-live">
+            <button type="button" class="tm-live-btn {{ $liveOn ? 'is-on' : '' }}" data-live-toggle aria-expanded="false" title="{{ $liveOn ? 'Google Sheet is live' : 'Connect a Google Sheet that updates automatically' }}">
+                <span class="tm-live-dot" aria-hidden="true"></span> Live Excel
+            </button>
+            <div class="tm-live-panel" data-live-panel hidden>
+                @if(! $liveConfigured)
+                    <h4>Set up Live Excel (one time)</h4>
+                    <ol>
+                        <li>In Google Cloud Console, enable the <strong>Google Sheets API</strong>.</li>
+                        <li>Create a <strong>service account</strong> and download its JSON key.</li>
+                        <li>Upload the key to the server at <code>{{ str_replace(base_path().DIRECTORY_SEPARATOR, '', config('google-sheets.credentials')) }}</code>.</li>
+                        <li>Reload this page, then connect your Google Sheet here.</li>
+                    </ol>
+                @elseif($liveOn)
+                    <h4>Connected — updates daily at 11:59 PM</h4>
+                    <div>Connected to <strong>{{ $live['title'] ?: 'Google Sheet' }}</strong>. Daily, Weekly, Monthly and Yearly tabs from the start until now (newest first), plus AI Insights with Period / Designer filters. They update automatically every night at 11:59 PM (IST); click Sync now to update them right away. Click + on a row to see its designers.</div>
+                    <div class="tm-live-meta">Last updated: {{ $live['last_synced_at'] ? \Carbon\CarbonImmutable::parse($live['last_synced_at'])->setTimezone(config('daily-report.timezone'))->format('d M Y, h:i:s A') : 'not yet' }}</div>
+                    @if($live['last_error'])<div class="tm-live-err">{{ $live['last_error'] }}</div>@endif
+                    <div class="tm-live-row">
+                        <button type="button" class="btn btn-secondary" data-live-action="disconnect">Turn off</button>
+                        <button type="button" class="btn btn-secondary" data-live-action="sync">Sync now</button>
+                        <a class="btn btn-primary" href="https://docs.google.com/spreadsheets/d/{{ $live['spreadsheet_id'] }}/edit" target="_blank" rel="noopener">Open Google Sheet</a>
+                    </div>
+                @else
+                    <h4>Connect a Google Sheet</h4>
+                    <div>1. Create a Google Sheet and <strong>share it as Editor</strong> with:</div>
+                    <div class="tm-live-email"><code data-live-email>{{ $liveEmail ?? '—' }}</code><button type="button" class="btn btn-secondary" data-live-copy>Copy</button></div>
+                    <label for="tm-live-sheet">2. Paste the sheet link</label>
+                    <input class="premium-input" id="tm-live-sheet" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" value="{{ $live['spreadsheet_id'] ? 'https://docs.google.com/spreadsheets/d/'.$live['spreadsheet_id'].'/edit' : '' }}" data-live-sheet>
+                    @if($live['last_error'])<div class="tm-live-err">{{ $live['last_error'] }}</div>@endif
+                    <div class="tm-live-row"><button type="button" class="btn btn-primary" data-live-action="connect">Connect</button></div>
+                @endif
+                <div class="tm-xl-msg" data-live-msg hidden></div>
+            </div>
+        </div>
         <input type="hidden" id="tm-xl-from">
         <input type="hidden" id="tm-xl-to">
         <div class="tm-xl-cal">

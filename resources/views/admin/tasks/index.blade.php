@@ -664,6 +664,74 @@ document.addEventListener('change', function (event) {
         if (day && !day.disabled) { pickDay(day.getAttribute('data-xl-day')); return; }
         if (e.target.closest('[data-xl-download]')) download();
     });
+
+    // ---- Live Excel (Google Sheet) panel. Actions re-load the tab so the panel shows the new state. ----
+    var liveUrls = {
+        connect: @json(route('admin.tasks.live-sheet.connect')),
+        sync: @json(route('admin.tasks.live-sheet.sync')),
+        disconnect: @json(route('admin.tasks.live-sheet.disconnect')),
+    };
+    var live = { open: false, msg: null };
+
+    function livePanel(open) {
+        var panel = root() && root().querySelector('[data-live-panel]');
+        if (!panel) return;
+        live.open = open;
+        panel.hidden = !open;
+        root().querySelector('[data-live-toggle]').setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open && live.msg) { liveMsg(live.msg.ok, live.msg.text); live.msg = null; }
+    }
+
+    function liveMsg(ok, text) {
+        var el = root().querySelector('[data-live-msg]');
+        el.className = 'tm-xl-msg ' + (ok ? 'is-ok' : 'is-error');
+        el.textContent = text;
+        el.hidden = !text;
+    }
+
+    function liveAction(action, button) {
+        var sheet = root().querySelector('[data-live-sheet]');
+        if (action === 'disconnect' && !window.confirm('Turn off Live Excel? The Google Sheet keeps what it already has.')) return;
+        button.disabled = true;
+        button.textContent = action === 'connect' ? 'Connecting…' : (action === 'sync' ? 'Syncing…' : 'Turning off…');
+        fetch(liveUrls[action], {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+            credentials: 'same-origin',
+            body: JSON.stringify(action === 'connect' ? { sheet: sheet ? sheet.value : '' } : {}),
+        })
+            .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok && d.ok !== false, text: d.message || (d.errors ? Object.values(d.errors).flat()[0] : 'Request failed. Please try again.') }; }); })
+            .catch(function () { return { ok: false, text: 'Could not reach the server. Please try again.' }; })
+            .then(function (result) {
+                live.msg = result;
+                live.open = true;
+                if (window.tmActivityLoad) window.tmActivityLoad();
+            });
+    }
+
+    var baseInit = window.tmDailyInit;
+    window.tmDailyInit = function () {
+        baseInit();
+        if (root() && live.open) livePanel(true);
+    };
+
+    document.addEventListener('click', function (e) {
+        var r = root();
+        if (!r) return;
+        var toggle = e.target.closest('[data-live-toggle]');
+        if (toggle && r.contains(toggle)) { livePanel(!live.open); return; }
+        var action = e.target.closest('[data-live-action]');
+        if (action && r.contains(action)) { liveAction(action.getAttribute('data-live-action'), action); return; }
+        var copy = e.target.closest('[data-live-copy]');
+        if (copy && r.contains(copy)) {
+            var email = r.querySelector('[data-live-email]').textContent.trim();
+            if (navigator.clipboard) navigator.clipboard.writeText(email).then(function () { copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy'; }, 1500); });
+            return;
+        }
+        // Click outside the panel closes it.
+        var panel = r.querySelector('[data-live-panel]');
+        if (live.open && panel && !panel.contains(e.target)) livePanel(false);
+    });
 })();
 </script>
 @endsection

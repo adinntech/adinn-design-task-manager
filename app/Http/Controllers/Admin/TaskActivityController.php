@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\User;
 use App\Services\DesignTaskStatusService;
+use App\Services\GoogleSheetsClient;
+use App\Services\LiveSheetSyncService;
 use App\Services\ProgressSubmissionReportService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
@@ -79,8 +81,12 @@ class TaskActivityController extends Controller
             'logs' => $this->logs($state, $window),
             // Tab 3 — only a filter form posting to admin.reports.export (same report as BD's Export Report).
             'export' => ['exportDesigners' => User::query()->where('role', 'designer')->orderBy('name')->get(['id', 'name'])],
-            // Tab 4 — calendar only; the Excel comes from admin.tasks.progress-excel.
-            'daily' => [],
+            // Tab 4 — calendar (Excel from admin.tasks.progress-excel) + the Live Excel panel.
+            'daily' => [
+                'live' => app(LiveSheetSyncService::class)->settings(),
+                'liveConfigured' => app(GoogleSheetsClient::class)->configured(),
+                'liveEmail' => rescue(fn () => app(GoogleSheetsClient::class)->serviceAccountEmail(), null, false),
+            ],
             default => $this->progress($state, $window),
         };
 

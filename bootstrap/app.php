@@ -42,6 +42,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('reports:daily-designer-progress --retry-failed')
             ->everyThirtyMinutes()->between('00:15', '06:00')->timezone('Asia/Kolkata')
             ->withoutOverlapping(30)->onOneServer();
+
+        // Admin → Task Monitoring → Daily Report → Live Excel (Google Sheet):
+        // every tab is rewritten at 23:59 IST (the panel's "Sync now" updates
+        // them any time in between).
+        $schedule->command('reports:live-sheet-sync')
+            ->dailyAt('23:59')->timezone('Asia/Kolkata')
+            ->withoutOverlapping(10)->onOneServer();
     })
     ->withExceptions(function (Exceptions $exceptions): void {})
     ->create();

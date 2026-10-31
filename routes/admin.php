@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\DailyReportingController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LiveSheetController;
 use App\Http\Controllers\Admin\ManageEmailController;
 use App\Http\Controllers\Admin\MasterController;
 use App\Http\Controllers\Admin\ProgressExcelController;
@@ -32,6 +33,9 @@ Route::middleware(['auth', 'role:admin'])
         // Must stay above /tasks/{task} so "activity" is not bound as a task.
         Route::get('/tasks/activity', [TaskActivityController::class, 'index'])->name('tasks.activity');
         Route::get('/tasks/progress-excel', [ProgressExcelController::class, 'export'])->name('tasks.progress-excel');
+        Route::post('/tasks/live-sheet/connect', [LiveSheetController::class, 'connect'])->name('tasks.live-sheet.connect');
+        Route::post('/tasks/live-sheet/sync', [LiveSheetController::class, 'sync'])->name('tasks.live-sheet.sync');
+        Route::post('/tasks/live-sheet/disconnect', [LiveSheetController::class, 'disconnect'])->name('tasks.live-sheet.disconnect');
         Route::get('/tasks/{task}/edit', [TaskMonitoringController::class, 'edit'])->name('tasks.edit');
         Route::put('/tasks/{task}', [TaskMonitoringController::class, 'update'])->name('tasks.update');
         Route::get('/tasks/{task}', [TaskMonitoringController::class, 'show'])->name('tasks.show');
