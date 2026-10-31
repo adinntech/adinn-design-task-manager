@@ -208,7 +208,7 @@ class LiveSheetSyncService
 
         $values = [
             ['Adinn — Daily Report (Live) · '.$tab],
-            ['Period: '.$start->format('d M Y').' – '.$now->format('d M Y').' (IST), newest first · To filter: Data → Filter views → Create temporary filter view (no edit access needed). Designer = "'.self::ALL_DESIGNERS.'" shows totals only.'],
+            ['Period: '.$start->format('d M Y').' – '.$now->format('d M Y').' (IST), newest first · To filter: Data → Save as temporary filter view, then click ⏷ on a column (no edit access needed). Designer = "'.self::ALL_DESIGNERS.'" shows totals only.'],
             ['Last updated: '.$now->format('d M Y, h:i:s A').' IST'],
             array_merge([self::TABS[$tab], 'Designer', 'Total Tickets', 'Carry from Previous Day / Period'], array_values($columns)),
             ...array_column($rows, 'values'),
@@ -294,7 +294,7 @@ class LiveSheetSyncService
         }
         $this->sheets->replaceValues($spreadsheetId, "'".self::INSIGHTS_TAB."'!A1:Z2000", "'".self::INSIGHTS_TAB."'!A1", [
             ['Adinn — AI Insights · Designer Performance'],
-            ['', 'Period ▸', $period, 'Designer ▸', $designer, 'Editors: pick a period and designer · Everyone: Data → Filter views → Create temporary filter view to filter rows · Scored from this app\'s own data (no external AI).'],
+            ['', 'Period ▸', $period, 'Designer ▸', $designer, 'Editors: pick a period and designer · Everyone: Data → Save as temporary filter view, then click ⏷ on a column · Scored from this app\'s own data (no external AI).'],
             ['=IFERROR(VLOOKUP($C$2,'.$dataTab.'!T:U,2,FALSE),"")'],
             self::INSIGHTS_HEADER,
             ['=IFERROR(FILTER('.$dataTab.'!B2:Q,'.$dataTab.'!A2:A=$C$2,($E$2="All")+('.$dataTab.'!C2:C=$E$2)),"No data for this selection")'],
