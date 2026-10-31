@@ -108,8 +108,9 @@ class DailyWorkReportService
         $tasks = DesignTask::withTrashed()
             ->whereIn('id', array_keys($history))
             ->with('designer:id,name')
-            ->get(['id', 'task_id', 'task_name', 'designer_id', 'assigned_by'])
+            ->get(['id', 'task_id', 'task_name', 'designer_id', 'assigned_by', 'total_creatives'])
             ->mapWithKeys(fn (DesignTask $task) => [$task->id => [
+                'creatives' => (int) $task->total_creatives,
                 'task_id' => (string) $task->task_id,
                 'task_name' => (string) $task->task_name,
                 'bd_id' => $task->assigned_by,
@@ -118,11 +119,48 @@ class DailyWorkReportService
             ]])
             ->all();
 
+        // Creative progress events: +designer progress / rework submissions, −creatives BD sent back.
+        $progress = [];
+        foreach (DB::table('design_task_eod_records')
+            ->whereIn('update_type', ['progress', 'rework'])
+            ->where('submitted_at', '<=', $endAt)
+            ->select('design_task_id', 'submitted_at', 'completed_count')
+            ->cursor() as $e) {
+            $progress[$e->design_task_id][] = [(string) $e->submitted_at, (int) $e->completed_count];
+        }
+        foreach (DB::table('design_task_bd_reviews')
+            ->where('action', 'rework')
+            ->where('created_at', '<=', $endAt)
+            ->select('design_task_id', 'created_at', 'number_of_creatives')
+            ->cursor() as $r) {
+            $progress[$r->design_task_id][] = [(string) $r->created_at, -(int) $r->number_of_creatives];
+        }
+
         return [
             'meta' => ['from' => $start->format('Y-m-d H:i:s'), 'to' => $end->format('Y-m-d H:i:s')],
             'tasks' => $tasks,
             'history' => $history,
+            'progress' => $progress,
         ];
+    }
+
+    /** Creatives a task had uploaded (progress + rework − sent back, capped at its total) by $endAt. */
+    private function uploadedBy(array $report, int $id, int $total, string $endAt): int
+    {
+        $done = 0;
+        foreach ($report['progress'][$id] ?? [] as [$at, $count]) {
+            if ($at <= $endAt) {
+                $done += $count;
+            }
+        }
+
+        return max(0, min($total, $done));
+    }
+
+    /** "3/4 - 2 ticket(s)" for the Live Sheet's Creatives Uploaded column. */
+    public static function creativesText(array $counts): string
+    {
+        return $counts['creatives_done'].'/'.$counts['creatives_total'].' - '.$counts['total'].' '.($counts['total'] === 1 ? 'ticket' : 'tickets');
     }
 
     /** Narrows a report to the page's BD / Designer / Task filters. */
@@ -145,7 +183,7 @@ class DailyWorkReportService
     public function counts(array $report, CarbonImmutable $from, CarbonImmutable $to): array
     {
         [$startAt, $endAt] = $this->submissions->window($from, $to);
-        $blank = ['total' => 0, 'carried' => 0] + array_fill_keys(array_keys($this->statusColumns()), 0);
+        $blank = ['total' => 0, 'carried' => 0, 'creatives_total' => 0, 'creatives_done' => 0] + array_fill_keys(array_keys($this->statusColumns()), 0);
         $rows = [];
         $total = $blank;
 
@@ -173,8 +211,12 @@ class DailyWorkReportService
             }
 
             $rows[$task['designer']] ??= $blank;
+            $creatives = (int) ($task['creatives'] ?? 0);
+            $uploaded = $this->uploadedBy($report, $id, $creatives, $endAt);
             foreach ([&$rows[$task['designer']], &$total] as &$bucket) {
                 $bucket['total']++;
+                $bucket['creatives_total'] += $creatives;
+                $bucket['creatives_done'] += $uploaded;
                 $bucket['carried'] += $carried ? 1 : 0;
                 if (array_key_exists($atEnd, $bucket)) {
                     $bucket[$atEnd]++;

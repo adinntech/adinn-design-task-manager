@@ -40,7 +40,7 @@ class LiveSheetSyncService
     private const ALL_DESIGNERS = 'All designers';
 
     /** Layout version: bump when the period tabs' columns change, so every tab is rebuilt once. */
-    private const LAYOUT_VERSION = 2;
+    private const LAYOUT_VERSION = 3;
 
     private const DATA_START = 4; // 0-based row index of the first data row (row 5)
 
@@ -192,8 +192,27 @@ class LiveSheetSyncService
     private function writeTab(string $spreadsheetId, string $tab, int $index, array $periods, array $report, CarbonImmutable $start, CarbonImmutable $now): void
     {
         $columns = $this->reports->statusColumns();
-        $width = count($columns) + 4;
-        $line = fn (string $period, string $designer, array $c) => array_merge([$period, $designer, $c['total'], $c['carried']], array_map(fn ($k) => $c[$k], array_keys($columns)));
+        $width = count($columns) + 5;
+        // "Creatives uploaded" ("3/4 - 2 tickets") sits just before the last status column, Completed.
+        $before = array_key_last($columns);
+        $line = function (string $period, string $designer, array $c) use ($columns, $before) {
+            $values = [$period, $designer, $c['total'], $c['carried']];
+            foreach (array_keys($columns) as $k) {
+                if ($k === $before) {
+                    $values[] = DailyWorkReportService::creativesText($c);
+                }
+                $values[] = $c[$k];
+            }
+
+            return $values;
+        };
+        $statusHeader = [];
+        foreach ($columns as $k => $label) {
+            if ($k === $before) {
+                $statusHeader[] = 'Creatives Uploaded / Total (Tickets)';
+            }
+            $statusHeader[] = $label;
+        }
 
         // Rows: each period's total, then its designers — the period repeated on every row so filters can pick a period.
         $rows = [];
@@ -210,7 +229,7 @@ class LiveSheetSyncService
             ['Adinn — Daily Report (Live) · '.$tab],
             ['Period: '.$start->format('d M Y').' – '.$now->format('d M Y').' (IST), newest first · To filter: Data → Save as temporary filter view, then click ⏷ on a column (no edit access needed). Designer = "'.self::ALL_DESIGNERS.'" shows totals only.'],
             ['Last updated: '.$now->format('d M Y, h:i:s A').' IST'],
-            array_merge([self::TABS[$tab], 'Designer', 'Total Tickets', 'Carry from Previous Day / Period'], array_values($columns)),
+            array_merge([self::TABS[$tab], 'Designer', 'Total Tickets', 'Carry from Previous Day / Period'], $statusHeader),
             ...array_column($rows, 'values'),
         ];
 
