@@ -216,7 +216,7 @@
                     </ol>
                 @elseif($liveOn)
                     <h4>Connected — updates daily at 11:59 PM</h4>
-                    <div>Connected to <strong>{{ $live['title'] ?: 'Google Sheet' }}</strong>. Daily, Weekly, Monthly and Yearly tabs from the start until now (newest first), plus AI Insights with Period / Designer filters. They update automatically every night at 11:59 PM (IST); click Sync now to update them right away. Click + on a row to see its designers.</div>
+                    <div>Connected to <strong>{{ $live['title'] ?: 'Google Sheet' }}</strong>. Daily, Weekly, Monthly and Yearly tabs from the start until now (newest first), plus AI Insights with Period / Designer filters. They update automatically every night at 11:59 PM (IST); click Sync now to update them right away. Each period has an "All designers" total row plus one row per designer — filter them via Data → Filter views (works without edit access).</div>
                     <div class="tm-live-meta">Last updated: {{ $live['last_synced_at'] ? \Carbon\CarbonImmutable::parse($live['last_synced_at'])->setTimezone(config('daily-report.timezone'))->format('d M Y, h:i:s A') : 'not yet' }}</div>
                     @if($live['last_error'])<div class="tm-live-err">{{ $live['last_error'] }}</div>@endif
                     <div class="tm-live-row">

@@ -12,15 +12,17 @@ use Illuminate\Support\Facades\Log;
  * Admin → Task Monitoring → Daily Report → "Live Excel": mirrors the Daily
  * Report numbers into a Google Sheet with Daily, Weekly, Monthly and Yearly
  * tabs. Each lists every date / week / month / year from the first task until
- * now, newest first; each period row is a collapsed row group that expands to
- * that period's designers. An "AI Insights" tab scores each designer
- * (DesignerPerformanceService) with Period and Designer dropdowns. All tabs
- * are rewritten nightly at 23:59 IST (reports:live-sheet-sync) and on the
- * panel's "Sync now".
+ * now, newest first: an "All designers" total row per period, then one row
+ * per designer, with the period repeated on every row. Rows are never grouped
+ * — Google hides + / − from view-only users — so everyone narrows the list
+ * with filters instead (header filter buttons for editors, Data → Filter
+ * views → temporary filter view for viewers). An "AI Insights" tab scores
+ * each designer (DesignerPerformanceService) with Period and Designer
+ * dropdowns. All tabs are rewritten nightly at 23:59 IST
+ * (reports:live-sheet-sync) and on the panel's "Sync now".
  *
- * Grouping is only rebuilt when a tab's row layout changes (a new period, a
- * new designer in a period), so expanded / collapsed rows survive the
- * ordinary number-only updates.
+ * Formatting is only rebuilt when a tab's row layout changes (a new period, a
+ * new designer in a period); ordinary updates rewrite the numbers only.
  */
 class LiveSheetSyncService
 {
@@ -28,11 +30,17 @@ class LiveSheetSyncService
 
     /** Tab title => first-column heading, in tab order. */
     private const TABS = [
-        'Daily' => 'Date / Designer',
-        'Weekly' => 'Week / Designer',
-        'Monthly' => 'Month / Designer',
-        'Yearly' => 'Year / Designer',
+        'Daily' => 'Date',
+        'Weekly' => 'Week',
+        'Monthly' => 'Month',
+        'Yearly' => 'Year',
     ];
+
+    /** Designer-column value on each period's total row. */
+    private const ALL_DESIGNERS = 'All designers';
+
+    /** Layout version: bump when the period tabs' columns change, so every tab is rebuilt once. */
+    private const LAYOUT_VERSION = 2;
 
     private const DATA_START = 4; // 0-based row index of the first data row (row 5)
 
@@ -184,25 +192,25 @@ class LiveSheetSyncService
     private function writeTab(string $spreadsheetId, string $tab, int $index, array $periods, array $report, CarbonImmutable $start, CarbonImmutable $now): void
     {
         $columns = $this->reports->statusColumns();
-        $width = count($columns) + 3;
-        $line = fn (string $label, array $c) => array_merge([$label, $c['total'], $c['carried']], array_map(fn ($k) => $c[$k], array_keys($columns)));
+        $width = count($columns) + 4;
+        $line = fn (string $period, string $designer, array $c) => array_merge([$period, $designer, $c['total'], $c['carried']], array_map(fn ($k) => $c[$k], array_keys($columns)));
 
-        // Rows: each period, then (collapsed) its designers.
+        // Rows: each period's total, then its designers — the period repeated on every row so filters can pick a period.
         $rows = [];
         foreach ($periods as $period) {
             $counts = $this->reports->counts($report, $period['from'], $period['to']);
-            $rows[] = ['level' => 0, 'values' => $line($period['label'], $counts['total'])];
+            $rows[] = ['level' => 0, 'values' => $line($period['label'], self::ALL_DESIGNERS, $counts['total'])];
             foreach ($counts['rows'] as $designer => $c) {
-                $rows[] = ['level' => 1, 'values' => $line('    '.$designer, $c)];
+                $rows[] = ['level' => 1, 'values' => $line($period['label'], (string) $designer, $c)];
             }
         }
         $rowLimit = max(2000, self::DATA_START + count($rows) + 100);
 
         $values = [
             ['Adinn — Daily Report (Live) · '.$tab],
-            ['Period: '.$start->format('d M Y').' – '.$now->format('d M Y').' (IST), newest first · Click + on the left to see the designers.'],
+            ['Period: '.$start->format('d M Y').' – '.$now->format('d M Y').' (IST), newest first · To filter: Data → Filter views → Create temporary filter view (no edit access needed). Designer = "'.self::ALL_DESIGNERS.'" shows totals only.'],
             ['Last updated: '.$now->format('d M Y, h:i:s A').' IST'],
-            array_merge([self::TABS[$tab], 'Total Tickets', 'Carry from Previous Day / Period'], array_values($columns)),
+            array_merge([self::TABS[$tab], 'Designer', 'Total Tickets', 'Carry from Previous Day / Period'], array_values($columns)),
             ...array_column($rows, 'values'),
         ];
 
@@ -217,7 +225,7 @@ class LiveSheetSyncService
             'fields' => 'gridProperties.rowCount',
         ]]]);
 
-        $layout = md5(json_encode(array_map(fn ($r) => [$r['level'], $r['values'][0]], $rows)));
+        $layout = md5(self::LAYOUT_VERSION.json_encode(array_map(fn ($r) => [$r['values'][0], $r['values'][1]], $rows)));
         $rebuild = $isNew || ($this->settings()['layouts'][$tab] ?? null) !== $layout;
 
         if ($rebuild && ! $isNew) {
@@ -228,7 +236,7 @@ class LiveSheetSyncService
         $this->sheets->replaceValues($spreadsheetId, "{$quoted}!A1:Z{$rowLimit}", "{$quoted}!A1", $values);
 
         if ($rebuild) {
-            $this->formatAndGroup($spreadsheetId, $sheetId, $rows, $width);
+            $this->formatRows($spreadsheetId, $sheetId, $rows, $width);
             $this->save(['layouts' => array_merge($this->settings()['layouts'], [$tab => $layout])]);
         }
     }
@@ -286,7 +294,7 @@ class LiveSheetSyncService
         }
         $this->sheets->replaceValues($spreadsheetId, "'".self::INSIGHTS_TAB."'!A1:Z2000", "'".self::INSIGHTS_TAB."'!A1", [
             ['Adinn — AI Insights · Designer Performance'],
-            ['', 'Period ▸', $period, 'Designer ▸', $designer, 'Pick a period and a designer (editors) · Scored from this app\'s own data (no external AI).'],
+            ['', 'Period ▸', $period, 'Designer ▸', $designer, 'Editors: pick a period and designer · Everyone: Data → Filter views → Create temporary filter view to filter rows · Scored from this app\'s own data (no external AI).'],
             ['=IFERROR(VLOOKUP($C$2,'.$dataTab.'!T:U,2,FALSE),"")'],
             self::INSIGHTS_HEADER,
             ['=IFERROR(FILTER('.$dataTab.'!B2:Q,'.$dataTab.'!A2:A=$C$2,($E$2="All")+('.$dataTab.'!C2:C=$E$2)),"No data for this selection")'],
@@ -353,6 +361,7 @@ class LiveSheetSyncService
                 ]];
             }
         }
+        $requests[] = $this->filterButtons($sheetId, $last, $width);
         $this->sheets->batchUpdate($spreadsheetId, $requests);
 
         $this->insightCharts($spreadsheetId, $sheetId, $tab['charts'] ?? [], $last);
@@ -476,7 +485,6 @@ class LiveSheetSyncService
                     'frozenColumnCount' => 1,
                     'columnCount' => max(26, $width),
                     'rowCount' => 2000,
-                    'rowGroupControlAfter' => false, // +/− on the period row itself
                 ],
             ]],
         ]]);
@@ -507,15 +515,14 @@ class LiveSheetSyncService
     }
 
     /**
-     * Team members get Editor access so they can use the + / − groups
-     * (Google hides those from view-only users). A warning-only protection
-     * makes them confirm before changing a number; the next sync rewrites it anyway.
+     * A warning-only protection makes editors confirm before changing a
+     * number; the next sync rewrites it anyway.
      */
     private function protectTab(string $spreadsheetId, int $sheetId): void
     {
         $this->sheets->batchUpdate($spreadsheetId, [['addProtectedRange' => ['protectedRange' => [
             'range' => ['sheetId' => $sheetId],
-            'description' => 'Live Excel — filled automatically by the Design Task Manager. Use + / − to expand; edits are overwritten on the next update.',
+            'description' => 'Live Excel — filled automatically by the Design Task Manager. Use filters or filter views; edits are overwritten on the next update.',
             'warningOnly' => true,
         ]]]]);
     }
@@ -544,50 +551,55 @@ class LiveSheetSyncService
         $this->sheets->batchUpdate($spreadsheetId, $requests);
     }
 
-    /** Designer rows in grey, period rows bold on light red, and one collapsed group of designers under each period. */
-    private function formatAndGroup(string $spreadsheetId, int $sheetId, array $rows, int $width): void
+    /**
+     * Header across the full width, period + designer columns frozen, period
+     * total rows bold on light red, designer rows grey, and filter buttons on
+     * the header row.
+     */
+    private function formatRows(string $spreadsheetId, int $sheetId, array $rows, int $width): void
     {
         $last = self::DATA_START + count($rows);
         $requests = [
-            $this->format($sheetId, self::DATA_START, $last, 1, $width, ['horizontalAlignment' => 'CENTER']),
+            ['updateSheetProperties' => [
+                'properties' => ['sheetId' => $sheetId, 'gridProperties' => ['frozenColumnCount' => 2]],
+                'fields' => 'gridProperties.frozenColumnCount',
+            ]],
+            $this->format($sheetId, 3, 4, 0, $width, [
+                'backgroundColor' => self::RED,
+                'horizontalAlignment' => 'CENTER',
+                'verticalAlignment' => 'MIDDLE',
+                'wrapStrategy' => 'WRAP',
+                'textFormat' => ['bold' => true, 'foregroundColor' => ['red' => 1, 'green' => 1, 'blue' => 1]],
+            ]),
+            ['updateDimensionProperties' => [
+                'range' => ['sheetId' => $sheetId, 'dimension' => 'COLUMNS', 'startIndex' => 0, 'endIndex' => 2],
+                'properties' => ['pixelSize' => 170],
+                'fields' => 'pixelSize',
+            ]],
+            $this->format($sheetId, self::DATA_START, $last, 2, $width, ['horizontalAlignment' => 'CENTER']),
             $this->format($sheetId, self::DATA_START, $last, 0, $width, ['textFormat' => ['foregroundColor' => ['red' => 0.28, 'green' => 0.33, 'blue' => 0.4]]]),
         ];
-        $groups = [];
 
         foreach ($rows as $i => $row) {
-            if ($row['level'] !== 0) {
-                continue;
-            }
-            $index = self::DATA_START + $i;
-            $requests[] = $this->format($sheetId, $index, $index + 1, 0, $width, [
-                'backgroundColor' => ['red' => 0.992, 'green' => 0.925, 'blue' => 0.933],
-                'textFormat' => ['bold' => true, 'foregroundColor' => ['red' => 0.063, 'green' => 0.094, 'blue' => 0.157]],
-            ]);
-
-            $end = $i + 1;
-            while ($end < count($rows) && $rows[$end]['level'] > 0) {
-                $end++;
-            }
-            if ($end > $i + 1) {
-                $groups[] = ['start' => $index + 1, 'end' => self::DATA_START + $end];
+            if ($row['level'] === 0) {
+                $index = self::DATA_START + $i;
+                $requests[] = $this->format($sheetId, $index, $index + 1, 0, $width, [
+                    'backgroundColor' => ['red' => 0.992, 'green' => 0.925, 'blue' => 0.933],
+                    'textFormat' => ['bold' => true, 'foregroundColor' => ['red' => 0.063, 'green' => 0.094, 'blue' => 0.157]],
+                ]);
             }
         }
 
-        foreach ($groups as $g) {
-            $requests[] = ['addDimensionGroup' => ['range' => ['sheetId' => $sheetId, 'dimension' => 'ROWS', 'startIndex' => $g['start'], 'endIndex' => $g['end']]]];
-        }
-        foreach ($groups as $g) {
-            $requests[] = ['updateDimensionGroup' => [
-                'dimensionGroup' => [
-                    'range' => ['sheetId' => $sheetId, 'dimension' => 'ROWS', 'startIndex' => $g['start'], 'endIndex' => $g['end']],
-                    'depth' => 1,
-                    'collapsed' => true,
-                ],
-                'fields' => 'collapsed',
-            ]];
-        }
-
+        $requests[] = $this->filterButtons($sheetId, $last, $width);
         $this->sheets->batchUpdate($spreadsheetId, $requests);
+    }
+
+    /** Filter buttons on the header row (row 4) over the data rows. */
+    private function filterButtons(int $sheetId, int $lastRow, int $width): array
+    {
+        return ['setBasicFilter' => ['filter' => ['range' => [
+            'sheetId' => $sheetId, 'startRowIndex' => 3, 'endRowIndex' => $lastRow, 'startColumnIndex' => 0, 'endColumnIndex' => $width,
+        ]]]];
     }
 
     private function format(int $sheetId, int $rowStart, int $rowEnd, int $colStart, int $colEnd, array $format): array
