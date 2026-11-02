@@ -417,6 +417,7 @@
     });
 })();
 </script>
+@include('partials.push-notifications')
 @endauth
 
 @livewireScripts

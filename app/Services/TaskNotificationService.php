@@ -15,6 +15,7 @@ use App\Notifications\TaskRequestNotification;
 use App\Notifications\TaskStatusChangedNotification;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -40,6 +41,7 @@ class TaskNotificationService
     {
         $this->send($designer, new TaskAssignedNotification($task, $assignedBy));
         $this->flag($designer, 'assignment');
+        $this->pushAssigned($designer, $task, $assignedBy);
     }
 
     /**
@@ -69,6 +71,17 @@ class TaskNotificationService
         if ($bd && (int) $bd->id !== (int) $changedBy->id) {
             $this->send($bd, new TaskStatusChangedNotification($task, $toStatus, $changedBy));
             $this->flag($bd, 'status');
+
+            if ($toStatus === 'waiting_confirmation') {
+                $resubmitted = app(DesignTaskProgressService::class)->reworkCount($task) > 0;
+                $this->push(
+                    $bd,
+                    $task,
+                    $resubmitted ? 'Rework resubmitted for your review' : 'Task submitted for your review',
+                    "Submitted by {$changedBy->name}",
+                    'review'
+                );
+            }
         }
 
         $this->notifyRoleOfStatusChange('designer_head', $task, $toStatus, $changedBy);
@@ -91,6 +104,7 @@ class TaskNotificationService
         if ($designer) {
             $this->send($designer, new TaskStatusChangedNotification($task, 'prepare_printing_file', $bd));
             $this->flag($designer, 'status');
+            $this->push($designer, $task, 'Approved: prepare printing file', "Approved by {$bd->name}. Please prepare the printing files.", 'printing');
         }
 
         $this->notifyRoleOfStatusChange('designer_head', $task, 'prepare_printing_file', $bd);
@@ -152,6 +166,7 @@ class TaskNotificationService
         if ($designer) {
             $this->send($designer, $notification);
             $this->flag($designer, 'rework');
+            $this->push($designer, $task, 'Rework requested', "{$bd->name}: ".Str::limit(trim($comment), 140), 'rework');
         }
 
         $this->notifyHeads($notification, $bd, 'rework');
@@ -255,6 +270,7 @@ class TaskNotificationService
             if ($newTask && (int) $newDesigner->id !== (int) $requester?->id) {
                 $this->send($newDesigner, new TaskAssignedNotification($newTask, $actor));
                 $this->flag($newDesigner, 'assignment');
+                $this->pushAssigned($newDesigner, $newTask, $actor);
             }
         }
     }
@@ -289,6 +305,30 @@ class TaskNotificationService
             $this->send($head, $notification);
             $this->flag($head, $category);
         }
+    }
+
+    private function pushAssigned(User $designer, DesignTask $task, User $assignedBy): void
+    {
+        $due = $task->due_at ? ' · Due '.$task->due_at->format('d M, h:i A') : '';
+
+        $this->push($designer, $task, 'New task assigned', "Assigned by {$assignedBy->name}{$due}", 'assigned');
+    }
+
+    /**
+     * Desktop notification (Web Push) for the Designer/BD events only — the
+     * bell row is still the record. WebPushService never throws.
+     */
+    private function push(User $user, DesignTask $task, string $title, string $detail, string $tag): void
+    {
+        $name = $task->display_task_name ?? $task->task_name;
+
+        app(WebPushService::class)->send(
+            $user,
+            $title,
+            "{$task->task_id} — {$name}\n{$detail}",
+            TaskNotificationUrlResolver::forTask($user, (int) $task->id),
+            "{$tag}-{$task->id}"
+        );
     }
 
     private function flag(User $user, string $category): void

@@ -48,3 +48,4 @@ require __DIR__.'/designer.php';
 require __DIR__.'/designer-head.php';
 require __DIR__.'/premium-ui.php';
 require __DIR__.'/profile.php';
+require __DIR__.'/push.php';

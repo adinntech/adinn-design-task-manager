@@ -49,6 +49,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('reports:live-sheet-sync')
             ->dailyAt('23:59')->timezone('Asia/Kolkata')
             ->withoutOverlapping(10)->onOneServer();
+
+        // Desktop notification (Web Push) to designers with tasks past their
+        // due date — once per designer per day.
+        $schedule->command('notifications:overdue-reminders')
+            ->dailyAt(config('webpush.overdue_at', '11:00'))->timezone('Asia/Kolkata')
+            ->withoutOverlapping(10)->onOneServer();
     })
     ->withExceptions(function (Exceptions $exceptions): void {})
     ->create();
