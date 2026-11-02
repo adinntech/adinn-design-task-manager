@@ -4,6 +4,29 @@
     @pf-preview-open.window="previewSrc = $event.detail.url; previewName = $event.detail.name; previewType = $event.detail.type"
     @keydown.escape.window="$wire.closeHistoryModal(); previewSrc = null"
 >
+    @php
+        // To/CC chip box (Alpine, inline so it also works when this tab is
+        // morphed in): ↑/↓ move through the suggestions, Enter (or , ;) adds the
+        // highlighted one, or the typed address when nothing is highlighted.
+        $pfRecipientField = fn (string $type) => "{
+            active: -1,
+            items() { return Array.from(this.\$root.querySelectorAll('.pf-autocomplete-item')); },
+            move(step) {
+                const items = this.items();
+                if (items.length === 0) return;
+                this.active = (this.active + step + items.length) % items.length;
+                items[this.active].scrollIntoView({ block: 'nearest' });
+            },
+            pick(input) {
+                const item = this.items()[this.active];
+                const call = item
+                    ? this.\$wire.addRecipient('{$type}', Number(item.dataset.id))
+                    : this.\$wire.addTypedRecipient('{$type}', input.value);
+                this.active = -1;
+                call.then(() => input.focus());
+            },
+        }";
+    @endphp
     <style>
         .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
         @media (max-width: 860px){ .pf-grid{grid-template-columns:1fr} }
@@ -29,6 +52,7 @@
         .pf-autocomplete{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e4e7ec;border-radius:8px;box-shadow:0 8px 20px rgba(16,24,40,.08);z-index:20;max-height:180px;overflow-y:auto;margin-top:4px}
         .pf-autocomplete-item{padding:7px 10px;font-size:10px;cursor:pointer}
         .pf-autocomplete-item:hover{background:#f5f7fa}
+        .pf-autocomplete-item.is-active{background:#eaf2ff}
         .pf-autocomplete-item small{display:block;color:#667085;font-size:9px}
         .pf-preview-attachment{display:flex;justify-content:space-between;font-size:10px;padding:5px 0;border-bottom:1px solid #f2f4f7}
         .pf-history-row{border-top:1px solid #eef1f5;padding:10px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
@@ -123,17 +147,33 @@
                 @endif
 
                 <div class="pf-section-title">To</div>
-                <div class="pf-chip-field">
+                {{-- Suggestions are picked on mousedown.prevent so the input never
+                     loses focus; Enter / comma / semicolon adds the typed address
+                     (directory or not) and keeps the cursor in the box. --}}
+                <div class="pf-chip-field" x-data="{{ $pfRecipientField('to') }}" @click="$refs.toInput.focus()">
                     @foreach($toRecipients as $i => $recipient)
-                        <span class="pf-chip">{{ $recipient['name'] }} &lt;{{ $recipient['mail'] }}&gt;
+                        <span class="pf-chip">{{ $recipient['name'] === $recipient['mail'] ? $recipient['mail'] : $recipient['name'].' <'.$recipient['mail'].'>' }}
                             <button type="button" wire:click="removeRecipient('to', {{ $i }})">&times;</button>
                         </span>
                     @endforeach
-                    <input type="text" class="pf-chip-input" placeholder="Search name or email…" wire:model.live.debounce.250ms="toQuery">
+                    <input
+                        type="text"
+                        class="pf-chip-input"
+                        placeholder="Search name or type an email…"
+                        x-ref="toInput"
+                        wire:model.live.debounce.250ms="toQuery"
+                        @input="active = -1"
+                        @keydown.arrow-down.prevent="move(1)"
+                        @keydown.arrow-up.prevent="move(-1)"
+                        @keydown.escape="active = -1"
+                        @keydown.enter.prevent="pick($el)"
+                        @keydown.comma.prevent="pick($el)"
+                        @keydown.semicolon.prevent="pick($el)"
+                    >
                     @if(count($toResults) > 0)
                         <div class="pf-autocomplete">
                             @foreach($toResults as $result)
-                                <div class="pf-autocomplete-item" wire:click="addRecipient('to', {{ $result['id'] }})">
+                                <div class="pf-autocomplete-item" data-id="{{ $result['id'] }}" :class="{ 'is-active': active === {{ $loop->index }} }" @mouseenter="active = {{ $loop->index }}" @mousedown.prevent wire:click="addRecipient('to', {{ $result['id'] }})">
                                     {{ $result['name'] }}<small>{{ $result['mail'] }}</small>
                                 </div>
                             @endforeach
@@ -141,25 +181,40 @@
                     @endif
                 </div>
                 @error('toRecipients')<div class="error">{{ $message }}</div>@enderror
+                @error('toQuery')<div class="error">{{ $message }}</div>@enderror
 
                 <div class="pf-section-title" style="margin-top:14px">CC</div>
-                <div class="pf-chip-field">
+                <div class="pf-chip-field" x-data="{{ $pfRecipientField('cc') }}" @click="$refs.ccInput.focus()">
                     @foreach($ccRecipients as $i => $recipient)
-                        <span class="pf-chip">{{ $recipient['name'] }} &lt;{{ $recipient['mail'] }}&gt;
+                        <span class="pf-chip">{{ $recipient['name'] === $recipient['mail'] ? $recipient['mail'] : $recipient['name'].' <'.$recipient['mail'].'>' }}
                             <button type="button" wire:click="removeRecipient('cc', {{ $i }})">&times;</button>
                         </span>
                     @endforeach
-                    <input type="text" class="pf-chip-input" placeholder="Search name or email…" wire:model.live.debounce.250ms="ccQuery">
+                    <input
+                        type="text"
+                        class="pf-chip-input"
+                        placeholder="Search name or type an email…"
+                        x-ref="ccInput"
+                        wire:model.live.debounce.250ms="ccQuery"
+                        @input="active = -1"
+                        @keydown.arrow-down.prevent="move(1)"
+                        @keydown.arrow-up.prevent="move(-1)"
+                        @keydown.escape="active = -1"
+                        @keydown.enter.prevent="pick($el)"
+                        @keydown.comma.prevent="pick($el)"
+                        @keydown.semicolon.prevent="pick($el)"
+                    >
                     @if(count($ccResults) > 0)
                         <div class="pf-autocomplete">
                             @foreach($ccResults as $result)
-                                <div class="pf-autocomplete-item" wire:click="addRecipient('cc', {{ $result['id'] }})">
+                                <div class="pf-autocomplete-item" data-id="{{ $result['id'] }}" :class="{ 'is-active': active === {{ $loop->index }} }" @mouseenter="active = {{ $loop->index }}" @mousedown.prevent wire:click="addRecipient('cc', {{ $result['id'] }})">
                                     {{ $result['name'] }}<small>{{ $result['mail'] }}</small>
                                 </div>
                             @endforeach
                         </div>
                     @endif
                 </div>
+                @error('ccQuery')<div class="error">{{ $message }}</div>@enderror
 
                 <div class="pf-section-title" style="margin-top:14px">Subject</div>
                 <input type="text" class="premium-input" wire:model.blur="subject">

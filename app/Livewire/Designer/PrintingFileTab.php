@@ -264,6 +264,52 @@ class PrintingFileTab extends Component
         }
     }
 
+    /**
+     * Enter / comma in the To or CC box: a typed address is added even when it
+     * is not in the directory (named from the directory when it is); otherwise
+     * the first suggestion is taken.
+     */
+    public function addTypedRecipient(string $type, string $value): void
+    {
+        $type = $type === 'cc' ? 'cc' : 'to';
+        $value = trim($value, " \t\n\r\0\x0B,;");
+        $this->resetErrorBag($type.'Query');
+
+        if ($value === '') {
+            return;
+        }
+
+        if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            $this->pushRecipient($type, $value);
+
+            return;
+        }
+
+        $results = $this->searchRecipients($value, $type === 'cc' ? $this->ccRecipients : $this->toRecipients);
+        if ($results !== []) {
+            $this->addRecipient($type, $results[0]['id']);
+
+            return;
+        }
+
+        $this->{$type.'Query'} = $value;
+        $this->addError($type.'Query', "\"{$value}\" is not a valid email address.");
+    }
+
+    private function pushRecipient(string $type, string $mail): void
+    {
+        $known = AllUsersMail::query()->where('mail', $mail)->first(['name', 'mail']);
+        $property = $type === 'cc' ? 'ccRecipients' : 'toRecipients';
+        $existing = array_map(fn ($r) => strtolower($r['mail']), $this->{$property});
+
+        if (! in_array(strtolower($mail), $existing, true)) {
+            $this->{$property}[] = ['name' => $known?->name ?? $mail, 'mail' => $known?->mail ?? $mail];
+        }
+
+        $this->{$type.'Query'} = '';
+        $this->{$type.'Results'} = [];
+    }
+
     public function removeRecipient(string $type, int $index): void
     {
         $property = $type === 'cc' ? 'ccRecipients' : 'toRecipients';
@@ -396,6 +442,15 @@ class PrintingFileTab extends Component
 
         $this->task->refresh();
         abort_unless(in_array($this->task->status, ['prepare_printing_file', 'completed'], true), 403);
+
+        // A complete address still sitting in the To/CC box (typed, Enter not
+        // pressed) is sent too rather than silently dropped.
+        foreach (['to', 'cc'] as $type) {
+            $typed = trim($this->{$type.'Query'}, " \t\n\r\0\x0B,;");
+            if ($typed !== '' && filter_var($typed, FILTER_VALIDATE_EMAIL)) {
+                $this->pushRecipient($type, $typed);
+            }
+        }
 
         $this->validate([
             'toRecipients' => ['required', 'array', 'min:1'],
