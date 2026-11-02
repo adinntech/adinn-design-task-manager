@@ -43,6 +43,9 @@ class DailyWorkReportService
 
     private const BRAND_RED = 'E30613';
 
+    /** Heading of the "3/4 - 2 tickets" column, just before Completed (Excel download and Live Sheet). */
+    public const CREATIVES_HEADER = 'Creatives Uploaded / Total (Tickets)';
+
     /** Row fill per outline level of a period row (month / week / date). */
     private const LEVEL_FILL = ['FDECEE', 'F4F6F9', 'FFFFFF', 'FFFFFF'];
 
@@ -301,8 +304,15 @@ class DailyWorkReportService
         $from = CarbonImmutable::parse($report['meta']['from'], $tz);
         $to = CarbonImmutable::parse($report['meta']['to'], $tz);
         $layout = $this->layout($from, $to);
-        $header = array_merge([$layout === 'day' ? 'Designer' : 'Period / Designer', 'Total Tickets', 'Carry from Previous Day / Period'], array_values($this->statusColumns()));
+        $header = [$layout === 'day' ? 'Designer' : 'Period / Designer', 'Total Tickets', 'Carry from Previous Day / Period'];
+        foreach ($this->statusColumns() as $key => $label) {
+            if ($key === 'completed') {
+                $header[] = self::CREATIVES_HEADER;
+            }
+            $header[] = $label;
+        }
         $lastCol = Coordinate::stringFromColumnIndex(count($header));
+        $creativesCol = array_search(self::CREATIVES_HEADER, $header, true) + 1;
 
         $spreadsheet = new Spreadsheet;
         $spreadsheet->getProperties()->setCreator((string) config('app.name'))->setTitle('Daily Report');
@@ -352,7 +362,11 @@ class DailyWorkReportService
         $sheet->getStyle("B5:B{$row}")->getFont()->setBold(true);
         $sheet->getColumnDimension('A')->setWidth($layout === 'day' ? 24 : 32);
         for ($c = 2; $c <= count($header); $c++) {
-            $sheet->getColumnDimensionByColumn($c)->setWidth($c === 3 ? 16 : 13);
+            $sheet->getColumnDimensionByColumn($c)->setWidth(match ($c) {
+                3 => 16,
+                $creativesCol => 20,
+                default => 13,
+            });
         }
         $sheet->freezePane('B5');
 
@@ -424,6 +438,9 @@ class DailyWorkReportService
         $sheet->setCellValueExplicit("A{$row}", $label, DataType::TYPE_STRING);
         $values = [$counts['total'], $counts['carried']];
         foreach (array_keys($this->statusColumns()) as $status) {
+            if ($status === 'completed') {
+                $values[] = self::creativesText($counts); // "3/4 - 2 tickets", just before Completed
+            }
             $values[] = $counts[$status];
         }
         $sheet->fromArray($values, null, "B{$row}", true);

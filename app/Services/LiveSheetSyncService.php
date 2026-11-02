@@ -209,7 +209,7 @@ class LiveSheetSyncService
         $statusHeader = [];
         foreach ($columns as $k => $label) {
             if ($k === $before) {
-                $statusHeader[] = 'Creatives Uploaded / Total (Tickets)';
+                $statusHeader[] = DailyWorkReportService::CREATIVES_HEADER;
             }
             $statusHeader[] = $label;
         }
