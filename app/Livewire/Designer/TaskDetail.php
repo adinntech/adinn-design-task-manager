@@ -242,7 +242,9 @@ class TaskDetail extends Component
             return;
         }
 
-        DB::transaction(function (): void {
+        $moved = false;
+
+        DB::transaction(function () use (&$moved): void {
             $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
             $progressService = app(DesignTaskProgressService::class);
 
@@ -250,6 +252,7 @@ class TaskDetail extends Component
                 return;
             }
 
+            $moved = true;
             $task->update(['status' => 'waiting_confirmation']);
 
             app(DesignTaskRequestService::class)->autoRejectPendingForStatus(
@@ -269,6 +272,10 @@ class TaskDetail extends Component
         });
 
         $this->task = $this->task->fresh();
+
+        if ($moved) {
+            app(TaskNotificationService::class)->statusChanged($this->task, 'waiting_confirmation', Auth::user());
+        }
     }
 
     public function moveToNextStatus(): void
@@ -509,6 +516,7 @@ class TaskDetail extends Component
         $this->dispatch('eod-updated', message: 'Task Updation submitted successfully.');
 
         if ($autoCompleted) {
+            app(TaskNotificationService::class)->statusChanged($this->task, 'waiting_confirmation', Auth::user());
             $this->dispatch('task-status-changed', message: 'All creatives completed. Ticket moved to Waiting for BD Review.');
         }
     }
@@ -659,6 +667,10 @@ class TaskDetail extends Component
 
         $this->task = $this->task->fresh();
         $this->reset(['reworkCompletedCount', 'reworkUploadId']);
+
+        if ($nextStage === 'waiting_confirmation') {
+            app(TaskNotificationService::class)->statusChanged($this->task, 'waiting_confirmation', Auth::user());
+        }
 
         $message = $pendingAfter > 0
             ? 'Rework submitted. '.$pendingAfter.' creative(s) remain in this Rework cycle.'

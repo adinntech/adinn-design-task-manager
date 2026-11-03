@@ -932,7 +932,7 @@
                                     </div>
 
                                     <div wire:ignore>
-                                        <label class="label">Corrected Rework ZIP *</label>
+                                        <label class="label">Corrected Rework Files *</label>
                                         <div class="large-upload-widget">
                                             <div class="large-upload-circle-wrap">
                                                 <svg viewBox="0 0 36 36" class="large-upload-circle">
@@ -942,8 +942,8 @@
                                                 <div class="large-upload-percent" id="reworkUploadPercent"></div>
                                             </div>
                                             <div class="large-upload-info">
-                                                <input type="file" id="reworkUploadInput" accept=".zip,application/zip">
-                                                <div class="muted" style="margin-top:5px">ZIP only · Maximum 6 GB</div>
+                                                <input type="file" id="reworkUploadInput" multiple>
+                                                <div class="muted" style="margin-top:5px">Select one or more files (JPG, PNG, CDR, etc.) up to 350 MB total · 350 MB+: one ZIP only · Maximum 6 GB</div>
                                                 <div class="muted" id="reworkUploadDetail" style="margin-top:2px"></div>
                                                 <div class="muted" id="reworkUploadEta" style="margin-top:2px"></div>
                                                 <div id="reworkUploadStatus"></div>
@@ -1021,7 +1021,7 @@
                                 </div>
 
                                 <div class="eod-field" wire:ignore>
-                                    <label class="label">Progress Updates ZIP *</label>
+                                    <label class="label">Progress Update Files *</label>
                                     <div class="large-upload-widget">
                                         <div class="large-upload-circle-wrap">
                                             <svg viewBox="0 0 36 36" class="large-upload-circle">
@@ -1031,8 +1031,8 @@
                                             <div class="large-upload-percent" id="eodUploadPercent"></div>
                                         </div>
                                         <div class="large-upload-info">
-                                            <input type="file" id="eodUploadInput">
-                                            <div class="muted" style="margin-top:5px">Below 350 MB: supported file types · 350 MB+: ZIP only · Maximum 6 GB</div>
+                                            <input type="file" id="eodUploadInput" multiple>
+                                            <div class="muted" style="margin-top:5px">Below 350 MB: supported file types · 350 MB+: Select one or more files (JPG, PNG, CDR, etc.) up to 350 MB total · 350 MB+: one ZIP only · Maximum 6 GB</div>
                                             <div class="muted" id="eodUploadDetail" style="margin-top:2px"></div>
                                             <div class="muted" id="eodUploadEta" style="margin-top:2px"></div>
                                             <div id="eodUploadStatus"></div>
