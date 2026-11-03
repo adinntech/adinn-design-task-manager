@@ -24,10 +24,15 @@ self.addEventListener('push', function (event) {
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
     var url = (event.notification.data && event.notification.data.url) || self.registration.scope;
+    var target = new URL(url, self.location.href);
 
     event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (windows) {
         for (var i = 0; i < windows.length; i++) {
-            if (windows[i].url === url && 'focus' in windows[i]) {
+            var open = new URL(windows[i].url);
+            // Same task page already open (any tab): bring it forward and ask it to
+            // refresh — the page skips the reload if it holds unsaved input.
+            if (open.origin === target.origin && open.pathname === target.pathname && 'focus' in windows[i]) {
+                windows[i].postMessage({ type: 'push-open', url: target.href });
                 return windows[i].focus();
             }
         }

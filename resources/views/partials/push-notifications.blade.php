@@ -114,7 +114,25 @@
     });
 
     navigator.serviceWorker.addEventListener('message', function (event) {
-        if (event.data && event.data.type === 'push-resubscribed') post(cfg.subscribe, event.data.subscription);
+        if (!event.data) return;
+        if (event.data.type === 'push-resubscribed') post(cfg.subscribe, event.data.subscription);
+
+        // A desktop notification was clicked for the page already open here:
+        // refresh it so the new data shows — unless something typed or chosen
+        // on it would be lost.
+        if (event.data.type === 'push-open') {
+            var dirty = Array.prototype.some.call(document.querySelectorAll('textarea, input[type=text], input[type=file]'), function (el) {
+                return el.type === 'file' ? el.files && el.files.length > 0 : (el.value || '').trim() !== '';
+            });
+            if (dirty) return;
+
+            var target = new URL(event.data.url, window.location.href);
+            if (target.search === window.location.search) {
+                window.location.reload();
+            } else {
+                window.location.href = target.href;
+            }
+        }
     });
 
     // On logout, stop this browser getting the user's alerts (the next person
