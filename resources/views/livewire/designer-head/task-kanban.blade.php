@@ -428,7 +428,7 @@
 
     <div class="kanban-shell" data-designer-head-kanban-shell>
         <div class="kanban-board">
-            <section class="kanban-column request-column" data-status="requests" wire:key="designer-head-requests">
+            <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $pendingRequests->isEmpty() ? ' is-search-hidden' : '' }}" data-status="requests" wire:key="designer-head-requests">
                 <header class="kanban-column-header">
                     <span class="kanban-column-title">Requests</span>
                     <span class="kanban-count">{{ $pendingRequests->count() }}</span>
@@ -503,7 +503,7 @@
                     }
                 @endphp
 
-                <section class="kanban-column status-{{ $statusKey }}" data-status="{{ $statusKey }}" wire:key="designer-head-column-{{ $statusKey }}">
+                <section class="kanban-column status-{{ $statusKey }}{{ (trim($search) !== '' || trim($projectNumber) !== '') && $columnTasks->isEmpty() ? ' is-search-hidden' : '' }}" data-status="{{ $statusKey }}" wire:key="designer-head-column-{{ $statusKey }}">
                     <header class="kanban-column-header">
                         <span class="kanban-column-title">{{ $statusLabel }}</span>
                         <span class="kanban-count">{{ $columnTasks->count() }}</span>
@@ -638,7 +638,7 @@
                 </section>
 
                 @if($statusKey === 'completed')
-                    <section class="kanban-column request-column" data-status="split_log" wire:key="designer-head-split-log">
+                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitLogRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="designer-head-split-log">
                         <header class="kanban-column-header">
                             <span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span>
                             <span class="kanban-count">{{ $splitLogRows->count() }}</span>

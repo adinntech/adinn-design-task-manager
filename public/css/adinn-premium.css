@@ -240,3 +240,9 @@ td{font-size:14px!important;line-height:1.5}
 .board-details-table thead th{position:sticky;top:0;z-index:1;box-shadow:inset 0 -1px 0 #e4e7ec}
 .sticky-head-wrap{max-height:420px;overflow:auto}
 .sticky-head thead th{position:sticky;top:0;z-index:1;background:#f8fafc;box-shadow:inset 0 -1px 0 #e4e7ec}
+
+/* Kanban search: columns with no matching ticket fade down and collapse. */
+.kanban-shell .kanban-board{display:flex;align-items:stretch;gap:10px;min-width:max-content}
+.kanban-shell .kanban-board>.kanban-column{flex:0 0 270px;width:270px;transition:flex-basis .35s ease,width .35s ease,margin .35s ease,opacity .25s ease,transform .35s ease,border-width .35s ease}
+.kanban-shell .kanban-board>.kanban-column.is-search-hidden{flex-basis:0;width:0;margin-right:-10px;opacity:0;transform:translateY(32px);border-width:0;overflow:hidden;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.kanban-shell .kanban-board>.kanban-column{transition:none}}

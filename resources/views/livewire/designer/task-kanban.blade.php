@@ -323,7 +323,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         $columnTasks = $columnTasks->sortByDesc('created_at');
                     }
                 @endphp
-                <section class="kanban-column status-{{ $statusKey }}" data-status="{{ $statusKey }}" wire:key="column-{{ $statusKey }}">
+                <section class="kanban-column status-{{ $statusKey }}{{ (trim($search) !== '' || trim($projectNumber) !== '') && $columnTasks->isEmpty() ? ' is-search-hidden' : '' }}" data-status="{{ $statusKey }}" wire:key="column-{{ $statusKey }}">
                     <header class="kanban-column-header"><span class="kanban-column-title">{{ $statusLabel }}</span><span class="kanban-count">{{ $columnTasks->count() }}</span></header>
                     <div class="kanban-list" data-kanban-list data-status="{{ $statusKey }}">
                         @forelse($columnTasks as $task)
@@ -428,7 +428,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                 </section>
 
                 @if($statusKey === 'completed')
-                    <section class="kanban-column request-column" data-status="split_log" wire:key="designer-split-log">
+                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitLogRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="designer-split-log">
                         <header class="kanban-column-header"><span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span><span class="kanban-count">{{ $splitLogRows->count() }}</span></header>
                         <div class="kanban-list">
                             @forelse($splitLogRows as $row)

@@ -426,7 +426,7 @@
                     }
                 @endphp
 
-                <section class="kanban-column status-{{ $statusKey }}" wire:key="bd-column-{{ $statusKey }}">
+                <section class="kanban-column status-{{ $statusKey }}{{ (trim($search) !== '' || trim($projectNumber) !== '') && $columnTasks->isEmpty() ? ' is-search-hidden' : '' }}" wire:key="bd-column-{{ $statusKey }}">
                     <header class="kanban-column-header">
                         <span class="kanban-column-title">{{ $statusLabel }}</span>
                         <span class="kanban-count">{{ $columnTasks->count() }}</span>
@@ -642,7 +642,7 @@
                 </section>
 
                 @if($statusKey === 'completed')
-                    <section class="kanban-column request-column" data-status="split_log" wire:key="bd-split-log">
+                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitLogRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="bd-split-log">
                         <header class="kanban-column-header">
                             <span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span>
                             <span class="kanban-count">{{ $splitLogRows->count() }}</span>
