@@ -122,60 +122,179 @@
 
     @media(max-width:1200px){.bd-kpis,.bd-kpis.bd-kpis-8,.bd-kpis.bd-kpis-9{grid-template-columns:repeat(3,1fr)}.bd-lower{grid-template-columns:1fr 1fr}}
     @media(max-width:760px){.bd-dash-head{align-items:flex-start;flex-direction:column}.bd-kpis,.bd-kpis.bd-kpis-8,.bd-kpis.bd-kpis-9{grid-template-columns:repeat(2,1fr)}.bd-lower{grid-template-columns:1fr}}
+    :root{--dsh-star:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Cpath d=%27M12 1.8l3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 17.9 5.6 21.5 7 14.3 1.7 9.3l7.2-.9z%27/%3E%3C/svg%3E")}
+    .dsh-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:170px;padding:18px 20px;border:1px solid #eef0f3;border-radius:16px;background:#fff;overflow:hidden}
+    .dsh-hero-text{min-width:0;position:relative;z-index:1}
+    .dsh-eyebrow{display:flex;align-items:center;gap:8px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#667085}
+    .dsh-eyebrow span{width:26px;height:3px;border-radius:3px;background:#e30613}
+    .dsh-hero h1{margin:8px 0 0;font-size:26px;line-height:1.15;font-weight:900;color:#101828}
+    .dsh-hero h1 em{font-style:normal;color:#e30613}
+    .dsh-hero p{margin:6px 0 0;font-size:11px;color:#667085}
+    .dsh-login{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:10px;color:#667085}
+    .dsh-login svg{width:14px;height:14px;flex:none}
+    .dsh-login strong{color:#344054}
+    .dsh-hero-art{position:absolute;right:215px;top:0;height:100%;width:auto;max-width:48%;object-fit:contain;object-position:right center;mix-blend-mode:multiply;pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18%);mask-image:linear-gradient(90deg,transparent 0,#000 18%)}
+    .dsh-actions{display:flex;gap:9px;position:relative;z-index:1;flex:none}
+    .dsh-btn{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:8px 14px;border-radius:10px;text-decoration:none;font-size:11px;font-weight:800;transition:.15s}
+    .dsh-btn svg{width:15px;height:15px;flex:none}
+    .dsh-btn.primary{background:#e30613;color:#fff;box-shadow:0 6px 14px rgba(227,6,19,.22)}
+    .dsh-btn.primary:hover{background:#c8050f}
+    .dsh-btn.secondary{background:#fff;color:#344054;border:1px solid #e4e7ec;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+    .dsh-btn.secondary:hover{border-color:#e30613;color:#e30613}
+
+    .dsh-primary{display:grid;grid-template-columns:1.55fr repeat(6,minmax(0,1fr));gap:10px}
+    .dsh-secondary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .dsh-extra{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+    .dsh-card{--t1:#f8fafc;--t2:#f8fafc;--ic:#475467;--icbg:#eef1f5;display:flex;align-items:center;gap:11px;min-width:0;padding:13px 14px;border-radius:14px;border:1px solid rgba(16,24,40,.07);background:linear-gradient(135deg,var(--t1),var(--t2));color:inherit;text-decoration:none;box-shadow:0 1px 3px rgba(16,24,40,.05);transition:.15s}
+    .dsh-card.is-link{cursor:pointer}
+    .dsh-card.is-link:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(16,24,40,.1);border-color:rgba(227,6,19,.35)}
+    .dsh-icon{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:11px;background:var(--icbg);color:var(--ic)}
+    .dsh-icon svg{width:21px;height:21px}
+    .dsh-label{font-size:10.5px;font-weight:700;color:#475467;line-height:1.25}
+    .dsh-value{font-size:24px;font-weight:900;line-height:1.1;color:#101828;margin-top:3px}
+    .dsh-value small{font-size:13px;font-weight:700;color:#667085;margin-left:1px}
+    .dsh-note{font-size:9px;color:rgba(255,255,255,.8);margin-top:3px}
+    .dsh-total{background:linear-gradient(135deg,#e30613,#b8040f);border-color:#b8040f;color:#fff;box-shadow:0 12px 24px rgba(227,6,19,.25)}
+    .dsh-total .dsh-icon{background:rgba(255,255,255,.2);color:#fff}
+    .dsh-total .dsh-label{color:rgba(255,255,255,.92)}
+    .dsh-total .dsh-value{color:#fff;font-size:30px}
+    .dsh-flat{background:#fff;border-color:#eceff4}
+    .dsh-blue{--t1:#eaf4ff;--t2:#f3f9ff;--ic:#2563eb;--icbg:#d9eaff}
+    .dsh-green{--t1:#e9f9ee;--t2:#f3fcf6;--ic:#16a34a;--icbg:#d3f3de}
+    .dsh-purple{--t1:#f1ecff;--t2:#f8f5ff;--ic:#7c3aed;--icbg:#e4daff}
+    .dsh-orange{--t1:#fff1e2;--t2:#fff8ef;--ic:#ea580c;--icbg:#ffe0c2}
+    .dsh-pink{--t1:#ffeaf1;--t2:#fff5f8;--ic:#e11d48;--icbg:#ffd6e3}
+    .dsh-teal{--t1:#e6f8f1;--t2:#f1fcf8;--ic:#059669;--icbg:#ccf2e4}
+    .dsh-amber{--t1:#fff6e0;--t2:#fffaf0;--ic:#d97706;--icbg:#ffe8b8}
+    .dsh-red{--t1:#ffeceb;--t2:#fff5f4;--ic:#dc2626;--icbg:#ffd9d6}
+    .dsh-flat.dsh-blue,.dsh-flat.dsh-green,.dsh-flat.dsh-purple,.dsh-flat.dsh-orange,.dsh-flat.dsh-pink,.dsh-flat.dsh-teal,.dsh-flat.dsh-amber,.dsh-flat.dsh-red{background:linear-gradient(135deg,#fff,var(--t2))}
+    .dsh-rating{display:flex;align-items:center;gap:8px;margin-top:3px}
+    .dsh-rating .dsh-value{margin:0}
+    .dsh-stars{display:inline-flex;gap:2px}
+    .dsh-stars i{width:17px;height:17px;display:block;background:linear-gradient(90deg,#f59e0b var(--f),#e1e5ec var(--f));-webkit-mask:var(--dsh-star) center/contain no-repeat;mask:var(--dsh-star) center/contain no-repeat}
+    .dsh-completion{display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid #eceff4;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+    .dsh-completion-label{font-size:12px;font-weight:900;color:#101828;white-space:nowrap}
+    .dsh-completion .bd-progress-track{height:11px}
+    .dsh-completion-value{min-width:52px;text-align:center;padding:6px 10px;border-radius:10px;background:#fff1e0;font-size:14px;font-weight:900;color:#101828}
+    @media(max-width:1280px){.dsh-primary{grid-template-columns:repeat(4,minmax(0,1fr))}.dsh-total{grid-column:span 2}.dsh-extra{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:960px){.dsh-hero{flex-direction:column;align-items:flex-start}.dsh-hero-art{display:none}.dsh-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:640px){.dsh-hero h1{font-size:21px}.dsh-actions{width:100%}.dsh-btn{flex:1;justify-content:center}.dsh-primary,.dsh-secondary,.dsh-extra{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-total{grid-column:span 2}.dsh-card{padding:11px}.dsh-completion{flex-wrap:wrap}.dsh-completion .bd-progress-track{order:3;flex-basis:100%}}
 </style>
 
 <div class="bd-dashboard">
-    <div class="bd-dash-head">
-        <div>
-            <h1>Welcome back, {{ auth()->user()->name }}</h1>
+    @php
+        $ic = [
+            'layers' => '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+            'user' => '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+            'play' => '<polygon points="6 3 20 12 6 21 6 3"/>',
+            'loader' => '<path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/>',
+            'refresh' => '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+            'image' => '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+            'check' => '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+            'clock' => '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+            'shield' => '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+            'printer' => '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+            'star' => '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+            'shuffle' => '<path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/>',
+            'x' => '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+            'split' => '<path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/>',
+            'calendar' => '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+            'tasks' => '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+            'plus' => '<path d="M5 12h14"/><path d="M12 5v14"/>',
+        ];
+        $svg = fn (string $name) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'.$ic[$name].'</svg>';
+        $focus = fn (string $key) => route('designer.tasks.index', ['focus' => $key]);
+
+        $primaryCards = [
+            ['Assigned', $stats['assigned'], $focus('assigned_tasks'), 'user', 'blue', 'Awaiting your action'],
+            ['Ready to Start', $stats['ready_to_start'], $focus('yet_to_start'), 'play', 'green', 'Ready to begin work'],
+            ['In Progress', $stats['in_progress'], $focus('in_progress'), 'loader', 'purple', 'Currently being worked on'],
+            ['Rework', $stats['rework'], $focus('rework'), 'refresh', 'orange', 'Tasks currently in rework'],
+            ['Rework Creatives', $stats['rework_creatives'], null, 'image', 'pink', 'Creatives pending resubmission'],
+            ['Completed', $stats['completed'], $focus('completed'), 'check', 'teal', 'Finished tasks'],
+        ];
+        $secondaryCards = [
+            ['Waiting for BD Review', $stats['waiting_bd_review'], $focus('waiting_confirmation'), 'clock', 'purple', 'Completed by you, awaiting BD'],
+            ['Waiting for BD Confirmation', $stats['waiting_bd_confirmation'], null, 'shield', 'blue', 'New tickets you created, pending BD approval'],
+            ['Prepare Printing File Tasks', $stats['prepare_printing_file'], $focus('prepare_printing_file'), 'printer', 'purple', 'Assigned back to you for printing files'],
+        ];
+        $extraCards = [
+            ['Swapped Tasks', $requestTypeCounts['swap'], $focus('swap_tasks'), 'shuffle', 'blue', 'Swap requests raised by you'],
+            ['Declined Tasks', $requestTypeCounts['decline'], $focus('self_declined'), 'x', 'red', 'Decline requests raised by you'],
+            ['Split Tasks', $requestTypeCounts['split'], null, 'split', 'blue', 'Split requests raised by you'],
+            ['Approved Requests', $requestTypeCounts['approved'], null, 'check', 'green', 'Across swap/split/decline'],
+            ['Overall Rework', $overallRework['cycles'], null, 'layers', 'pink', 'All-time rework cycles'],
+            ['Overall Rework Creatives', $overallRework['creatives'], null, 'image', 'green', 'All-time creatives sent for rework'],
+        ];
+        $ratingAvg = $overallRating['average'];
+    @endphp
+
+    <div class="dsh-hero">
+        <div class="dsh-hero-text">
+            <div class="dsh-eyebrow"><span></span>Designer Dashboard</div>
+            <h1>Welcome back, <em>{{ auth()->user()->name }}</em></h1>
             <p>All important task and request information in one place.</p>
-            <p style="margin-top:4px">Last Login: {{ optional(auth()->user()->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}</p>
+            <div class="dsh-login">{!! $svg('calendar') !!}<span><strong>Last Login:</strong> {{ optional(auth()->user()->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}</span></div>
         </div>
-        <div class="bd-dash-actions">
-            <a class="bd-dash-btn secondary" href="{{ route('designer.tasks.index') }}">View All Tasks</a>
-            <a class="bd-dash-btn primary" href="{{ route('designer.tasks.create') }}">+ Create Task</a>
+        <img class="dsh-hero-art" src="{{ asset('images/dashboard-hero.webp') }}" alt="" aria-hidden="true" loading="eager">
+        <div class="dsh-actions">
+            <a class="dsh-btn secondary" href="{{ route('designer.tasks.index') }}">{!! $svg('tasks') !!}View All Tasks</a>
+            <a class="dsh-btn primary" href="{{ route('designer.tasks.create') }}">{!! $svg('plus') !!}Create Task</a>
         </div>
     </div>
 
-    <div class="bd-kpis bd-kpis-9">
-        <div class="bd-kpi"><div class="bd-kpi-label">Total Tasks</div><div class="bd-kpi-value">{{ $stats['total'] }}</div><div class="bd-kpi-note">Tasks assigned to you</div></div>
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'assigned_tasks']) }}"><div class="bd-kpi-label">Assigned</div><div class="bd-kpi-value">{{ $stats['assigned'] }}</div><div class="bd-kpi-note">Awaiting your action</div></a>
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'yet_to_start']) }}"><div class="bd-kpi-label">Ready to Start</div><div class="bd-kpi-value">{{ $stats['ready_to_start'] }}</div><div class="bd-kpi-note">Ready to begin work</div></a>
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'in_progress']) }}"><div class="bd-kpi-label">In Progress</div><div class="bd-kpi-value">{{ $stats['in_progress'] }}</div><div class="bd-kpi-note">Currently being worked on</div></a>
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'rework']) }}"><div class="bd-kpi-label">Rework</div><div class="bd-kpi-value">{{ $stats['rework'] }}</div><div class="bd-kpi-note">Tasks currently in rework</div></a>
-        <div class="bd-kpi"><div class="bd-kpi-label">Rework Creatives</div><div class="bd-kpi-value">{{ $stats['rework_creatives'] }}</div><div class="bd-kpi-note">Creatives pending resubmission</div></div>
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'completed']) }}"><div class="bd-kpi-label">Completed</div><div class="bd-kpi-value">{{ $stats['completed'] }}</div><div class="bd-kpi-note">Finished tasks</div></a>
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'waiting_confirmation']) }}"><div class="bd-kpi-label">Waiting for BD Review</div><div class="bd-kpi-value">{{ $stats['waiting_bd_review'] }}</div><div class="bd-kpi-note">Completed by you, awaiting BD</div></a>
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'prepare_printing_file']) }}"><div class="bd-kpi-label">Prepare Printing File Tasks</div><div class="bd-kpi-value">{{ $stats['prepare_printing_file'] }}</div><div class="bd-kpi-note">Assigned back to you for printing files</div></a>
-        <div class="bd-kpi"><div class="bd-kpi-label">Waiting for BD Confirmation</div><div class="bd-kpi-value">{{ $stats['waiting_bd_confirmation'] }}</div><div class="bd-kpi-note">New tickets you created, pending BD approval</div></div>
-        <div class="bd-kpi">
-            <div class="bd-kpi-label">Overall Rating</div>
-            <div class="bd-kpi-value">{{ $overallRating['average'] !== null ? '★ '.$overallRating['average'] : '—' }}</div>
-            <div class="bd-kpi-note">
-                @if($overallRating['average'] !== null)
-                    Rated {{ $overallRating['rated'] }} / {{ $overallRating['total'] }} completed
+    <div class="dsh-primary">
+        <div class="dsh-card dsh-total">
+            <span class="dsh-icon">{!! $svg('layers') !!}</span>
+            <div><div class="dsh-label">Total Tasks</div><div class="dsh-value">{{ $stats['total'] }}</div><div class="dsh-note">Tasks assigned to you</div></div>
+        </div>
+        @foreach($primaryCards as [$label, $value, $href, $icon, $tone, $note])
+            @php $tag = $href ? 'a' : 'div'; @endphp
+            <{{ $tag }} @if($href) href="{{ $href }}" @endif class="dsh-card dsh-{{ $tone }}{{ $href ? ' is-link' : '' }}" title="{{ $note }}">
+                <span class="dsh-icon">{!! $svg($icon) !!}</span>
+                <div><div class="dsh-label">{{ $label }}</div><div class="dsh-value">{{ $value }}</div></div>
+            </{{ $tag }}>
+        @endforeach
+    </div>
+
+    <div class="dsh-secondary">
+        @foreach($secondaryCards as [$label, $value, $href, $icon, $tone, $note])
+            @php $tag = $href ? 'a' : 'div'; @endphp
+            <{{ $tag }} @if($href) href="{{ $href }}" @endif class="dsh-card dsh-flat dsh-{{ $tone }}{{ $href ? ' is-link' : '' }}" title="{{ $note }}">
+                <span class="dsh-icon">{!! $svg($icon) !!}</span>
+                <div><div class="dsh-label">{{ $label }}</div><div class="dsh-value">{{ $value }}</div></div>
+            </{{ $tag }}>
+        @endforeach
+        <div class="dsh-card dsh-flat dsh-amber" title="{{ $ratingAvg !== null ? 'Rated '.$overallRating['rated'].' / '.$overallRating['total'].' completed' : 'No ratings yet' }}">
+            <span class="dsh-icon">{!! $svg('star') !!}</span>
+            <div>
+                <div class="dsh-label">Overall Rating</div>
+                @if($ratingAvg !== null)
+                    <div class="dsh-rating">
+                        <span class="dsh-stars">@for($s = 1; $s <= 5; $s++)<i style="--f:{{ max(0, min(1, $ratingAvg - ($s - 1))) * 100 }}%"></i>@endfor</span>
+                        <span class="dsh-value">{{ $ratingAvg }}<small>/5</small></span>
+                    </div>
                 @else
-                    No ratings yet
+                    <div class="dsh-value">—</div>
                 @endif
             </div>
         </div>
     </div>
 
-    <section class="bd-card">
-        <div class="bd-card-body bd-progress-card">
-            <div class="bd-progress-label">Completion Rate</div>
-            <div class="bd-progress-track"><x-progress-fill :percentage="$completionRate" /></div>
-            <div class="bd-progress-value">{{ $completionRate }}%</div>
-        </div>
+    <section class="dsh-completion">
+        <div class="dsh-completion-label">Completion Rate</div>
+        <div class="bd-progress-track"><x-progress-fill :percentage="$completionRate" /></div>
+        <div class="dsh-completion-value">{{ $completionRate }}%</div>
     </section>
 
-    <div class="bd-kpis">
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'swap_tasks']) }}"><div class="bd-kpi-label">Swapped Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['swap'] }}</div><div class="bd-kpi-note">Swap requests raised by you</div></a>
-        <a class="bd-kpi bd-kpi-link" href="{{ route('designer.tasks.index', ['focus' => 'self_declined']) }}"><div class="bd-kpi-label">Declined Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['decline'] }}</div><div class="bd-kpi-note">Decline requests raised by you</div></a>
-        <div class="bd-kpi"><div class="bd-kpi-label">Split Tasks</div><div class="bd-kpi-value">{{ $requestTypeCounts['split'] }}</div><div class="bd-kpi-note">Split requests raised by you</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Approved Requests</div><div class="bd-kpi-value">{{ $requestTypeCounts['approved'] }}</div><div class="bd-kpi-note">Across swap/split/decline</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Overall Rework</div><div class="bd-kpi-value">{{ $overallRework['cycles'] }}</div><div class="bd-kpi-note">All-time rework cycles</div></div>
-        <div class="bd-kpi"><div class="bd-kpi-label">Overall Rework Creatives</div><div class="bd-kpi-value">{{ $overallRework['creatives'] }}</div><div class="bd-kpi-note">All-time creatives sent for rework</div></div>
+    <div class="dsh-extra">
+        @foreach($extraCards as [$label, $value, $href, $icon, $tone, $note])
+            @php $tag = $href ? 'a' : 'div'; @endphp
+            <{{ $tag }} @if($href) href="{{ $href }}" @endif class="dsh-card dsh-flat dsh-{{ $tone }}{{ $href ? ' is-link' : '' }}" title="{{ $note }}">
+                <span class="dsh-icon">{!! $svg($icon) !!}</span>
+                <div><div class="dsh-label">{{ $label }}</div><div class="dsh-value">{{ $value }}</div></div>
+            </{{ $tag }}>
+        @endforeach
     </div>
 
     <section class="bd-card">
