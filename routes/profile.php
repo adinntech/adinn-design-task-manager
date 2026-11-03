@@ -11,6 +11,7 @@ Route::middleware(['auth', 'role:admin,designer,designer_head,bd'])
         Route::get('/', [ProfileController::class, 'show'])->name('show');
         Route::put('/basic-info', [ProfileController::class, 'updateBasicInfo'])->name('basic-info.update');
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
+        Route::put('/notifications', [ProfileController::class, 'updateNotifications'])->name('notifications.update');
     });
 
 // Designer-only self-service editing of experienced verticals + skills.

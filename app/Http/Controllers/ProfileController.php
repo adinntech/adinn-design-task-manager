@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Bd\TaskController as BdTaskController;
 use App\Services\DesignerProfileService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -75,6 +76,22 @@ class ProfileController extends Controller
         Auth::user()->update(['password' => Hash::make($data['password'])]);
 
         return back()->with('success', 'Password updated successfully.');
+    }
+
+    /**
+     * "Web Push Notifications" ON/OFF switch (JSON, called from the toggle).
+     * Always the authenticated user. Subscriptions are kept either way —
+     * WebPushService skips users who switched it off.
+     */
+    public function updateNotifications(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'web_push_enabled' => ['required', 'boolean'],
+        ]);
+
+        $request->user()->update(['web_push_enabled' => (bool) $data['web_push_enabled']]);
+
+        return response()->json(['web_push_enabled' => (bool) $request->user()->web_push_enabled]);
     }
 
     /**

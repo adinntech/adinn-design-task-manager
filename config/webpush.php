@@ -13,7 +13,7 @@ return [
     'subject' => env('VAPID_SUBJECT', 'mailto:automation@adinn.co.in'),
 
     // Only these roles are offered desktop notifications.
-    'roles' => ['designer', 'bd'],
+    'roles' => ['designer', 'bd', 'designer_head', 'admin'],
 
     // Daily overdue reminder for designers (Asia/Kolkata).
     'overdue_at' => '11:00',

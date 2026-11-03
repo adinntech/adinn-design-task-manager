@@ -180,6 +180,7 @@ class TaskNotificationService
         if ($designer) {
             $this->send($designer, $notification);
             $this->flag($designer, 'rating');
+            $this->push($designer, $task, 'Task completed', 'Approved by '.($review->submitter?->name ?? 'the BD').'. Task is completed.', 'completed');
         }
 
         $this->notifyHeads($notification, $review->submitter ?? $designer, 'rating');
@@ -210,6 +211,17 @@ class TaskNotificationService
 
         foreach ($recipients as $recipient) {
             $this->send($recipient, new TaskCommentNotification($task, $author, $comment, $isClarification));
+        }
+
+        // Desktop alert only between the two parties on the task.
+        $counterpart = match ($author->role) {
+            'bd' => $designer,
+            'designer' => $bd,
+            default => null,
+        };
+
+        if ($counterpart && (int) $counterpart->id !== (int) $author->id) {
+            $this->push($counterpart, $task, 'New comment', "{$author->name}: ".Str::limit(trim($comment), 140), 'comment');
         }
     }
 
@@ -243,6 +255,10 @@ class TaskNotificationService
         foreach ($approvers as $approver) {
             $this->send($approver, new TaskRequestNotification($task, $taskRequest->request_type, 'submitted', $requester));
             $this->flag($approver, $taskRequest->request_type);
+
+            if ($approver->role === 'designer_head' && in_array($taskRequest->request_type, ['decline', 'split', 'swap'], true)) {
+                $this->push($approver, $task, ucfirst($taskRequest->request_type).' request', ($requester?->name ?? 'A designer').' needs your approval', 'request-in');
+            }
         }
     }
 
@@ -259,6 +275,10 @@ class TaskNotificationService
         if ($requester && (int) $requester->id !== (int) $actor->id) {
             $this->send($requester, new TaskRequestNotification($task, $taskRequest->request_type, $event, $actor));
             $this->flag($requester, $taskRequest->request_type);
+
+            if ($event === 'approved' && in_array($taskRequest->request_type, ['decline', 'split', 'swap'], true)) {
+                $this->push($requester, $task, ucfirst($taskRequest->request_type).' request approved', "Approved by {$actor->name}", 'request');
+            }
         }
 
         if ($event === 'approved' && $taskRequest->approvedDesigner) {

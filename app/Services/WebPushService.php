@@ -27,12 +27,18 @@ class WebPushService
         return $user !== null && in_array($user->role, config('webpush.roles', []), true);
     }
 
+    /** My Profile "Web Push Notifications" switch; OFF keeps the subscriptions but sends nothing. */
+    public function isOnFor(User $user): bool
+    {
+        return $user->web_push_enabled !== false;
+    }
+
     /**
      * @param  string  $tag  Same tag replaces the previous notification instead of stacking.
      */
     public function send(User $user, string $title, string $body, ?string $url = null, ?string $tag = null): int
     {
-        if (! $this->isConfigured() || ! $this->isEnabledFor($user)) {
+        if (! $this->isConfigured() || ! $this->isEnabledFor($user) || ! $this->isOnFor($user)) {
             return 0;
         }
 

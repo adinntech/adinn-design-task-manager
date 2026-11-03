@@ -3,9 +3,9 @@
 use App\Http\Controllers\PushSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
-// Browser desktop notifications (Web Push) — Designer and BD only
+// Browser desktop notifications (Web Push) — every role in config webpush.roles
 // (WebPushService::isEnabledFor() is re-checked in the controller).
-Route::middleware(['auth', 'role:designer,bd'])
+Route::middleware(['auth', 'role:designer,bd,designer_head,admin'])
     ->prefix('push')
     ->name('push.')
     ->group(function () {

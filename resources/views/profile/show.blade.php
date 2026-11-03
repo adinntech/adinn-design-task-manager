@@ -52,6 +52,71 @@
     </form>
 </div></div>
 
+@php($pushService = app(\App\Services\WebPushService::class))
+<div class="panel" style="max-width:640px;margin-top:18px"><div class="panel-body"
+    x-data="{
+        available: @js($pushService->isConfigured() && $pushService->isEnabledFor($user)),
+        on: @js($pushService->isOnFor($user)),
+        busy: false,
+        message: '',
+        error: false,
+        say(text, isError){ this.message = text; this.error = !!isError; },
+        save(value){
+            return fetch(@js(route('profile.notifications.update')), {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': @js(csrf_token()) },
+                body: JSON.stringify({ web_push_enabled: value }),
+            }).then(r => { if (!r.ok) throw new Error('save'); return r.json(); });
+        },
+        async enable(){
+            if (!window.AdinnPush || !('Notification' in window)) {
+                throw new Error('This browser does not support desktop notifications. Please use the latest Chrome, Edge or Firefox.');
+            }
+            if (Notification.permission === 'denied') {
+                throw new Error('Notifications are blocked for this site. Click the lock icon in the address bar → Site settings → Notifications → Allow, then try again.');
+            }
+            const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+            if (permission !== 'granted') {
+                throw new Error('Notification permission was not allowed in this browser.');
+            }
+            const res = await window.AdinnPush.subscribe();
+            if (!res || !res.ok) throw new Error('Could not register this browser for notifications. Please try again.');
+        },
+        async toggle(){
+            if (this.busy || !this.available) return;
+            const target = !this.on;
+            this.busy = true;
+            this.say('');
+            try {
+                if (target) await this.enable();
+                const data = await this.save(target).catch(() => { throw new Error('Could not save your preference. Please try again.'); });
+                this.on = !!data.web_push_enabled;
+                this.say(this.on ? 'Web push notifications turned on.' : 'Web push notifications turned off.');
+            } catch (e) {
+                this.say(e.message || 'Something went wrong. Please try again.', true);
+            } finally {
+                this.busy = false;
+            }
+        }
+    }">
+    <h2 style="font-size:14px;font-weight:900;margin:0 0 4px">Notification Settings</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div style="min-width:0;flex:1">
+            <div class="label" style="margin:0">Web Push Notifications</div>
+            <p style="font-size:11px;color:#667085;margin:2px 0 0">Enable or disable browser notifications for this account.</p>
+        </div>
+        <button type="button" role="switch" :aria-checked="on.toString()" aria-label="Web Push Notifications"
+            @click="toggle()" :disabled="busy || !available"
+            :style="'position:relative;width:46px;height:26px;border-radius:999px;border:0;padding:0;margin:0;flex:none;transition:background .15s;cursor:' + ((busy || !available) ? 'not-allowed' : 'pointer') + ';opacity:' + ((busy || !available) ? '.6' : '1') + ';background:' + (on ? '#16a34a' : '#d0d5dd')">
+            <span :style="'position:absolute;top:3px;left:' + (on ? '23px' : '3px') + ';width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.25);transition:left .15s'"></span>
+        </button>
+    </div>
+    <div style="font-size:11px;font-weight:700;margin-top:8px" :style="'color:' + (on ? '#027a48' : '#667085')" x-text="busy ? 'Saving...' : (on ? 'ON' : 'OFF')"></div>
+    <template x-if="!available"><div style="font-size:11px;color:#667085;margin-top:6px">Desktop notifications are not set up on this server yet.</div></template>
+    <div x-show="message" x-cloak style="font-size:11px;margin-top:6px" :style="'color:' + (error ? '#b42318' : '#027a48')" x-text="message"></div>
+</div></div>
+
 @if($user->role === 'designer')
     <div class="panel" style="max-width:640px;margin-top:18px"><div class="panel-body">
         <h2 style="font-size:14px;font-weight:900;margin:0 0 4px">Experienced Verticals & Skills</h2>

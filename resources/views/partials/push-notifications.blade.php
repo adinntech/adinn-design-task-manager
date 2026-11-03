@@ -11,6 +11,8 @@
     <div style="color:#667085;line-height:1.5">
         @if(auth()->user()->role === 'bd')
             Get an alert on this PC when a designer submits a task for your review.
+        @elseif(in_array(auth()->user()->role, ['admin', 'designer_head'], true))
+            Get task alerts from the Design Task Manager on this PC.
         @else
             Get an alert on this PC for new tasks, rework, approvals and overdue reminders.
         @endif
@@ -81,9 +83,12 @@
         try { return sessionStorage.getItem('pushPromptLater') === '1'; } catch (e) { return false; }
     }
 
+    // Used by the My Profile "Web Push Notifications" toggle.
+    window.AdinnPush = { subscribe: subscribe, test: function () { return post(cfg.test); } };
+
     if (Notification.permission === 'granted') {
         subscribe().catch(function () {});
-    } else if (Notification.permission === 'default' && !dismissed()) {
+    } else if (Notification.permission === 'default' && !dismissed() && @json($pushService->isOnFor(auth()->user()))) {
         prompt.style.display = 'block';
     }
 
