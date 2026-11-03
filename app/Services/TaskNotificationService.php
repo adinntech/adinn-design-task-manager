@@ -10,6 +10,7 @@ use App\Models\UserActivityFlag;
 use App\Notifications\ReworkRequestedNotification;
 use App\Notifications\TaskAssignedNotification;
 use App\Notifications\TaskCommentNotification;
+use App\Notifications\TaskEditedNotification;
 use App\Notifications\TaskRatedNotification;
 use App\Notifications\TaskRequestNotification;
 use App\Notifications\TaskStatusChangedNotification;
@@ -301,9 +302,18 @@ class TaskNotificationService
      * successful to hook a notification onto. Left as a documented no-op ready
      * to wire in once that endpoint ships — see the plan's scope notes.
      */
-    public function taskEdited(DesignTask $task, User $editor): void
+    public function taskEdited(DesignTask $task, User $editor, array $fields = []): void
     {
-        // Intentionally unimplemented.
+        $designer = $task->designer ?? User::find($task->designer_id);
+
+        if (! $designer || (int) $designer->id === (int) $editor->id) {
+            return;
+        }
+
+        $fields = array_values(array_unique($fields)) ?: ['details'];
+
+        $this->send($designer, new TaskEditedNotification($task, $editor, $fields));
+        $this->push($designer, $task, 'Task updated', "{$editor->name} changed: ".Str::limit(implode(', ', $fields), 120), 'edited');
     }
 
     /**

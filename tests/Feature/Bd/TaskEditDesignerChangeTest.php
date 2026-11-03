@@ -214,7 +214,8 @@ class TaskEditDesignerChangeTest extends TestCase
         $this->assertSame($this->designerA->id, (int) $task->designer_id);
         $this->assertSame('in_progress', $task->status);
         $this->assertSame(2, DesignTaskEditHistory::where('design_task_id', $task->id)->count());
-        Notification::assertNothingSent();
+        Notification::assertSentTo($this->designerA, \App\Notifications\TaskEditedNotification::class);
+        Notification::assertNotSentTo($this->designerA, TaskAssignedNotification::class);
     }
 
     public function test_resubmitting_same_designer_is_a_no_op(): void

@@ -2191,6 +2191,16 @@ class TaskEditController extends Controller
             app(TaskNotificationService::class)->designerUnassigned($previousDesignerId);
         }
 
+        // The new Designer already got "New task assigned"; everyone else who
+        // holds the task is told what BD changed.
+        if (! $newDesigner && $historyRows !== []) {
+            app(TaskNotificationService::class)->taskEdited(
+                $task->fresh(),
+                $request->user(),
+                array_column($historyRows, 'field_name')
+            );
+        }
+
         if ($autoMovedToReview) {
             app(TaskNotificationService::class)->statusChanged($task->fresh(), 'waiting_confirmation', $request->user());
         }
