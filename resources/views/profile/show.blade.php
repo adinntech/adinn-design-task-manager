@@ -57,6 +57,15 @@
     x-data="{
         available: @js($pushService->isConfigured() && $pushService->isEnabledFor($user)),
         on: @js($pushService->isOnFor($user)),
+        perm: ('Notification' in window) ? Notification.permission : 'unsupported',
+        init(){ window.addEventListener('focus', () => { if ('Notification' in window) this.perm = Notification.permission; }); },
+        async allowHere(){
+            if (this.busy) return;
+            this.busy = true; this.say('');
+            try { await this.enable(); this.perm = Notification.permission; this.say('This browser will now receive notifications.'); }
+            catch (e) { this.perm = ('Notification' in window) ? Notification.permission : this.perm; this.say(e.message || 'Something went wrong. Please try again.', true); }
+            finally { this.busy = false; }
+        },
         busy: false,
         message: '',
         error: false,
@@ -92,6 +101,7 @@
                 if (target) await this.enable();
                 const data = await this.save(target).catch(() => { throw new Error('Could not save your preference. Please try again.'); });
                 this.on = !!data.web_push_enabled;
+                if ('Notification' in window) this.perm = Notification.permission;
                 this.say(this.on ? 'Web push notifications turned on.' : 'Web push notifications turned off.');
             } catch (e) {
                 this.say(e.message || 'Something went wrong. Please try again.', true);
@@ -113,6 +123,15 @@
         </button>
     </div>
     <div style="font-size:11px;font-weight:700;margin-top:8px" :style="'color:' + (on ? '#027a48' : '#667085')" x-text="busy ? 'Saving...' : (on ? 'ON' : 'OFF')"></div>
+    <template x-if="available">
+        <div style="font-size:11px;color:#667085;margin-top:6px">
+            <span x-show="perm === 'granted'">This browser: allowed.</span>
+            <span x-show="perm === 'denied'" style="color:#b42318">This browser: blocked. Click the lock icon in the address bar → Site settings → Notifications → Allow.</span>
+            <span x-show="perm === 'default'">This browser: not allowed yet.</span>
+            <span x-show="perm === 'unsupported'">This browser does not support desktop notifications.</span>
+            <button type="button" x-show="on && perm === 'default'" ="allowHere()" :disabled="busy" class="btn btn-primary" style="padding:4px 10px;font-size:11px;margin-left:8px">Allow in this browser</button>
+        </div>
+    </template>
     <template x-if="!available"><div style="font-size:11px;color:#667085;margin-top:6px">Desktop notifications are not set up on this server yet.</div></template>
     <div x-show="message" x-cloak style="font-size:11px;margin-top:6px" :style="'color:' + (error ? '#b42318' : '#027a48')" x-text="message"></div>
 </div></div>
