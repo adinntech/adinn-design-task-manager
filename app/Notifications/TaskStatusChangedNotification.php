@@ -36,6 +36,7 @@ class TaskStatusChangedNotification extends Notification
                 'task_ref' => $this->task->task_id,
                 'task_name' => $this->task->display_task_name ?? $this->task->task_name,
                 'category' => 'status',
+                'to_status' => $this->toStatus,
             ];
         }
 
@@ -54,6 +55,7 @@ class TaskStatusChangedNotification extends Notification
                 'task_ref' => $this->task->task_id,
                 'task_name' => $this->task->display_task_name ?? $this->task->task_name,
                 'category' => 'status',
+                'to_status' => $this->toStatus,
             ];
         }
 
@@ -66,6 +68,7 @@ class TaskStatusChangedNotification extends Notification
             'task_ref' => $this->task->task_id,
             'task_name' => $this->task->display_task_name ?? $this->task->task_name,
             'category' => 'status',
+                'to_status' => $this->toStatus,
         ];
     }
 }

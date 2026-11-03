@@ -258,7 +258,7 @@ class TaskNotificationService
             $this->flag($approver, $taskRequest->request_type);
 
             if ($approver->role === 'designer_head' && in_array($taskRequest->request_type, ['decline', 'split', 'swap'], true)) {
-                $this->push($approver, $task, ucfirst($taskRequest->request_type).' request', ($requester?->name ?? 'A designer').' needs your approval', 'request-in');
+                $this->push($approver, $task, ucfirst($taskRequest->request_type).' request', ($requester?->name ?? 'A designer').' needs your approval', 'request-in', $taskRequest->request_type);
             }
         }
     }
@@ -278,7 +278,7 @@ class TaskNotificationService
             $this->flag($requester, $taskRequest->request_type);
 
             if ($event === 'approved' && in_array($taskRequest->request_type, ['decline', 'split', 'swap'], true)) {
-                $this->push($requester, $task, ucfirst($taskRequest->request_type).' request approved', "Approved by {$actor->name}", 'request');
+                $this->push($requester, $task, ucfirst($taskRequest->request_type).' request approved', "Approved by {$actor->name}", 'request', $taskRequest->request_type);
             }
         }
 
@@ -348,7 +348,7 @@ class TaskNotificationService
      * Desktop notification (Web Push) for the Designer/BD events only — the
      * bell row is still the record. WebPushService never throws.
      */
-    private function push(User $user, DesignTask $task, string $title, string $detail, string $tag): void
+    private function push(User $user, DesignTask $task, string $title, string $detail, string $tag, ?string $event = null): void
     {
         $name = $task->display_task_name ?? $task->task_name;
 
@@ -356,9 +356,20 @@ class TaskNotificationService
             $user,
             $title,
             "{$task->task_id} — {$name}\n{$detail}",
-            TaskNotificationUrlResolver::forTask($user, (int) $task->id),
+            $this->pushUrl($user, $task, $event ?? self::PUSH_TAB_EVENTS[$tag] ?? null),
             "{$tag}-{$task->id}"
         );
+    }
+
+
+    /** Tag → resolver event, so a click opens the tab that shows what the alert is about. */
+    private const PUSH_TAB_EVENTS = ['review' => 'review', 'printing' => 'printing', 'rework' => 'rework', 'completed' => 'rating', 'comment' => 'comment', 'edited' => 'edited'];
+
+    private function pushUrl(User $user, DesignTask $task, ?string $event): ?string
+    {
+        return $event === null
+            ? TaskNotificationUrlResolver::forTask($user, (int) $task->id)
+            : TaskNotificationUrlResolver::forEvent($user, (int) $task->id, $event);
     }
 
     private function flag(User $user, string $category): void

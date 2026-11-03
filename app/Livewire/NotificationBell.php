@@ -83,15 +83,6 @@ class NotificationBell extends Component
      */
     private function urlFor(DatabaseNotification $notification): ?string
     {
-        $taskId = $notification->data['task_id'] ?? null;
-
-        if (! $taskId) {
-            return null;
-        }
-
-        $isNormalComment = ($notification->data['category'] ?? null) === 'comment'
-            && ! ($notification->data['is_clarification'] ?? false);
-
-        return TaskNotificationUrlResolver::forTask(Auth::user(), (int) $taskId, $isNormalComment ? 'comments' : null);
+        return TaskNotificationUrlResolver::forNotificationData(Auth::user(), (array) $notification->data);
     }
 }
