@@ -21,6 +21,7 @@ RUN apt-get update \
         intl \
         zip \
         gd \
+        bcmath \
     && a2enmod rewrite headers expires \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

@@ -73,13 +73,13 @@ class WebPushService
                 } elseif ($report->isSubscriptionExpired()) {
                     PushSubscription::query()->where('endpoint_hash', $hash)->delete();
                 } else {
-                    Log::warning('Web push failed', ['user_id' => $user->id, 'reason' => $report->getReason()]);
+                    Log::error('Web push failed', ['user_id' => $user->id, 'reason' => $report->getReason()]);
                 }
             }
 
             return $delivered;
         } catch (Throwable $e) {
-            Log::warning('Web push dispatch failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            Log::error('Web push dispatch failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
 
             return 0;
         }
