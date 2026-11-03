@@ -6,6 +6,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Adinn Design Task Manager')</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/adinn-premium.css') }}">
     <script src="{{ asset('js/large-zip-upload.js') }}?v={{ @filemtime(public_path('js/large-zip-upload.js')) }}"></script>
     <script src="{{ asset('js/multi-file-upload.js') }}?v={{ @filemtime(public_path('js/multi-file-upload.js')) }}"></script>

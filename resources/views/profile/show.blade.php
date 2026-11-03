@@ -89,7 +89,13 @@
             if (permission !== 'granted') {
                 throw new Error('Notification permission was not allowed in this browser.');
             }
-            const res = await window.AdinnPush.subscribe();
+            let res;
+            try { res = await window.AdinnPush.subscribe(); }
+            catch (err) {
+                throw new Error(/push service|registration failed|abort/i.test(String(err && err.message))
+                    ? 'Chrome could not reach the Google push service from this PC. Check that the network or firewall allows fcm.googleapis.com and mtalk.google.com (port 5228), turn off any VPN/proxy, and make sure chrome://gcm-internals shows CONNECTED. Then try again.'
+                    : 'Could not register this browser for notifications. Please try again.');
+            }
             if (!res || !res.ok) throw new Error('Could not register this browser for notifications. Please try again.');
         },
         async toggle(){
