@@ -50,11 +50,7 @@ class CloudMultipartUploadService
 
         $extension = strtolower((string) pathinfo($filename, PATHINFO_EXTENSION));
 
-        if ($purpose === 'rework') {
-            if ($extension !== 'zip') {
-                throw ValidationException::withMessages(['file' => 'Only ZIP files are accepted.']);
-            }
-        } elseif ($purpose === 'mail_attachment') {
+        if ($purpose === 'mail_attachment') {
             if ($sizeBytes >= self::MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES && $extension !== 'zip') {
                 throw ValidationException::withMessages(['file' => 'Files smaller than 1 GB can be uploaded in any supported format. Files that are 1 GB or larger must be in ZIP format.']);
             }
@@ -179,8 +175,7 @@ class CloudMultipartUploadService
         $zipOnlyThreshold = $upload->purpose === 'mail_attachment'
             ? self::MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES
             : self::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES;
-        $mustBeZip = $upload->purpose === 'rework'
-            || $extension === 'zip'
+        $mustBeZip = $extension === 'zip'
             || (int) $upload->size_bytes >= $zipOnlyThreshold;
 
         if ($mustBeZip && ! $this->looksLikeZip($upload)) {

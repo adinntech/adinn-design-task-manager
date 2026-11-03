@@ -18,6 +18,7 @@ class DesignTaskEodRecord extends Model
         'attachment_disk',
         'attachment_path',
         'attachment_original_name',
+        'extra_attachments',
         'submitted_at',
     ];
 
@@ -25,6 +26,7 @@ class DesignTaskEodRecord extends Model
     {
         return [
             'submitted_at' => 'datetime',
+            'extra_attachments' => 'array',
         ];
     }
 
@@ -36,6 +38,30 @@ class DesignTaskEodRecord extends Model
     public function designer()
     {
         return $this->belongsTo(User::class, 'designer_id');
+    }
+
+    /**
+     * Every file of this submission, primary first, as [['url' => ..., 'name' => ...], ...].
+     * Rows saved before multi-file support simply return their one file.
+     */
+    public function getAttachmentLinksAttribute(): array
+    {
+        $links = [];
+
+        if ($this->attachment_url) {
+            $links[] = ['url' => $this->attachment_url, 'name' => $this->attachment_original_name ?? 'Download'];
+        }
+
+        foreach ((array) $this->extra_attachments as $extra) {
+            if (! empty($extra['path'])) {
+                $links[] = [
+                    'url' => \Illuminate\Support\Facades\Storage::disk($extra['disk'] ?? 'spaces')->url($extra['path']),
+                    'name' => $extra['name'] ?? basename($extra['path']),
+                ];
+            }
+        }
+
+        return $links;
     }
 
     public function getAttachmentUrlAttribute(): ?string

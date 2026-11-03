@@ -110,7 +110,20 @@
         });
 
         Livewire.on('notification-open-url', (data) => {
-            if (data && data.url) { window.location.href = data.url; }
+            if (!data || !data.url) return;
+
+            // Opening a notification for the page already on screen must still
+            // show fresh data: a same-URL (or hash-only) assignment does not
+            // reload, so force it.
+            var target = new URL(data.url, window.location.href);
+            var here = new URL(window.location.href);
+            if (target.origin === here.origin && target.pathname === here.pathname && target.search === here.search) {
+                if (target.hash) { window.location.hash = target.hash; }
+                window.location.reload();
+                return;
+            }
+
+            window.location.href = data.url;
         });
     });
     </script>

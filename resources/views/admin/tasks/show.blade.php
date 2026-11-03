@@ -281,8 +281,8 @@
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                                 @if($isReworkRecord)<span class="badge badge-danger">Rework #{{ $record->rework_count_snapshot }}</span>@endif
-                                @if($record->attachment_url)
-                                    <a class="bd-file-btn bd-file-download" target="_blank" href="{{ $record->attachment_url }}" title="Download">⬇ {{ $record->attachment_original_name ?? 'Download ZIP' }}</a>
+                                @if($record->attachment_links)
+                                    @foreach($record->attachment_links as $link)<a class="bd-file-btn bd-file-download" target="_blank" href="{{ $link['url'] }}" title="Download">⬇ {{ $link['name'] }}</a>@endforeach
                                 @else
                                     <span class="muted" style="font-size:9px">No file available</span>
                                 @endif

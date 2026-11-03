@@ -151,6 +151,66 @@ class TaskDetail extends Component
         return $upload;
     }
 
+    /**
+     * Same checks as resolveCompletedUpload() for a comma-separated id list
+     * (several separate files). Several files / non-ZIP files must total below
+     * the ZIP-only threshold, matching the browser-side rule.
+     *
+     * @return array<int, FileUpload> in the order they were listed
+     */
+    private function resolveCompletedUploads(?string $uploadIds, string $purpose, string $errorField, string $errorMessage): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $uploadIds)), 'ctype_digit')));
+
+        if ($ids === [] || count($ids) > 20) {
+            throw ValidationException::withMessages([$errorField => $errorMessage]);
+        }
+
+        $found = FileUpload::query()
+            ->whereIn('id', $ids)
+            ->where('user_id', Auth::id())
+            ->where('design_task_id', $this->task->id)
+            ->where('purpose', $purpose)
+            ->where('status', 'completed')
+            ->whereNull('consumed_at')
+            ->get()
+            ->keyBy('id');
+
+        if ($found->count() !== count($ids)) {
+            throw ValidationException::withMessages([$errorField => $errorMessage]);
+        }
+
+        $uploads = array_map(fn ($id) => $found[(int) $id], $ids);
+        $singleZip = count($uploads) === 1 && strtolower(pathinfo($uploads[0]->original_filename, PATHINFO_EXTENSION)) === 'zip';
+
+        if (! $singleZip && array_sum(array_map(fn ($u) => (int) $u->size_bytes, $uploads)) >= CloudMultipartUploadService::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES) {
+            throw ValidationException::withMessages([$errorField => 'Files totalling 350 MB or more must be uploaded as one ZIP.']);
+        }
+
+        return $uploads;
+    }
+
+    /**
+     * Promotes every upload after the first to its own final path and returns
+     * the list stored in design_task_eod_records.extra_attachments.
+     *
+     * @param  array<int, FileUpload>  $extraUploads
+     * @return array<int, array{disk: string, path: string, name: string}>|null
+     */
+    private function promoteExtraUploads(array $extraUploads, string $directory, string $baseName): ?array
+    {
+        $extra = [];
+
+        foreach (array_values($extraUploads) as $n => $upload) {
+            $extension = strtolower(pathinfo($upload->original_filename, PATHINFO_EXTENSION)) ?: 'bin';
+            $path = $directory.'/'.$baseName.'-'.($n + 2).'.'.$extension;
+            app(CloudMultipartUploadService::class)->promoteToFinalPath($upload, $path);
+            $extra[] = ['disk' => 'spaces', 'path' => $path, 'name' => $upload->original_filename];
+        }
+
+        return $extra ?: null;
+    }
+
     public function mount(DesignTask $task): void
     {
         $user = Auth::user();
@@ -417,15 +477,12 @@ class TaskDetail extends Component
             'eodCompletedCount.required' => 'Enter the number of creatives added to progress.',
         ]);
 
-        $fileUpload = $this->resolveCompletedUpload(
-            $this->taskUpdateUploadId,
-            'progress_update',
-            'taskUpdateUploadId',
-            'Upload the Task Updation ZIP file.'
-        );
+        $uploads = $this->resolveCompletedUploads($this->taskUpdateUploadId, 'progress_update', 'taskUpdateUploadId', 'Upload at least one file for this Task Updation.');
+        $fileUpload = $uploads[0];
+        $extraUploads = array_slice($uploads, 1);
         $autoCompleted = false;
 
-        DB::transaction(function () use ($fileUpload, &$autoCompleted): void {
+        DB::transaction(function () use ($fileUpload, $extraUploads, &$autoCompleted): void {
             $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
             if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'in_progress') {
@@ -459,6 +516,7 @@ class TaskDetail extends Component
             $fileName = $task->task_id.'__task-updation__'.now()->format('Ymd-His-v').'.'.$extension;
             $path = $directory.'/'.$fileName;
             app(CloudMultipartUploadService::class)->promoteToFinalPath($fileUpload, $path);
+            $extraAttachments = $this->promoteExtraUploads($extraUploads, $directory, $task->task_id.'__task-updation__'.now()->format('Ymd-His-v'));
 
             DesignTaskEodRecord::create([
                 'design_task_id' => $task->id,
@@ -472,6 +530,7 @@ class TaskDetail extends Component
                 'attachment_disk' => 'spaces',
                 'attachment_path' => $path,
                 'attachment_original_name' => $fileUpload->original_filename,
+                'extra_attachments' => $extraAttachments,
                 'submitted_at' => now(),
             ]);
 
@@ -541,17 +600,14 @@ class TaskDetail extends Component
             'reworkCompletedCount.max' => 'You cannot submit more creatives than the current Rework pending count.',
         ]);
 
-        $fileUpload = $this->resolveCompletedUpload(
-            $this->reworkUploadId,
-            'rework',
-            'reworkUploadId',
-            'Upload the Rework creative ZIP.'
-        );
+        $uploads = $this->resolveCompletedUploads($this->reworkUploadId, 'rework', 'reworkUploadId', 'Upload at least one file for this Rework.');
+        $fileUpload = $uploads[0];
+        $extraUploads = array_slice($uploads, 1);
         $submittedCount = (int) $this->reworkCompletedCount;
         $nextStage = 'rework';
         $pendingAfter = $pendingBefore;
 
-        DB::transaction(function () use ($fileUpload, $submittedCount, &$nextStage, &$pendingAfter): void {
+        DB::transaction(function () use ($fileUpload, $extraUploads, $submittedCount, &$nextStage, &$pendingAfter): void {
             $task = DesignTask::query()->lockForUpdate()->findOrFail($this->task->id);
 
             if ((int) $task->designer_id !== (int) Auth::id() || $task->status !== 'rework') {
@@ -587,9 +643,11 @@ class TaskDetail extends Component
                 'rework-'.$reworkCount,
             ]);
 
-            $fileName = $task->task_id.'__rework-'.$reworkCount.'__'.now()->format('Ymd-His-v').'.zip';
+            $baseName = $task->task_id.'__rework-'.$reworkCount.'__'.now()->format('Ymd-His-v');
+            $fileName = $baseName.'.'.(strtolower(pathinfo($fileUpload->original_filename, PATHINFO_EXTENSION)) ?: 'zip');
             $path = $directory.'/'.$fileName;
             app(CloudMultipartUploadService::class)->promoteToFinalPath($fileUpload, $path);
+            $extraAttachments = $this->promoteExtraUploads($extraUploads, $directory, $baseName);
 
             // completed() includes this record, so calculate snapshots after create.
             DesignTaskEodRecord::create([
@@ -604,6 +662,7 @@ class TaskDetail extends Component
                 'attachment_disk' => 'spaces',
                 'attachment_path' => $path,
                 'attachment_original_name' => $fileUpload->original_filename,
+                'extra_attachments' => $extraAttachments,
                 'submitted_at' => now(),
             ]);
 

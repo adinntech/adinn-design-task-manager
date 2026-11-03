@@ -153,8 +153,8 @@
                                     <span>by {{ $child->designer?->name ?? '—' }} · {{ $child->submitted_at?->format('d M Y · h:i A') }}</span>
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                    @if($child->attachment_url)
-                                        <a class="ptl-file" target="_blank" href="{{ $child->attachment_url }}" title="Download">⬇ {{ $child->attachment_original_name ?? 'Download ZIP' }}</a>
+                                    @if($child->attachment_links)
+                                        @foreach($child->attachment_links as $link)<a class="ptl-file" target="_blank" href="{{ $link['url'] }}" title="Download">⬇ {{ $link['name'] }}</a>@endforeach
                                     @else
                                         <span class="ptl-empty">No file available</span>
                                     @endif
@@ -212,8 +212,8 @@
                                                     <span>by {{ $child->designer?->name ?? '—' }} · {{ $child->submitted_at?->format('d M Y · h:i A') }}</span>
                                                 </div>
                                                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                                                    @if($child->attachment_url)
-                                                        <a class="ptl-file" target="_blank" href="{{ $child->attachment_url }}" title="Download">⬇ {{ $child->attachment_original_name ?? 'Download ZIP' }}</a>
+                                                    @if($child->attachment_links)
+                                                        @foreach($child->attachment_links as $link)<a class="ptl-file" target="_blank" href="{{ $link['url'] }}" title="Download">⬇ {{ $link['name'] }}</a>@endforeach
                                                     @else
                                                         <span class="ptl-empty">No file available</span>
                                                     @endif

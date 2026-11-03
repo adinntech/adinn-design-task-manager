@@ -233,6 +233,21 @@
         .upload-status-note--uploading,.upload-status-note--preparing,.upload-status-note--finalizing{color:#175cd3}
         .upload-status-note--completed{color:#067647}
         .upload-status-note--failed,.upload-status-note--error{color:#b4232f}
+        .mf-input{font-size:11px;color:#344054;max-width:100%}
+        .mf-notice{font-size:10px;font-weight:700;color:#b4232f;margin-top:5px}
+        .mf-notice:empty{display:none}
+        .mf-row{position:relative;border:1px solid #e4e7ec;border-radius:8px;padding:8px 28px 8px 10px;margin-top:8px;background:#fff}
+        .mf-top{display:flex;justify-content:space-between;gap:8px;font-size:10px;font-weight:700;color:#344054}
+        .mf-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+        .mf-bar{height:5px;border-radius:3px;background:#eef1f5;margin-top:6px;overflow:hidden}
+        .mf-fill{height:100%;width:0;background:#2970ff;transition:width .2s ease}
+        .mf-detail{font-size:9px;color:#667085;margin-top:4px}
+        .mf-ok{font-size:9px;font-weight:700;color:#067647}
+        .mf-done .mf-fill{background:#12b76a}
+        .mf-failed{border-color:#fecdca;background:#fef3f2}
+        .mf-failed .mf-fill{background:#f04438}
+        .mf-remove{position:absolute;top:4px;right:6px;border:none;background:none;color:#667085;font-size:16px;line-height:1;cursor:pointer}
+        .mf-remove:hover{color:#b4232f}
 
 </style>
 
@@ -931,25 +946,13 @@
                                         @error('reworkCompletedCount')<div class="error">{{ $message }}</div>@enderror
                                     </div>
 
-                                    <div wire:ignore>
-                                        <label class="label">Corrected Rework Files *</label>
-                                        <div class="large-upload-widget">
-                                            <div class="large-upload-circle-wrap">
-                                                <svg viewBox="0 0 36 36" class="large-upload-circle">
-                                                    <path class="large-upload-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                                    <path id="reworkUploadCircle" class="large-upload-circle-fg" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                                </svg>
-                                                <div class="large-upload-percent" id="reworkUploadPercent"></div>
-                                            </div>
-                                            <div class="large-upload-info">
-                                                <input type="file" id="reworkUploadInput" multiple>
-                                                <div class="muted" style="margin-top:5px">Select one or more files (JPG, PNG, CDR, etc.) up to 350 MB total · 350 MB+: one ZIP only · Maximum 6 GB</div>
-                                                <div class="muted" id="reworkUploadDetail" style="margin-top:2px"></div>
-                                                <div class="muted" id="reworkUploadEta" style="margin-top:2px"></div>
-                                                <div id="reworkUploadStatus"></div>
-                                            </div>
-                                        </div>
-                                    </div>
+<div wire:ignore>
+    <label class="label">Corrected Rework Files *</label>
+    <input type="file" id="reworkUploadInput" class="mf-input" multiple>
+    <div class="muted" style="margin-top:5px">Select one or more files (JPG, PNG, CDR, etc.) totalling under 350 MB. For 350 MB or more, upload one ZIP (up to 6 GB).</div>
+    <div class="mf-notice" id="reworkUploadNotice"></div>
+    <div id="reworkUploadList"></div>
+</div>
                                     @error('reworkUploadId')<div class="error">{{ $message }}</div>@enderror
                                 </div>
 
@@ -966,32 +969,27 @@
                                     <span wire:loading wire:target="submitReworkUpdate">Submitting...</span>
                                 </button>
 
-                                <script>
-                                (function () {
-                                    if (typeof AdinnZipUpload === 'undefined') return;
-                                    new AdinnZipUpload({
-                                        input: document.getElementById('reworkUploadInput'),
-                                        purpose: 'rework',
-                                        taskId: {{ (int) $task->id }},
-                                        wireProp: 'reworkUploadId',
-                                        urls: {
-                                            initiate: '{{ route('designer.uploads.initiate') }}',
-                                            active: '{{ route('designer.uploads.active') }}',
-                                            partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
-                                            parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
-                                            complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
-                                        },
-                                        els: {
-                                            status: document.getElementById('reworkUploadStatus'),
-                                            percent: document.getElementById('reworkUploadPercent'),
-                                            detail: document.getElementById('reworkUploadDetail'),
-                                            eta: document.getElementById('reworkUploadEta'),
-                                            circle: document.getElementById('reworkUploadCircle'),
-                                            submitBtn: document.getElementById('reworkSubmitBtn'),
-                                        },
-                                    });
-                                })();
-                                </script>
+<script>
+(function () {
+    if (typeof AdinnMultiFileUpload === 'undefined') return;
+    AdinnMultiFileUpload.init({
+        input: document.getElementById('reworkUploadInput'),
+        list: document.getElementById('reworkUploadList'),
+        notice: document.getElementById('reworkUploadNotice'),
+        submitBtn: document.getElementById('reworkSubmitBtn'),
+        purpose: 'rework',
+        taskId: {{ (int) $task->id }},
+        wireProp: 'reworkUploadId',
+        urls: {
+            initiate: '{{ route('designer.uploads.initiate') }}',
+            active: '{{ route('designer.uploads.active') }}',
+            partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
+            parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
+            complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
+        },
+    });
+})();
+</script>
                             </div>
                             @endif
                         </div>
@@ -1020,25 +1018,13 @@
                                     @enderror
                                 </div>
 
-                                <div class="eod-field" wire:ignore>
-                                    <label class="label">Progress Update Files *</label>
-                                    <div class="large-upload-widget">
-                                        <div class="large-upload-circle-wrap">
-                                            <svg viewBox="0 0 36 36" class="large-upload-circle">
-                                                <path class="large-upload-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                                <path id="eodUploadCircle" class="large-upload-circle-fg" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                            </svg>
-                                            <div class="large-upload-percent" id="eodUploadPercent"></div>
-                                        </div>
-                                        <div class="large-upload-info">
-                                            <input type="file" id="eodUploadInput" multiple>
-                                            <div class="muted" style="margin-top:5px">Below 350 MB: supported file types · 350 MB+: Select one or more files (JPG, PNG, CDR, etc.) up to 350 MB total · 350 MB+: one ZIP only · Maximum 6 GB</div>
-                                            <div class="muted" id="eodUploadDetail" style="margin-top:2px"></div>
-                                            <div class="muted" id="eodUploadEta" style="margin-top:2px"></div>
-                                            <div id="eodUploadStatus"></div>
-                                        </div>
-                                    </div>
-                                </div>
+<div class="eod-field" wire:ignore>
+    <label class="label">Progress Update Files *</label>
+    <input type="file" id="eodUploadInput" class="mf-input" multiple>
+    <div class="muted" style="margin-top:5px">Select one or more files (JPG, PNG, CDR, etc.) totalling under 350 MB. For 350 MB or more, upload one ZIP (up to 6 GB).</div>
+    <div class="mf-notice" id="eodUploadNotice"></div>
+    <div id="eodUploadList"></div>
+</div>
                                 @error('taskUpdateUploadId')<div class="error">{{ $message }}</div>@enderror
                             </div>
                             <button
@@ -1055,32 +1041,27 @@
                                 <span wire:loading wire:target="submitEod">Submitting...</span>
                             </button>
 
-                            <script>
-                            (function () {
-                                if (typeof AdinnZipUpload === 'undefined') return;
-                                new AdinnZipUpload({
-                                    input: document.getElementById('eodUploadInput'),
-                                    purpose: 'progress_update',
-                                    taskId: {{ (int) $task->id }},
-                                    wireProp: 'taskUpdateUploadId',
-                                    urls: {
-                                        initiate: '{{ route('designer.uploads.initiate') }}',
-                                        active: '{{ route('designer.uploads.active') }}',
-                                        partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
-                                        parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
-                                        complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
-                                    },
-                                    els: {
-                                        status: document.getElementById('eodUploadStatus'),
-                                        percent: document.getElementById('eodUploadPercent'),
-                                        detail: document.getElementById('eodUploadDetail'),
-                                        eta: document.getElementById('eodUploadEta'),
-                                        circle: document.getElementById('eodUploadCircle'),
-                                        submitBtn: document.getElementById('eodSubmitBtn'),
-                                    },
-                                });
-                            })();
-                            </script>
+<script>
+(function () {
+    if (typeof AdinnMultiFileUpload === 'undefined') return;
+    AdinnMultiFileUpload.init({
+        input: document.getElementById('eodUploadInput'),
+        list: document.getElementById('eodUploadList'),
+        notice: document.getElementById('eodUploadNotice'),
+        submitBtn: document.getElementById('eodSubmitBtn'),
+        purpose: 'progress_update',
+        taskId: {{ (int) $task->id }},
+        wireProp: 'taskUpdateUploadId',
+        urls: {
+            initiate: '{{ route('designer.uploads.initiate') }}',
+            active: '{{ route('designer.uploads.active') }}',
+            partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
+            parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
+            complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
+        },
+    });
+})();
+</script>
                         </div>
                     @elseif(in_array($task->status, ['waiting_confirmation','completed','prepare_printing_file'], true))
                         <div class="empty-state" style="margin-bottom:14px">

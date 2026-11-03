@@ -125,79 +125,8 @@
         return div.innerHTML;
     };
 
-    // Progress Update / Rework accept several files at once. Anything that is
-    // not a single ready-made ZIP is bundled into one ZIP in the browser (no
-    // compression) and then goes through the same upload pipeline, so the
-    // server only ever sees one file. Total 350 MB+ must be a single ZIP.
-    AdinnZipUpload.prototype.bundleFiles = function (files) {
-        var self = this;
-        var LIMIT = 350 * 1024 * 1024;
-        var total = files.reduce(function (sum, f) { return sum + f.size; }, 0);
-
-        var fail = function (message) {
-            self.currentFile = null;
-            self.setWireProp('');
-            self.setSubmitEnabled(false);
-            self.showError(message);
-            if (self.input) self.input.value = '';
-        };
-
-        if (files.some(function (f) { return /\.zip$/i.test(f.name); })) {
-            return fail('Select either one ZIP file or several individual files — not a mix.');
-        }
-        if (total >= LIMIT) {
-            return fail('These files total ' + formatBytes(total) + '. Files totalling 350 MB or more must be uploaded as a single ZIP.');
-        }
-        if (typeof window.JSZip === 'undefined') {
-            return fail('Could not prepare the files. Reload the page, or upload a single ZIP instead.');
-        }
-
-        this.setSubmitEnabled(false);
-        this.setWireProp('');
-        if (this.els.status) {
-            this.els.status.innerHTML = '<div class="upload-status-note upload-status-note--preparing">Bundling ' + files.length + ' file(s) into one ZIP…</div>';
-        }
-
-        var zip = new window.JSZip();
-        var used = {};
-        files.forEach(function (f) {
-            var name = f.name;
-            if (used[name]) {
-                var dot = name.lastIndexOf('.');
-                var base = dot > 0 ? name.slice(0, dot) : name;
-                var ext = dot > 0 ? name.slice(dot) : '';
-                name = base + '-' + (++used[f.name]) + ext;
-            } else {
-                used[name] = 1;
-            }
-            zip.file(name, f, { binary: true, compression: 'STORE' });
-        });
-
-        zip.generateAsync({ type: 'blob', compression: 'STORE', streamFiles: true })
-            .then(function (blob) {
-                var d = new Date();
-                var pad = function (n) { return String(n).padStart(2, '0'); };
-                var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
-                self.startUpload(new File([blob], 'creatives-' + stamp + '.zip', { type: 'application/zip' }));
-            })
-            .catch(function () {
-                fail('Could not bundle the files in this browser. Please upload a single ZIP instead.');
-            });
-    };
-
     AdinnZipUpload.prototype.onFileSelected = function () {
-        var files = this.input.files ? Array.prototype.slice.call(this.input.files) : [];
-        var file = files[0];
-
-        if (files.length > 0 && (this.purpose === 'progress_update' || this.purpose === 'rework')) {
-            var singleReady = files.length === 1
-                && (/\.zip$/i.test(file.name) || (this.purpose === 'progress_update' && file.size < 350 * 1024 * 1024));
-
-            if (!singleReady) {
-                this.bundleFiles(files);
-                return;
-            }
-        }
+        var file = this.input.files && this.input.files[0];
 
         // No file (input cleared with nothing re-selected) — same as an
         // invalid/failed selection: the previously completed upload no
@@ -224,7 +153,7 @@
         var PROGRESS_ZIP_THRESHOLD = 350 * 1024 * 1024;
         var MAIL_ATTACHMENT_ZIP_THRESHOLD = 1024 * 1024 * 1024;
 
-        if (this.purpose === 'progress_update') {
+        if (this.purpose === 'progress_update' || this.purpose === 'rework') {
             if (!isZip && file.size >= PROGRESS_ZIP_THRESHOLD) {
                 this.setWireProp('');
                 this.setSubmitEnabled(false);
