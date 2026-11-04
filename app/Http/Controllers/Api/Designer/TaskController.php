@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Designer;
 
+use App\Http\Controllers\Api\Concerns\SerializesTasks;
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
 use App\Models\DesignTaskComment;
@@ -23,6 +24,8 @@ use Illuminate\Validation\ValidationException;
 
 class TaskController extends Controller
 {
+    use SerializesTasks;
+
     /** Kanban board as JSON: same data source as the web board (DesignerHeadTaskBoardService). */
     public function index(Request $request, DesignerHeadTaskBoardService $boards): JsonResponse
     {
@@ -257,42 +260,5 @@ class TaskController extends Controller
         }
 
         return $access;
-    }
-
-    private function summary(DesignTask $task): array
-    {
-        return [
-            'id' => $task->id,
-            'task_id' => $task->task_id,
-            'task_name' => $task->task_name,
-            'display_task_name' => $task->display_task_name,
-            'vertical' => $task->vertical,
-            'task_nature' => $task->task_nature,
-            'party_name' => $task->party_name,
-            'priority' => $task->priority,
-            'status' => $task->status,
-            'due_at' => $task->due_at?->toIso8601String(),
-            'total_creatives' => (int) $task->total_creatives,
-            'bd_approval_status' => $task->bd_approval_status,
-            'task_category' => $task->task_category,
-        ];
-    }
-
-    private function commentPayload(DesignTaskComment $c): array
-    {
-        return [
-            'id' => $c->id,
-            'comment' => $c->comment,
-            'status_at_comment' => $c->status_at_comment,
-            'created_at' => $c->created_at?->toIso8601String(),
-            'user' => $c->user ? ['id' => $c->user->id, 'name' => $c->user->name, 'role' => $c->user->role] : null,
-            'attachments' => $c->attachments->map(fn ($a) => [
-                'id' => $a->id,
-                'name' => $a->original_name,
-                'mime_type' => $a->mime_type,
-                'size' => $a->size,
-                'url' => $a->url,
-            ])->values(),
-        ];
     }
 }
