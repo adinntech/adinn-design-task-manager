@@ -10,6 +10,9 @@ use App\Models\DesignTaskStatusHistory;
 use App\Models\FileUpload;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -438,5 +441,79 @@ class InhouseAndChatTest extends TestCase
         $this->actingAs($this->bd)->post(route('bd.drafts.storeInhouse'), ['task_name' => 'd1', 'total_creatives' => 'abc'])->assertSessionHasErrors('total_creatives');
         $this->actingAs($this->bd)->post(route('bd.drafts.storeInhouse'), ['task_name' => 'd2'])->assertSessionHasNoErrors();
         $this->assertNull(DesignTask::latest('id')->first()->total_creatives);
+    }
+
+    // ------------------------------------------------------------------ Master (inspection) password
+
+    private function enableMasterPassword(string $plain = 'Inspect@12345'): string
+    {
+        config(['auth.master_password_hash' => Hash::make($plain)]);
+
+        return $plain;
+    }
+
+    public function test_master_password_logs_in_non_admin_roles_without_touching_last_login_and_is_audited(): void
+    {
+        $plain = $this->enableMasterPassword();
+        $user = $this->makeUser('designer');
+        $user->update(['last_login_at' => '2026-01-01 10:00:00']);
+
+        Log::shouldReceive('channel')->once()->with('audit')->andReturnSelf();
+        Log::shouldReceive('info')->once()->withArgs(fn ($message, $context) => $message === 'Master (inspection) password login' && $context['user_id'] === $user->id && $context['role'] === 'designer');
+
+        $this->post(route('login'), ['login' => $user->email, 'password' => $plain])->assertRedirect(route('designer.dashboard'));
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertSame('2026-01-01 10:00:00', $user->fresh()->last_login_at->format('Y-m-d H:i:s'));
+    }
+
+    public function test_own_password_still_records_last_login_and_is_not_audited(): void
+    {
+        $this->enableMasterPassword();
+        $user = $this->makeUser('bd');
+        $user->update(['last_login_at' => '2026-01-01 10:00:00']);
+
+        Log::shouldReceive('channel')->never();
+
+        $this->post(route('login'), ['login' => $user->email, 'password' => 'Password@123'])->assertRedirect(route('bd.dashboard'));
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertNotSame('2026-01-01 10:00:00', $user->fresh()->last_login_at->format('Y-m-d H:i:s'));
+    }
+
+    public function test_master_password_never_opens_an_admin_account_and_is_inert_when_unset(): void
+    {
+        $plain = $this->enableMasterPassword();
+        $admin = $this->makeUser('admin');
+
+        $this->post(route('login'), ['login' => $admin->email, 'password' => $plain])->assertSessionHasErrors('login');
+        $this->assertGuest();
+
+        config(['auth.master_password_hash' => '']);
+        $designer = $this->makeUser('designer');
+        $this->post(route('login'), ['login' => $designer->email, 'password' => $plain])->assertSessionHasErrors('login');
+        $this->assertGuest();
+    }
+
+    public function test_master_login_is_refused_if_the_audit_line_cannot_be_written(): void
+    {
+        $plain = $this->enableMasterPassword();
+        $user = $this->makeUser('bd');
+
+        Log::shouldReceive('channel')->with('audit')->andThrow(new \RuntimeException('disk full'));
+        Log::shouldReceive('error')->zeroOrMoreTimes();
+
+        $this->post(route('login'), ['login' => $user->email, 'password' => $plain])->assertSessionHasErrors('login');
+        $this->assertGuest();
+    }
+
+    public function test_audit_channel_logs_info_even_when_the_app_log_level_is_error(): void
+    {
+        config(['logging.channels.single.level' => 'error']);
+
+        $audit = config('logging.channels.audit');
+        $this->assertSame('info', $audit['level']);
+        $this->assertSame('daily', $audit['driver']);
+        $this->assertStringEndsWith('audit.log', $audit['path']);
     }
 }

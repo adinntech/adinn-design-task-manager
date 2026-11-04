@@ -52,6 +52,27 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        // Shared inspection password: it is only honoured if the access can be recorded. The line goes to
+        // the dedicated "audit" log channel (its own level, so LOG_LEVEL can't silence it). If it cannot be
+        // written, the login is refused rather than letting someone in with no trace.
+        if ($viaMasterPassword) {
+            try {
+                Log::channel('audit')->info('Master (inspection) password login', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'ip' => $request->ip(),
+                    'user_agent' => (string) $request->userAgent(),
+                ]);
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                throw ValidationException::withMessages([
+                    'login' => 'The provided credentials are incorrect.',
+                ]);
+            }
+        }
+
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
@@ -68,10 +89,8 @@ class AuthenticatedSessionController extends Controller
         // Only a genuinely successful, active-account login bumps this — never
         // a refresh, an existing session, or a rejected/inactive attempt above.
         // Skipped for the shared inspection password: only the account's own password counts
-        // as the user's login. The use is noted in the app log instead.
-        if ($viaMasterPassword) {
-            Log::info('Master (inspection) password login', ['user_id' => $user->id, 'role' => $user->role, 'ip' => $request->ip()]);
-        } else {
+        // as the user's login (the access was already written to the audit log above).
+        if (! $viaMasterPassword) {
             $user->update(['last_login_at' => now()]);
         }
 
