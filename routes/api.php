@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\Designer\RequestController as DesignerRequestController;
 use App\Http\Controllers\Api\Designer\TaskController as DesignerTaskController;
+use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\Bd\TaskController as BdTaskController;
 use App\Http\Controllers\Api\DesignerHead\HeadController;
 use App\Http\Controllers\Api\NotificationController;
@@ -46,6 +47,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tasks/{task}/requests', [DesignerRequestController::class, 'store']);
         Route::get('/tasks/{task}/comments', [DesignerTaskController::class, 'comments']);
         Route::post('/tasks/{task}/comments', [DesignerTaskController::class, 'storeComment']);
+    });
+
+    Route::middleware('role:admin')->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('/tasks', [AdminController::class, 'tasks']);
+        Route::get('/tasks/{task}', [AdminController::class, 'task']);
+        Route::get('/users', [AdminController::class, 'users']);
+        Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser']);
+        Route::get('/requests', [AdminController::class, 'requests']);
+        Route::post('/requests/{taskRequest}/approve', [AdminController::class, 'approve']);
+        Route::post('/requests/{taskRequest}/reject', [AdminController::class, 'reject']);
     });
 
     Route::middleware('role:bd')->prefix('bd')->group(function () {
