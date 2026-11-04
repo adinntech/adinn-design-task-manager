@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\Bd\TaskController as BdTaskController;
 use App\Http\Controllers\Api\DesignerHead\HeadController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\RealtimeController;
 use App\Http\Controllers\FileUploadController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
+
+    // Reverb connection settings + this user's private channel, so the app needs no hard-coded socket config.
+    Route::get('/realtime', [RealtimeController::class, 'config']);
 
     Route::post('/devices', [DeviceController::class, 'store']);
     Route::delete('/devices', [DeviceController::class, 'destroy']);

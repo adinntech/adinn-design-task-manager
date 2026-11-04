@@ -37,4 +37,7 @@ task detail, designer status move, task chat (polling) with attachments (designe
 head/admin request approvals, BD rework + rating + confirm/reject, designer requests (decline/split/swap),
 designer EOD + rework submissions with resumable multipart uploads (direct to storage, 64 MB parts),
 FCM registration + tap-to-open (needs the Firebase files above).
-Not yet: realtime (Reverb), BD create/edit, designer-head chat attachments, printing-file mail tab.
+Realtime: while the app is open it holds a Reverb websocket (settings come from `GET /api/v1/realtime`, so nothing is
+hard-coded) and refreshes alerts, boards, requests and chat when something changes; the socket closes in the background
+(push takes over) and reconnects on resume. It is off automatically if the server isn't set up for Reverb.
+Not yet: BD create/edit, designer-head chat attachments, printing-file mail tab.

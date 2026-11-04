@@ -33,7 +33,9 @@ typedef Handler = ({int status, Object? body}) Function(RequestOptions options);
 
 /// Dio adapter answering from a route table keyed "METHOD /path"; records requests.
 class FakeAdapter implements HttpClientAdapter {
-  FakeAdapter(this.routes);
+  /// Realtime is off unless a test says otherwise, so app-level tests don't try to open sockets.
+  FakeAdapter(Map<String, Handler> routes)
+      : routes = {'GET /realtime': (_) => (status: 200, body: {'enabled': false}), ...routes};
 
   final Map<String, Handler> routes;
   final List<RequestOptions> requests = [];

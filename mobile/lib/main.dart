@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/auth.dart';
 import 'core/push.dart';
+import 'core/realtime.dart';
 import 'core/theme.dart';
+import 'features/requests/requests_screen.dart';
 import 'features/tasks/providers.dart';
 import 'router.dart';
 
@@ -18,10 +22,23 @@ class AdinnApp extends ConsumerStatefulWidget {
   ConsumerState<AdinnApp> createState() => _AdinnAppState();
 }
 
-class _AdinnAppState extends ConsumerState<AdinnApp> {
+class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver {
+  StreamSubscription<RealtimeEvent>? _live;
+
+  /// Everything a server-side change can make stale: alerts, boards, request lists, open tasks and chats.
+  void _refreshLiveData() {
+    ref.invalidate(notificationsProvider);
+    ref.invalidate(boardProvider);
+    ref.invalidate(pendingRequestsProvider);
+    ref.invalidate(taskDetailProvider);
+    ref.invalidate(commentsProvider);
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _live = ref.read(realtimeProvider).events.listen((_) => _refreshLiveData());
     // Restore a saved session; the router shows a splash until this resolves.
     Future.microtask(() => ref.read(authProvider.notifier).restore());
 
@@ -31,20 +48,47 @@ class _AdinnAppState extends ConsumerState<AdinnApp> {
       final id = event.taskId;
       if (id != null) ref.read(routerProvider).push('/task/$id');
     };
-    push.onForeground = () {
-      ref.invalidate(notificationsProvider);
-      ref.invalidate(boardProvider);
-    };
+    push.onForeground = _refreshLiveData;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final realtime = ref.read(realtimeProvider);
+    if (state == AppLifecycleState.resumed) {
+      // Anything that happened while the socket was closed is picked up by a refresh.
+      if (ref.read(authProvider).status == AuthStatus.signedIn) {
+        realtime.start();
+        _refreshLiveData();
+      }
+    } else if (state == AppLifecycleState.paused) {
+      // Android kills idle sockets anyway; push covers the background.
+      realtime.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _live?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     // Register this device for push whenever someone is signed in (a no-op without Firebase config).
     ref.listen(authProvider.select((s) => s.status), (_, status) {
-      if (status == AuthStatus.signedIn) ref.read(pushRegistrarProvider).start();
+      if (status == AuthStatus.signedIn) {
+        ref.read(pushRegistrarProvider).start();
+        ref.read(realtimeProvider).start();
+      } else {
+        ref.read(realtimeProvider).stop();
+      }
     });
     if (ref.read(authProvider).status == AuthStatus.signedIn) {
-      Future.microtask(() => ref.read(pushRegistrarProvider).start());
+      Future.microtask(() {
+        ref.read(pushRegistrarProvider).start();
+        ref.read(realtimeProvider).start();
+      });
     }
 
     return MaterialApp.router(
