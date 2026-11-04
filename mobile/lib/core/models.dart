@@ -88,6 +88,72 @@ class Board {
   List<TaskSummary> inStatus(String key) => tasks.where((t) => t.status == key).toList();
 }
 
+/// A designer request (decline / split / swap / status_change) awaiting a decision.
+class RequestItem {
+  RequestItem({
+    required this.id,
+    required this.type,
+    required this.status,
+    required this.reason,
+    this.taskDbId,
+    this.taskRef,
+    this.taskName,
+    this.requester,
+    this.targetDesigner,
+    this.splitCount,
+    this.toStatus,
+  });
+
+  final int id;
+  final String type;
+  final String status;
+  final String reason;
+  final int? taskDbId;
+  final String? taskRef;
+  final String? taskName;
+  final String? requester;
+  final String? targetDesigner;
+  final int? splitCount;
+  final String? toStatus;
+
+  bool get isPending => status.startsWith('pending');
+
+  String get typeLabel => switch (type) {
+        'decline' => 'Decline',
+        'split' => 'Split',
+        'swap' => 'Swap',
+        'status_change' => 'Backward move',
+        _ => type,
+      };
+
+  factory RequestItem.fromJson(Map<String, dynamic> j) {
+    final task = j['task'] as Map<String, dynamic>?;
+    final split = j['split_details'] as Map<String, dynamic>?;
+    return RequestItem(
+      id: j['id'] as int,
+      type: (j['request_type'] ?? '') as String,
+      status: (j['overall_status'] ?? '') as String,
+      reason: (j['reason'] ?? '') as String,
+      taskDbId: task?['id'] as int?,
+      taskRef: task?['task_id'] as String?,
+      taskName: (task?['display_task_name'] ?? task?['task_name']) as String?,
+      requester: (j['requester'] as Map<String, dynamic>?)?['name'] as String?,
+      targetDesigner: (j['target_designer'] as Map<String, dynamic>?)?['name'] as String?,
+      splitCount: split?['creative_count'] is int ? split!['creative_count'] as int : int.tryParse('${split?['creative_count'] ?? ''}'),
+      toStatus: j['to_status'] as String?,
+    );
+  }
+}
+
+class Designer {
+  Designer(this.id, this.name);
+
+  final int id;
+  final String name;
+
+  factory Designer.fromJson(Map<String, dynamic> j) => Designer(j['id'] as int, (j['name'] ?? '') as String);
+}
+
 class ChatAttachment {
   ChatAttachment({required this.name, required this.url});
 

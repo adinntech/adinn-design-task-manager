@@ -48,6 +48,58 @@ class RoleApi {
   /// Designer-only: moves a task along the allowed state machine.
   Future<void> moveStatus(int id, String status) => _api.post('/designer/tasks/$id/move', data: {'status': status});
 
+  // ---- Head / Admin: request approvals ----
+  Future<({List<RequestItem> items, List<Designer> designers})> pendingRequests() async {
+    final json = await _api.get('$_prefix/requests');
+    return (
+      items: ((json['data'] as List?) ?? []).map((r) => RequestItem.fromJson(r as Map<String, dynamic>)).toList(),
+      designers: ((json['designers'] as List?) ?? []).map((d) => Designer.fromJson(d as Map<String, dynamic>)).toList(),
+    );
+  }
+
+  Future<void> approveRequest(int id, {int? designerId, int? creativeCount, String? comment}) => _api.post('$_prefix/requests/$id/approve', data: {
+        'approved_designer_id': ?designerId,
+        'approved_creative_count': ?creativeCount,
+        if (comment != null && comment.isNotEmpty) 'decision_comment': comment,
+      });
+
+  Future<void> rejectRequest(int id, String reason) => _api.post('$_prefix/requests/$id/reject', data: {'decision_reason': reason});
+
+  // ---- BD ----
+  Future<void> requestRework(int taskId, {required int count, required String comment}) =>
+      _api.post('/bd/tasks/$taskId/rework', data: {'number_of_creatives': count, 'comment': comment});
+
+  Future<void> completeWithRating(int taskId, {required Map<String, double> ratings, String? comment, required bool printingFile}) =>
+      _api.post('/bd/tasks/$taskId/complete', data: {
+        ...ratings,
+        if (comment != null && comment.isNotEmpty) 'rating_comment': comment,
+        'completion_type': printingFile ? 'prepare_printing_file' : 'completed',
+      });
+
+  Future<void> approveNewTask(int taskId, {String? comment}) =>
+      _api.post('/bd/tasks/$taskId/approve', data: {if (comment != null && comment.isNotEmpty) 'comment': comment});
+
+  Future<void> rejectNewTask(int taskId, String comment) => _api.post('/bd/tasks/$taskId/reject', data: {'comment': comment});
+
+  // ---- Designer requests ----
+  Future<({List<String> types, List<Designer> designers})> requestOptions(int taskId) async {
+    final json = await _api.get('/designer/tasks/$taskId/request-options');
+    return (
+      types: ((json['allowed_types'] as List?) ?? []).cast<String>(),
+      designers: ((json['designers'] as List?) ?? []).map((d) => Designer.fromJson(d as Map<String, dynamic>)).toList(),
+    );
+  }
+
+  Future<void> submitRequest(int taskId, {required String type, required String reason, int? targetDesignerId, int? creativeCount, String? details, String? notes}) =>
+      _api.post('/designer/tasks/$taskId/requests', data: {
+        'type': type,
+        'reason': reason,
+        'target_designer_id': ?targetDesignerId,
+        'creative_count': ?creativeCount,
+        if (details != null && details.isNotEmpty) 'details': details,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+      });
+
   // ---- Notifications (same for every role) ----
   Future<({List<AppNotification> items, int unread})> notifications() async {
     final json = await _api.get('/notifications');

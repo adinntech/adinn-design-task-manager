@@ -10,6 +10,7 @@ import '../../core/auth.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import 'providers.dart';
+import 'task_actions.dart';
 
 class TaskDetailScreen extends ConsumerWidget {
   const TaskDetailScreen({super.key, required this.taskId});
@@ -141,6 +142,7 @@ class _OverviewState extends ConsumerState<_Overview> {
               ]),
             ),
           ),
+          TaskActions(taskId: widget.taskId, data: widget.data),
           if (canMove) ...[
             const SizedBox(height: 16),
             FilledButton.icon(

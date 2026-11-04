@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth.dart';
 import '../notifications/notifications_screen.dart';
+import '../requests/requests_screen.dart';
 import '../tasks/board_screen.dart';
 import '../tasks/providers.dart';
 
@@ -19,14 +20,28 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final unread = ref.watch(notificationsProvider).maybeWhen(data: (d) => d.unread, orElse: () => 0);
+    final role = ref.watch(authProvider.select((s) => s.user?.role));
+    final hasRequests = role == 'designer_head' || role == 'admin';
+    final pending = hasRequests ? ref.watch(pendingRequestsProvider).maybeWhen(data: (d) => d.items.length, orElse: () => 0) : 0;
 
     return Scaffold(
-      body: IndexedStack(index: _index, children: const [BoardScreen(), NotificationsScreen(), ProfileScreen()]),
+      body: IndexedStack(index: _index, children: [
+        const BoardScreen(),
+        if (hasRequests) const RequestsScreen(),
+        const NotificationsScreen(),
+        const ProfileScreen(),
+      ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: [
           const NavigationDestination(icon: Icon(Icons.view_kanban_outlined), selectedIcon: Icon(Icons.view_kanban), label: 'Tasks'),
+          if (hasRequests)
+            NavigationDestination(
+              icon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check_outlined)),
+              selectedIcon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check)),
+              label: 'Requests',
+            ),
           NavigationDestination(
             icon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications_outlined)),
             selectedIcon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications)),

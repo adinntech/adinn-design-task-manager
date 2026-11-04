@@ -23,5 +23,5 @@ flutter test
 
 Done: login/logout, session restore, role-aware task board (designer, designer head, BD, admin),
 task detail, designer status move, task chat (polling), notifications.
-Not yet: attachments/uploads, EOD + rework + requests, head/admin approvals, BD review actions,
-push (FCM) registration, realtime (Reverb). The API for all of these already exists on the backend.
+Done too: head/admin request approvals, BD rework + rating + confirm/reject, designer requests (decline/split/swap).
+Not yet: attachments + EOD + rework uploads (multipart), FCM token registration, realtime (Reverb), BD create/edit.
