@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = ['name', 'username', 'employee_code', 'email', 'password', 'role', 'role_name', 'phone_number', 'is_active', 'web_push_enabled', 'last_login_at', 'experienced_verticals', 'skills', 'designer_head_id'];
 
