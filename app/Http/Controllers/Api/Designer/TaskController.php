@@ -15,6 +15,7 @@ use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskRequestService;
 use App\Services\DesignTaskStatusService;
 use App\Services\TaskNotificationService;
+use App\Services\TaskProgressSubmissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -148,6 +149,44 @@ class TaskController extends Controller
         $notifications->requestSubmitted($created);
 
         return response()->json(['request_id' => $created->id, 'message' => 'Request submitted — waiting for Designer Head approval.'], 201);
+    }
+
+    /** Task Updation (EOD): creatives added to progress + finished `progress_update` upload id(s). */
+    public function eod(Request $request, DesignTask $task, DesignerTaskAccessService $access, TaskProgressSubmissionService $submissions): JsonResponse
+    {
+        $this->authorizeTask($request, $task, $access, interact: true);
+        $data = $request->validate([
+            'completed_count' => ['required', 'integer', 'min:1'],
+            'upload_ids' => ['required', 'string', 'max:200'],
+        ]);
+
+        $result = $submissions->submitEod($request->user(), $task, (int) $data['completed_count'], $data['upload_ids']);
+
+        return response()->json([
+            'task' => $this->summary($result['task']),
+            'auto_completed' => $result['auto_completed'],
+            'message' => $result['auto_completed']
+                ? 'All creatives completed. Ticket moved to Waiting for BD Review.'
+                : 'Task Updation submitted successfully.',
+        ], 201);
+    }
+
+    /** Rework submission with finished `rework` upload id(s). */
+    public function rework(Request $request, DesignTask $task, DesignerTaskAccessService $access, TaskProgressSubmissionService $submissions): JsonResponse
+    {
+        $this->authorizeTask($request, $task, $access, interact: true);
+        $data = $request->validate([
+            'completed_count' => ['required', 'integer', 'min:1'],
+            'upload_ids' => ['required', 'string', 'max:200'],
+        ]);
+
+        $result = $submissions->submitRework($request->user(), $task, (int) $data['completed_count'], $data['upload_ids']);
+
+        return response()->json([
+            'task' => $this->summary($result['task']),
+            'next_stage' => $result['next_stage'],
+            'pending_after' => $result['pending_after'],
+        ], 201);
     }
 
     public function comments(Request $request, DesignTask $task, DesignerTaskAccessService $access, CommentReadStateService $readState): JsonResponse

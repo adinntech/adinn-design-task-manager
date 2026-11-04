@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceController;
+use App\Http\Controllers\Api\Designer\RequestController as DesignerRequestController;
 use App\Http\Controllers\Api\Designer\TaskController as DesignerTaskController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\FileUploadController;
@@ -37,6 +38,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/tasks/{task}', [DesignerTaskController::class, 'show']);
         Route::post('/tasks/{task}/move', [DesignerTaskController::class, 'move']);
         Route::post('/tasks/{task}/backward-request', [DesignerTaskController::class, 'backwardRequest']);
+        Route::post('/tasks/{task}/eod', [DesignerTaskController::class, 'eod']);
+        Route::post('/tasks/{task}/rework', [DesignerTaskController::class, 'rework']);
+        Route::get('/tasks/{task}/request-options', [DesignerRequestController::class, 'options']);
+        Route::post('/tasks/{task}/requests', [DesignerRequestController::class, 'store']);
         Route::get('/tasks/{task}/comments', [DesignerTaskController::class, 'comments']);
         Route::post('/tasks/{task}/comments', [DesignerTaskController::class, 'storeComment']);
     });
