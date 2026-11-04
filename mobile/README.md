@@ -19,11 +19,22 @@ flutter analyze
 flutter test
 ```
 
+## Push notifications (FCM)
+
+The app registers its FCM token with the API (`POST /api/v1/devices`) after sign-in and removes it on sign-out.
+To turn it on:
+
+1. Create a Firebase project and add an Android app with package name `in.co.adinn.adinn_tasks`.
+2. Download `google-services.json` into `android/app/` (the Gradle plugin is applied only when the file exists).
+3. On the server, set `FCM_CREDENTIALS` (path) or `FCM_CREDENTIALS_JSON` to a service-account key for the same project.
+
+Without these the app builds and runs normally with push off. Tapping a notification opens its task.
+
 ## Status
 
 Done: login/logout, session restore, role-aware task board (designer, designer head, BD, admin),
 task detail, designer status move, task chat (polling) with attachments (designer/BD), notifications,
 head/admin request approvals, BD rework + rating + confirm/reject, designer requests (decline/split/swap),
-designer EOD + rework submissions with resumable multipart uploads (direct to storage, 64 MB parts).
-Not yet: FCM token registration, realtime (Reverb), BD create/edit, designer-head chat attachments,
-printing-file mail tab.
+designer EOD + rework submissions with resumable multipart uploads (direct to storage, 64 MB parts),
+FCM registration + tap-to-open (needs the Firebase files above).
+Not yet: realtime (Reverb), BD create/edit, designer-head chat attachments, printing-file mail tab.

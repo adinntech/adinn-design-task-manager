@@ -4,6 +4,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase config is per-project and supplied by the team (Firebase console → Project settings → google-services.json).
+// Without it the app still builds and runs; push notifications are simply off.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "in.co.adinn.adinn_tasks"
     compileSdk = flutter.compileSdkVersion

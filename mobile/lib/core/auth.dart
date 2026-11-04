@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api_client.dart';
 import 'models.dart';
+import 'push.dart';
 
 /// Where the bearer token + cached user live. Abstract so tests can swap in memory.
 abstract class SessionStore {
@@ -106,6 +107,8 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Unregister this device while the API token is still valid, so a signed-out phone stops getting pushes.
+    await ref.read(pushRegistrarProvider).stop();
     try {
       await ref.read(apiClientProvider).post('/logout');
     } catch (_) {
@@ -115,6 +118,7 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> signOutLocally() async {
+    await ref.read(pushRegistrarProvider).stop(unregister: false);
     await ref.read(sessionStoreProvider).clear();
     state = const AuthState(status: AuthStatus.signedOut);
   }

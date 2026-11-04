@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Required in release builds too (Flutter only adds it to debug/profile). -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13+: runtime permission to show push notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Adinn Tasks"
         android:name="${applicationName}"
