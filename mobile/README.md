@@ -22,6 +22,8 @@ flutter test
 ## Status
 
 Done: login/logout, session restore, role-aware task board (designer, designer head, BD, admin),
-task detail, designer status move, task chat (polling), notifications.
-Done too: head/admin request approvals, BD rework + rating + confirm/reject, designer requests (decline/split/swap).
-Not yet: attachments + EOD + rework uploads (multipart), FCM token registration, realtime (Reverb), BD create/edit.
+task detail, designer status move, task chat (polling) with attachments (designer/BD), notifications,
+head/admin request approvals, BD rework + rating + confirm/reject, designer requests (decline/split/swap),
+designer EOD + rework submissions with resumable multipart uploads (direct to storage, 64 MB parts).
+Not yet: FCM token registration, realtime (Reverb), BD create/edit, designer-head chat attachments,
+printing-file mail tab.

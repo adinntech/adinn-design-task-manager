@@ -8,7 +8,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api_client.dart';
 import '../../core/auth.dart';
 import '../../core/models.dart';
+import '../../core/uploads.dart';
 import '../../core/theme.dart';
+import '../uploads/upload_panel.dart';
 import 'providers.dart';
 import 'task_actions.dart';
 
@@ -220,10 +222,20 @@ class _ChatTabState extends ConsumerState<ChatTab> {
   final _text = TextEditingController();
   bool _sending = false;
   Timer? _poller;
+  UploadsController? _uploads;
+
+  /// Only designers and BD have the direct-upload chat endpoints.
+  bool get _canAttach {
+    final role = ref.read(authProvider).user?.role;
+    return role == 'designer' || role == 'bd';
+  }
 
   @override
   void initState() {
     super.initState();
+    if (_canAttach) {
+      _uploads = UploadsController(service: ref.read(uploadServiceProvider), taskId: widget.taskId, purpose: UploadPurpose.comment);
+    }
     _poller = Timer.periodic(const Duration(seconds: 8), (_) {
       if (mounted) ref.invalidate(commentsProvider(widget.taskId));
     });
@@ -232,6 +244,7 @@ class _ChatTabState extends ConsumerState<ChatTab> {
   @override
   void dispose() {
     _poller?.cancel();
+    _uploads?.dispose();
     _text.dispose();
     super.dispose();
   }
@@ -239,10 +252,16 @@ class _ChatTabState extends ConsumerState<ChatTab> {
   Future<void> _send() async {
     final body = _text.text.trim();
     if (body.isEmpty || _sending) return;
+    if (_uploads?.busy ?? false) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Wait for the attachments to finish uploading.')));
+      return;
+    }
     setState(() => _sending = true);
     try {
-      await ref.read(roleApiProvider).sendComment(widget.taskId, body);
+      await ref.read(roleApiProvider).sendComment(widget.taskId, body, uploadIds: _uploads?.idList);
       _text.clear();
+      _uploads?.entries.clear();
+      _uploads?.notice = null;
       ref.invalidate(commentsProvider(widget.taskId));
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
@@ -274,6 +293,7 @@ class _ChatTabState extends ConsumerState<ChatTab> {
                   ),
           ),
         ),
+        if (_uploads != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: UploadPanel(controller: _uploads!, label: 'Attach files')),
         SafeArea(
           top: false,
           child: Padding(

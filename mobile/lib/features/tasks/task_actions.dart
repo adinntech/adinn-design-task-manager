@@ -6,6 +6,8 @@ import '../../core/auth.dart';
 import '../../core/models.dart';
 import '../requests/requests_screen.dart';
 import '../widgets/form_sheet.dart';
+import '../../core/uploads.dart';
+import '../uploads/progress_sheet.dart';
 import 'providers.dart';
 
 /// Role-specific action buttons on the task overview. The server remains the authority: these are
@@ -96,6 +98,40 @@ class TaskActions extends ConsumerWidget {
           },
         ),
       ]);
+    }
+
+    final status = ((data['task'] as Map?)?['status'] ?? '') as String;
+    final remaining = ((data['progress'] as Map?)?['remaining']) as int?;
+
+    if (role == 'designer' && access?['read_only'] != true && (status == 'in_progress' || status == 'rework')) {
+      final isRework = status == 'rework';
+      buttons.add(FilledButton.icon(
+        key: Key(isRework ? 'submit-rework' : 'submit-eod'),
+        icon: const Icon(Icons.cloud_upload),
+        label: Text(isRework ? 'Submit rework' : 'Task updation (EOD)'),
+        onPressed: () async {
+          final result = await showModalBottomSheet<ProgressSubmission>(
+            context: context,
+            isScrollControlled: true,
+            showDragHandle: true,
+            builder: (_) => ProgressSheet(
+              taskId: taskId,
+              purpose: isRework ? UploadPurpose.rework : UploadPurpose.progressUpdate,
+              title: isRework ? 'Submit rework' : 'Task updation',
+              maxCount: isRework ? null : remaining,
+            ),
+          );
+          if (result == null || !context.mounted) return;
+          await _run(
+            context,
+            ref,
+            () => isRework
+                ? api.submitRework(taskId, count: result.count, uploadIds: result.uploadIds)
+                : api.submitEod(taskId, count: result.count, uploadIds: result.uploadIds),
+            isRework ? 'Rework submitted.' : 'Task updation submitted.',
+          );
+        },
+      ));
     }
 
     if (role == 'designer' && access?['read_only'] != true) {

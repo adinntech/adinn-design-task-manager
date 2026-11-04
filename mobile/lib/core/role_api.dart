@@ -40,13 +40,23 @@ class RoleApi {
     return ((json['data'] as List?) ?? []).map((c) => ChatMessage.fromJson(c as Map<String, dynamic>)).toList();
   }
 
-  Future<ChatMessage> sendComment(int id, String text) async {
-    final json = await _api.post('$_prefix/tasks/$id/comments', data: {'comment': text});
+  Future<ChatMessage> sendComment(int id, String text, {String? uploadIds}) async {
+    final json = await _api.post('$_prefix/tasks/$id/comments', data: {
+      'comment': text,
+      if (uploadIds != null && uploadIds.isNotEmpty) 'upload_ids': uploadIds,
+    });
     return ChatMessage.fromJson(json['comment'] as Map<String, dynamic>);
   }
 
   /// Designer-only: moves a task along the allowed state machine.
   Future<void> moveStatus(int id, String status) => _api.post('/designer/tasks/$id/move', data: {'status': status});
+
+  /// Task Updation (EOD): creatives added to progress + finished `progress_update` upload ids.
+  Future<void> submitEod(int taskId, {required int count, required String uploadIds}) =>
+      _api.post('/designer/tasks/$taskId/eod', data: {'completed_count': count, 'upload_ids': uploadIds});
+
+  Future<void> submitRework(int taskId, {required int count, required String uploadIds}) =>
+      _api.post('/designer/tasks/$taskId/rework', data: {'completed_count': count, 'upload_ids': uploadIds});
 
   // ---- Head / Admin: request approvals ----
   Future<({List<RequestItem> items, List<Designer> designers})> pendingRequests() async {
