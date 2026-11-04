@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\Designer\RequestController as DesignerRequestController;
 use App\Http\Controllers\Api\Designer\TaskController as DesignerTaskController;
+use App\Http\Controllers\Api\Bd\TaskController as BdTaskController;
 use App\Http\Controllers\Api\DesignerHead\HeadController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\FileUploadController;
@@ -45,6 +46,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tasks/{task}/requests', [DesignerRequestController::class, 'store']);
         Route::get('/tasks/{task}/comments', [DesignerTaskController::class, 'comments']);
         Route::post('/tasks/{task}/comments', [DesignerTaskController::class, 'storeComment']);
+    });
+
+    Route::middleware('role:bd')->prefix('bd')->group(function () {
+        Route::get('/tasks', [BdTaskController::class, 'board']);
+        Route::get('/tasks/{task}', [BdTaskController::class, 'show']);
+        Route::get('/tasks/{task}/comments', [BdTaskController::class, 'comments']);
+        Route::post('/tasks/{task}/comments', [BdTaskController::class, 'storeComment']);
+        Route::post('/tasks/{task}/rework', [BdTaskController::class, 'rework']);
+        Route::post('/tasks/{task}/complete', [BdTaskController::class, 'complete']);
+        Route::post('/tasks/{task}/approve', [BdTaskController::class, 'approve']);
+        Route::post('/tasks/{task}/reject', [BdTaskController::class, 'reject']);
     });
 
     Route::middleware('role:designer_head')->prefix('designer-head')->group(function () {
