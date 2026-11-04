@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityFlagController;
 use App\Http\Controllers\Bd\AssignedTaskController;
 use App\Http\Controllers\Bd\TaskController;
 use App\Http\Controllers\Bd\TaskExportController;
+use App\Http\Controllers\FileUploadController;
 use Illuminate\Support\Facades\Route;
 
 // Shared across all authenticated roles — not role-scoped, since every role
@@ -19,11 +20,22 @@ Route::middleware(['auth', 'role:bd'])
     ->group(function () {
         Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::post('/tasks/in-house', [TaskController::class, 'storeInhouse'])->name('tasks.storeInhouse');
 
         Route::post('/drafts', [TaskController::class, 'storeDraft'])->name('drafts.store');
+        Route::post('/drafts/in-house', [TaskController::class, 'storeInhouseDraft'])->name('drafts.storeInhouse');
         Route::put('/drafts/{task}', [TaskController::class, 'updateDraft'])->name('drafts.update');
 
         Route::get('/designers/{designer}/availability', [TaskController::class, 'availability'])->name('designers.availability');
+
+        // Direct-to-Spaces multipart uploads for task-chat attachments (purpose "comment" only —
+        // FileUploadController refuses every other purpose for a BD).
+        Route::post('/uploads/initiate', [FileUploadController::class, 'initiate'])->name('uploads.initiate');
+        Route::get('/uploads/active', [FileUploadController::class, 'active'])->name('uploads.active');
+        Route::get('/uploads/{upload}/part-url', [FileUploadController::class, 'partUrl'])->name('uploads.part-url');
+        Route::get('/uploads/{upload}/parts', [FileUploadController::class, 'parts'])->name('uploads.parts');
+        Route::post('/uploads/{upload}/complete', [FileUploadController::class, 'complete'])->name('uploads.complete');
+        Route::post('/uploads/{upload}/abort', [FileUploadController::class, 'abort'])->name('uploads.abort');
 
         Route::get('/clients/search', [TaskController::class, 'searchClients'])->name('clients.search');
 

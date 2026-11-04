@@ -64,12 +64,12 @@
 
                     <div class="admin-edit-field">
                         <label>Contact Person</label>
-                        <input class="premium-input" name="contact_person" value="{{ old('contact_person',$task->contact_person) }}" required>
+                        <input class="premium-input" name="contact_person" value="{{ old('contact_person',$task->contact_person) }}" @if($task->task_category !== 'in_house') required @endif>
                     </div>
 
                     <div class="admin-edit-field">
                         <label>Mobile Number</label>
-                        <input class="premium-input" name="mobile_number" value="{{ old('mobile_number',$task->mobile_number) }}" required>
+                        <input class="premium-input" name="mobile_number" value="{{ old('mobile_number',$task->mobile_number) }}" @if($task->task_category !== 'in_house') required @endif>
                     </div>
 
                     <div class="admin-edit-field">

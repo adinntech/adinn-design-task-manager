@@ -16,6 +16,7 @@ use App\Services\DesignTaskPipelineService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskReportingService;
 use App\Services\DesignTaskStatusService;
+use App\Services\CloudMultipartUploadService;
 use App\Services\TaskNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -427,9 +428,13 @@ class AssignedTaskController extends Controller
             'comment' => ['required', 'string', 'max:10000'],
             'attachments' => ['nullable', 'array', 'max:10'],
             'attachments.*' => ['file', 'max:102400'],
+            'upload_ids' => ['nullable', 'string', 'max:200'],
         ]);
 
-        DB::transaction(function () use ($request, $task, $data, $isClarificationReply) {
+        // Task-chat files arrive as finished direct-to-Spaces uploads (ids), not as form files.
+        $chatUploads = app(CloudMultipartUploadService::class)->resolveCommentUploads($request->user(), $task, $data['upload_ids'] ?? null);
+
+        DB::transaction(function () use ($request, $task, $data, $isClarificationReply, $chatUploads) {
             $newComment = DesignTaskComment::create([
                 'design_task_id' => $task->id,
                 'user_id' => $request->user()->id,
@@ -475,6 +480,10 @@ class AssignedTaskController extends Controller
                     'mime_type' => $file->getMimeType(),
                     'size' => $file->getSize(),
                 ]);
+            }
+
+            if ($chatUploads !== []) {
+                app(CloudMultipartUploadService::class)->attachToComment($newComment, $task, $chatUploads);
             }
         });
 

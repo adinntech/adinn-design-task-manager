@@ -198,6 +198,26 @@
 </div>
 @endif
 
+@php
+    // Client / In-house tabs: BD only, and not while finishing a saved draft (drafts are Client tasks).
+    $showCreateTabs = ! (isset($draft) && $draft);
+    $inhouseDraft = $inhouseDraft ?? null;
+@endphp
+<div x-data="{ kind: '{{ ($inhouseDraft || old('_form') === 'inhouse') ? 'inhouse' : 'client' }}' }">
+@if($showCreateTabs && ! $inhouseDraft)
+<div class="create-kind-tabs" role="tablist" aria-label="Task type">
+    <button type="button" role="tab" :aria-selected="kind === 'client'" :class="{ 'is-active': kind === 'client' }" @click="kind = 'client'">Client</button>
+    <button type="button" role="tab" :aria-selected="kind === 'inhouse'" :class="{ 'is-active': kind === 'inhouse' }" @click="kind = 'inhouse'">In-house</button>
+</div>
+<style>
+    #cloneActiveBanner:not(.hidden){display:flex}
+    .create-kind-tabs{display:inline-flex;gap:4px;padding:5px;margin-bottom:18px;background:#f5f6f8;border:1px solid #eceff4;border-radius:12px}
+    .create-kind-tabs button{border:0;background:transparent;padding:9px 22px;border-radius:9px;font-size:13px;font-weight:800;color:#697386;cursor:pointer;transition:background .15s,color .15s}
+    .create-kind-tabs button:hover{color:#101828}
+    .create-kind-tabs button.is-active{background:#fff;color:#e30613;box-shadow:0 2px 8px rgba(16,24,40,.1)}
+</style>
+@endif
+<div x-show="kind === 'client'">
 @unless($isDesignerActor || (isset($draft) && $draft))
 <section class="panel panel-body mb-6" id="cloneTicketPanel">
     <h2 class="text-lg font-bold mb-1">Clone Existing Ticket</h2>
@@ -206,7 +226,7 @@
         <input type="text" id="cloneSearchInput" class="field" placeholder="Search Task ID, Zoho No., Task Name, Client, Mobile, Agency" autocomplete="off">
         <div id="cloneSuggestions" style="display:none;position:absolute;z-index:20;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;max-height:260px;overflow-y:auto;box-shadow:0 4px 10px rgba(0,0,0,.08)"></div>
     </div>
-    <div id="cloneActiveBanner" class="hidden" style="margin-top:10px;padding:8px 12px;background:#eff8ff;border:1px solid #b2ddff;border-radius:8px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div id="cloneActiveBanner" class="hidden" style="margin-top:10px;padding:8px 12px;background:#eff8ff;border:1px solid #b2ddff;border-radius:8px;font-size:12px;justify-content:space-between;align-items:center;gap:10px">
         <span id="cloneActiveText"></span>
         <button type="button" id="clearCloneBtn" class="btn btn-secondary" style="padding:4px 10px;font-size:11px">Clear Clone</button>
     </div>
@@ -361,6 +381,13 @@
     <button id="draftBtn" value="draft" disabled class="btn btn-secondary disabled:opacity-40 {{ $isDesignerActor ? 'hidden' : '' }}">Save as Draft</button>
 </div>
 </form>
+</div>
+@if($showCreateTabs)
+<div x-show="kind === 'inhouse'" x-cloak>
+    @include('bd.tasks.create-inhouse')
+</div>
+@endif
+</div>
 
 <datalist id="locationOptions">
     <option value="Chennai"><option value="Coimbatore"><option value="Madurai"><option value="Trichy"><option value="Salem"><option value="Bengaluru"><option value="Kochi"><option value="Hyderabad"><option value="Mumbai"><option value="Delhi">

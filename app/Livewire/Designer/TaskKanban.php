@@ -407,7 +407,7 @@ class TaskKanban extends Component
             ->get();
 
         $statuses = [
-            'pending_bd_approval' => 'Waiting for Confirmation',
+            'pending_bd_approval' => 'Awaiting BD Approval',
             'bd_rejected' => 'Rejected by BD',
         ] + $statuses;
 

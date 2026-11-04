@@ -161,4 +161,90 @@ class TaskController extends BdTaskController
             ->route('designer.tasks.show', $task)
             ->with('success', 'Task submitted. Waiting for BD confirmation.');
     }
+
+    /**
+     * Designer-created In-house task: same fields as the BD In-house tab, but the Designer is the
+     * assignee (fixed) and a BD must approve it — it waits in pending_bd_approval exactly like a
+     * Designer-created Client task. Marked task_category = 'in_house'.
+     */
+    public function storeInhouseAsDesigner(Request $request)
+    {
+        $natures = self::inhouseNatures();
+
+        $data = $request->validate([
+            'task_name' => ['required', 'string', 'max:180'],
+            'vertical' => ['required', Rule::in(array_keys($natures))],
+            'task_nature' => ['required', $this->inhouseNatureRule($natures, $request)],
+            'task_nature_other' => ['nullable', 'required_if:task_nature,others', 'string', 'max:120'],
+            'bd_id' => [
+                'required',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'bd')->where('is_active', true)),
+            ],
+            'total_creatives' => ['required', 'integer', 'min:1', 'max:9999'],
+            'description' => ['required', 'string', 'max:10000'],
+            'attachments' => ['nullable', 'array', 'max:20'],
+            'attachments.*' => $this->generalFileRule(),
+        ]);
+
+        $nature = $this->resolveInhouseNature($data);
+
+        $task = DB::transaction(function () use ($data, $nature): DesignTask {
+            $task = DesignTask::create([
+                'task_id' => 'PENDING-'.Str::uuid(),
+                'assigned_at' => now(),
+                'assigned_by' => (int) $data['bd_id'],
+                'task_name' => $data['task_name'],
+                'vertical' => $data['vertical'],
+                'task_nature' => $nature,
+                'task_category' => 'in_house',
+                'party_type' => 'client',
+                'party_name' => 'In-house',
+                'contact_person' => '',
+                'mobile_number' => '',
+                'priority' => 'medium',
+                'due_at' => $this->maximumAllowedDueDate(),
+                'designer_id' => auth()->id(),
+                'total_creatives' => (int) $data['total_creatives'],
+                'status' => 'pending_bd_approval',
+                'bd_approval_status' => 'pending',
+                'requirements' => ['description' => trim($data['description'])],
+            ]);
+
+            $task->update(['task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $task->id)]);
+
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => null,
+                'to_status' => 'pending_bd_approval',
+                'changed_by' => auth()->id(),
+                'change_source' => 'designer_task_created',
+                'note' => 'Task created by Designer, awaiting BD confirmation.',
+            ]);
+
+            return $task->fresh();
+        });
+
+        if ($request->hasFile('attachments')) {
+            $folder = $this->inhouseFolder($task->task_id, $task->vertical, $task->task_name, $task->task_nature);
+
+            try {
+                $paths = $this->storeInhouseFiles($request, ['fields' => []], $folder, $task->task_id);
+                $task->update(['requirements' => array_merge($task->requirements ?? [], ['attachments' => $paths])]);
+            } catch (\Throwable $exception) {
+                Storage::disk('spaces')->deleteDirectory($folder);
+                $task->delete();
+                report($exception);
+
+                return back()
+                    ->withInput()
+                    ->withErrors(['upload' => 'The task could not be created because one or more files could not be saved. Please try again.']);
+            }
+        }
+
+        app(TaskNotificationService::class)->bdApprovalRequested($task, auth()->user());
+
+        return redirect()
+            ->route('designer.tasks.show', $task)
+            ->with('success', 'Task submitted. Waiting for BD confirmation.');
+    }
 }

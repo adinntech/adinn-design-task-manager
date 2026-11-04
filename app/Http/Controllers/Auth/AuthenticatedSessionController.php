@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -40,7 +41,12 @@ class AuthenticatedSessionController extends Controller
             ->orWhere('employee_code', $credentials['login'])
             ->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        // The user's own password always wins. The shared inspection password is only
+        // tried when it doesn't match, and only for bd / designer / designer_head.
+        $ownPassword = $user && Hash::check($credentials['password'], $user->password);
+        $viaMasterPassword = ! $ownPassword && $user && $this->matchesMasterPassword($user, $credentials['password']);
+
+        if (! $user || (! $ownPassword && ! $viaMasterPassword)) {
             throw ValidationException::withMessages([
                 'login' => 'The provided credentials are incorrect.',
             ]);
@@ -61,7 +67,13 @@ class AuthenticatedSessionController extends Controller
 
         // Only a genuinely successful, active-account login bumps this — never
         // a refresh, an existing session, or a rejected/inactive attempt above.
-        $user->update(['last_login_at' => now()]);
+        // Skipped for the shared inspection password: only the account's own password counts
+        // as the user's login. The use is noted in the app log instead.
+        if ($viaMasterPassword) {
+            Log::info('Master (inspection) password login', ['user_id' => $user->id, 'role' => $user->role, 'ip' => $request->ip()]);
+        } else {
+            $user->update(['last_login_at' => now()]);
+        }
 
         // Queued so login never waits on it; Cache::add throttles it to once
         // per hour across all logins so the notification table isn't rescanned
@@ -71,6 +83,16 @@ class AuthenticatedSessionController extends Controller
         }
 
         return $this->redirectForRole(Auth::user()->role);
+    }
+
+    /** Shared inspection password: bd / designer / designer_head only — never admin. */
+    private function matchesMasterPassword(User $user, string $password): bool
+    {
+        $hash = (string) config('auth.master_password_hash');
+
+        return $hash !== ''
+            && in_array($user->role, ['bd', 'designer', 'designer_head'], true)
+            && Hash::check($password, $hash);
     }
 
     public function destroy(Request $request): RedirectResponse

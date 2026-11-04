@@ -31,7 +31,7 @@ class FileUploadController extends Controller
             'size_bytes' => ['required', 'integer', 'min:1'],
         ]);
 
-        $task = $this->authorizedTask((int) $data['task_id']);
+        $task = $this->authorizedTask((int) $data['task_id'], $data['purpose']);
 
         $upload = $this->uploads->initiate(Auth::user(), $task, $data['purpose'], $data['filename'], (int) $data['size_bytes']);
 
@@ -45,7 +45,7 @@ class FileUploadController extends Controller
             'purpose' => ['required', Rule::in(CloudMultipartUploadService::PURPOSES)],
         ]);
 
-        $task = $this->authorizedTask((int) $data['task_id']);
+        $task = $this->authorizedTask((int) $data['task_id'], $data['purpose']);
 
         $upload = FileUpload::query()
             ->where('user_id', Auth::id())
@@ -156,9 +156,29 @@ class FileUploadController extends Controller
         return MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? 'application/octet-stream';
     }
 
-    private function authorizedTask(int $taskId): DesignTask
+    private function authorizedTask(int $taskId, string $purpose = ''): DesignTask
     {
         $user = Auth::user();
+
+        // Task-chat attachments: either side of the conversation may upload — the task's BD or
+        // its Designer (including a swapped-away Designer, who keeps comment access).
+        if ($purpose === 'comment') {
+            $task = DesignTask::query()->findOrFail($taskId);
+            $requirements = $task->requirements ?? [];
+
+            $allowed = match ($user?->role) {
+                'bd' => (int) $task->assigned_by === (int) $user->id,
+                'designer' => (int) $task->designer_id === (int) $user->id
+                    || (int) ($requirements['_swap_original_designer_id'] ?? 0) === (int) $user->id
+                    || (int) ($requirements['_swap_previous_designer_id'] ?? 0) === (int) $user->id,
+                default => false,
+            };
+
+            abort_unless($allowed, 403);
+
+            return $task;
+        }
+
         abort_unless($user?->role === 'designer', 403);
 
         $task = DesignTask::query()->findOrFail($taskId);

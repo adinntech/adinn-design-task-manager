@@ -1,8 +1,49 @@
 <div
     x-data="{
-        tab: new URLSearchParams(window.location.search).get('tab') || 'overview',
+        // Comments now live in the floating chat on Overview; ?tab=comments (notification links) opens it.
+        tab: (new URLSearchParams(window.location.search).get('tab') || 'overview') === 'comments' ? 'overview' : (new URLSearchParams(window.location.search).get('tab') || 'overview'),
+        chatOpen: new URLSearchParams(window.location.search).get('tab') === 'comments',
         commentsSeen: new URLSearchParams(window.location.search).get('tab') === 'comments',
         toast: '',
+        unreadCount: {{ (int) $commentUnreadCount }},
+        chatKey: '{{ $generalComments->count() }}:{{ (int) $generalComments->max('id') }}',
+        chatBusy: false,
+        chatAgain: false,
+        chatTab: 'chat',
+        uploadBusy: false,
+        openChat() {
+            this.tab = 'overview';
+            this.chatOpen = true;
+            this.commentsSeen = true;
+            this.unreadCount = 0;
+            this.scrollChat();
+        },
+        // Live updates: ask the server for a tiny fingerprint; re-render only when it changed.
+        onIncoming(d) {
+            // Realtime (Reverb): a comment notification for THIS task arrived — refresh right away.
+            if (d && d.category === 'comment' && String(d.task_id) === '{{ $task->id }}') this.checkChat(true);
+        },
+        async checkChat(force = false) {
+            if (this.chatBusy) { if (force) this.chatAgain = true; return; }
+            if (document.hidden && !force) return;
+            this.chatBusy = true;
+            try {
+                const s = await this.$wire.chatState();
+                const key = s.count + ':' + s.last;
+                if (key !== this.chatKey || force) {
+                    const added = s.count - parseInt(this.chatKey.split(':')[0], 10);
+                    this.chatKey = key;
+                    if (!this.chatOpen && added > 0) this.unreadCount += added;
+                    await this.$wire.$refresh();
+                    if (this.chatOpen) this.scrollChat();
+                }
+            } catch (e) { /* offline / navigating away */ }
+            this.chatBusy = false;
+            if (this.chatAgain) { this.chatAgain = false; this.checkChat(true); }
+        },
+        scrollChat() {
+            setTimeout(() => { const el = this.$refs.chatScroll; if (el) el.scrollTop = el.scrollHeight; }, 160);
+        },
         attachmentPreviewOpen: false,
         attachmentPreviewUrl: '',
         attachmentPreviewName: '',
@@ -23,7 +64,10 @@
         }
     }"
     x-on:task-status-changed.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
-    x-on:comment-added.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
+    x-on:comment-added.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600); scrollChat()"
+    x-init="$watch('chatOpen', open => { if (open) { unreadCount = 0; scrollChat(); checkChat(); } }); if (chatOpen) scrollChat(); setInterval(() => checkChat(), 15000)"
+    x-on:adinn-notification.window="onIncoming($event.detail)"
+    x-on:cb-upload-state.window="uploadBusy = $event.detail.busy"
     x-on:eod-updated.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
     x-on:request-created.window="toast = $event.detail.message; setTimeout(() => toast = '', 2600)"
 >
@@ -359,9 +403,6 @@
 
     <div class="detail-tabs">
         <button class="detail-tab" :class="{ active: tab === 'overview' }" @click="tab = 'overview'">Overview</button>
-        <button class="detail-tab" :class="{ active: tab === 'comments' }" @click="tab = 'comments'; commentsSeen = true">Comments
-            @if($commentUnreadCount > 0)<span class="comment-unread-badge" x-show="!commentsSeen">{{ $commentUnreadCount }}</span>@endif
-        </button>
         @if($requests->where('request_type', 'decline')->isNotEmpty())
             <button class="detail-tab" :class="{ active: tab === 'decline-details' }" @click="tab = 'decline-details'">Decline Details</button>
         @endif
@@ -707,136 +748,153 @@
                             @endif
                         @endif
 
-                        <button class="btn btn-secondary" style="width:100%;margin-top:8px" @click="tab = 'comments'">Add Comment</button>
+                        <button class="btn btn-secondary" style="width:100%;margin-top:8px" @click="openChat()">Add Comment</button>
                     </div>
                 </div>
             </aside>
         </div>
     </section>
 
-    <section x-show="tab === 'comments'" style="display:none">
-        <div class="comment-shell">
-            @unless($selfDeclinedReadOnly || $splitRequesterReadOnly)
-            <div class="comment-compose">
-                <div class="comment-compose-head">
-                    <div>
-                        <div class="comment-compose-title">Add Comment</div>
-                        <div class="muted" style="margin-top:3px;font-size:9px">Share an update, clarification, or design note with the task team.</div>
-                    </div>
-                    <span class="comment-compose-stage">{{ $statuses[$task->status] ?? $task->status }}</span>
+    {{-- Floating task chat (replaces the old Comments tab). Same addComment() action, validation and attachment limits. --}}
+    <div class="cb-root" x-show="tab === 'overview'" x-cloak>
+        @include('partials.task-chat-styles')
+
+        <button type="button" class="cb-launch" x-show="!chatOpen" @click="openChat()" aria-label="Open task chat" title="Task chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="cb-badge" x-show="unreadCount > 0 && !chatOpen" x-text="unreadCount" x-cloak></span>
+        </button>
+
+        <section class="cb-panel" x-show="chatOpen" x-cloak
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-3 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 translate-y-3 scale-95"
+            @keydown.escape.window="chatOpen = false" aria-label="Task chat">
+            <header class="cb-head">
+                <span class="cb-head-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+                <div>
+                    <div class="cb-title">Task Chat</div>
+                    <div class="cb-sub">{{ $task->task_id }} · {{ $generalComments->count() }} {{ \Illuminate\Support\Str::plural('message', $generalComments->count()) }}</div>
                 </div>
+                <button type="button" class="cb-min" @click="chatOpen = false" aria-label="Minimise chat" title="Minimise">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+            </header>
 
-                <div class="comment-compose-body">
-                    <textarea
-                        class="comment-textarea"
-                        wire:model="comment"
-                        placeholder="Write your comment here..."
-                    ></textarea>
+            @php
+                $chatFiles = $generalComments->flatMap(fn ($c) => $c->attachments->map(fn ($a) => ['file' => $a, 'by' => (int) $c->user_id === (int) auth()->id() ? 'You' : ($c->user?->name ?? 'User'), 'at' => $c->created_at]));
+            @endphp
+            <div class="cb-tabs" role="tablist" aria-label="Chat sections">
+                <button type="button" role="tab" :class="{ 'is-active': chatTab === 'chat' }" @click="chatTab = 'chat'; scrollChat()">Chat</button>
+                <button type="button" role="tab" :class="{ 'is-active': chatTab === 'files' }" @click="chatTab = 'files'">Shared files <span class="cb-tab-count">{{ $chatFiles->count() }}</span></button>
+            </div>
 
-                    @error('comment')
-                        <div class="error" style="margin-top:6px">{{ $message }}</div>
-                    @enderror
-
-                    <div class="comment-upload-row">
-                        <div class="comment-upload-box">
-                            <label class="label" style="font-size:9px;margin-bottom:5px">Attachments</label>
-                            <input type="file" wire:model="attachments" multiple data-accumulate-files>
-                            <div class="comment-upload-note">Up to 10 files · Maximum 100 MB each</div>
-                            <div class="comment-upload-note" wire:loading wire:target="attachments">Preparing attachment...</div>
-                            @error('attachments.*')
-                                <div class="error" style="margin-top:5px">{{ $message }}</div>
-                            @enderror
+            <div class="cb-filesbody" x-show="chatTab === 'files'" x-cloak>
+                @forelse($chatFiles as $row)
+                    @php $dl = route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($row['file']->path)]); @endphp
+                    <div class="cb-filerow" wire:key="cb-file-{{ $row['file']->id }}">
+                        <span class="cb-filerow-ico">📎</span>
+                        <div class="cb-filerow-main">
+                            <div class="cb-filerow-name" title="{{ $row['file']->original_name }}">{{ $row['file']->original_name }}</div>
+                            <div class="cb-filerow-meta">{{ $row['by'] }} · {{ $row['at']->format('d M · h:i A') }}</div>
                         </div>
+                        <div class="cb-filerow-actions">
+                            <a href="#" @click.prevent="openAttachment('{{ $row['file']->url }}', '{{ $row['file']->original_name }}', '{{ $dl }}')">Open</a>
+                            <a href="{{ $dl }}">Download</a>
+                        </div>
+                    </div>
+                @empty
+                    <div class="cb-empty"><strong>No shared files yet</strong>Files attached in the chat will be listed here.</div>
+                @endforelse
+            </div>
 
-                        <button
-                            class="btn btn-primary comment-submit"
-                            wire:click="addComment"
-                            wire:loading.attr="disabled"
-                            wire:target="addComment,attachments"
-                            wire:loading.class="is-loading"
-                        >
-                            <span wire:loading.remove wire:target="addComment,attachments">Add Comment</span>
-                            <span wire:loading wire:target="addComment,attachments">Posting...</span>
+            <div class="cb-body" x-ref="chatScroll" x-show="chatTab === 'chat'">
+                @forelse($generalComments->reverse() as $item)
+                    @php
+                        $isMe = (int) $item->user_id === (int) auth()->id();
+                        $chatRole = $item->user?->role ?? 'default';
+                        $chatName = $isMe ? 'You' : ($item->user?->name ?? 'User');
+                    @endphp
+                    <div class="cb-msg {{ $isMe ? 'is-me' : 'is-them' }}" wire:key="cb-msg-{{ $item->id }}">
+                        <div class="cb-who">
+                            <span>{{ $chatName }}</span>
+                            @unless($isMe)<span class="role-pill role-{{ $chatRole }}">{{ ucwords(str_replace('_', ' ', $chatRole)) }}</span>@endunless
+                        </div>
+                        <div class="cb-bubble">{{ $item->comment }}</div>
+                        @if($item->attachments->isNotEmpty())
+                            <div class="cb-files">
+                                @foreach($item->attachments as $attachment)
+                                    <div class="cb-file">
+                                        <span class="cb-file-name" title="{{ $attachment->original_name }}">📎 {{ $attachment->original_name }}</span>
+                                        <a href="#" @click.prevent="openAttachment('{{ $attachment->url }}', '{{ $attachment->original_name }}', '{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($attachment->path)]) }}')">Open</a>
+                                        <a href="{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($attachment->path)]) }}">Download</a>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                        <div class="cb-time">{{ $item->created_at->format('d M · h:i A') }}</div>
+                    </div>
+                @empty
+                    <div class="cb-empty"><strong>No messages yet</strong>Start the conversation with the first task update.</div>
+                @endforelse
+            </div>
+
+            @unless($selfDeclinedReadOnly || $splitRequesterReadOnly)
+                <div class="cb-foot" x-show="chatTab === 'chat'">
+                    {{-- wire:ignore keeps the upload list and its in-flight uploads alive across Livewire re-renders. --}}
+                    <div class="cb-pick" wire:ignore>
+                        <input type="file" id="cbFileInput" class="cb-file-input" multiple>
+                        <div id="cbUploadList"></div>
+                        <div class="mf-notice" id="cbUploadNotice"></div>
+                    </div>
+                    <div class="cb-compose">
+                        <label class="cb-attach" for="cbFileInput" title="Attach files (up to 10 · 350 MB in total)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        </label>
+                        <textarea
+                            class="cb-input"
+                            rows="1"
+                            wire:model="comment"
+                            placeholder="Type a message..."
+                            x-on:input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 110) + 'px'"
+                            x-on:keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); if (!uploadBusy) $wire.addComment(); }"
+                        ></textarea>
+                        <button type="button" class="cb-send" wire:click="addComment" wire:loading.attr="disabled" wire:target="addComment" :disabled="uploadBusy" :title="uploadBusy ? 'Wait for the upload to finish' : 'Send'" aria-label="Send">
+                            <svg wire:loading.remove wire:target="addComment" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                            <span wire:loading wire:target="addComment" class="btn-spinner"></span>
                         </button>
                     </div>
+                    @error('comment')<div class="cb-err">{{ $message }}</div>@enderror
+                    @error('attachments')<div class="cb-err">{{ $message }}</div>@enderror
+                    <div class="cb-note">Multiple files · up to 350 MB in total</div>
                 </div>
-            </div>
+                <script>
+                (function () {
+                    if (typeof AdinnMultiFileUpload === 'undefined') return;
+                    AdinnMultiFileUpload.init({
+                        input: document.getElementById('cbFileInput'),
+                        list: document.getElementById('cbUploadList'),
+                        notice: document.getElementById('cbUploadNotice'),
+                        purpose: 'comment',
+                        taskId: {{ (int) $task->id }},
+                        wireProp: 'commentUploadId',
+                        hardLimit: true,
+                        maxFiles: 10,
+                        resetEvent: 'chat-comment-sent',
+                        onChange: function (ids, busy) { window.dispatchEvent(new CustomEvent('cb-upload-state', { detail: { busy: busy } })); },
+                        urls: {
+                            initiate: '{{ route('designer.uploads.initiate') }}',
+                            active: '{{ route('designer.uploads.active') }}',
+                            partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
+                            parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
+                            complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
+                        },
+                    });
+                })();
+                </script>
+            @else
+                <div class="cb-readonly">This chat is read-only for you.</div>
             @endunless
-
-            <div>
-                <div class="comment-list-head">
-                    <div class="comment-list-title">Conversation</div>
-                    <span class="comment-count">{{ $generalComments->count() }}</span>
-                </div>
-
-                <div class="comment-feed">
-                    @forelse($generalComments as $item)
-                        @php
-                            $commentRole = $item->user?->role ?? 'default';
-                            $commentName = $item->user?->name ?? 'User';
-                            $commentInitial = strtoupper(mb_substr($commentName, 0, 1));
-                        @endphp
-
-                        <article class="comment-item role-{{ $commentRole }}">
-                            <div class="comment-card-head">
-                                <div class="comment-user-wrap">
-                                    <div class="comment-avatar">{{ $commentInitial }}</div>
-                                    <div class="comment-user-meta">
-                                        <div class="comment-user-name">{{ $commentName }}</div>
-                                        <div class="comment-meta-row">
-                                            <span class="role-pill role-{{ $commentRole }}">{{ ucwords(str_replace('_', ' ', $commentRole)) }}</span>
-                                            <span class="comment-date">{{ $item->created_at->format('d M Y · h:i A') }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <span class="badge badge-dark comment-status">{{ $statuses[$item->status_at_comment] ?? $item->status_at_comment }}</span>
-                            </div>
-
-                            <div class="comment-card-body">
-                                <p class="comment-message">{{ $item->comment }}</p>
-
-                                @if($item->attachments->isNotEmpty())
-                                    <div class="comment-attachments">
-                                        @foreach($item->attachments as $attachment)
-                                            <div class="comment-attachment">
-                                                <div class="comment-attachment-main">
-                                                    <div class="comment-file-icon">↗</div>
-                                                    <div class="comment-file-name" title="{{ $attachment->original_name }}">{{ $attachment->original_name }}</div>
-                                                </div>
-
-                                                <div class="comment-file-actions">
-                                                    <a
-                                                        class="comment-file-btn"
-                                                        href="#"
-                                                        @click.prevent="openAttachment('{{ $attachment->url }}', '{{ $attachment->original_name }}', '{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($attachment->path)]) }}')"
-                                                    >
-                                                        Open
-                                                    </a>
-                                                    <a
-                                                        class="comment-file-btn"
-                                                        href="{{ route('designer.tasks.attachments.download', ['task' => $task->id, 'file' => base64_encode($attachment->path)]) }}"
-                                                    >
-                                                        Download
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
-                        </article>
-                    @empty
-                        <div class="comment-empty">
-                            <div class="comment-empty-icon">✦</div>
-                            <strong>No comments yet</strong>
-                            <span>Start the conversation with the first task update.</span>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-    </section>
+        </section>
+    </div>
 
 
         @if(in_array($task->status, ['in_progress','waiting_confirmation','rework','completed','prepare_printing_file'], true))

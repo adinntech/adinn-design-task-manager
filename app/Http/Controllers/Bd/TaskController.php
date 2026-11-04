@@ -101,7 +101,16 @@ class TaskController extends Controller
             ))->mapWithKeys(fn (array $group) => [$group['key'] => $group['files']])->all();
         }
 
-        return view('bd.tasks.create', compact('designers', 'draft', 'draftFiles'));
+        // An In-house draft is edited on the In-house tab, so keep it out of the Client form's draft handling.
+        $inhouseDraft = null;
+
+        if ($draft && $draft->task_category === 'in_house') {
+            $inhouseDraft = $draft;
+            $draft = null;
+            $draftFiles = [];
+        }
+
+        return view('bd.tasks.create', compact('designers', 'draft', 'draftFiles', 'inhouseDraft'));
     }
 
     /**
@@ -196,6 +205,11 @@ class TaskController extends Controller
         $tasks = DesignTask::query()
             ->where('assigned_by', $request->user()->id)
             ->where('status', '!=', 'draft')
+            ->when(
+                $request->query('category') === 'in_house',
+                fn ($query) => $query->where('task_category', 'in_house'),
+                fn ($query) => $query->where('task_category', '!=', 'in_house')
+            )
             ->where(function ($query) use ($like) {
                 $query->where('task_id', 'like', $like)
                     ->orWhere('zoho_project_number', 'like', $like)
@@ -595,6 +609,302 @@ class TaskController extends Controller
         return redirect()
             ->route('bd.tasks.show', $task)
             ->with('success', 'Design task created successfully.');
+    }
+
+    /**
+     * Task natures offered on the BD "In-house" tab: every existing nature of the vertical
+     * plus "Agreement" for all verticals, and "Vehicle Permit Document" for Road Show.
+     * The Client form keeps using NATURES unchanged.
+     */
+    public static function inhouseNatures(): array
+    {
+        $natures = array_map(fn (array $list) => array_values(array_unique([...$list, 'agreement'])), self::NATURES);
+        $natures['roadshow'][] = 'vehicle_permit_document';
+
+        // "Others" lets BD / Designer type their own nature (stored as the typed text on the task).
+        return array_map(fn (array $list) => [...$list, 'others'], $natures);
+    }
+
+    /** Folder every In-house task's files live in (final task id, vertical, name, nature). */
+    protected function inhouseFolder(string $taskId, string $vertical, string $taskName, string $nature): string
+    {
+        return implode('/', [
+            trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/'),
+            now()->format('Y'),
+            Str::slug(str_replace('_', '-', $vertical ?: 'draft')),
+            "{$taskId}_".Str::slug($taskName ?: 'untitled-task'),
+            Str::slug(str_replace('_', '-', $nature ?: 'draft')),
+        ]);
+    }
+
+    /** Newly uploaded files plus kept cloned files, stored under {folder}/attachments. Throws on failure. */
+    protected function storeInhouseFiles(Request $request, array $clonedAttachments, string $folder, string $taskId): array
+    {
+        $paths = $request->hasFile('attachments')
+            ? $this->storeMultipleFiles(
+                files: $request->file('attachments'),
+                directory: "{$folder}/attachments",
+                taskId: $taskId,
+                fieldName: 'attachments'
+            )
+            : [];
+
+        foreach ($clonedAttachments['fields']['attachments'] ?? [] as $sourcePath) {
+            $paths[] = $this->copyClonedFile(
+                sourcePath: $sourcePath,
+                directory: "{$folder}/attachments",
+                taskId: $taskId,
+                fieldName: 'attachments',
+                sequence: count($paths) + 1
+            );
+        }
+
+        return $paths;
+    }
+
+    /** The BD's own In-house draft named by draft_id, or null when none was sent. */
+    private function ownedInhouseDraft(Request $request): ?DesignTask
+    {
+        $draftId = (int) $request->input('draft_id');
+
+        if ($draftId <= 0) {
+            return null;
+        }
+
+        return DesignTask::query()
+            ->where('assigned_by', $request->user()->id)
+            ->where('status', 'draft')
+            ->where('task_category', 'in_house')
+            ->findOrFail($draftId);
+    }
+
+    /** The nature to store: the typed text when "Others" was picked, otherwise the chosen key. */
+    protected function resolveInhouseNature(array $data): string
+    {
+        return ($data['task_nature'] ?? '') === 'others'
+            ? trim((string) ($data['task_nature_other'] ?? ''))
+            : (string) $data['task_nature'];
+    }
+
+    protected function inhouseNatureRule(array $natures, Request $request): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($request, $natures): void {
+            if ($value !== null && $value !== '' && ! in_array($value, $natures[$request->input('vertical')] ?? [], true)) {
+                $fail('The selected task nature is invalid for the chosen vertical.');
+            }
+        };
+    }
+
+    /**
+     * BD-raised internal ("In-house") task: Task Name, Vertical, Task Nature, Description,
+     * Attachments and Assigned Designer only. Everything else the shared task columns require
+     * (party, priority, due date, creative count) gets a fixed default, and the task then follows
+     * the exact same lifecycle as a Client task. Marked with task_category = 'in_house'.
+     * Also converts a saved In-house draft (draft_id) into a real task.
+     */
+    public function storeInhouse(Request $request)
+    {
+        $natures = self::inhouseNatures();
+
+        $data = $request->validate([
+            'task_name' => ['required', 'string', 'max:180'],
+            'vertical' => ['required', Rule::in(array_keys($natures))],
+            'task_nature' => ['required', $this->inhouseNatureRule($natures, $request)],
+            'task_nature_other' => ['nullable', 'required_if:task_nature,others', 'string', 'max:120'],
+            'designer_id' => [
+                'required',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'designer')->where('is_active', true)),
+            ],
+            'total_creatives' => ['required', 'integer', 'min:1', 'max:9999'],
+            'description' => ['required', 'string', 'max:10000'],
+            'attachments' => ['nullable', 'array', 'max:20'],
+            'attachments.*' => $this->generalFileRule(),
+            'draft_id' => ['nullable', 'integer'],
+        ]);
+
+        $nature = $this->resolveInhouseNature($data);
+        $draft = $this->ownedInhouseDraft($request);
+        $clonedAttachments = $this->resolveClonedAttachments($request);
+
+        $columns = [
+            'assigned_at' => now(),
+            'assigned_by' => auth()->id(),
+            'task_name' => $data['task_name'],
+            'vertical' => $data['vertical'],
+            'task_nature' => $nature,
+            'task_category' => 'in_house',
+            'party_type' => 'client',
+            'party_name' => 'In-house',
+            'contact_person' => '',
+            'mobile_number' => '',
+            'priority' => 'medium',
+            'due_at' => $this->maximumAllowedDueDate(),
+            'designer_id' => $data['designer_id'],
+            'total_creatives' => (int) $data['total_creatives'],
+            'status' => 'assigned_tasks',
+        ];
+
+        $history = function (DesignTask $task, ?string $from, string $source, string $note): void {
+            DesignTaskStatusHistory::create([
+                'design_task_id' => $task->id,
+                'from_status' => $from,
+                'to_status' => 'assigned_tasks',
+                'changed_by' => auth()->id(),
+                'change_source' => $source,
+                'note' => $note,
+            ]);
+        };
+
+        if ($draft) {
+            // Convert-a-draft: upload new files first so a failure leaves the draft fully intact.
+            $finalTaskId = sprintf('DT-%s-%05d', now()->format('Y'), $draft->id);
+            $folder = $this->inhouseFolder($finalTaskId, $data['vertical'], $data['task_name'], $nature);
+
+            try {
+                $newPaths = $this->storeInhouseFiles($request, $clonedAttachments, $folder, $finalTaskId);
+            } catch (\Throwable $exception) {
+                Storage::disk('spaces')->deleteDirectory($folder);
+                report($exception);
+
+                return back()->withInput()->withErrors(['upload' => 'The task could not be created because one or more files could not be saved. Please try again.']);
+            }
+
+            $kept = $this->removeMarkedFiles(is_array($draft->requirements) ? $draft->requirements : [], $this->parseRemovedFiles($request));
+            $paths = array_values(array_merge($kept['attachments'] ?? [], $newPaths));
+            $requirements = ['description' => trim($data['description'])] + ($paths !== [] ? ['attachments' => $paths] : []);
+
+            $task = DB::transaction(function () use ($draft, $columns, $finalTaskId, $requirements, $history): DesignTask {
+                $draft->update($columns + ['task_id' => $finalTaskId, 'requirements' => $requirements]);
+                $task = $draft->fresh();
+
+                $history($task, 'draft', 'draft_created', 'Task assigned from draft.');
+                $history($task, 'assigned_tasks', 'task_assigned', 'Task Assigned');
+
+                return $task;
+            });
+        } else {
+            $task = DB::transaction(function () use ($columns, $data, $clonedAttachments, $history): DesignTask {
+                $task = DesignTask::create($columns + [
+                    'task_id' => 'PENDING-'.Str::uuid(),
+                    'requirements' => ['description' => trim($data['description'])],
+                    'cloned_from_task_id' => $clonedAttachments['source_id'],
+                ]);
+
+                $task->update(['task_id' => sprintf('DT-%s-%05d', now()->format('Y'), $task->id)]);
+
+                $history($task, null, 'task_created', 'Task Created');
+                $history($task, 'assigned_tasks', 'task_assigned', 'Task Assigned');
+
+                return $task->fresh();
+            });
+
+            if ($request->hasFile('attachments') || ($clonedAttachments['fields']['attachments'] ?? []) !== []) {
+                $folder = $this->inhouseFolder($task->task_id, $task->vertical, $task->task_name, $task->task_nature);
+
+                try {
+                    $paths = $this->storeInhouseFiles($request, $clonedAttachments, $folder, $task->task_id);
+                    $task->update(['requirements' => array_merge($task->requirements ?? [], ['attachments' => $paths])]);
+                } catch (\Throwable $exception) {
+                    Storage::disk('spaces')->deleteDirectory($folder);
+                    $task->delete();
+                    report($exception);
+
+                    return back()->withInput()->withErrors(['upload' => 'The task could not be created because one or more files could not be saved. Please try again.']);
+                }
+            }
+        }
+
+        app(TaskNotificationService::class)->taskAssigned($task, auth()->user(), $task->designer ?? User::find($task->designer_id));
+
+        return redirect()
+            ->route('bd.tasks.show', $task)
+            ->with('success', 'In-house task created successfully.');
+    }
+
+    /**
+     * Save (or update) an In-house draft. Only the task name is required; the designer is parked in
+     * requirements (not designer_id) so a draft never shows up on a Designer's board.
+     */
+    public function storeInhouseDraft(Request $request)
+    {
+        $natures = self::inhouseNatures();
+
+        $data = $request->validate([
+            'task_name' => ['required', 'string', 'max:180'],
+            'vertical' => ['nullable', Rule::in(array_keys($natures))],
+            'task_nature' => ['nullable', 'string', 'max:120', $this->inhouseNatureRule($natures, $request)],
+            'task_nature_other' => ['nullable', 'string', 'max:120'],
+            'designer_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'designer')->where('is_active', true)),
+            ],
+            'total_creatives' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'description' => ['nullable', 'string', 'max:10000'],
+            'attachments' => ['nullable', 'array', 'max:20'],
+            'attachments.*' => $this->generalFileRule(),
+            'draft_id' => ['nullable', 'integer'],
+        ]);
+
+        $draft = $this->ownedInhouseDraft($request);
+
+        $columns = [
+            'task_name' => $data['task_name'],
+            'vertical' => $data['vertical'] ?? '',
+            'task_nature' => $data['task_nature'] ?? '',
+            'total_creatives' => isset($data['total_creatives']) ? (int) $data['total_creatives'] : null,
+        ];
+
+        if (! $draft) {
+            $draft = DesignTask::create($columns + [
+                'task_id' => 'PENDING-'.Str::uuid(),
+                'assigned_at' => now(),
+                'assigned_by' => auth()->id(),
+                'task_category' => 'in_house',
+                'party_type' => 'client',
+                'party_name' => 'In-house',
+                'contact_person' => '',
+                'mobile_number' => '',
+                'priority' => 'medium',
+                'due_at' => null,
+                'designer_id' => null,
+                'total_creatives' => null,
+                'status' => 'draft',
+                'requirements' => [],
+            ]);
+        } else {
+            $draft->update($columns);
+        }
+
+        $requirements = $this->removeMarkedFiles(is_array($draft->requirements) ? $draft->requirements : [], $this->parseRemovedFiles($request));
+        $requirements['description'] = trim((string) ($data['description'] ?? ''));
+        $requirements['_draft_designer_id'] = $data['designer_id'] ?? null;
+        $requirements['_nature_other'] = ($data['task_nature'] ?? '') === 'others' ? trim((string) ($data['task_nature_other'] ?? '')) : null;
+
+        $folder = $this->inhouseFolder($draft->task_id, $draft->vertical, $draft->task_name, $draft->task_nature);
+
+        try {
+            if ($request->hasFile('attachments')) {
+                $requirements['attachments'] = array_values(array_merge(
+                    $requirements['attachments'] ?? [],
+                    $this->storeMultipleFiles(
+                        files: $request->file('attachments'),
+                        directory: "{$folder}/attachments",
+                        taskId: $draft->task_id,
+                        fieldName: 'attachments'
+                    )
+                ));
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()->withInput()->withErrors(['upload' => 'The draft could not be saved because one or more files could not be stored. Please try again.']);
+        }
+
+        $draft->update(['requirements' => $requirements]);
+
+        return redirect()
+            ->route('bd.tasks.create', ['draft' => $draft->id])
+            ->with('success', 'Task saved as draft.');
     }
 
     /**

@@ -412,7 +412,7 @@ class TaskMonitoringController extends Controller
             'task' => $task,
             'designers' => $designers,
             'statuses' => DesignTaskStatusService::STATUSES,
-            'natures' => self::NATURES,
+            'natures' => $this->naturesFor($task),
         ]);
     }
 
@@ -422,13 +422,17 @@ class TaskMonitoringController extends Controller
 
         $statuses = array_keys(DesignTaskStatusService::STATUSES);
 
+        // In-house tasks have no client contact details, and carry the in-house natures (incl. a custom one).
+        $isInhouse = $task->task_category === 'in_house';
+        $natureMap = $this->naturesFor($task);
+
         $data = $request->validate([
             'task_name' => ['required', 'string', 'max:180'],
             'vertical' => ['required', Rule::in(array_keys(self::NATURES))],
             'task_nature' => [
                 'required',
-                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
-                    $allowed = self::NATURES[$request->input('vertical')] ?? [];
+                function (string $attribute, mixed $value, \Closure $fail) use ($request, $natureMap): void {
+                    $allowed = $natureMap[$request->input('vertical')] ?? [];
 
                     if (! in_array($value, $allowed, true)) {
                         $fail('The selected task nature is invalid for the selected vertical.');
@@ -437,8 +441,8 @@ class TaskMonitoringController extends Controller
             ],
             'party_type' => ['required', Rule::in(['client', 'agency'])],
             'party_name' => ['required', 'string', 'max:180'],
-            'contact_person' => ['required', 'string', 'max:120'],
-            'mobile_number' => ['required', 'string', 'max:30'],
+            'contact_person' => [$isInhouse ? 'nullable' : 'required', 'string', 'max:120'],
+            'mobile_number' => [$isInhouse ? 'nullable' : 'required', 'string', 'max:30'],
             'priority' => ['required', Rule::in(['low', 'medium', 'high', 'urgent'])],
             'due_at' => ['required', 'date'],
             'designer_id' => [
@@ -453,6 +457,10 @@ class TaskMonitoringController extends Controller
             'status' => ['required', Rule::in($statuses)],
             'requirements' => ['sometimes', 'array'],
         ]);
+
+        // The columns are NOT NULL; an empty In-house contact is stored as '' (as at creation), never null.
+        $data['contact_person'] = (string) ($data['contact_person'] ?? '');
+        $data['mobile_number'] = (string) ($data['mobile_number'] ?? '');
 
         $oldDesigner = User::query()->whereKey($task->designer_id)->value('name') ?? '—';
         $newDesigner = User::query()->whereKey($data['designer_id'])->value('name') ?? '—';
@@ -632,5 +640,24 @@ class TaskMonitoringController extends Controller
         }
 
         return (string) $value;
+    }
+
+    /**
+     * Natures the admin edit form may offer for this task. Client tasks keep the classic list; In-house
+     * tasks use the in-house list and always keep their own (possibly custom) current nature selectable.
+     */
+    private function naturesFor(DesignTask $task): array
+    {
+        if ($task->task_category !== 'in_house') {
+            return self::NATURES;
+        }
+
+        $natures = \App\Http\Controllers\Bd\TaskController::inhouseNatures();
+
+        if ($task->vertical && $task->task_nature && ! in_array($task->task_nature, $natures[$task->vertical] ?? [], true)) {
+            $natures[$task->vertical][] = $task->task_nature;
+        }
+
+        return $natures;
     }
 }

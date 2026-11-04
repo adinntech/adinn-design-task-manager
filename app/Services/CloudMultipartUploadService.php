@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Models\DesignTask;
+use App\Models\DesignTaskComment;
+use App\Models\DesignTaskCommentAttachment;
 use App\Models\FileUpload;
 use App\Models\User;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mime\MimeTypes;
 use Throwable;
 
 /**
@@ -22,7 +25,7 @@ use Throwable;
  */
 class CloudMultipartUploadService
 {
-    public const PURPOSES = ['progress_update', 'rework', 'mail_attachment'];
+    public const PURPOSES = ['progress_update', 'rework', 'mail_attachment', 'comment'];
 
     public const MAX_SIZE_BYTES = 6 * 1024 * 1024 * 1024; // 6 GB — matches the app-wide cap
 
@@ -31,6 +34,11 @@ class CloudMultipartUploadService
 
     /** Printing File mail attachments only: below this, existing supported file types are allowed; at/above, ZIP only. */
     public const MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
+
+    /** Task-chat attachments: up to 10 files, 350 MB in total (a single file may use the whole 350 MB). */
+    public const COMMENT_MAX_TOTAL_BYTES = 350 * 1024 * 1024;
+
+    public const COMMENT_MAX_FILES = 10;
 
     public const PART_SIZE_BYTES = 64 * 1024 * 1024; // 64 MB (S3 minimum is 5 MB)
 
@@ -50,7 +58,11 @@ class CloudMultipartUploadService
 
         $extension = strtolower((string) pathinfo($filename, PATHINFO_EXTENSION));
 
-        if ($purpose === 'mail_attachment') {
+        if ($purpose === 'comment') {
+            if ($sizeBytes > self::COMMENT_MAX_TOTAL_BYTES) {
+                throw ValidationException::withMessages(['file' => 'Chat attachments can total up to 350 MB.']);
+            }
+        } elseif ($purpose === 'mail_attachment') {
             if ($sizeBytes >= self::MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES && $extension !== 'zip') {
                 throw ValidationException::withMessages(['file' => 'Files smaller than 1 GB can be uploaded in any supported format. Files that are 1 GB or larger must be in ZIP format.']);
             }
@@ -172,9 +184,11 @@ class CloudMultipartUploadService
         ]);
 
         $extension = strtolower((string) pathinfo($upload->original_filename, PATHINFO_EXTENSION));
-        $zipOnlyThreshold = $upload->purpose === 'mail_attachment'
-            ? self::MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES
-            : self::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES;
+        $zipOnlyThreshold = match ($upload->purpose) {
+            'mail_attachment' => self::MAIL_ATTACHMENT_ZIP_ONLY_THRESHOLD_BYTES,
+            'comment' => PHP_INT_MAX, // chat files are capped at 350 MB; only a file named .zip is verified as a ZIP
+            default => self::PROGRESS_UPDATE_ZIP_ONLY_THRESHOLD_BYTES,
+        };
         $mustBeZip = $extension === 'zip'
             || (int) $upload->size_bytes >= $zipOnlyThreshold;
 
@@ -203,6 +217,88 @@ class CloudMultipartUploadService
         }
 
         $upload->update(['status' => 'abandoned']);
+    }
+
+    /**
+     * Validates the completed chat uploads a comment is being posted with: all belong to this user and
+     * task, are finished and unused, and together stay within the chat limits. Returns them in order.
+     *
+     * @return array<int, FileUpload>
+     */
+    public function resolveCommentUploads(User $user, DesignTask $task, ?string $uploadIds, string $errorField = 'attachments'): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $uploadIds)), 'ctype_digit')));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        if (count($ids) > self::COMMENT_MAX_FILES) {
+            throw ValidationException::withMessages([$errorField => 'You can attach up to '.self::COMMENT_MAX_FILES.' files to one message.']);
+        }
+
+        $found = FileUpload::query()
+            ->whereIn('id', $ids)
+            ->where('user_id', $user->id)
+            ->where('design_task_id', $task->id)
+            ->where('purpose', 'comment')
+            ->where('status', 'completed')
+            ->whereNull('consumed_at')
+            ->get()
+            ->keyBy('id');
+
+        if ($found->count() !== count($ids)) {
+            throw ValidationException::withMessages([$errorField => 'An attachment is not ready yet. Wait for the upload to finish, then send.']);
+        }
+
+        $uploads = array_map(fn ($id) => $found[(int) $id], $ids);
+
+        if (array_sum(array_map(fn ($u) => (int) $u->size_bytes, $uploads)) > self::COMMENT_MAX_TOTAL_BYTES) {
+            throw ValidationException::withMessages([$errorField => 'Chat attachments can total up to 350 MB.']);
+        }
+
+        return $uploads;
+    }
+
+    /** Moves the finished chat uploads to the comment's own folder and records them as its attachments. */
+    public function attachToComment(DesignTaskComment $comment, DesignTask $task, array $uploads): void
+    {
+        foreach (array_values($uploads) as $index => $upload) {
+            $originalBase = Str::slug(pathinfo($upload->original_filename, PATHINFO_FILENAME));
+            $extension = strtolower((string) pathinfo($upload->original_filename, PATHINFO_EXTENSION)) ?: 'bin';
+
+            $fileName = sprintf(
+                '%s__comment-%05d__%s__%s__%02d.%s',
+                $task->task_id,
+                $comment->id,
+                $originalBase !== '' ? $originalBase : 'attachment',
+                now()->format('Ymd-His-v'),
+                $index + 1,
+                $extension
+            );
+
+            $directory = implode('/', [
+                trim((string) env('DO_SPACES_ROOT', 'design_task_manager'), '/'),
+                now()->format('Y'),
+                $task->vertical,
+                $task->task_id.'_'.Str::slug($task->task_name),
+                Str::slug($task->task_nature),
+                'comments',
+                'comment-'.$comment->id,
+            ]);
+
+            $path = $directory.'/'.$fileName;
+            $this->promoteToFinalPath($upload, $path);
+
+            DesignTaskCommentAttachment::create([
+                'design_task_comment_id' => $comment->id,
+                'disk' => 'spaces',
+                'path' => $path,
+                'original_name' => $upload->original_filename,
+                'mime_type' => MimeTypes::getDefault()->getMimeTypes($extension)[0] ?? 'application/octet-stream',
+                'size' => (int) $upload->size_bytes,
+            ]);
+        }
     }
 
     public function promoteToFinalPath(FileUpload $upload, string $finalPath): void

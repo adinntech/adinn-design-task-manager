@@ -170,7 +170,111 @@
 
 </style>
 
-<div x-data="{ tab: new URLSearchParams(window.location.search).get('tab') || 'overview', commentsSeen: new URLSearchParams(window.location.search).get('tab') === 'comments' }">
+<script>
+    function bdTaskPage() {
+        const qTab = new URLSearchParams(window.location.search).get('tab');
+        return {
+            // Comments now live in the floating chat on Overview; ?tab=comments (notification links, post redirects) opens it.
+            tab: (qTab || 'overview') === 'comments' ? 'overview' : (qTab || 'overview'),
+            chatOpen: qTab === 'comments',
+            commentsSeen: qTab === 'comments',
+            sending: false,
+            chatError: '',
+            chatTab: 'chat',
+            uploadBusy: false,
+            unreadCount: {{ (int) ($commentUnreadCount ?? 0) }},
+            polling: false,
+            again: false,
+            init() {
+                if (this.chatOpen) this.scrollChat();
+                this.$watch('chatOpen', open => { if (open) { this.unreadCount = 0; this.scrollChat(); this.pollChat(); } });
+                setInterval(() => this.pollChat(), 15000);
+            },
+            syncFileCount() {
+                const badge = document.getElementById('bdchat-filecount');
+                if (badge) badge.textContent = document.querySelectorAll('#bdchat-files .cb-filerow').length;
+            },
+            openChat() { this.tab = 'overview'; this.chatOpen = true; this.commentsSeen = true; this.unreadCount = 0; },
+            // Live updates: pull the server-rendered conversation and swap it in only when it changed.
+            onIncoming(d) {
+                // Realtime (Reverb): a comment notification for THIS task arrived — refresh right away.
+                if (d && d.category === 'comment' && String(d.task_id) === '{{ $task->id }}') this.pollChat(true);
+            },
+            async pollChat(force = false) {
+                if (this.polling) { if (force) this.again = true; return; }
+                if (this.sending || (document.hidden && !force)) return;
+                this.polling = true;
+                try {
+                    const page = await fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                    if (!page.ok) return;
+                    const doc = new DOMParser().parseFromString(await page.text(), 'text/html');
+                    const fresh = doc.getElementById('bdchat-body');
+                    const live = document.getElementById('bdchat-body');
+                    if (!fresh || !live || fresh.innerHTML.trim() === live.innerHTML.trim()) return;
+                    const before = live.querySelectorAll('.cb-msg').length;
+                    live.innerHTML = fresh.innerHTML;
+                    ['bdchat-sub', 'bdchat-files'].forEach(id => {
+                        const f = doc.getElementById(id);
+                        const l = document.getElementById(id);
+                        if (f && l) l.innerHTML = f.innerHTML;
+                    });
+                    this.syncFileCount();
+                    const added = live.querySelectorAll('.cb-msg').length - before;
+                    if (!this.chatOpen && added > 0) this.unreadCount += added;
+                    if (this.chatOpen) this.scrollChat();
+                } catch (e) { /* offline / navigating away */ } finally { this.polling = false; if (this.again) { this.again = false; this.pollChat(true); } }
+            },
+            scrollChat() {
+                setTimeout(() => { const el = this.$refs.chatScroll; if (el) el.scrollTop = el.scrollHeight; }, 160);
+            },
+            async sendChat(event) {
+                const form = event.target;
+                if (this.sending || this.uploadBusy) return;
+                this.chatError = '';
+                this.sending = true;
+                try {
+                    const res = await fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin',
+                    });
+                    if (res.status === 422) {
+                        const data = await res.json();
+                        this.chatError = Object.values(data.errors || {}).flat()[0] || 'Could not send your message.';
+                        return;
+                    }
+                    if (!res.ok) { this.chatError = 'Could not send your message. Please try again.'; return; }
+
+                    // Refresh the conversation from the server-rendered page.
+                    const page = await fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                    const doc = new DOMParser().parseFromString(await page.text(), 'text/html');
+                    ['bdchat-body', 'bdchat-sub', 'bdchat-files'].forEach(id => {
+                        const fresh = doc.getElementById(id);
+                        const live = document.getElementById(id);
+                        if (fresh && live) live.innerHTML = fresh.innerHTML;
+                    });
+                    this.syncFileCount();
+
+                    // Reset the composer and the uploader's file list.
+                    const box = form.querySelector('textarea');
+                    box.value = '';
+                    box.style.height = '';
+                    const ids = form.querySelector('[name=upload_ids]');
+                    if (ids) ids.value = '';
+                    window.dispatchEvent(new Event('bd-chat-sent'));
+                    this.scrollChat();
+                } catch (e) {
+                    this.chatError = 'Network error. Please try again.';
+                } finally {
+                    this.sending = false;
+                }
+            },
+        };
+    }
+</script>
+
+<div x-data="bdTaskPage()" x-on:adinn-notification.window="onIncoming($event.detail)" x-on:cb-upload-state.window="uploadBusy = $event.detail.busy">
     <div class="page-head">
         <div>
             <h1>{{ $task->display_task_name ?? $task->task_name }}</h1>
@@ -192,10 +296,6 @@
 
     <div class="bd-detail-tabs">
         <button class="bd-detail-tab" :class="{active:tab==='overview'}" @click="tab='overview'">Overview</button>
-        
-        <button class="bd-detail-tab" :class="{active:tab==='comments'}" @click="tab='comments'; commentsSeen = true">Comments
-            @if(($commentUnreadCount ?? 0) > 0)<span class="comment-unread-badge" x-show="!commentsSeen">{{ $commentUnreadCount }}</span>@endif
-        </button>
         @if($declineRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='decline-details'}" @click="tab='decline-details'">Decline Details</button>@endif
         @if($splitRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='split-details'}" @click="tab='split-details'">Split Details</button>@endif
         @if($swapRequests->isNotEmpty())<button class="bd-detail-tab" :class="{active:tab==='swap-details'}" @click="tab='swap-details'">Swap Details</button>@endif
@@ -360,98 +460,147 @@
         </div>
     </section>
 
-    <section class="bd-tab-panel" x-show="tab==='comments'" x-cloak>
-        <div class="panel">
-            <div class="panel-header">
+    {{-- Floating task chat (replaces the old Comments tab). Same bd.tasks.comments.store action, validation and attachment limits. --}}
+    <div class="cb-root" x-show="tab === 'overview'" x-cloak>
+        @include('partials.task-chat-styles')
+
+        <button type="button" class="cb-launch" x-show="!chatOpen" @click="openChat()" aria-label="Open task chat" title="Task chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="cb-badge" x-show="unreadCount > 0 && !chatOpen" x-text="unreadCount" x-cloak></span>
+        </button>
+
+        <section class="cb-panel" x-show="chatOpen" x-cloak
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-3 scale-95" x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0 scale-100" x-transition:leave-end="opacity-0 translate-y-3 scale-95"
+            @keydown.escape.window="chatOpen = false" aria-label="Task chat">
+            <header class="cb-head">
+                <span class="cb-head-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
                 <div>
-                    <div class="panel-title">Comments</div>
-                    <div style="font-size:9px;color:#667085;margin-top:4px">Shared communication between BD and Designer.</div>
+                    <div class="cb-title">Task Chat</div>
+                    <div class="cb-sub" id="bdchat-sub">{{ $task->task_id }} · {{ $generalComments->count() }} {{ \Illuminate\Support\Str::plural('message', $generalComments->count()) }}</div>
                 </div>
-                <span class="bd-tab-count">{{ $generalComments->count() }}</span>
+                <button type="button" class="cb-min" @click="chatOpen = false" aria-label="Minimise chat" title="Minimise">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+            </header>
+
+            @php
+                $chatFiles = $generalComments->flatMap(fn ($c) => $c->attachments->map(fn ($a) => ['file' => $a, 'by' => (int) $c->user_id === (int) auth()->id() ? 'You' : ($c->user?->name ?? 'User'), 'at' => $c->created_at]));
+            @endphp
+            <div class="cb-tabs" role="tablist" aria-label="Chat sections">
+                <button type="button" role="tab" :class="{ 'is-active': chatTab === 'chat' }" @click="chatTab = 'chat'; scrollChat()">Chat</button>
+                <button type="button" role="tab" :class="{ 'is-active': chatTab === 'files' }" @click="chatTab = 'files'">Shared files <span class="cb-tab-count" id="bdchat-filecount">{{ $chatFiles->count() }}</span></button>
             </div>
 
-            <div class="panel-body">
-                <div class="bd-comments-shell">
-                    <div class="bd-comment-feed">
-                        @forelse($generalComments as $comment)
-                            @php
-                                $bdCommentName = $comment->user?->name ?? 'User';
-                                $bdCommentInitial = strtoupper(mb_substr($bdCommentName, 0, 1));
-                            @endphp
-                            <article class="bd-comment role-{{ $comment->user?->role ?? 'default' }}">
-                                <div class="bd-comment-head">
-                                    <div class="bd-comment-person">
-                                        <div class="bd-comment-avatar">{{ $bdCommentInitial }}</div>
-                                        <div>
-                                            <div class="bd-comment-name">{{ $bdCommentName }}</div>
-                                            <div class="bd-comment-date">{{ $comment->created_at?->format('d M Y · h:i A') }}</div>
-                                        </div>
-                                    </div>
-                                    <span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$comment->user?->role ?? 'user')) }}</span>
-                                </div>
-
-                                <div class="bd-comment-message">{{ $comment->comment }}</div>
-
-                                @if($comment->attachments->isNotEmpty())
-                                    <div class="bd-comment-files">
-                                        @foreach($comment->attachments as $attachment)
-                                            <div class="bd-comment-file">
-                                                <div class="bd-comment-file-primary">
-                                                    <span class="bd-comment-file-name" title="{{ $attachment->original_name }}">{{ $attachment->original_name }}</span>
-                                                    <a target="_blank" class="bd-comment-open" href="{{ $attachment->url }}">Open</a>
-                                                </div>
-                                                <a class="bd-comment-download" href="{{ $attachment->url }}" download>Download</a>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </article>
-                        @empty
-                            <div class="empty-state">No comments yet. Start the task conversation from the form on the right.</div>
-                        @endforelse
+            <div class="cb-filesbody" id="bdchat-files" x-show="chatTab === 'files'" x-cloak>
+                @forelse($chatFiles as $row)
+                    <div class="cb-filerow">
+                        <span class="cb-filerow-ico">📎</span>
+                        <div class="cb-filerow-main">
+                            <div class="cb-filerow-name" title="{{ $row['file']->original_name }}">{{ $row['file']->original_name }}</div>
+                            <div class="cb-filerow-meta">{{ $row['by'] }} · {{ $row['at']?->format('d M · h:i A') }}</div>
+                        </div>
+                        <div class="cb-filerow-actions">
+                            <a target="_blank" rel="noopener" href="{{ $row['file']->url }}">Open</a>
+                            <a href="{{ $row['file']->url }}" download>Download</a>
+                        </div>
                     </div>
+                @empty
+                    <div class="cb-empty"><strong>No shared files yet</strong>Files attached in the chat will be listed here.</div>
+                @endforelse
+            </div>
 
-                    <div class="bd-comment-composer">
-                        <div class="bd-comment-composer-title">Add Comment</div>
-                        <div class="bd-comment-composer-subtitle">Share a clear update, clarification or feedback with the Designer.</div>
-
-                        <form
-                            method="POST"
-                            action="{{ route('bd.tasks.comments.store', $task) }}"
-                            enctype="multipart/form-data"
-                            onsubmit="const b=this.querySelector('button[type=submit]');b.disabled=true;b.innerHTML='<span class=btn-spinner></span>Posting...';"
-                        >
-                            @csrf
-                            <label class="label">Comment</label>
-                            <textarea
-                                class="premium-input"
-                                name="comment"
-                                rows="5"
-                                maxlength="10000"
-                                placeholder="Write your comment..."
-                                required
-                            >{{ old('comment') }}</textarea>
-
-                            @error('comment')
-                                <div style="font-size:9px;color:#b42318;margin-top:5px">{{ $message }}</div>
-                            @enderror
-
-                            <div style="margin-top:11px">
-                                <label class="label">Attachments</label>
-                                <input class="premium-input" type="file" name="attachments[]" multiple data-accumulate-files>
-                                <div style="font-size:8px;color:#98a2b3;margin-top:5px">Up to 10 files · Maximum 100 MB each</div>
-                                @error('attachments.*')
-                                    <div style="font-size:9px;color:#b42318;margin-top:5px">{{ $message }}</div>
-                                @enderror
+            <div class="cb-body" id="bdchat-body" x-ref="chatScroll" x-show="chatTab === 'chat'">
+                @forelse($generalComments->reverse() as $comment)
+                    @php
+                        $isMe = (int) $comment->user_id === (int) auth()->id();
+                        $chatRole = $comment->user?->role ?? 'default';
+                        $chatName = $isMe ? 'You' : ($comment->user?->name ?? 'User');
+                    @endphp
+                    <div class="cb-msg {{ $isMe ? 'is-me' : 'is-them' }}">
+                        <div class="cb-who">
+                            <span>{{ $chatName }}</span>
+                            @unless($isMe)<span class="role-pill role-{{ $chatRole }}">{{ ucwords(str_replace('_', ' ', $chatRole)) }}</span>@endunless
+                        </div>
+                        <div class="cb-bubble">{{ $comment->comment }}</div>
+                        @if($comment->attachments->isNotEmpty())
+                            <div class="cb-files">
+                                @foreach($comment->attachments as $attachment)
+                                    <div class="cb-file">
+                                        <span class="cb-file-name" title="{{ $attachment->original_name }}">📎 {{ $attachment->original_name }}</span>
+                                        <a target="_blank" rel="noopener" href="{{ $attachment->url }}">Open</a>
+                                        <a href="{{ $attachment->url }}" download>Download</a>
+                                    </div>
+                                @endforeach
                             </div>
-
-                            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:12px">Post Comment</button>
-                        </form>
+                        @endif
+                        <div class="cb-time">{{ $comment->created_at?->format('d M · h:i A') }}</div>
                     </div>
-                </div>
+                @empty
+                    <div class="cb-empty"><strong>No messages yet</strong>Start the conversation with the Designer.</div>
+                @endforelse
             </div>
-        </div>
-    </section>
+
+            <form class="cb-foot" x-show="chatTab === 'chat'" method="POST" action="{{ route('bd.tasks.comments.store', $task) }}" @submit.prevent="sendChat($event)">
+                @csrf
+                <input type="hidden" name="upload_ids" value="">
+                <div class="cb-pick">
+                    <input type="file" id="cbFileInput" class="cb-file-input" multiple>
+                    <div id="cbUploadList"></div>
+                    <div class="mf-notice" id="cbUploadNotice"></div>
+                </div>
+                <div class="cb-compose">
+                    <label class="cb-attach" for="cbFileInput" title="Attach files (up to 10 · 350 MB in total)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    </label>
+                    <textarea
+                        class="cb-input"
+                        name="comment"
+                        rows="1"
+                        maxlength="10000"
+                        placeholder="Type a message..."
+                        required
+                        x-on:input="$el.style.height = 'auto'; $el.style.height = Math.min($el.scrollHeight, 110) + 'px'"
+                        x-on:keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); if (!uploadBusy) $el.form.requestSubmit(); }"
+                    ></textarea>
+                    <button type="submit" class="cb-send" :disabled="sending || uploadBusy" :title="uploadBusy ? 'Wait for the upload to finish' : 'Send'" aria-label="Send">
+                        <svg x-show="!sending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                        <span x-show="sending" class="btn-spinner"></span>
+                    </button>
+                </div>
+                <div class="cb-err" x-show="chatError" x-text="chatError"></div>
+                <div class="cb-note">Multiple files · up to 350 MB in total</div>
+            </form>
+            <script>
+            (function () {
+                if (typeof AdinnMultiFileUpload === 'undefined') return;
+                var form = document.querySelector('form.cb-foot');
+                AdinnMultiFileUpload.init({
+                    input: document.getElementById('cbFileInput'),
+                    list: document.getElementById('cbUploadList'),
+                    notice: document.getElementById('cbUploadNotice'),
+                    purpose: 'comment',
+                    taskId: {{ (int) $task->id }},
+                    hardLimit: true,
+                    maxFiles: 10,
+                    resetEvent: 'bd-chat-sent',
+                    onChange: function (ids, busy) {
+                        var field = form && form.querySelector('[name=upload_ids]');
+                        if (field) field.value = ids;
+                        window.dispatchEvent(new CustomEvent('cb-upload-state', { detail: { busy: busy } }));
+                    },
+                    urls: {
+                        initiate: '{{ route('bd.uploads.initiate') }}',
+                        active: '{{ route('bd.uploads.active') }}',
+                        partUrl: function (id) { return '{{ url('/bd/uploads') }}/' + id + '/part-url'; },
+                        parts: function (id) { return '{{ url('/bd/uploads') }}/' + id + '/parts'; },
+                        complete: function (id) { return '{{ url('/bd/uploads') }}/' + id + '/complete'; },
+                    },
+                });
+            })();
+            </script>
+        </section>
+    </div>
 
     @if($declineRequests->isNotEmpty())<section class="bd-tab-panel" x-show="tab==='decline-details'" x-cloak><div class="panel"><div class="panel-header"><div class="panel-title">Decline Details</div></div><div class="panel-body">
         @foreach($declineRequests as $request)<div class="bd-request-card"><div class="bd-request-head"><div><div class="bd-request-title">Decline {{ ucwords(str_replace('_',' ',$request->overall_status)) }}</div><div class="bd-request-meta">{{ $request->created_at?->format('d M Y · h:i A') }}</div></div><span class="badge badge-dark">{{ ucwords(str_replace('_',' ',$request->overall_status)) }}</span></div><div class="bd-request-grid"><div class="bd-request-field"><strong>Requested At</strong>{{ $request->created_at?->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Requested By</strong>{{ $request->requester?->name ?? '—' }}</div><div class="bd-request-field"><strong>Responded At</strong>{{ in_array($request->overall_status,['pending_approval','pending_designer_head','pending_admin'],true) ? 'Pending Response' : optional($request->admin_action_at ?: $request->designer_head_action_at)->format('d M Y · h:i A') }}</div><div class="bd-request-field"><strong>Responded By</strong>{{ in_array($request->overall_status,['pending_approval','pending_designer_head','pending_admin'],true) ? '—' : (($request->adminActor ?: $request->designerHeadActor)?->name ?? '—') }}</div><div class="bd-request-field"><strong>Approved Designer</strong>{{ $request->approvedDesigner?->name ?? '—' }}</div><div class="bd-request-field" style="grid-column:1/-1"><strong>Request Reason</strong>{{ $request->reason }}</div>@if($request->decision_reason)<div class="bd-request-field" style="grid-column:1/-1"><strong>{{ $request->overall_status === 'approved' ? 'Approval Reason' : 'Decline Reason' }}</strong>{{ $request->decision_reason }}</div>@endif</div></div>@endforeach

@@ -82,7 +82,12 @@
         @endforeach
     </div>
 
-    <div class="dpt-chart">
+    <div class="dpt-tabs" role="tablist" aria-label="Performance chart">
+        <button type="button" class="dpt-tab is-active" role="tab" aria-selected="true" data-dpt-tab="status">Assigned · In Progress · Completed</button>
+        <button type="button" class="dpt-tab" role="tab" aria-selected="false" data-dpt-tab="outcome">Overdue &amp; Completed · Declined</button>
+    </div>
+
+    <div class="dpt-chart" data-dpt-panel="status" role="tabpanel">
         <div class="dpt-chart-head">
             <div class="dpt-chart-title">Assigned · In Progress · Completed</div>
             <div class="dpt-legend">
@@ -132,7 +137,7 @@
         </svg></div>
     </div>
 
-    <div class="dpt-chart">
+    <div class="dpt-chart" data-dpt-panel="outcome" role="tabpanel" hidden>
         <div class="dpt-chart-head">
             <div class="dpt-chart-title">Overdue &amp; Completed · Declined</div>
             <div class="dpt-legend">
@@ -173,8 +178,33 @@
     </div>
 </section>
 
+<script>
+(function () {
+    var root = document.currentScript.previousElementSibling;
+    if (!root) return;
+    var tabs = root.querySelectorAll('[data-dpt-tab]');
+    var panels = root.querySelectorAll('[data-dpt-panel]');
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            var key = tab.getAttribute('data-dpt-tab');
+            tabs.forEach(function (t) {
+                var on = t === tab;
+                t.classList.toggle('is-active', on);
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            panels.forEach(function (p) { p.hidden = p.getAttribute('data-dpt-panel') !== key; });
+        });
+    });
+})();
+</script>
+
 @once
 <style>
+    .dpt-tabs{display:inline-flex;gap:4px;margin-top:14px;padding:4px;border:1px solid #eceff4;border-radius:12px;background:#f7f8fa;max-width:100%;flex-wrap:wrap}
+    .dpt-tab{border:0;background:transparent;padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:800;color:#475467;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}
+    .dpt-tab:hover{color:#101828}
+    .dpt-tab.is-active{background:#fff;color:#d4111f;box-shadow:0 1px 3px rgba(16,24,40,.12)}
+    .dpt-chart[hidden]{display:none}
     .dpt{border:1px solid #f1dfe3;border-radius:20px;background:linear-gradient(180deg,#fff7f8,#fff 30%);box-shadow:0 10px 30px rgba(227,6,19,.07);padding:18px}
     .dpt-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .dpt-head-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#e30613;color:#fff;flex:none;box-shadow:0 6px 14px rgba(227,6,19,.28)}

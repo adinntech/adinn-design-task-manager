@@ -19,6 +19,7 @@ Route::middleware(['auth', 'role:designer'])
         // selected BD confirms it (App\Livewire\Bd\TaskKanban::approveConfirmation()).
         Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::post('/tasks/in-house', [TaskController::class, 'storeInhouseAsDesigner'])->name('tasks.storeInhouse');
 
         Route::get('/tasks', [TaskPageController::class, 'index'])->name('tasks.index');
 

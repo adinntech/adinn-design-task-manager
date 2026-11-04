@@ -412,6 +412,9 @@
         channel.bind('Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', function (data) {
             window.Livewire && window.Livewire.dispatch('notification-received');
 
+            // Lets any open page react instantly (e.g. the task chat pulls in a just-sent message).
+            window.dispatchEvent(new CustomEvent('adinn-notification', { detail: data || {} }));
+
             if (data && data.category && data.category !== 'comment') {
                 document.querySelectorAll('.refresh-btn[data-scope="tasks"]').forEach(function (btn) {
                     btn.classList.add('is-shaking');

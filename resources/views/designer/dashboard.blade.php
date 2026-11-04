@@ -142,9 +142,10 @@
     .dsh-btn.secondary{background:#fff;color:#344054;border:1px solid #e4e7ec;box-shadow:0 1px 3px rgba(16,24,40,.06)}
     .dsh-btn.secondary:hover{border-color:#e30613;color:#e30613}
 
-    .dsh-primary{display:grid;grid-template-columns:1.55fr repeat(6,minmax(0,1fr));gap:10px}
-    .dsh-secondary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-    .dsh-extra{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+    .dsh-primary,.dsh-secondary,.dsh-extra{display:flex;flex-wrap:wrap;gap:10px}
+    .dsh-primary>.dsh-card{flex:1 1 150px}.dsh-primary>.dsh-total{flex:1.55 1 250px}
+    .dsh-secondary>.dsh-card{flex:1 1 220px}
+    .dsh-extra>.dsh-card{flex:1 1 200px}
     .dsh-card{--t1:#f8fafc;--t2:#f8fafc;--ic:#475467;--icbg:#eef1f5;display:flex;align-items:center;gap:11px;min-width:0;padding:13px 14px;border-radius:14px;border:1px solid rgba(16,24,40,.07);background:linear-gradient(135deg,var(--t1),var(--t2));color:inherit;text-decoration:none;box-shadow:0 1px 3px rgba(16,24,40,.05);transition:.15s}
     .dsh-card.is-link{cursor:pointer}
     .dsh-card.is-link:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(16,24,40,.1);border-color:rgba(227,6,19,.35)}
@@ -152,6 +153,7 @@
     .dsh-icon svg{width:21px;height:21px}
     .dsh-label{font-size:10.5px;font-weight:700;color:#475467;line-height:1.25}
     .dsh-value{font-size:24px;font-weight:900;line-height:1.1;color:#101828;margin-top:3px}
+    .dsh-sep{font-style:normal;font-weight:400;color:#d0d5dd;margin:0 9px}
     .dsh-value small{font-size:13px;font-weight:700;color:#667085;margin-left:1px}
     .dsh-note{font-size:9px;color:rgba(255,255,255,.8);margin-top:3px}
     .dsh-total{background:linear-gradient(135deg,#e30613,#b8040f);border-color:#b8040f;color:#fff;box-shadow:0 12px 24px rgba(227,6,19,.25)}
@@ -176,9 +178,9 @@
     .dsh-completion-label{font-size:12px;font-weight:900;color:#101828;white-space:nowrap}
     .dsh-completion .bd-progress-track{height:11px}
     .dsh-completion-value{min-width:52px;text-align:center;padding:6px 10px;border-radius:10px;background:#fff1e0;font-size:14px;font-weight:900;color:#101828}
-    @media(max-width:1280px){.dsh-primary{grid-template-columns:repeat(4,minmax(0,1fr))}.dsh-total{grid-column:span 2}.dsh-extra{grid-template-columns:repeat(3,minmax(0,1fr))}}
-    @media(max-width:960px){.dsh-hero{flex-direction:column;align-items:flex-start}.dsh-hero-art{display:none}.dsh-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:640px){.dsh-hero h1{font-size:21px}.dsh-actions{width:100%}.dsh-btn{flex:1;justify-content:center}.dsh-primary,.dsh-secondary,.dsh-extra{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-total{grid-column:span 2}.dsh-card{padding:11px}.dsh-completion{flex-wrap:wrap}.dsh-completion .bd-progress-track{order:3;flex-basis:100%}}
+    @media(max-width:1280px){.dsh-primary>.dsh-total{flex-basis:100%}}
+    @media(max-width:960px){.dsh-hero{flex-direction:column;align-items:flex-start}.dsh-hero-art{display:none}.dsh-secondary>.dsh-card{flex-basis:calc(50% - 10px)}}
+    @media(max-width:640px){.dsh-hero h1{font-size:21px}.dsh-actions{width:100%}.dsh-btn{flex:1;justify-content:center}.dsh-primary>.dsh-card,.dsh-secondary>.dsh-card,.dsh-extra>.dsh-card{flex-basis:calc(50% - 10px)}.dsh-primary>.dsh-total{flex-basis:100%}.dsh-card{padding:11px}.dsh-completion{flex-wrap:wrap}.dsh-completion .bd-progress-track{order:3;flex-basis:100%}}
     .tov{border:1px solid #f1dfe3;border-radius:20px;background:linear-gradient(180deg,#fff7f8,#fff 38%);box-shadow:0 10px 30px rgba(227,6,19,.07);padding:18px 18px 14px}
     .tov-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
     .tov-head-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:#e30613;color:#fff;flex:none;box-shadow:0 6px 14px rgba(227,6,19,.28)}
@@ -252,6 +254,40 @@
     .ytd-stars{display:inline-flex;gap:2px}
     .ytd-stars i{width:17px;height:17px;display:block;background:linear-gradient(90deg,#f5b301 var(--f),#e1e5ec var(--f));-webkit-mask:var(--dsh-star) center/contain no-repeat;mask:var(--dsh-star) center/contain no-repeat}
     .ytd-search input{font-size:13px}
+    .tov-act-th,.tov-act{width:56px;text-align:center;padding-left:6px!important;padding-right:14px!important}
+    .tov-nav{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #f3c9ce;border-radius:50%;background:#fff;color:#d4111f;cursor:pointer;transition:background .15s,color .15s,transform .15s}
+    .tov-nav svg{width:16px;height:16px}
+    .tov-nav:hover,.tov-nav:focus-visible{background:#e30613;color:#fff;border-color:#e30613;transform:translateX(2px);outline:none}
+    /* Side drawer: Your Task Details */
+    .tdr-overlay{position:fixed;inset:0;background:rgba(16,24,40,.45);opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:9990}
+    .tdr-overlay.is-open{opacity:1;pointer-events:auto}
+    .tdr{position:fixed;top:0;right:0;bottom:0;width:min(520px,100vw);background:#fff;box-shadow:-12px 0 40px rgba(16,24,40,.18);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1),visibility 0s linear .35s;z-index:9991;display:flex;flex-direction:column;visibility:hidden}
+    .tdr.is-open{transform:none;visibility:visible;transition:transform .35s cubic-bezier(.4,0,.2,1),visibility 0s}
+    .tdr-hide{position:absolute;left:-34px;top:50%;width:34px;height:64px;margin-top:-32px;border:0;border-radius:12px 0 0 12px;background:#e30613;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:-4px 0 14px rgba(16,24,40,.18);transition:background .15s,width .15s,left .15s}
+    .tdr-hide svg{width:20px;height:20px}
+    .tdr-hide:hover,.tdr-hide:focus-visible{background:#b9050f;width:38px;left:-38px;outline:none}
+    @media (max-width:560px){.tdr-hide{left:0;width:26px;border-radius:0 12px 12px 0;transform:rotate(0)}.tdr-hide:hover,.tdr-hide:focus-visible{width:26px;left:0}.tdr-head,.tdr-body{padding-left:38px}}
+    .tdr-head{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #f3d9dd;background:linear-gradient(180deg,#fff4f5,#fff)}
+    .tdr-head h2{margin:0;font-size:16px;font-weight:800;color:#101828}
+    .tdr-head p{margin:2px 0 0;font-size:12px;color:#667085}
+    .tdr-close{margin-left:auto;width:34px;height:34px;border:1px solid #eceff4;border-radius:50%;background:#fff;color:#344054;font-size:20px;line-height:1;cursor:pointer}
+    .tdr-close:hover{background:#fff5f6;color:#d4111f}
+    .tdr-body{flex:1;overflow:auto;padding:20px}
+    .tdr-pane[hidden]{display:none}
+    .tdr-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:4px}
+    .tdr-tid{font-weight:800;color:#d4111f;font-size:15px}
+    .tdr-name{font-size:14px;font-weight:700;color:#101828;margin:0 0 16px}
+    .tdr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .tdr-cell{padding:12px 14px;border:1px solid #eceff4;border-radius:12px;background:#fafbfc;min-width:0}
+    .tdr-cell.is-wide{grid-column:1/-1}
+    .tdr-cell dt{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#667085}
+    .tdr-cell dd{margin:0;font-size:13px;color:#344054;word-break:break-word}
+    .tdr-cell dd .tov-by svg,.tdr-cell dd .tov-pill svg{width:14px;height:14px}
+    .tdr-open{display:inline-flex;margin-top:18px;font-size:13px;font-weight:800;color:#d4111f;text-decoration:none}
+    .tdr-open:hover{text-decoration:underline}
+    body.tdr-lock{overflow:hidden}
+    @media (max-width:520px){.tdr-grid{grid-template-columns:1fr}}
+    @media (prefers-reduced-motion:reduce){.tdr,.tdr-overlay{transition:none}}
     .drv{border:1px solid #f1dfe3;border-radius:20px;background:linear-gradient(180deg,#fff7f8,#fff 34%);box-shadow:0 10px 30px rgba(227,6,19,.07);padding:18px 18px 14px;min-width:0}
     .drv-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
     .drv-head-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#f43f7a;color:#fff;flex:none;box-shadow:0 6px 14px rgba(244,63,122,.3)}
@@ -402,13 +438,12 @@
             ['Assigned', $stats['assigned'], $focus('assigned_tasks'), 'user', 'blue', 'Awaiting your action'],
             ['Ready to Start', $stats['ready_to_start'], $focus('yet_to_start'), 'play', 'green', 'Ready to begin work'],
             ['In Progress', $stats['in_progress'], $focus('in_progress'), 'loader', 'purple', 'Currently being worked on'],
-            ['Rework', $stats['rework'], $focus('rework'), 'refresh', 'orange', 'Tasks currently in rework'],
-            ['Rework Creatives', $stats['rework_creatives'], null, 'image', 'pink', 'Creatives pending resubmission'],
+            ['Rework Creatives', $stats['rework_creatives'], $focus('rework'), 'image', 'pink', 'Creatives pending resubmission'],
             ['Completed', $stats['completed'], $focus('completed'), 'check', 'teal', 'Finished tasks'],
         ];
         $secondaryCards = [
             ['Waiting for BD Review', $stats['waiting_bd_review'], $focus('waiting_confirmation'), 'clock', 'purple', 'Completed by you, awaiting BD'],
-            ['Waiting for BD Confirmation', $stats['waiting_bd_confirmation'], null, 'shield', 'blue', 'New tickets you created, pending BD approval'],
+            ['Awaiting BD Approval', $stats['waiting_bd_confirmation'], null, 'shield', 'blue', 'Tasks you created that are waiting for BD to approve or reject'],
             ['Prepare Printing File Tasks', $stats['prepare_printing_file'], $focus('prepare_printing_file'), 'printer', 'purple', 'Assigned back to you for printing files'],
         ];
         $extraCards = [
@@ -416,9 +451,14 @@
             ['Declined Tasks', $requestTypeCounts['decline'], $focus('self_declined'), 'x', 'red', 'Decline requests raised by you'],
             ['Split Tasks', $requestTypeCounts['split'], null, 'split', 'blue', 'Split requests raised by you'],
             ['Approved Requests', $requestTypeCounts['approved'], null, 'check', 'green', 'Across swap/split/decline'],
-            ['Overall Rework', $overallRework['cycles'], null, 'layers', 'pink', 'All-time rework cycles'],
-            ['Overall Rework Creatives', $overallRework['creatives'], null, 'image', 'green', 'All-time creatives sent for rework'],
+            ['Overall Rework', new \Illuminate\Support\HtmlString((int) $overallRework['cycles'].'<small> tickets</small><i class="dsh-sep">|</i>'.(int) $overallRework['creatives'].'<small> creatives</small>'), null, 'layers', 'pink', 'All-time: tickets sent for rework | creatives sent for rework'],
         ];
+        // Only show a count card when there is something to show (Total Tasks and Overall Rating always stay).
+        $primaryCards = array_values(array_filter($primaryCards, fn ($c) => (int) $c[1] > 0));
+        $secondaryCards = array_values(array_filter($secondaryCards, fn ($c) => (int) $c[1] > 0));
+        $extraCards = array_values(array_filter($extraCards, fn ($c) => $c[0] === 'Overall Rework'
+            ? ((int) $overallRework['cycles'] + (int) $overallRework['creatives']) > 0
+            : (int) $c[1] > 0));
         $ratingAvg = $overallRating['average'];
     @endphp
 
@@ -480,6 +520,7 @@
         <div class="dsh-completion-value">{{ $completionRate }}%</div>
     </section>
 
+    @if(count($extraCards))
     <div class="dsh-extra">
         @foreach($extraCards as [$label, $value, $href, $icon, $tone, $note])
             @php $tag = $href ? 'a' : 'div'; @endphp
@@ -489,6 +530,7 @@
             </{{ $tag }}>
         @endforeach
     </div>
+    @endif
 
     @php
         $ic2 = $ic + [
@@ -566,6 +608,7 @@
                     <th>Status</th>
                     <th>Priority</th>
                     <th>Due Date</th>
+                    <th class="tov-act-th"><span class="sr-only">Details</span></th>
                 </tr>
                 </thead>
                 <tbody id="tov-body">
@@ -588,11 +631,12 @@
                         <td><span class="tov-pill tov-st-{{ $stTone }}">{!! $svg2($stIcon) !!}{{ $stLabel }}</span></td>
                         <td><span class="tov-pill tov-pr-{{ $prio }}">{!! $svg2('flag') !!}{{ ucfirst($task->priority) }}</span></td>
                         <td class="tov-due{{ $isOverdue ? ' is-overdue' : '' }}"><span>{!! $svg2('calendar') !!}{{ $task->due_at?->format('d M Y · h:i A') ?? '—' }}</span></td>
+                        <td class="tov-act"><button type="button" class="tov-nav" data-tdr-open="{{ $task->id }}" title="View task details" aria-label="View details for {{ $task->task_id }}">{!! $svg2('arrow') !!}</button></td>
                     </tr>
                 @empty
-                    <tr class="tov-empty-static"><td colspan="10"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
+                    <tr class="tov-empty-static"><td colspan="11"><div class="bd-empty">No tasks assigned yet.</div></td></tr>
                 @endforelse
-                <tr class="tov-empty" id="tov-empty" hidden><td colspan="10"><div class="bd-empty">No matching tasks found.</div></td></tr>
+                <tr class="tov-empty" id="tov-empty" hidden><td colspan="11"><div class="bd-empty">No matching tasks found.</div></td></tr>
                 </tbody>
             </table>
         </div>
@@ -630,53 +674,7 @@
     })();
     </script>
 
-    <section class="tov ytd">
-        <div class="tov-head">
-            <span class="tov-head-icon ytd-icon">{!! $svg2('list') !!}</span>
-            <div class="tov-head-text">
-                <h2>Your Task Details</h2>
-                <p>Detailed view of your assigned tasks, progress, creatives and deadlines.</p>
-            </div>
-            <label class="tov-search ytd-search">{!! $svg2('search') !!}<input type="text" id="designer-task-search" placeholder="Search tasks, project, client, creative..." autocomplete="off"></label>
-        </div>
-        <div class="tov-table-wrap" id="designer-task-rows-wrap">
-            <table class="tov-table ytd-table">
-                <thead>
-                <tr>
-                    <th>Task ID</th><th>Project<br>Number</th><th>Task Name</th><th>Assigned At</th><th>Status</th><th>Progress</th>
-                    <th>Creatives</th><th>Deadline</th><th>Completed At</th><th>Overdue</th><th>Rework</th><th>Rating</th>
-                </tr>
-                </thead>
-                <tbody id="designer-task-rows">@include('designer.dashboard-task-rows')</tbody>
-            </table>
-        </div>
-    </section>
-
-    <script>
-    (function () {
-        var input = document.getElementById('designer-task-search');
-        var tbody = document.getElementById('designer-task-rows');
-        var wrap = document.getElementById('designer-task-rows-wrap');
-        var base = "{{ route('designer.dashboard.taskRows') }}";
-        var debounceTimer = null;
-
-        function reload() {
-            wrap.style.opacity = '0.5';
-            fetch(base + '?search=' + encodeURIComponent(input.value), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(function (res) { return res.text(); })
-                .then(function (html) {
-                    tbody.innerHTML = html;
-                    wrap.style.opacity = '';
-                })
-                .catch(function () { wrap.style.opacity = ''; });
-        }
-
-        input.addEventListener('input', function () {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(reload, 350);
-        });
-    })();
-    </script>
+    @include('designer.dashboard-task-drawer', ['taskRows' => $taskRows, 'recentTasks' => $recentTasks])
 
     @include('designer.performance-trend', [
         'trendCards' => $trendCards,
@@ -948,100 +946,6 @@
             ['Decline Requests', $requestSummary['decline'], 'x', 'red'],
         ];
     @endphp
-
-    <div class="btm">
-        <section class="btm-card" aria-label="Requests Overview and Outcomes">
-            <div class="btm-head">
-                <span class="btm-head-icon">{!! $svg5('layers') !!}</span>
-                <div class="btm-head-text">
-                    <h2>Requests Overview &amp; Outcomes</h2>
-                    <p>Current requests, approvals and final outcomes in one view.</p>
-                </div>
-            </div>
-            <div class="btm-req-body">
-                <div class="btm-req-list">
-                    @foreach($reqCards as [$label, $count, $icon, $tone])
-                        <div class="btm-req btm-{{ $tone }}">
-                            <span class="btm-req-icon">{!! $svg5($icon) !!}</span>
-                            <div class="btm-req-text"><div class="btm-req-name">{{ $label }}</div><div class="btm-req-sub">Pending approval</div></div>
-                            <span class="btm-req-count">{{ $count }}</span>
-                        </div>
-                    @endforeach
-                    <div class="btm-req btm-orange">
-                        <span class="btm-req-icon">{!! $svg5('hourglass') !!}</span>
-                        <div class="btm-req-text"><div class="btm-req-name">Total Pending</div></div>
-                        <span class="btm-req-count">{{ array_sum($requestSummary) }}</span>
-                    </div>
-                </div>
-
-                <div class="btm-outcomes">
-                    <h3>Request Outcomes</h3>
-                    @foreach($requestOutcomes as $row)
-                        @php $rowTotal = $row['approved'] + $row['rejected'] + $row['pending']; @endphp
-                        <div class="btm-out-row">
-                            <div class="btm-out-top"><span>{{ $row['label'] }}</span><span>{{ $rowTotal }} total</span></div>
-                            <div class="btm-out-track" title="Approved {{ $row['approved'] }} · Rejected {{ $row['rejected'] }} · Pending {{ $row['pending'] }}">
-                                @if($rowTotal > 0)
-                                    <span style="width:{{ $row['approved'] / $rowTotal * 100 }}%;background:{{ $outcomeColors['approved'] }}"></span>
-                                    <span style="width:{{ $row['rejected'] / $rowTotal * 100 }}%;background:{{ $outcomeColors['rejected'] }}"></span>
-                                    <span style="width:{{ $row['pending'] / $rowTotal * 100 }}%;background:{{ $outcomeColors['pending'] }}"></span>
-                                @endif
-                            </div>
-                        </div>
-                    @endforeach
-                    <div class="btm-legend">
-                        <span><i style="background:{{ $outcomeColors['approved'] }}"></i>Approved</span>
-                        <span><i style="background:{{ $outcomeColors['rejected'] }}"></i>Rejected</span>
-                        <span><i style="background:{{ $outcomeColors['pending'] }}"></i>Pending</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="btm-card" aria-label="Task Status Summary">
-            <div class="btm-head">
-                <span class="btm-head-icon btm-head-soft">{!! $svg5('tasks') !!}</span>
-                <div class="btm-head-text">
-                    <h2>Task Status Summary</h2>
-                    <p>Task distribution across all stages.</p>
-                </div>
-            </div>
-
-            @if($stats['total'] > 0)
-                <div class="btm-donut-wrap">
-                    <div class="btm-donut">
-                        <svg viewBox="0 0 120 120" role="img" aria-label="{{ $stats['total'] }} tasks by status">
-                            <circle cx="60" cy="60" r="{{ $donutR }}" fill="none" stroke="#f2f4f7" stroke-width="16"/>
-                            @foreach($donutSegments as $seg)
-                                @php $segLen = ($seg['count'] / $stats['total']) * $donutCircumference; @endphp
-                                <circle cx="60" cy="60" r="{{ $donutR }}" fill="none" stroke="{{ $donutColors[$seg['key']] ?? '#98a2b3' }}"
-                                        stroke-width="16" stroke-dasharray="{{ $segLen }} {{ $donutCircumference - $segLen }}"
-                                        stroke-dashoffset="{{ -$donutCursor }}" transform="rotate(-90 60 60)"><title>{{ $seg['label'] }}: {{ $seg['count'] }}</title></circle>
-                                @php $donutCursor += $segLen; @endphp
-                            @endforeach
-                        </svg>
-                        <div class="btm-donut-center"><strong>{{ $stats['total'] }}</strong><span>Tasks</span></div>
-                    </div>
-                    <div class="btm-donut-legend">
-                        @foreach($donutSegments as $seg)
-                            <div><i style="background:{{ $donutColors[$seg['key']] ?? '#98a2b3' }}"></i><span>{{ $seg['label'] }}</span><b>{{ $seg['count'] }}</b></div>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
-
-            <div class="btm-status-list">
-                @foreach($statusSummary as $row)
-                    @php $percentage = $stats['total'] > 0 ? round(($row['count'] / $stats['total']) * 100) : 0; @endphp
-                    <div class="btm-status-row">
-                        <div class="btm-status-label">{{ $row['label'] }}</div>
-                        <div class="btm-status-count{{ $row['count'] > 0 ? ' has' : '' }}">{{ $row['count'] }}</div>
-                        <div class="btm-bar"><span style="width:{{ $percentage }}%"></span></div>
-                    </div>
-                @endforeach
-            </div>
-        </section>
-    </div>
 
     <section class="btm-card mrq" aria-label="My Requests">
         <div class="btm-head">

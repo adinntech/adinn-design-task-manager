@@ -14,7 +14,7 @@ class DesignTask extends Model
         'task_id', 'assigned_at', 'assigned_by', 'task_name', 'vertical', 'task_nature', 'party_type', 'party_name',
         'contact_person', 'mobile_number', 'priority', 'due_at', 'designer_id', 'total_creatives', 'status', 'requirements',
         'zoho_project_number', 'bd_approval_status', 'bd_approval_comment', 'bd_decided_by', 'bd_decided_at',
-        'cloned_from_task_id',
+        'cloned_from_task_id', 'task_category',
     ];
 
     protected function casts(): array

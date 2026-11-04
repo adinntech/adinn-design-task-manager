@@ -39,6 +39,9 @@ class TaskDetail extends Component
 
     public array $attachments = [];
 
+    /** Comma-separated FileUpload ids, set by multi-file-upload.js once each chat attachment has finished uploading. */
+    public ?string $commentUploadId = null;
+
     public string $clarificationMessage = '';
 
     public array $clarificationAttachments = [];
@@ -361,19 +364,35 @@ class TaskDetail extends Component
         $this->dispatch('task-status-changed', message: 'Task moved successfully.');
     }
 
+    /**
+     * Cheap fingerprint of the general conversation, polled by the floating chat so
+     * a message sent by BD (or anyone else) appears without a manual reload. Renderless:
+     * it never triggers a re-render itself — the page only calls $refresh when this changes.
+     */
+    #[\Livewire\Attributes\Renderless]
+    public function chatState(): array
+    {
+        $query = DesignTaskComment::query()
+            ->where('design_task_id', $this->task->id)
+            ->where(fn ($q) => $q->whereNull('context')->orWhere('context', '!=', 'clarification'));
+
+        return ['count' => (int) $query->count(), 'last' => (int) $query->max('id')];
+    }
+
     public function addComment(): void
     {
         abort_if($this->selfDeclinedReadOnly || $this->splitRequesterReadOnly, 403);
 
         $this->validate([
             'comment' => ['required', 'string', 'max:10000'],
-            'attachments' => ['array', 'max:10'],
-            'attachments.*' => ['file', 'max:102400'],
         ]);
 
-        $this->persistComment($this->comment, $this->attachments);
+        $uploads = app(CloudMultipartUploadService::class)->resolveCommentUploads(Auth::user(), $this->task, $this->commentUploadId);
 
-        $this->reset(['comment', 'attachments']);
+        $this->persistComment($this->comment, [], null, 'comment', $uploads);
+
+        $this->reset(['comment', 'attachments', 'commentUploadId']);
+        $this->dispatch('chat-comment-sent');
         $this->dispatch('comment-added', message: 'Comment added successfully.');
     }
 
@@ -399,9 +418,9 @@ class TaskDetail extends Component
         $this->dispatch('comment-added', message: 'Clarification sent successfully.');
     }
 
-    private function persistComment(string $message, array $files, ?string $statusAtComment = null, string $context = 'comment'): void
+    private function persistComment(string $message, array $files, ?string $statusAtComment = null, string $context = 'comment', array $uploads = []): void
     {
-        DB::transaction(function () use ($message, $files, $statusAtComment, $context) {
+        DB::transaction(function () use ($message, $files, $statusAtComment, $context, $uploads) {
             $newComment = DesignTaskComment::create([
                 'design_task_id' => $this->task->id,
                 'user_id' => Auth::id(),
@@ -450,6 +469,10 @@ class TaskDetail extends Component
                     'mime_type' => $file->getMimeType(),
                     'size' => $file->getSize(),
                 ]);
+            }
+
+            if ($uploads !== []) {
+                app(CloudMultipartUploadService::class)->attachToComment($newComment, $this->task, $uploads);
             }
         });
 
@@ -831,7 +854,7 @@ class TaskDetail extends Component
             // deliberately kept out of DesignTaskStatusService::STATUSES (the real
             // state machine), same as the 'draft' status is.
             'statuses' => DesignTaskStatusService::STATUSES + [
-                'pending_bd_approval' => 'Waiting for Confirmation',
+                'pending_bd_approval' => 'Awaiting BD Approval',
                 'bd_rejected' => 'Rejected by BD',
             ],
             'nextStatus' => ($this->swapInitiatorReadOnly || $this->selfDeclinedReadOnly || $this->splitRequesterReadOnly)

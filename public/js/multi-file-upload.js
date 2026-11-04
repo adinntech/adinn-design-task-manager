@@ -6,6 +6,13 @@
  *
  * Rule: several files, or any non-ZIP file, must total under 350 MB; a single
  * ZIP can be up to 6 GB.
+ *
+ * Optional options (used by the task chat; Progress Update / Rework ignore them):
+ *   hardLimit  - total of ALL files (ZIP or not) may not exceed 350 MB, mixes are fine
+ *   maxFiles   - cap on the number of files (default 20)
+ *   onChange   - function (idsCsv, busy, items) called whenever the upload state changes
+ *   resetEvent - window event that clears the list (default 'eod-updated')
+ *   wireProp   - may be omitted when there is no Livewire component to write to
  */
 (function () {
     'use strict';
@@ -38,8 +45,11 @@
         function sync() {
             var ids = items.filter(function (i) { return i.state === 'done'; }).map(function (i) { return i.id; });
             var busy = items.some(function (i) { return i.state === 'queued' || i.state === 'uploading'; });
-            var w = wire();
-            if (w) w.set(o.wireProp, busy ? '' : ids.join(','));
+            if (o.wireProp) {
+                var w = wire();
+                if (w) w.set(o.wireProp, busy ? '' : ids.join(','));
+            }
+            if (o.onChange) o.onChange(busy ? '' : ids.join(','), busy, items);
             if (o.submitBtn) o.submitBtn.disabled = busy || ids.length === 0 || items.some(function (i) { return i.state === 'failed'; });
         }
 
@@ -126,17 +136,25 @@
             var combined = totalSize() + addedTotal;
             var count = items.length + picked.length;
             var singleZip = count === 1 && isZip(picked[0]);
+            var maxFiles = o.maxFiles || 20;
 
-            if (!singleZip && combined >= LIMIT) {
-                notify('These files total ' + formatBytes(combined) + '. Files totalling 350 MB or more must be uploaded as one ZIP.');
-                return;
+            if (o.hardLimit) {
+                if (combined > LIMIT) {
+                    notify('These files total ' + formatBytes(combined) + '. Attachments can total up to 350 MB.');
+                    return;
+                }
+            } else {
+                if (!singleZip && combined >= LIMIT) {
+                    notify('These files total ' + formatBytes(combined) + '. Files totalling 350 MB or more must be uploaded as one ZIP.');
+                    return;
+                }
+                if (count > 1 && (picked.some(isZip) || items.some(function (i) { return isZip(i.file); }))) {
+                    notify('Add either one ZIP file or several individual files — not a mix.');
+                    return;
+                }
             }
-            if (count > 1 && (picked.some(isZip) || items.some(function (i) { return isZip(i.file); }))) {
-                notify('Add either one ZIP file or several individual files — not a mix.');
-                return;
-            }
-            if (count > 20) {
-                notify('You can add up to 20 files.');
+            if (count > maxFiles) {
+                notify('You can add up to ' + maxFiles + ' files.');
                 return;
             }
 
@@ -150,12 +168,13 @@
         });
 
         // Livewire fires this after a successful submission.
-        window.addEventListener('eod-updated', function () {
+        window.addEventListener(o.resetEvent || 'eod-updated', function () {
             items = [];
             running = false;
             o.list.innerHTML = '';
             notify('');
             if (o.submitBtn) o.submitBtn.disabled = true;
+            if (o.onChange) o.onChange('', false, items);
         });
     }
 
