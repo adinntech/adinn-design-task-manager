@@ -250,7 +250,7 @@ class DesignTaskRequestService
 
         $reasons = [
             'decline' => 'Decline request automatically rejected because the task moved to Ready to Start.',
-            'split' => 'Task Split request automatically rejected because the task moved to Waiting for BD Review.',
+            'split' => 'Task Split request closed: the Designer completed all creatives before a decision was made, so the task moved to Waiting for BD Review.',
             'swap' => 'Task Transfer request automatically rejected because the task moved to Waiting for BD Review.',
         ];
 
@@ -266,7 +266,19 @@ class DesignTaskRequestService
         foreach ($requests as $request) {
             $reason = $reasons[$request->request_type];
 
+            // A split closed because the Designer finished every creative is
+            // flagged so the Kanban can show "completed all creatives" instead
+            // of a plain rejection (see DesignTaskRequest::splitStatus()).
+            $splitDetails = $request->split_details;
+            if ($request->request_type === 'split') {
+                $splitDetails = array_merge($splitDetails ?? [], [
+                    'completed_before_approval' => true,
+                    'completed_before_approval_at' => now()->toDateTimeString(),
+                ]);
+            }
+
             $request->update([
+                'split_details' => $splitDetails,
                 'overall_status' => 'rejected',
                 'decision_reason' => $reason,
                 'designer_head_status' => 'rejected',
@@ -361,6 +373,15 @@ class DesignTaskRequestService
     {
         $requestType = $request->request_type;
 
+        // Designers the Admin has granted "permission to approve" may decide
+        // Swap / Split requests of teammates when the Designer Head is away —
+        // never Decline / backward-status requests, never their own request.
+        if ($approver->role === 'designer') {
+            $this->guardDelegateApprover($approver, $request);
+
+            return;
+        }
+
         if (in_array($requestType, ['decline', 'status_change'], true)) {
             if ($approver->role !== 'designer_head') {
                 throw new AuthorizationException('Only Designer Head can decide '.($requestType === 'status_change' ? 'backward status' : 'Decline').' requests.');
@@ -382,9 +403,42 @@ class DesignTaskRequestService
         }
     }
 
+    private function guardDelegateApprover(User $approver, DesignTaskRequest $request): void
+    {
+        if (! $approver->isRequestApprover()) {
+            throw new AuthorizationException('You do not have permission to approve requests.');
+        }
+
+        if (! in_array($request->request_type, ['split', 'swap'], true)) {
+            throw new AuthorizationException('Designers can only decide Swap and Split requests.');
+        }
+
+        if ((int) $request->requested_by === (int) $approver->id) {
+            throw new AuthorizationException('You cannot approve your own request. Only your Designer Head can.');
+        }
+
+        $requesterHeadId = $request->requester?->designer_head_id
+            ?? User::query()->whereKey($request->requested_by)->value('designer_head_id');
+
+        if (! $approver->designer_head_id || (int) $requesterHeadId !== (int) $approver->designer_head_id) {
+            throw new AuthorizationException('You can only decide requests raised by Designers on your own team.');
+        }
+
+        $taskDesignerId = $request->task?->designer_id
+            ?? DesignTask::query()->whereKey($request->design_task_id)->value('designer_id');
+
+        if ((int) $taskDesignerId === (int) $approver->id) {
+            throw new AuthorizationException('You cannot decide a request on a task assigned to you.');
+        }
+    }
+
     private function guardPending(DesignTaskRequest $request): void
     {
         if (! in_array($request->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true)) {
+            if ($request->splitCompletedBeforeApproval()) {
+                throw ValidationException::withMessages(['status' => 'The Designer has already completed all creatives for this task, so this split request is closed.']);
+            }
+
             throw ValidationException::withMessages(['status' => 'This request has already been decided.']);
         }
     }
@@ -429,6 +483,37 @@ class DesignTaskRequestService
         $this->validateSplitCountAgainstProgress($task, (int) $count, 'approved_creative_count');
     }
 
+    /**
+     * Every creative on the task is already done, so a split has nothing left
+     * to take. This can happen while a split request is still waiting for the
+     * Designer Head: until the split is approved the task keeps its full
+     * creative count, so the Designer may simply finish it all.
+     */
+    public function designerCompletedAll(DesignTask $task): bool
+    {
+        return (int) $task->total_creatives > 0
+            && app(DesignTaskProgressService::class)->isComplete($task);
+    }
+
+    /**
+     * What an approver can still split off a task right now — the same limits
+     * validateSplitCountAgainstProgress() enforces, so the approval forms
+     * never offer a quantity the server would refuse.
+     *
+     * @return array{completed:int,max:int,allDone:bool}
+     */
+    public function splitApprovalContext(DesignTask $task): array
+    {
+        $total = (int) $task->total_creatives;
+        $completed = app(DesignTaskProgressService::class)->completed($task);
+
+        return [
+            'completed' => $completed,
+            'max' => max(0, min($total - 1, $total - $completed)),
+            'allDone' => $this->designerCompletedAll($task),
+        ];
+    }
+
     private function validateSplitCountAgainstProgress(DesignTask $task, int $count, string $field): void
     {
         $total = (int) $task->total_creatives;
@@ -436,6 +521,12 @@ class DesignTaskRequestService
         if ($total < 2) {
             throw ValidationException::withMessages([
                 $field => 'This task cannot be split because it has fewer than 2 creatives.',
+            ]);
+        }
+
+        if ($this->designerCompletedAll($task)) {
+            throw ValidationException::withMessages([
+                $field => 'All creatives on this task are already completed, so there is nothing left to split.',
             ]);
         }
 

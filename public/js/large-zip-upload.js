@@ -65,6 +65,8 @@
         this.lastSampleBytes = 0;
         this.currentFile = null;
         this.currentUploadId = null;
+        this.xhr = null;
+        this.cancelled = false;
 
         var self = this;
         if (this.input) {
@@ -169,6 +171,9 @@
                 if (this.input) this.input.value = '';
                 return;
             }
+        } else if (this.purpose === 'comment') {
+            // Task chat: any file type. The 350 MB total is enforced by
+            // multi-file-upload.js (hardLimit) and again by the server.
         } else if (!isZip) {
             this.setWireProp('');
             this.setSubmitEnabled(false);
@@ -186,6 +191,7 @@
         }
 
         this.currentFile = file;
+        this.cancelled = false;
         this.totalBytes = file.size;
         this.uploadedBytesSession = 0;
         this.smoothedSpeed = 0;
@@ -202,6 +208,11 @@
         })
             .then(function (upload) {
                 self.currentUploadId = upload.id;
+                if (self.cancelled) {
+                    // Cancelled while the upload was still being prepared.
+                    self.abortOnServer();
+                    throw new Error('Upload cancelled');
+                }
                 self.uploadedBytesBase = upload.uploaded_bytes || 0;
                 self.partSize = upload.part_size_bytes;
                 return self.fetchExistingParts();
@@ -218,10 +229,31 @@
                 if (self.onComplete) self.onComplete(upload);
             })
             .catch(function (err) {
+                // A cancel is the user's own action, not a failure to report.
+                if (self.cancelled) return;
                 self.setSubmitEnabled(false);
                 self.showState('failed', null, err && err.message);
                 if (self.onError) self.onError(err);
             });
+    };
+
+    // Stops an in-flight upload (the X on a chat attachment row): aborts the
+    // running part request and discards the staged multipart session on the
+    // server so no orphaned parts are left in storage.
+    AdinnZipUpload.prototype.cancel = function () {
+        this.cancelled = true;
+        if (this.xhr) {
+            try { this.xhr.abort(); } catch (e) {}
+        }
+        this.abortOnServer();
+    };
+
+    AdinnZipUpload.prototype.abortOnServer = function () {
+        if (!this.currentUploadId || !this.urls || !this.urls.abort) return;
+        fetch(this.urls.abort(this.currentUploadId), {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken(), Accept: 'application/json' },
+        }).catch(function () {});
     };
 
     AdinnZipUpload.prototype.fetchExistingParts = function () {
@@ -255,6 +287,7 @@
 
     AdinnZipUpload.prototype.uploadOnePart = function (partNumber) {
         var self = this;
+        if (this.cancelled) return Promise.reject(new Error('Upload cancelled'));
         var start = (partNumber - 1) * this.partSize;
         var end = Math.min(start + this.partSize, this.totalBytes);
         var blob = this.currentFile.slice(start, end);
@@ -270,7 +303,9 @@
 
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
+            self.xhr = xhr;
             xhr.open('PUT', url, true);
+            xhr.onabort = function () { reject(new Error('Upload cancelled')); };
             xhr.upload.onprogress = function (e) {
                 self.recordProgress(e.loaded - lastLoaded);
                 lastLoaded = e.loaded;

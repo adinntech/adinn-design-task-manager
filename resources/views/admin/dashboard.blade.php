@@ -272,9 +272,13 @@
                                                 @endforeach
                                             </select>
                                                     @if($item->request_type === 'split')
+                                                        @php $splitCtx = $item->task ? app(\App\Services\DesignTaskRequestService::class)->splitApprovalContext($item->task) : null; @endphp
                                                         <label class="label" style="margin-top:6px">Approved Split Quantity</label>
-                                                        <input class="field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ($item->task?->total_creatives ?? 1) - 1) }}" value="{{ $item->split_details['creative_count'] ?? 1 }}" required>
-                                                        <div class="muted" style="margin:4px 0 6px">Designer requested {{ $item->split_details['creative_count'] ?? '—' }}. You can change the final quantity.</div>
+                                                        <input class="field" type="number" name="approved_creative_count" min="1" max="{{ max(1, (int) ($splitCtx['max'] ?? 1)) }}" value="{{ $item->split_details['creative_count'] ?? 1 }}" required>
+                                                        <div class="muted" style="margin:4px 0 6px">Designer requested {{ $item->split_details['creative_count'] ?? '—' }}. You can change the final quantity.@if($splitCtx) Completed so far: {{ $splitCtx['completed'] }} · at most {{ $splitCtx['max'] }} can be split.@endif</div>
+                                                        @if($splitCtx['allDone'] ?? false)
+                                                            <div style="margin:0 0 6px;color:#b42318;font-weight:800;font-size:11px">Designer completed all creatives — nothing is left to split. Reject this request instead.</div>
+                                                        @endif
                                                     @endif
                                             <textarea name="decision_comment" class="field" rows="2" placeholder="Optional approval comment" style="margin-bottom:6px"></textarea>
                                             <button class="btn btn-primary" style="width:100%">Approve</button>

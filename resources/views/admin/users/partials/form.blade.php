@@ -37,6 +37,13 @@
                 @endforeach
             </select>
         </div>
+        <div style="display:flex;align-items:end">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800">
+                <input type="hidden" name="can_approve_requests" value="0">
+                <input type="checkbox" name="can_approve_requests" value="1" @checked(old('can_approve_requests', $user?->can_approve_requests ?? false))>
+                Permission to approve (Swap / Split)
+            </label>
+        </div>
         <div>
             <label class="label">Experienced Verticals</label>
             <div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px 12px;border:1px solid #e4e7ec;border-radius:10px">

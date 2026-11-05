@@ -145,6 +145,8 @@ class DesignerHeadTaskBoardService
             'childTask' => $splitChildTasks->get($row['child_id']),
         ])->filter(fn (array $row) => $row['childTask'] !== null)->values();
 
+        $splitBoardRows = $this->splitBoardRows($splitLogRows, $filters, $periodStart, $periodEnd, $inPeriod);
+
         /* ---- Period-scoped summary strip: Total is the distinct union of tasks
          * touched by any of the four events in the period, never a plain sum
          * (a task cannot be double-counted even if it had more than one event).
@@ -185,12 +187,79 @@ class DesignerHeadTaskBoardService
             'visibleTasks' => $visibleTasks,
             'swapShadowTasks' => $swapShadowTasks,
             'splitLogRows' => $splitLogRows,
+            'splitBoardRows' => $splitBoardRows,
             'periodStart' => $periodStart,
             'periodEnd' => $periodEnd,
             'periodStats' => $periodStats,
             'statuses' => $statuses,
             'activeBreakdown' => $activeBreakdown,
         ];
+    }
+
+    /**
+     * Every split ticket the Designer / Designer Head should see on the board,
+     * each with its own Status (see DesignTaskRequest::splitStatus()):
+     *
+     *  - approved splits (the existing split log — child task attached);
+     *  - pending splits, always shown regardless of period since they are
+     *    still actionable;
+     *  - splits closed without a child task (rejected, or auto-closed because
+     *    the Designer completed every creative before approval), shown in the
+     *    period they were closed in.
+     *
+     * Rows without a child task link to the original task. Kept separate from
+     * `splitLogRows` (approved only, child always present) because the BD board
+     * and the period summary strip still rely on that shape.
+     *
+     * @return SupportCollection<int, array{request: DesignTaskRequest, childTask: ?DesignTask, task: ?DesignTask, at: ?Carbon}>
+     */
+    private function splitBoardRows(SupportCollection $approvedRows, array $filters, Carbon $periodStart, Carbon $periodEnd, \Closure $inPeriod): SupportCollection
+    {
+        $pendingStatuses = ['pending_approval', 'pending_designer_head', 'pending_admin'];
+
+        $candidates = DesignTaskRequest::query()
+            ->where('request_type', 'split')
+            ->where(function ($query) use ($pendingStatuses, $periodStart, $periodEnd) {
+                $query->whereIn('overall_status', $pendingStatuses)
+                    ->orWhere(function ($query) use ($periodStart, $periodEnd) {
+                        $query->where('overall_status', 'rejected')
+                            ->whereBetween('updated_at', [$periodStart, $periodEnd]);
+                    });
+            })
+            ->with(['task:id,task_id,task_name,designer_id,assigned_by,vertical,priority,task_nature,party_name,total_creatives', 'task.designer:id,name', 'requester:id,name'])
+            ->get();
+
+        $allowedTaskIds = $candidates->isEmpty()
+            ? []
+            : $this->applyFilters(DesignTask::query()->whereIn('id', $candidates->pluck('design_task_id')), $filters)
+                ->pluck('id')
+                ->all();
+
+        $openRows = $candidates
+            ->filter(fn (DesignTaskRequest $request) => in_array((int) $request->design_task_id, array_map('intval', $allowedTaskIds), true))
+            ->filter(function (DesignTaskRequest $request) use ($pendingStatuses, $inPeriod) {
+                return in_array($request->overall_status, $pendingStatuses, true)
+                    || $inPeriod($request->responded_at ?? $request->updated_at);
+            })
+            ->map(fn (DesignTaskRequest $request) => [
+                'request' => $request,
+                'childTask' => null,
+                'task' => $request->task,
+                'at' => in_array($request->overall_status, $pendingStatuses, true)
+                    ? $request->created_at
+                    : ($request->responded_at ?? $request->updated_at),
+            ]);
+
+        $approved = $approvedRows->map(fn (array $row) => [
+            'request' => $row['request'],
+            'childTask' => $row['childTask'],
+            'task' => $row['request']->task,
+            'at' => $row['request']->responded_at,
+        ]);
+
+        return $approved->concat($openRows)
+            ->sortByDesc(fn (array $row) => optional($row['at'])->getTimestamp() ?? 0)
+            ->values();
     }
 
     /**
@@ -221,6 +290,7 @@ class DesignerHeadTaskBoardService
             'visibleTasks' => $tasks,
             'swapShadowTasks' => collect(),
             'splitLogRows' => collect(),
+            'splitBoardRows' => collect(),
             'periodStart' => $now->copy()->startOfMonth(),
             'periodEnd' => $now->copy()->endOfMonth(),
             'periodStats' => ['completed' => 0, 'swapped' => 0, 'declined' => 0, 'split' => 0, 'total' => $tasks->count()],

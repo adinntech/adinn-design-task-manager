@@ -141,6 +141,9 @@
             @elseif($role === 'designer')
                 <a href="{{ route('designer.dashboard') }}" class="{{ request()->routeIs('designer.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
                 <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.index','designer.tasks.show') ? 'active' : '' }}"><span>▤</span>My Tasks</a>
+                @if(auth()->user()->isRequestApprover())
+                    <a href="{{ route('designer.approvals.index') }}" class="{{ request()->routeIs('designer.approvals.*') ? 'active' : '' }}"><span>✔</span>Approvals</a>
+                @endif
                 <a href="{{ route('profile.show') }}" class="{{ request()->routeIs('profile.show') ? 'active' : '' }}"><span>◉</span>My Profile</a>
                 <a href="{{ route('designer.tasks.create') }}" class="{{ request()->routeIs('designer.tasks.create') ? 'active' : '' }}"><span>＋</span>Create Task</a>
             @elseif($role === 'designer_head')
@@ -190,7 +193,8 @@
             @if(session('error'))
                 <div class="flash flash-error">{{ session('error') }}</div>
             @endif
-            @yield('content')
+            @if(in_array($role, ['designer', 'designer_head'], true)){{-- Designer Availability meter (split/swap pickers) --}}@include('partials.designer-availability')@endif
+@yield('content')
         </main>
     </div>
 </div>
@@ -359,7 +363,9 @@
     window.adinnAckRefresh = function (btn, scope, isLivewireBoard) {
         // Shake stays on until the ack actually succeeds — a failed request
         // must leave the pending/shake state in place so the user can retry.
-        fetch('/activity/' + scope + '/ack', {
+        // url() carries the /design-workflow base path the app is served under
+        // behind the proxy; a bare '/activity/...' hits the proxy root (404).
+        fetch(@json(url('/activity')) + '/' + scope + '/ack', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken(), Accept: 'application/json' },
         }).then(function (response) {
@@ -396,7 +402,7 @@
             enabledTransports: useTLS ? ['ws', 'wss'] : ['ws'],
             disableStats: true,
             cluster: '',
-            authEndpoint: '/broadcasting/auth',
+            authEndpoint: @json(url('/broadcasting/auth')),
             auth: { headers: { 'X-CSRF-TOKEN': csrfToken() } },
         });
 

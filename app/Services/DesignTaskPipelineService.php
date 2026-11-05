@@ -144,6 +144,10 @@ class DesignTaskPipelineService
                 : (str_contains($lower, 'reject') || str_contains($lower, 'declin') ? 'Swap Request Declined' : 'Swap Request Created');
         }
         if (str_contains($lower, 'split request')) {
+            if (str_contains($lower, 'completed all creatives before')) {
+                return 'Split Request Closed';
+            }
+
             return str_contains($lower, 'approv') ? 'Split Request Approved'
                 : (str_contains($lower, 'reject') || str_contains($lower, 'declin') ? 'Split Request Declined' : 'Split Request Created');
         }
