@@ -585,7 +585,13 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                 }
                             };
 
-                            if (shell && column) {
+                            if (target) {
+                                // A specific ticket was asked for: bring the TICKET into view,
+                                // not the column. Columns are as tall as the fullest one, so
+                                // scrolling to the column's bottom edge would scroll straight
+                                // past a ticket sitting near the top of a short column.
+                                this.scrollTargetIntoView(target, afterScroll);
+                            } else if (shell && column) {
                                 this.scrollShellToColumn(shell, column, afterScroll);
                             } else {
                                 afterScroll();
@@ -593,6 +599,45 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         };
 
                         attempt(0);
+                    },
+
+                    // Centers `target` on both axes, scrolling the board and the page as
+                    // needed (native scrollIntoView handles every scrollable ancestor).
+                    // Calls `done` once scrolling has settled so the highlight starts on a
+                    // card that is already in view; if nothing needs to move, it fires
+                    // after a short beat.
+                    scrollTargetIntoView(target, done){
+                        let finished = false;
+                        let debounce = null;
+
+                        const finish = () => {
+                            if (finished) return;
+                            finished = true;
+                            clearTimeout(debounce);
+                            clearTimeout(safety);
+                            document.removeEventListener('scroll', onScroll, true);
+
+                            // Safety net: if the smooth scroll was interrupted or never started,
+                            // jump straight to the ticket so it is always on screen when the
+                            // highlight runs.
+                            const rect = target.getBoundingClientRect();
+                            if (rect.left < 0 || rect.right > window.innerWidth || rect.top < 0 || rect.bottom > window.innerHeight) {
+                                target.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+                            }
+
+                            done();
+                        };
+
+                        const onScroll = () => {
+                            clearTimeout(debounce);
+                            debounce = setTimeout(finish, 150);
+                        };
+
+                        document.addEventListener('scroll', onScroll, true);
+                        debounce = setTimeout(finish, 300);
+                        const safety = setTimeout(finish, 2000);
+
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
                     },
 
                     // Scrolls the shell however far is actually needed on EACH axis to bring
