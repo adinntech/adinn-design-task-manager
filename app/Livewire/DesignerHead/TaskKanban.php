@@ -275,6 +275,7 @@ class TaskKanban extends Component
             'pendingRequests' => $pendingRequests,
             'pendingStatusChangeTaskIds' => $this->pendingStatusChangeTaskIds($pendingRequests),
             'splitLogRows' => $splitLogRows,
+            'splitRequestRows' => $board['splitRequestRows'],
             'taskTags' => $this->buildTaskTags($visibleTasks),
             'periodStats' => $periodStats,
             'periodLabel' => $periodLabel,

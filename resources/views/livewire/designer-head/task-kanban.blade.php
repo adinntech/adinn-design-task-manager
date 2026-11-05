@@ -83,6 +83,8 @@
         .task-tag-pending{color:#b54708;background:#fffaeb;border-color:#fedf89}
 
         .task-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}
+        .split-status{display:inline-block;max-width:100%;border:1px solid transparent;border-radius:999px;padding:3px 9px;font-size:9px;font-weight:850;line-height:1.3;text-transform:none;letter-spacing:0;white-space:normal}
+        .split-status-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}.split-status-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}.split-status-declined{color:#b42318;background:#fff1f0;border-color:#fecdca}.split-status-done{color:#175cd3;background:#eff6ff;border-color:#b2ccff}
         .task-meta-item{border-radius:8px;background:#f7f8fa;padding:7px;font-size:9px;color:#616a78}
         .task-meta-item strong{display:block;color:#343b46;font-size:8px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}
 
@@ -638,14 +640,40 @@
                 </section>
 
                 @if($statusKey === 'completed')
-                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitLogRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="designer-head-split-log">
+                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitLogRows->isEmpty() && $splitRequestRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="designer-head-split-log">
                         <header class="kanban-column-header">
                             <span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span>
-                            <span class="kanban-count">{{ $splitLogRows->count() }}</span>
+                            <span class="kanban-count">{{ $splitRequestRows->count() + $splitLogRows->count() }}</span>
                         </header>
 
                         <div class="kanban-list">
-                            @forelse($splitLogRows as $row)
+                            {{-- Requests that have not produced a split task (yet): waiting for approval,
+                                 declined, or overtaken by the Designer finishing every creative. --}}
+                            @foreach($splitRequestRows as $row)
+                                @php $request = $row['request']; $splitTask = $row['task']; $splitStatus = $row['status']; @endphp
+                                <article class="task-card request-card" wire:key="designer-head-split-request-{{ $request->id }}">
+                                    <a class="task-card-link" href="{{ route('designer-head.tasks.show', $splitTask) }}" draggable="false">
+                                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+                                            <div class="task-card-id">{{ $splitTask->task_id }}</div>
+                                            <span class="request-type-pill request-type-split">Split</span>
+                                        </div>
+
+                                        <div class="task-card-name">{{ $splitTask->display_task_name ?? $splitTask->task_name }}</div>
+
+                                        <div class="task-card-meta">
+                                            <div class="task-meta-item" style="grid-column:1/-1"><strong>Status</strong><span class="split-status split-status-{{ $splitStatus['tone'] }}">{{ $splitStatus['head'] }}</span></div>
+                                            <div class="task-meta-item"><strong>Designer</strong>{{ $splitTask->designer?->name ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Requested</strong>{{ $row['requested'] ?? '—' }} creative{{ (int) ($row['requested'] ?? 0) === 1 ? '' : 's' }}</div>
+                                            <div class="task-meta-item"><strong>Completed</strong>{{ $row['completed'] }} / {{ $row['total'] }}</div>
+                                            <div class="task-meta-item"><strong>Requested On</strong>{{ $request->created_at?->format('d M Y') ?? '—' }}</div>
+                                        </div>
+
+                                        <div class="request-open-label">Open task</div>
+                                    </a>
+                                </article>
+                            @endforeach
+
+                            @foreach($splitLogRows as $row)
                                 @php $childTask = $row['childTask']; $request = $row['request']; @endphp
                                 <article class="task-card request-card">
                                     <a class="task-card-link" href="{{ route('designer-head.tasks.show', $childTask) }}" draggable="false">
@@ -657,6 +685,7 @@
                                         <div class="task-card-name">{{ $childTask->display_task_name ?? $childTask->task_name }}</div>
 
                                         <div class="task-card-meta">
+                                            <div class="task-meta-item" style="grid-column:1/-1"><strong>Status</strong><span class="split-status split-status-approved">Approved</span></div>
                                             <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
                                             <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
                                             <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
@@ -666,9 +695,11 @@
                                         <div class="request-open-label">Open task</div>
                                     </a>
                                 </article>
-                            @empty
-                                <div class="empty-state">No splits approved in {{ $periodLabel }}.</div>
-                            @endforelse
+                            @endforeach
+
+                            @if($splitRequestRows->isEmpty() && $splitLogRows->isEmpty())
+                                <div class="empty-state">No split requests in {{ $periodLabel }}.</div>
+                            @endif
                         </div>
                     </section>
                 @endif
