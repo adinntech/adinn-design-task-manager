@@ -67,7 +67,12 @@
                     + '<button type="button" class="mf-remove" title="Remove">&times;</button>';
                 row.querySelector('.mf-name').textContent = item.file.name;
                 row.querySelector('.mf-remove').addEventListener('click', function () {
-                    if (item.state === 'uploading') return;
+                    // X on a file that is uploading cancels it: the running
+                    // upload is aborted and the next queued file carries on.
+                    if (item.state === 'uploading' && item.uploader) {
+                        item.uploader.cancel();
+                        running = false;
+                    }
                     items.splice(items.indexOf(item), 1);
                     row.remove();
                     sync();
@@ -119,6 +124,7 @@
                     pump();
                 },
             });
+            next.uploader = uploader;
             uploader.startUpload(next.file);
         }
 

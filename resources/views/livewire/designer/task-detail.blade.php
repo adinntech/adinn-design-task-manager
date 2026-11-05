@@ -886,6 +886,7 @@
                             partUrl: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/part-url'; },
                             parts: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/parts'; },
                             complete: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/complete'; },
+                            abort: function (id) { return '{{ url('/designer/uploads') }}/' + id + '/abort'; },
                         },
                     });
                 })();
