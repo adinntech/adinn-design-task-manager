@@ -149,26 +149,60 @@ class KanbanColumn {
       KanbanColumn(j['key'] as String, (j['label'] ?? j['key']) as String, isSplitLog: j['type'] == 'split_log');
 }
 
+/// One ticket in the Split Tasks column. An approved split has a child task; a pending, rejected or
+/// "completed all before approval" one does not, and opens the original task instead.
 class SplitEntry {
-  SplitEntry({required this.id, required this.taskId, required this.name, this.splitFrom, this.designer, this.creatives = 0, this.approvedAt});
+  SplitEntry({
+    required this.id,
+    required this.taskId,
+    required this.name,
+    this.requestId,
+    this.hasChild = true,
+    this.statusKey = 'approved',
+    this.statusLabel = 'Split approved',
+    this.splitFrom,
+    this.designer,
+    this.creatives = 0,
+    this.requestedSplit,
+    this.approvedAt,
+    this.requestedAt,
+  });
 
+  /// The task the card opens (the child when there is one, otherwise the original).
   final int id;
+  final int? requestId;
   final String taskId;
   final String name;
+  final bool hasChild;
+
+  /// approved | pending | rejected | completed_all
+  final String statusKey;
+  final String statusLabel;
   final String? splitFrom;
   final String? designer;
   final int creatives;
+  final int? requestedSplit;
   final DateTime? approvedAt;
+  final DateTime? requestedAt;
 
-  factory SplitEntry.fromJson(Map<String, dynamic> j) => SplitEntry(
-        id: _int(j['id']),
-        taskId: (j['task_id'] ?? '') as String,
-        name: (j['name'] ?? '') as String,
-        splitFrom: j['split_from'] as String?,
-        designer: j['designer'] as String?,
-        creatives: _int(j['creatives']),
-        approvedAt: _date(j['approved_at']),
-      );
+  factory SplitEntry.fromJson(Map<String, dynamic> j) {
+    final status = (j['status'] as Map?)?.cast<String, dynamic>();
+    return SplitEntry(
+      id: _int(j['id']),
+      requestId: j['request_id'] == null ? null : _int(j['request_id']),
+      taskId: (j['task_id'] ?? '') as String,
+      name: (j['name'] ?? '') as String,
+      hasChild: j['has_child'] != false, // older payloads were approved splits only
+      statusKey: (status?['key'] ?? 'approved') as String,
+      statusLabel: (status?['label'] ?? 'Split approved') as String,
+      splitFrom: j['split_from'] as String?,
+      designer: j['designer'] as String?,
+      creatives: _int(j['creatives']),
+      requestedSplit: j['requested_split'] == null ? null : _int(j['requested_split']),
+      approvedAt: _date(j['approved_at']),
+      requestedAt: _date(j['requested_at']),
+    );
+  }
 }
 
 class BdOption {

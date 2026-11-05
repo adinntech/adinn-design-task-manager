@@ -40,7 +40,10 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _live = ref.read(realtimeProvider).events.listen((_) => _refreshLiveData());
+    _live = ref.read(realtimeProvider).events.listen((e) {
+      _refreshLiveData();
+      if (e.category == 'approval_access') ref.read(authProvider.notifier).refreshUser();
+    });
     // Restore a saved session; the router shows a splash until this resolves.
     Future.microtask(() => ref.read(authProvider.notifier).restore());
 
@@ -61,6 +64,7 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
       if (ref.read(authProvider).status == AuthStatus.signedIn) {
         realtime.start();
         _refreshLiveData();
+        ref.read(authProvider.notifier).refreshUser();
       }
     } else if (state == AppLifecycleState.paused) {
       // Android kills idle sockets anyway; push covers the background.

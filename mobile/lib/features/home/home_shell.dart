@@ -17,7 +17,8 @@ class HomeShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unread = ref.watch(notificationsProvider).maybeWhen(data: (d) => d.unread, orElse: () => 0);
     final role = ref.watch(authProvider.select((s) => s.user?.role));
-    final tabs = tabsFor(role);
+    final approver = ref.watch(authProvider.select((s) => s.user?.isRequestApprover ?? false));
+    final tabs = tabsFor(role, approver: approver);
     final current = ref.watch(homeTabProvider);
     final index = tabs.indexOf(current).clamp(0, tabs.length - 1);
     final pending = tabs.contains(HomeTab.requests) ? ref.watch(pendingRequestsProvider).maybeWhen(data: (d) => d.items.length, orElse: () => 0) : 0;
@@ -41,7 +42,7 @@ class HomeShell extends ConsumerWidget {
           HomeTab.requests => NavigationDestination(
               icon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check_outlined)),
               selectedIcon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check)),
-              label: 'Requests',
+              label: role == 'designer' ? 'Approvals' : 'Requests',
             ),
           HomeTab.alerts => NavigationDestination(
               icon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications_outlined)),

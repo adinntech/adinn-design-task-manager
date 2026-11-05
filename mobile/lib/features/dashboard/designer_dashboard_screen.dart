@@ -96,7 +96,7 @@ class DesignerDashboardScreen extends ConsumerWidget {
       if ((d.requestCounts['decline'] ?? 0) > 0)
         StatTile(key: const Key('tile-decline'), label: 'Declined Tasks', value: '${d.requestCounts['decline']}', hint: 'Decline requests raised by you', onTap: () => focus('self_declined')),
       if ((d.requestCounts['split'] ?? 0) > 0)
-        StatTile(key: const Key('tile-split'), label: 'Split Tasks', value: '${d.requestCounts['split']}', hint: 'Split requests raised by you'),
+        StatTile(key: const Key('tile-split'), label: 'Split Tasks', value: '${d.requestCounts['split']}', hint: 'Split requests raised by you', onTap: () => focus('split_log')),
       if ((d.requestCounts['approved'] ?? 0) > 0)
         StatTile(key: const Key('tile-approved'), label: 'Approved Requests', value: '${d.requestCounts['approved']}', hint: 'Across swap/split/decline'),
       if (d.reworkCycles + d.reworkCreatives > 0)
@@ -498,14 +498,28 @@ class TaskDrawer extends StatelessWidget {
           line('Rating', row.rating == null ? const Text('—') : HalfStars(row.rating!)),
           const SizedBox(height: 12),
           Consumer(
-            builder: (context, ref, _) => FilledButton(
-              key: const Key('drawer-open'),
-              onPressed: () {
-                Navigator.pop(context);
-                context.push('/task/${row.id}');
-              },
-              child: const Text('Open task →'),
-            ),
+            builder: (context, ref, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              FilledButton(
+                key: const Key('drawer-open'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.push('/task/${row.id}');
+                },
+                child: const Text('Open task →'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                key: const Key('drawer-board'),
+                icon: const Icon(Icons.view_kanban_outlined),
+                label: const Text('Open on board'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  ref.read(boardTaskFocusProvider.notifier).focus(row.id);
+                  ref.read(boardFocusProvider.notifier).focus(row.status);
+                  ref.read(homeTabProvider.notifier).goTo(HomeTab.tasks);
+                },
+              ),
+            ]),
           ),
         ]),
       ),

@@ -2,7 +2,7 @@
 library;
 
 class AppUser {
-  AppUser({required this.id, required this.name, required this.email, required this.role, this.roleName});
+  AppUser({required this.id, required this.name, required this.email, required this.role, this.roleName, this.isRequestApprover = false});
 
   final int id;
   final String name;
@@ -10,15 +10,19 @@ class AppUser {
   final String role; // admin | bd | designer | designer_head
   final String? roleName;
 
+  /// A designer the Admin allowed to approve teammates' Swap / Split requests.
+  final bool isRequestApprover;
+
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
         id: j['id'] as int,
         name: (j['name'] ?? '') as String,
         email: (j['email'] ?? '') as String,
         role: (j['role'] ?? '') as String,
         roleName: j['role_name'] as String?,
+        isRequestApprover: j['is_request_approver'] == true,
       );
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'email': email, 'role': role, 'role_name': roleName};
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'email': email, 'role': role, 'role_name': roleName, 'is_request_approver': isRequestApprover};
 
   String get roleLabel => switch (role) {
         'admin' => 'Admin',
@@ -343,12 +347,21 @@ class ClientSuggestion {
 }
 
 class Availability {
-  Availability(this.label, this.level, this.percent);
+  Availability(this.label, this.level, this.percent, {this.activeTasks, this.activeCreatives, this.checkedIn});
 
   final String label;
   final String level;
   final int percent;
+  final int? activeTasks;
+  final int? activeCreatives;
+  final bool? checkedIn;
 
-  factory Availability.fromJson(Map<String, dynamic> j) =>
-      Availability((j['label'] ?? '') as String, (j['level'] ?? '') as String, (j['availability_percent'] ?? 0) as int);
+  factory Availability.fromJson(Map<String, dynamic> j) => Availability(
+        (j['label'] ?? '') as String,
+        (j['level'] ?? '') as String,
+        (j['availability_percent'] ?? 0) as int,
+        activeTasks: j['active_tasks'] as int?,
+        activeCreatives: j['active_creatives'] as int?,
+        checkedIn: j['checked_in'] as bool?,
+      );
 }

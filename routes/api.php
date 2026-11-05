@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceController;
+use App\Http\Controllers\Api\Designer\ApprovalController as DesignerApprovalController;
+use App\Http\Controllers\DesignerAvailabilityController;
 use App\Http\Controllers\Api\Designer\DashboardController as DesignerDashboardController;
 use App\Http\Controllers\Api\Designer\RequestController as DesignerRequestController;
 use App\Http\Controllers\Api\Designer\TaskController as DesignerTaskController;
@@ -44,6 +46,15 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:designer')->prefix('designer')->group(function () {
+        // Delegate approvals (Swap / Split of teammates) for Designers the Admin allowed; the controller and service re-check.
+        // Availability meter when picking a Preferred / Final designer for a split or swap.
+        Route::get('/designers/{designer}/availability', DesignerAvailabilityController::class);
+
+        Route::get('/approvals', [DesignerApprovalController::class, 'index']);
+        Route::get('/approvals/{taskRequest}', [DesignerApprovalController::class, 'show']);
+        Route::post('/approvals/{taskRequest}/approve', [DesignerApprovalController::class, 'approve']);
+        Route::post('/approvals/{taskRequest}/reject', [DesignerApprovalController::class, 'reject']);
+
         Route::get('/dashboard', [DesignerDashboardController::class, 'index']);
         Route::get('/dashboard/tasks', [DesignerDashboardController::class, 'tasks']);
         Route::get('/tasks', [DesignerTaskController::class, 'index']);
@@ -90,6 +101,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:designer_head')->prefix('designer-head')->group(function () {
+        Route::get('/designers/{designer}/availability', DesignerAvailabilityController::class);
         Route::get('/tasks', [HeadController::class, 'board']);
         Route::get('/tasks/{task}', [HeadController::class, 'show']);
         Route::get('/tasks/{task}/comments', [HeadController::class, 'comments']);

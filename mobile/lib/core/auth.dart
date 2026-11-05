@@ -98,6 +98,21 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Re-reads /me so a role-side change (e.g. the Admin granting approval rights) shows without signing in again.
+  /// Never throws: offline keeps the cached user.
+  Future<void> refreshUser() async {
+    final current = state;
+    if (current.status != AuthStatus.signedIn || current.token == null) return;
+    try {
+      final me = await ref.read(apiClientProvider).get('/me');
+      final user = AppUser.fromJson(me['user'] as Map<String, dynamic>);
+      if (state.token != current.token) return; // signed out / switched meanwhile
+      if (user.isRequestApprover == current.user?.isRequestApprover && user.role == current.user?.role) return;
+      await ref.read(sessionStoreProvider).write(current.token!, user);
+      state = AuthState(status: AuthStatus.signedIn, token: current.token, user: user);
+    } catch (_) {}
+  }
+
   /// Throws [ApiException] (with `fieldErrors['login']`) on bad credentials.
   Future<void> login(String login, String password, {String deviceName = 'mobile'}) async {
     final body = await ref.read(apiClientProvider).post('/login', data: {

@@ -93,7 +93,26 @@ Map<String, dynamic> _board() => {
         _card(7, 'Due today', 'yet_to_start', extra: {'due_at': DateTime.now().add(const Duration(minutes: 1)).toUtc().toIso8601String(), 'forward_to': ['in_progress']}),
       ],
       'split_log': [
-        {'id': 20, 'task_id': 'DT-2026-00020', 'name': 'Big job (split)', 'split_from': 'DT-2026-00009', 'designer': 'Meera', 'creatives': 2, 'approved_at': '2026-11-12T10:00:00+00:00'},
+        {
+          'id': 20, 'request_id': 90, 'task_id': 'DT-2026-00020', 'name': 'Big job (split)', 'has_child': true,
+          'status': {'key': 'approved', 'label': 'Split approved'}, 'split_from': 'DT-2026-00009', 'designer': 'Meera', 'creatives': 2,
+          'requested_split': 2, 'approved_at': '2026-11-12T10:00:00+00:00', 'requested_at': '2026-11-11T10:00:00+00:00',
+        },
+        {
+          'id': 21, 'request_id': 91, 'task_id': 'DT-2026-00021', 'name': 'Waiting split', 'has_child': false,
+          'status': {'key': 'pending', 'label': 'Pending approval'}, 'split_from': 'DT-2026-00021', 'designer': null, 'creatives': 6,
+          'requested_split': 3, 'approved_at': null, 'requested_at': '2026-11-13T10:00:00+00:00',
+        },
+        {
+          'id': 22, 'request_id': 92, 'task_id': 'DT-2026-00022', 'name': 'Refused split', 'has_child': false,
+          'status': {'key': 'rejected', 'label': 'Split rejected'}, 'split_from': 'DT-2026-00022', 'designer': null, 'creatives': 4,
+          'requested_split': 1, 'approved_at': null, 'requested_at': '2026-11-09T10:00:00+00:00',
+        },
+        {
+          'id': 23, 'request_id': 93, 'task_id': 'DT-2026-00023', 'name': 'Finished first', 'has_child': false,
+          'status': {'key': 'completed_all', 'label': 'You completed all'}, 'split_from': 'DT-2026-00023', 'designer': null, 'creatives': 2,
+          'requested_split': 1, 'approved_at': null, 'requested_at': '2026-11-08T10:00:00+00:00',
+        },
       ],
       'stats': {'total': 7, 'active': 5, 'waiting': 1, 'completed': 1},
       'active_breakdown': [
@@ -272,7 +291,7 @@ void main() {
       expect(find.text('Split Tasks (Nov 2026)'), findsOneWidget);
       expect(find.text('Self Declined'), findsOneWidget);
       expect(tester.widget<Text>(find.byKey(const Key('count-rework'))).data, '0');
-      expect(tester.widget<Text>(find.byKey(const Key('count-split_log'))).data, '1');
+      expect(tester.widget<Text>(find.byKey(const Key('count-split_log'))).data, '4');
     });
 
     testWidgets('summary cards show the totals, and the Active card lists only non-zero statuses', (tester) async {
@@ -388,25 +407,46 @@ void main() {
       expect(tester.takeException(), isNull); // a RenderFlex overflow would be reported here
     });
 
-    testWidgets('the Split Tasks column lists approved splits and opens the child task', (tester) async {
+    testWidgets('the Split Tasks column lists every split with its Status, an approved one opening the child task', (tester) async {
       await boot(tester);
       await openTab(tester, 'split_log');
 
-      expect(find.byKey(const Key('split-20')), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('count-split_log'))).data, '4');
+      expect(find.text('Status: Split approved'), findsOneWidget);
+      expect(find.text('Status: Pending approval'), findsOneWidget);
+      expect(find.text('Status: Split rejected'), findsOneWidget);
+      expect(find.text('Status: You completed all'), findsOneWidget);
+
+      // Approved: the child task's details.
+      expect(find.text('SPLIT FROM'), findsOneWidget);
       expect(find.text('DT-2026-00009'), findsOneWidget);
       expect(find.text('Meera'), findsOneWidget);
-      expect(find.text('Open task'), findsOneWidget);
+      expect(find.text('APPROVED'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('split-20')));
       await tester.pumpAndSettle();
       expect(api.requests.any((r) => r.path == '/designer/tasks/20'), isTrue);
     });
 
-    testWidgets('an empty split log says so', (tester) async {
+    testWidgets('a split with no child task shows what was requested and opens the original task', (tester) async {
+      await boot(tester);
+      await openTab(tester, 'split_log');
+
+      expect(find.text('REQUESTED SPLIT'), findsWidgets);
+      expect(find.text('REQUESTED'), findsWidgets);
+      expect(find.text('3'), findsOneWidget); // asked to split 3 creatives
+
+      await tester.ensureVisible(find.byKey(const Key('split-21')));
+      await tester.tap(find.byKey(const Key('split-21')));
+      await tester.pumpAndSettle();
+      expect(api.requests.any((r) => r.path == '/designer/tasks/21'), isTrue);
+    });
+
+    testWidgets('an empty split column uses the web wording', (tester) async {
       await boot(tester, board: _board()..['split_log'] = []);
       await openTab(tester, 'split_log');
 
-      expect(find.text('No splits approved in Nov 2026.'), findsOneWidget);
+      expect(find.text('No split requests in Nov 2026.'), findsOneWidget);
     });
 
     testWidgets('Refresh reloads the board', (tester) async {

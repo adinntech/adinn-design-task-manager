@@ -7,6 +7,7 @@ import '../../core/api_client.dart';
 import '../../core/models.dart';
 import '../../core/uploads.dart';
 import '../tasks/providers.dart';
+import '../widgets/availability_meter.dart';
 
 final taskFormProvider = FutureProvider.autoDispose<TaskFormDef>((ref) => ref.watch(roleApiProvider).taskForm());
 
@@ -371,11 +372,7 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
           items: [for (final d in def.designers) DropdownMenuItem(value: d.id, child: Text(d.name, overflow: TextOverflow.ellipsis))],
           onChanged: _pickDesigner,
         ),
-        if (_availability != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text('Availability: ${_availability!.label} (${_availability!.percent}% free)', key: const Key('availability'), style: Theme.of(context).textTheme.bodySmall),
-          ),
+        if (_availability != null) AvailabilityMeter(availability: _availability!),
       ]));
 
   Iterable<Widget> _dynamicWidget(FormFieldDef f) {

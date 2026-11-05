@@ -61,22 +61,24 @@ class RoleApi {
   Future<void> submitRework(int taskId, {required int count, required String uploadIds}) =>
       _api.post('/designer/tasks/$taskId/rework', data: {'completed_count': count, 'upload_ids': uploadIds});
 
-  // ---- Head / Admin: request approvals ----
+  // ---- Head / Admin (and delegate-approver designers): request approvals ----
+  String get _requestsPath => role == 'designer' ? '/designer/approvals' : '$_prefix/requests';
+
   Future<({List<RequestItem> items, List<Designer> designers})> pendingRequests() async {
-    final json = await _api.get('$_prefix/requests');
+    final json = await _api.get(_requestsPath);
     return (
       items: ((json['data'] as List?) ?? []).map((r) => RequestItem.fromJson(r as Map<String, dynamic>)).toList(),
       designers: ((json['designers'] as List?) ?? []).map((d) => Designer.fromJson(d as Map<String, dynamic>)).toList(),
     );
   }
 
-  Future<void> approveRequest(int id, {int? designerId, int? creativeCount, String? comment}) => _api.post('$_prefix/requests/$id/approve', data: {
+  Future<void> approveRequest(int id, {int? designerId, int? creativeCount, String? comment}) => _api.post('$_requestsPath/$id/approve', data: {
         'approved_designer_id': ?designerId,
         'approved_creative_count': ?creativeCount,
         if (comment != null && comment.isNotEmpty) 'decision_comment': comment,
       });
 
-  Future<void> rejectRequest(int id, String reason) => _api.post('$_prefix/requests/$id/reject', data: {'decision_reason': reason});
+  Future<void> rejectRequest(int id, String reason) => _api.post('$_requestsPath/$id/reject', data: {'decision_reason': reason});
 
   // ---- BD ----
   Future<void> requestRework(int taskId, {required int count, required String comment}) =>
@@ -117,7 +119,7 @@ class RoleApi {
     return json.map((c) => ClientSuggestion.fromJson(c as Map<String, dynamic>)).toList();
   }
 
-  Future<Availability> availability(int designerId) async => Availability.fromJson(await _api.get('/bd/designers/$designerId/availability'));
+  Future<Availability> availability(int designerId) async => Availability.fromJson(await _api.get('${role == 'admin' ? '/bd' : _prefix}/designers/$designerId/availability'));
 
   /// Creates a task (`inhouse` for the In-house tab) or saves a draft. Sends JSON, or multipart when files are attached.
   /// Returns the new task/draft id. Field-level problems arrive as [ApiException.fieldErrors].

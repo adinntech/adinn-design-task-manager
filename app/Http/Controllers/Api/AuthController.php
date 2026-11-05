@@ -95,6 +95,8 @@ class AuthController extends Controller
             'role_name' => $user->role_name,
             'phone_number' => $user->phone_number,
             'web_push_enabled' => (bool) $user->web_push_enabled,
+            // A Designer the Admin allowed to approve teammates' Swap/Split requests (needs a Designer Head to scope to).
+            'is_request_approver' => $user->isRequestApprover() && (bool) $user->designer_head_id,
         ];
     }
 

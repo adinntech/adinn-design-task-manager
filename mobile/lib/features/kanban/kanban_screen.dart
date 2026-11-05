@@ -32,6 +32,8 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
   Timer? _debounce;
   Timer? _edgeTimer;
   Timer? _highlightTimer;
+  Timer? _cardFlashTimer;
+  int? _flashCard;
   Offset? _dragAt;
   DateTime _lastEdgeSwitch = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -52,6 +54,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
     _debounce?.cancel();
     _edgeTimer?.cancel();
     _highlightTimer?.cancel();
+    _cardFlashTimer?.cancel();
     _search.dispose();
     _pages.dispose();
     _tabScroll.dispose();
@@ -246,6 +249,18 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
     ref.listen(boardFocusProvider, (_, focus) {
       if (focus != null) _takeFocus(focus);
     });
+    // "Open on board": ring that task's card once its column is showing,.
+    ref.listen(boardTaskFocusProvider, (_, id) {
+      if (id == null) return;
+      Future.microtask(() {
+        if (mounted) ref.read(boardTaskFocusProvider.notifier).focus(null);
+      });
+      setState(() => _flashCard = id);
+      _cardFlashTimer?.cancel();
+      _cardFlashTimer = Timer(const Duration(milliseconds: 2500), () {
+        if (mounted) setState(() => _flashCard = null);
+      });
+    });
 
     final filters = ref.watch(kanbanFiltersProvider);
     final async = ref.watch(kanbanBoardProvider);
@@ -421,7 +436,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
   Widget _columnBody(BuildContext context, KanbanColumn column, KanbanBoard b, DateTime now) {
     if (column.isSplitLog) {
       if (b.splitLog.isEmpty) {
-        return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('No splits approved in ${b.periodLabel}.', key: const Key('split-empty'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.black45))));
+        return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('No split requests in ${b.periodLabel}.', key: const Key('split-empty'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.black45))));
       }
       return ListView.separated(
         padding: const EdgeInsets.only(top: 4, bottom: 16),
@@ -469,7 +484,13 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
   }
 
   Widget _draggable(BuildContext context, KanbanCard card, KanbanBoard b, DateTime now, {String? stageLabel}) {
-    final tile = KanbanTaskCard(card: card, now: now, stageLabel: stageLabel, onOpen: () => context.push('/task/${card.id}'), onMove: card.canMove ? () => _openMoveSheet(card, b) : null);
+    Widget tile = KanbanTaskCard(card: card, now: now, stageLabel: stageLabel, onOpen: () => context.push('/task/${card.id}'), onMove: card.canMove ? () => _openMoveSheet(card, b) : null);
+    if (card.id == _flashCard) {
+      tile = Container(
+        foregroundDecoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: Theme.of(context).colorScheme.primary, width: 3)),
+        child: tile,
+      );
+    }
 
     if (!card.canMove) return KeyedSubtree(key: Key('card-${card.id}'), child: tile);
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
+import '../../core/auth.dart';
 import '../../core/models.dart';
 import '../tasks/providers.dart';
 import '../widgets/form_sheet.dart';
@@ -18,9 +19,10 @@ class RequestsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(pendingRequestsProvider);
+    final isDesigner = ref.watch(authProvider.select((s) => s.user?.role == 'designer'));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Requests')),
+      appBar: AppBar(title: Text(isDesigner ? 'Approvals' : 'Requests')),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -57,7 +59,7 @@ class _RequestCard extends ConsumerWidget {
       submitLabel: 'Approve',
       fields: [
         if (needsDesigner)
-          FormFieldSpec.choice('designer', 'Assign to designer', options: {for (final d in designers) '${d.id}': d.name}, required: true, initial: item.targetDesigner == null ? null : designers.where((d) => d.name == item.targetDesigner).map((d) => '${d.id}').firstOrNull),
+          FormFieldSpec.choice('designer', 'Assign to designer', options: {for (final d in designers) '${d.id}': d.name}, required: true, availability: ref.read(roleApiProvider).availability, initial: item.targetDesigner == null ? null : designers.where((d) => d.name == item.targetDesigner).map((d) => '${d.id}').firstOrNull),
         if (item.type == 'split') FormFieldSpec.number('count', 'Creatives to move', required: true, initial: item.splitCount),
         FormFieldSpec.text('comment', 'Comment (optional)', lines: 3),
       ],

@@ -237,11 +237,11 @@ class MobileDesignerBoardApiTest extends TestCase
         $this->assertNotContains('decline_tasks', array_column($theirs['tasks'], 'status'));
     }
 
-    public function test_split_log_lists_approved_splits_in_the_period(): void
+    public function test_split_tasks_column_lists_approved_splits_with_their_status(): void
     {
         $origin = $this->task('in_progress', ['task_name' => 'Big job']);
         $child = $this->task('assigned_tasks', ['designer_id' => $this->other->id, 'task_name' => 'Big job (split)', 'total_creatives' => 2]);
-        $this->request($origin, 'split', 'approved', [
+        $request = $this->request($origin, 'split', 'approved', [
             'approved_designer_id' => $this->other->id, 'designer_head_action_by' => $this->head->id, 'designer_head_action_at' => now(),
             'split_details' => ['creative_count' => 2, 'details' => 'x', 'created_task_id' => $child->id],
         ]);
@@ -249,11 +249,56 @@ class MobileDesignerBoardApiTest extends TestCase
         $log = $this->board()->json('split_log');
 
         $this->assertCount(1, $log);
-        $this->assertSame($child->id, $log[0]['id']);
+        $this->assertSame($child->id, $log[0]['id']); // opens the child task
+        $this->assertSame($request->id, $log[0]['request_id']);
+        $this->assertTrue($log[0]['has_child']);
+        $this->assertSame(['key' => 'approved', 'label' => 'Split approved'], $log[0]['status']);
         $this->assertSame($origin->task_id, $log[0]['split_from']);
         $this->assertSame($this->other->name, $log[0]['designer']);
         $this->assertSame(2, $log[0]['creatives']);
         $this->assertNotNull($log[0]['approved_at']);
+    }
+
+    public function test_pending_and_rejected_splits_show_on_the_board_and_open_the_original_task(): void
+    {
+        $pendingTask = $this->task('in_progress', ['task_name' => 'Waiting split']);
+        $this->request($pendingTask, 'split', 'pending_designer_head', ['split_details' => ['creative_count' => 3, 'details' => 'x']]);
+
+        $rejectedTask = $this->task('yet_to_start', ['task_name' => 'Refused split']);
+        $this->request($rejectedTask, 'split', 'rejected', ['split_details' => ['creative_count' => 1, 'details' => 'x']]);
+
+        $byTask = collect($this->board()->json('split_log'))->keyBy('id');
+
+        $pending = $byTask[$pendingTask->id];
+        $this->assertFalse($pending['has_child']);
+        $this->assertSame(['key' => 'pending', 'label' => 'Pending approval'], $pending['status']);
+        $this->assertSame(3, $pending['requested_split']);
+        $this->assertNull($pending['designer']);
+        $this->assertNull($pending['approved_at']);
+        $this->assertNotNull($pending['requested_at']);
+
+        $this->assertSame(['key' => 'rejected', 'label' => 'Split rejected'], $byTask[$rejectedTask->id]['status']);
+    }
+
+    public function test_a_split_closed_because_the_designer_finished_everything_reads_you_completed_all(): void
+    {
+        $task = $this->task('waiting_confirmation');
+        $this->request($task, 'split', 'rejected', ['split_details' => ['creative_count' => 2, 'details' => 'x', 'completed_before_approval' => true]]);
+
+        $row = collect($this->board()->json('split_log'))->firstWhere('id', $task->id);
+
+        $this->assertSame(['key' => 'completed_all', 'label' => 'You completed all'], $row['status']);
+    }
+
+    public function test_splits_follow_the_search_filters_like_the_cards(): void
+    {
+        $match = $this->task('in_progress', ['task_name' => 'Zebra split job']);
+        $other = $this->task('in_progress', ['task_name' => 'Plain job']);
+        $this->request($match, 'split', 'pending_designer_head', ['split_details' => ['creative_count' => 1, 'details' => 'x']]);
+        $this->request($other, 'split', 'pending_designer_head', ['split_details' => ['creative_count' => 1, 'details' => 'x']]);
+
+        $this->assertSame([$match->id], array_column($this->board('?search=zebra')->json('split_log'), 'id'));
+        $this->assertCount(2, $this->board()->json('split_log'));
     }
 
     public function test_filters_bd_project_number_search_vertical_and_priority(): void

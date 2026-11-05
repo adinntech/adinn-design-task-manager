@@ -244,6 +244,45 @@ void main() {
       expect(find.text('Highway hoarding'), findsOneWidget);
     });
 
+    testWidgets('the Split Tasks card opens the Split Tasks tab', (tester) async {
+      final d = _dashboard();
+      (d['request_counts'] as Map)['split'] = 2;
+      await boot(tester, dashboard: d, routes: {
+        'GET /designer/tasks': (_) => (status: 200, body: {
+              'columns': [{'key': 'in_progress', 'label': 'In Progress'}, {'key': 'split_log', 'label': 'Split Tasks', 'type': 'split_log'}],
+              'statuses': [{'key': 'in_progress', 'label': 'In Progress'}],
+              'tasks': [taskJson(id: 1, status: 'in_progress', name: 'Highway hoarding')],
+              'split_log': [
+                {'id': 21, 'task_id': 'DT-2026-00021', 'name': 'Waiting split', 'has_child': false, 'status': {'key': 'pending', 'label': 'Pending approval'}, 'creatives': 6, 'requested_split': 3},
+              ],
+            }),
+      });
+
+      await tester.tap(find.byKey(const Key('tile-split')));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<ChoiceChip>(find.byKey(const Key('tab-split_log'))).selected, isTrue);
+      expect(find.text('Status: Pending approval'), findsOneWidget);
+    });
+
+    testWidgets('Open on board jumps to its column and highlights its card', (tester) async {
+      await boot(tester);
+
+      await tester.tap(find.byKey(const Key('row-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('drawer-board')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('kanban-pages')), findsOneWidget);
+      expect(tester.widget<ChoiceChip>(find.byKey(const Key('tab-in_progress'))).selected, isTrue);
+      expect(find.byKey(const Key('card-1')), findsOneWidget);
+      // The ring is a foreground decoration on the flashed card, gone again after a moment.
+      bool ringed() => tester.widgetList<Container>(find.descendant(of: find.byKey(const Key('kanban-pages')), matching: find.byType(Container))).any((c) => c.foregroundDecoration != null);
+      expect(ringed(), isTrue);
+      await tester.pump(const Duration(seconds: 3));
+      expect(ringed(), isFalse);
+    });
+
     testWidgets('View All Tasks opens the board', (tester) async {
       await boot(tester);
 

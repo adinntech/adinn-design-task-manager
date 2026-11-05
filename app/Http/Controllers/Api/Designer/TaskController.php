@@ -81,15 +81,29 @@ class TaskController extends Controller
             'columns' => $columns,
             'statuses' => collect($columns)->where('type', 'status')->map(fn ($c) => ['key' => $c['key'], 'label' => $c['label']])->values(),
             'tasks' => $tasks->map(fn (DesignTask $t) => $this->card($t, $data['taskTags']->get($t->id, [])[0] ?? null))->values(),
-            'split_log' => $data['splitLogRows']->map(fn (array $row) => [
-                'id' => $row['childTask']->id,
-                'task_id' => $row['childTask']->task_id,
-                'name' => $row['childTask']->display_task_name ?? $row['childTask']->task_name,
-                'split_from' => $row['request']->task?->task_id,
-                'designer' => $row['childTask']->designer?->name,
-                'creatives' => (int) $row['childTask']->total_creatives,
-                'approved_at' => $row['request']->responded_at?->toIso8601String(),
-            ])->values(),
+            // Every split ticket with its own Status, as the web's Split Tasks column: approved splits (child task
+            // attached) plus pending, rejected and "completed all before approval" ones (these open the original task).
+            'split_log' => $data['splitBoardRows']
+                ->map(function (array $row) use ($user) {
+                    $shown = $row['childTask'] ?? $row['task'];
+
+                    return $shown === null ? null : [
+                        'id' => $shown->id,
+                        'request_id' => $row['request']->id,
+                        'task_id' => $shown->task_id,
+                        'name' => $shown->display_task_name ?? $shown->task_name,
+                        'has_child' => $row['childTask'] !== null,
+                        'status' => $row['request']->splitStatus($user),
+                        'split_from' => $row['request']->task?->task_id,
+                        'designer' => $row['childTask']?->designer?->name,
+                        'creatives' => (int) $shown->total_creatives,
+                        'requested_split' => $row['request']->splitCreativeSummary()['requested'],
+                        'approved_at' => $row['childTask'] ? $row['request']->responded_at?->toIso8601String() : null,
+                        'requested_at' => $row['request']->created_at?->toIso8601String(),
+                    ];
+                })
+                ->filter()
+                ->values(),
             'stats' => $data['stats'],
             'active_breakdown' => $data['activeBreakdown'],
             'period_label' => $data['periodLabel'],

@@ -209,7 +209,14 @@ class _Rating extends StatelessWidget {
   }
 }
 
-/// A Split Tasks log entry: the child task created by an approved split.
+Color splitStatusColor(String key) => switch (key) {
+      'approved' => const Color(0xFF067647),
+      'rejected' => const Color(0xFFB42318),
+      'completed_all' => const Color(0xFF175CD3),
+      _ => const Color(0xFF9A6700), // pending
+    };
+
+/// A Split Tasks entry with its Status, as on the web board.
 class SplitLogCard extends StatelessWidget {
   const SplitLogCard({super.key, required this.entry, required this.onOpen});
 
@@ -241,12 +248,20 @@ class SplitLogCard extends StatelessWidget {
             ]),
             const SizedBox(height: 4),
             Text(entry.name, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700), maxLines: 3, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 6),
+            _Pill('Status: ${entry.statusLabel}', splitStatusColor(entry.statusKey), key: Key('split-status-${entry.id}')),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 6, children: [
-              meta('SPLIT FROM', entry.splitFrom ?? '—'),
-              meta('DESIGNER', entry.designer ?? '—'),
-              meta('CREATIVES', '${entry.creatives}'),
-              meta('APPROVED', _dt(entry.approvedAt, 'd MMM yyyy')),
+              if (entry.hasChild) ...[
+                meta('SPLIT FROM', entry.splitFrom ?? '—'),
+                meta('DESIGNER', entry.designer ?? '—'),
+                meta('CREATIVES', '${entry.creatives}'),
+                meta('APPROVED', _dt(entry.approvedAt, 'd MMM yyyy')),
+              ] else ...[
+                meta('REQUESTED SPLIT', entry.requestedSplit == null ? '—' : '${entry.requestedSplit}'),
+                meta('CREATIVES', '${entry.creatives}'),
+                meta('REQUESTED', _dt(entry.requestedAt, 'd MMM yyyy')),
+              ],
             ]),
             const SizedBox(height: 6),
             Text('Open task', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w700, fontSize: 12)),

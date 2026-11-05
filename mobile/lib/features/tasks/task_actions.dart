@@ -183,9 +183,9 @@ class TaskActions extends ConsumerWidget {
       if (type == 'split') ...[
         FormFieldSpec.number('count', 'Creatives to hand over', required: true),
         FormFieldSpec.text('details', 'Split details', lines: 3, required: true),
-        FormFieldSpec.choice('designer', 'Preferred designer (optional)', options: designers),
+        FormFieldSpec.choice('designer', 'Preferred designer (optional)', options: designers, availability: api.availability),
       ],
-      if (type == 'swap') FormFieldSpec.choice('designer', 'Swap to designer', options: designers, required: true),
+      if (type == 'swap') FormFieldSpec.choice('designer', 'Swap to designer', options: designers, required: true, availability: api.availability),
       FormFieldSpec.text('reason', 'Reason', lines: 3, required: true),
     ]);
     if (v == null || !context.mounted) return;
