@@ -943,6 +943,9 @@ class TaskDetail extends Component
         }
 
         if (str_contains($lower, 'split request')) {
+            if (str_contains($lower, 'completed all creatives before')) {
+                return 'Split Request Closed';
+            }
             if (str_contains($lower, 'reject') || str_contains($lower, 'declin')) {
                 return 'Split Request Declined';
             }

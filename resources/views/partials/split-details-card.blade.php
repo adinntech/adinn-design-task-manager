@@ -2,8 +2,12 @@
     $splitSummary = $request->splitCreativeSummary();
     $isPending = in_array($request->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true);
     $isApproved = $request->overall_status === 'approved';
-    $isRejected = $request->overall_status === 'rejected';
-    $decisionLabel = $isApproved ? 'Approved' : ($isRejected ? 'Rejected' : 'Pending');
+    $selfCompleted = $request->splitCompletedBeforeApproval();
+    // Designer finished every creative before a decision: shown as a positive
+    // "Self-completed" outcome, not a rejection.
+    $isApproved = $isApproved || $selfCompleted;
+    $isRejected = $request->overall_status === 'rejected' && ! $selfCompleted;
+    $decisionLabel = $selfCompleted ? 'Self-completed' : ($isApproved ? 'Approved' : ($isRejected ? 'Rejected' : 'Pending'));
     $fmt = fn ($value) => $value ? \Illuminate\Support\Carbon::parse($value)->format('d M Y · h:i A') : null;
     $createdSplitTask = $request->createdSplitTask();
     $splitNotes = data_get($request->split_details, 'details');
@@ -79,7 +83,7 @@
                 @if($isPending)
                     Awaiting decision
                 @else
-                    Decision completed on {{ $fmt($request->responded_at) }}
+                    {{ $selfCompleted ? 'Closed on' : 'Decision completed on' }} {{ $fmt($request->responded_at) }}
                 @endif
             </div>
         </div>
@@ -118,13 +122,13 @@
 
     <div class="split-detail-approval">
         <div class="split-detail-approval-label">Split approval</div>
-        <div class="split-detail-approval-value">{{ $splitSummary['percent'] !== null ? $splitSummary['percent'].'% of ticket' : 'Pending' }}</div>
+        <div class="split-detail-approval-value">{{ $splitSummary['percent'] !== null ? $splitSummary['percent'].'% of ticket' : ($selfCompleted ? 'Not needed' : 'Pending') }}</div>
         <div class="split-detail-bar"><x-progress-fill :percentage="$splitSummary['percent'] ?? 0" /></div>
         <div class="split-detail-approval-note">
             @if($splitSummary['approved'] !== null && $splitSummary['total'])
                 {{ $splitSummary['approved'] }} of {{ $splitSummary['total'] }} creatives approved
             @else
-                Not yet decided
+                {{ $selfCompleted ? 'Designer completed all creatives' : 'Not yet decided' }}
             @endif
         </div>
     </div>
@@ -142,7 +146,7 @@
 
     <div class="split-detail-info-card">
         <div class="split-detail-info-title">2. Decision Information</div>
-        <div class="split-detail-info-row"><span class="split-detail-info-row-label">Responded by (Decision maker)</span><span class="split-detail-info-row-value">{{ $isPending ? 'Pending' : ($request->decidedBy?->name ?? '—') }}</span></div>
+        <div class="split-detail-info-row"><span class="split-detail-info-row-label">Responded by (Decision maker)</span><span class="split-detail-info-row-value">{{ $isPending ? 'Pending' : ($selfCompleted ? 'System (auto-closed)' : ($request->decidedBy?->name ?? '—')) }}</span></div>
         <div class="split-detail-info-row"><span class="split-detail-info-row-label">Approved designer</span><span class="split-detail-info-row-value">{{ $isPending ? 'Pending' : ($request->approvedDesigner?->name ?? '—') }}</span></div>
         <div class="split-detail-info-row"><span class="split-detail-info-row-label">Responded at</span><span class="split-detail-info-row-value">{{ $isPending ? 'Pending' : ($fmt($request->responded_at) ?? '—') }}</span></div>
         <div class="split-detail-info-row"><span class="split-detail-info-row-label">Decision status</span><span class="split-detail-info-row-value"><span class="split-detail-pill {{ $isApproved ? 'approved' : ($isRejected ? 'rejected' : 'pending') }}">{{ $decisionLabel }}</span></span></div>
@@ -181,7 +185,7 @@
                 @if($isPending)
                     Awaiting decision
                 @else
-                    {{ $fmt($request->responded_at) }}<br>by {{ $request->decidedBy?->name ?? '—' }}
+                    {{ $fmt($request->responded_at) }}<br>by {{ $selfCompleted ? 'System' : ($request->decidedBy?->name ?? '—') }}
                 @endif
             </div>
         </div>

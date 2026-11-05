@@ -417,7 +417,7 @@ class TaskKanban extends Component
             'statuses' => $statuses,
             'tasks' => $tasks,
             'splitLogRows' => $board['splitLogRows'],
-            'splitRequestRows' => $board['splitRequestRows'],
+            'splitBoardRows' => $board['splitBoardRows'],
             'taskTags' => $this->buildTaskTags($tasks),
             'bds' => $bds,
             'periodLabel' => $periodLabel,

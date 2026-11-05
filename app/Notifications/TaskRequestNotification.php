@@ -16,13 +16,16 @@ class TaskRequestNotification extends Notification
      * @param  string  $requestType  'split'|'swap'|'decline'|'status_change'|'bd_approval'
      * @param  string  $event  'submitted'|'approved'|'rejected'
      * @param  string|null  $comment  Only used by 'bd_approval' — the BD's approval/rejection comment.
+     * @param  User|null  $requester  Set when a delegated Designer decided someone else's request, so the
+     *                                Designer Head is told who asked and who decided on their behalf.
      */
     public function __construct(
         private DesignTask $task,
         private string $requestType,
         private string $event,
         private User $actor,
-        private ?string $comment = null
+        private ?string $comment = null,
+        private ?User $requester = null
     ) {}
 
     public function via(object $notifiable): array
@@ -37,6 +40,19 @@ class TaskRequestNotification extends Notification
         }
 
         $typeLabel = Str::headline($this->requestType);
+
+        if ($this->requester) {
+            $verb = $this->event === 'rejected' ? 'rejected' : 'approved';
+
+            return [
+                'title' => "{$typeLabel} Request {$verb} by Designer",
+                'message' => "{$this->task->task_id}: {$this->actor->name} {$verb} {$this->requester->name}'s {$this->requestType} request.",
+                'task_id' => $this->task->id,
+                'task_ref' => $this->task->task_id,
+                'task_name' => $this->task->display_task_name ?? $this->task->task_name,
+                'category' => $this->requestType,
+            ];
+        }
 
         $title = match ($this->event) {
             'approved' => "{$typeLabel} Request Approved",

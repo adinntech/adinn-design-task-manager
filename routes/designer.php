@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Designer\ApprovalController;
 use App\Http\Controllers\Designer\DashboardController;
 use App\Http\Controllers\Designer\TaskAttachmentDownloadController;
 use App\Http\Controllers\Designer\TaskController;
 use App\Http\Controllers\Designer\TaskExportController;
 use App\Http\Controllers\Designer\TaskPageController;
+use App\Http\Controllers\DesignerAvailabilityController;
 use App\Http\Controllers\FileUploadController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +22,15 @@ Route::middleware(['auth', 'role:designer'])
         Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
         Route::post('/tasks/in-house', [TaskController::class, 'storeInhouseAsDesigner'])->name('tasks.storeInhouse');
+
+        // Admin-granted delegate approvals (Swap / Split of teammates). Every
+        // action re-checks permission + team scope, see Designer\ApprovalController.
+        Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+        Route::get('/approvals/{taskRequest}', [ApprovalController::class, 'show'])->name('approvals.show');
+        Route::post('/approvals/{taskRequest}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
+        Route::post('/approvals/{taskRequest}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
+
+        Route::get('/designers/{designer}/availability', DesignerAvailabilityController::class)->name('designers.availability');
 
         Route::get('/tasks', [TaskPageController::class, 'index'])->name('tasks.index');
 
