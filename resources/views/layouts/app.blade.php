@@ -141,6 +141,9 @@
             @elseif($role === 'designer')
                 <a href="{{ route('designer.dashboard') }}" class="{{ request()->routeIs('designer.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
                 <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.index','designer.tasks.show') ? 'active' : '' }}"><span>▤</span>My Tasks</a>
+                @if(auth()->user()->isRequestApprover())
+                    <a href="{{ route('designer.approvals.index') }}" class="{{ request()->routeIs('designer.approvals.*') ? 'active' : '' }}"><span>✔</span>Approvals</a>
+                @endif
                 <a href="{{ route('profile.show') }}" class="{{ request()->routeIs('profile.show') ? 'active' : '' }}"><span>◉</span>My Profile</a>
                 <a href="{{ route('designer.tasks.create') }}" class="{{ request()->routeIs('designer.tasks.create') ? 'active' : '' }}"><span>＋</span>Create Task</a>
             @elseif($role === 'designer_head')
@@ -190,7 +193,8 @@
             @if(session('error'))
                 <div class="flash flash-error">{{ session('error') }}</div>
             @endif
-            @yield('content')
+            @if(in_array($role, ['designer', 'designer_head'], true)){{-- Designer Availability meter (split/swap pickers) --}}@include('partials.designer-availability')@endif
+@yield('content')
         </main>
     </div>
 </div>

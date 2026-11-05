@@ -428,27 +428,40 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                 </section>
 
                 @if($statusKey === 'completed')
-                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitLogRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="designer-split-log">
-                        <header class="kanban-column-header"><span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span><span class="kanban-count">{{ $splitLogRows->count() }}</span></header>
+                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitBoardRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="designer-split-log">
+                        <header class="kanban-column-header"><span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span><span class="kanban-count">{{ $splitBoardRows->count() }}</span></header>
                         <div class="kanban-list">
-                            @forelse($splitLogRows as $row)
-                                @php $childTask = $row['childTask']; $request = $row['request']; @endphp
-                                <a href="{{ route('designer.tasks.show', $childTask) }}" class="task-card request-card" wire:key="designer-split-{{ $childTask->id }}">
+                            @forelse($splitBoardRows as $row)
+                                @php
+                                    $childTask = $row['childTask']; $request = $row['request'];
+                                    $shownTask = $childTask ?? $row['task'];
+                                    $splitStatus = $request->splitStatus(auth()->user());
+                                    $splitCounts = $request->splitCreativeSummary();
+                                @endphp
+                                @continue(! $shownTask)
+                                <a href="{{ route('designer.tasks.show', $shownTask) }}" class="task-card request-card" wire:key="designer-split-{{ $request->id }}">
                                     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-                                        <div class="task-card-id">{{ $childTask->task_id }}</div>
+                                        <div class="task-card-id">{{ $shownTask->task_id }}</div>
                                         <span class="request-type-pill request-type-split">Split</span>
                                     </div>
-                                    <div class="task-card-name">{{ $childTask->display_task_name ?? $childTask->task_name }}</div>
+                                    <div class="task-card-name">{{ $shownTask->display_task_name ?? $shownTask->task_name }}</div>
+                                    <div class="split-status split-status-{{ $splitStatus['key'] }}">Status: {{ $splitStatus['label'] }}</div>
                                     <div class="task-card-meta">
-                                        <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
-                                        <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
-                                        <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
-                                        <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
+                                        @if($childTask)
+                                            <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
+                                            <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
+                                        @else
+                                            <div class="task-meta-item"><strong>Requested Split</strong>{{ $splitCounts['requested'] ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Creatives</strong>{{ $shownTask->total_creatives }}</div>
+                                            <div class="task-meta-item"><strong>Requested</strong>{{ $request->created_at?->format('d M Y') ?? '—' }}</div>
+                                        @endif
                                     </div>
                                     <div class="request-open-label">Open task</div>
                                 </a>
                             @empty
-                                <div class="empty-state">No splits approved in {{ $periodLabel }}.</div>
+                                <div class="empty-state">No split requests in {{ $periodLabel }}.</div>
                             @endforelse
                         </div>
                     </section>
@@ -616,10 +629,10 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         }
 
                         let top = shell.scrollTop;
-                        if (colRect.top < shellRect.top) {
+                        // Not fully visible vertically (above, or taller than the viewport): always align the
+                        // column's TOP with the shell top so its header and first cards show, never its bottom.
+                        if (colRect.top < shellRect.top || colRect.bottom > shellRect.bottom) {
                             top += colRect.top - shellRect.top - buffer;
-                        } else if (colRect.bottom > shellRect.bottom) {
-                            top += colRect.bottom - shellRect.bottom + buffer;
                         }
 
                         left = Math.max(0, left);

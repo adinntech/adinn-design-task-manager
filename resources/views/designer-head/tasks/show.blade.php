@@ -311,13 +311,14 @@
                                         <div class="head-decision-title">Accept Split Request</div>
 
                                         <label class="head-label">Final Designer *</label>
-                                        <select class="head-field" name="approved_designer_id" required>
+                                        <select class="head-field" name="approved_designer_id" required data-availability-url="{{ url('/designer-head/designers/__ID__/availability') }}">
                                             <option value="">Select Designer</option>
                                             @foreach($designers as $designer)
                                                 @continue((int)$designer->id === (int)$task->designer_id)
                                                 <option value="{{ $designer->id }}" @selected((int)old('approved_designer_id',$request->target_designer_id) === (int)$designer->id)>{{ $designer->name }}</option>
                                             @endforeach
                                         </select>
+                                        <div class="designer-availability hidden" data-availability-box></div>
 
                                         <label class="head-label">Final Split Quantity *</label>
                                         <input class="head-field" type="number" name="approved_creative_count" min="1" max="{{ max(1,((int)$task->total_creatives)-1) }}" value="{{ old('approved_creative_count',$requestedSplit ?: 1) }}" required>
@@ -383,13 +384,14 @@
                                         <div class="head-decision-title">Accept Task Transfer Request</div>
 
                                         <label class="head-label">Final Designer *</label>
-                                        <select class="head-field" name="approved_designer_id" required>
+                                        <select class="head-field" name="approved_designer_id" required data-availability-url="{{ url('/designer-head/designers/__ID__/availability') }}">
                                             <option value="">Select Designer</option>
                                             @foreach($designers as $designer)
                                                 @continue((int)$designer->id === (int)$task->designer_id)
                                                 <option value="{{ $designer->id }}" @selected((int)old('approved_designer_id',$request->target_designer_id) === (int)$designer->id)>{{ $designer->name }}</option>
                                             @endforeach
                                         </select>
+                                        <div class="designer-availability hidden" data-availability-box></div>
 
                                         <label class="head-label">Comment</label>
                                         <textarea class="head-field" name="decision_comment" placeholder="Optional approval comment">{{ old('decision_comment') }}</textarea>
@@ -445,7 +447,7 @@
                                         @csrf
                                         <div class="head-decision-title">Accept Decline Request</div>
                                         <label class="head-label">Reassign To *</label>
-                                        <select class="head-field" name="approved_designer_id" required>
+                                        <select class="head-field" name="approved_designer_id" required data-availability-url="{{ url('/designer-head/designers/__ID__/availability') }}">
                                             <option value="">Select Designer</option>
                                             @foreach($designers as $designer)
                                                 @if((int)$designer->id !== (int)$task->designer_id)
@@ -453,6 +455,7 @@
                                                 @endif
                                             @endforeach
                                         </select>
+                                        <div class="designer-availability hidden" data-availability-box></div>
                                         <label class="head-label">Comment</label>
                                         <textarea class="head-field" name="decision_comment" placeholder="Optional approval comment">{{ old('decision_comment') }}</textarea>
                                         <div class="head-hint">Reassigning immediately moves the ticket to the selected Designer's Assigned Tasks.</div>
