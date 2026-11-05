@@ -12,7 +12,8 @@ import 'features/tasks/providers.dart';
 import 'router.dart';
 
 void main() {
-  runApp(const ProviderScope(child: AdinnApp()));
+  // Riverpod 3 retries failed providers silently with backoff; the screens have an explicit "Try again" instead.
+  runApp(ProviderScope(retry: (_, _) => null, child: const AdinnApp()));
 }
 
 class AdinnApp extends ConsumerStatefulWidget {
@@ -29,6 +30,7 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
   void _refreshLiveData() {
     ref.invalidate(notificationsProvider);
     ref.invalidate(boardProvider);
+    ref.invalidate(kanbanBoardProvider);
     ref.invalidate(pendingRequestsProvider);
     ref.invalidate(taskDetailProvider);
     ref.invalidate(commentsProvider);

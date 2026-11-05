@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../core/auth.dart';
+import '../../core/config.dart';
+import '../../core/server_settings.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -46,6 +48,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        actions: [
+          IconButton(
+            key: const Key('server-settings'),
+            tooltip: 'Server address',
+            icon: const Icon(Icons.dns_outlined),
+            onPressed: () => showDialog<void>(context: context, builder: (_) => const ServerDialog()),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -99,6 +112,94 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+
+/// Lets the app point at a different server (e.g. the PC on the local Wi-Fi) without a rebuild.
+class ServerDialog extends ConsumerStatefulWidget {
+  const ServerDialog({super.key});
+
+  @override
+  ConsumerState<ServerDialog> createState() => _ServerDialogState();
+}
+
+class _ServerDialogState extends ConsumerState<ServerDialog> {
+  late final TextEditingController _controller = TextEditingController(text: ref.read(serverUrlProvider));
+  String? _error;
+  String? _ok;
+  bool _checking = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String? _normalized() {
+    final url = normalizeServerUrl(_controller.text);
+    if (url == null) setState(() => _error = 'Enter an address like 192.168.1.52:8000 or https://example.com/design-workflow');
+    return url;
+  }
+
+  Future<void> _test() async {
+    final url = _normalized();
+    if (url == null) return;
+    setState(() {
+      _checking = true;
+      _error = null;
+      _ok = null;
+    });
+    final problem = await ref.read(serverCheckerProvider)(url);
+    if (!mounted) return;
+    setState(() {
+      _checking = false;
+      _error = problem;
+      _ok = problem == null ? 'Connected.' : null;
+    });
+  }
+
+  Future<void> _save() async {
+    final url = _normalized();
+    if (url == null) return;
+    await ref.read(serverUrlProvider.notifier).save(url);
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _reset() async {
+    await ref.read(serverUrlProvider.notifier).reset();
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDefault = ref.watch(serverUrlProvider) == AppConfig.apiBaseUrl;
+
+    return AlertDialog(
+      title: const Text('Server address'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            key: const Key('server-url'),
+            controller: _controller,
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            decoration: const InputDecoration(labelText: 'Address', hintText: '192.168.1.52:8000'),
+          ),
+          const SizedBox(height: 8),
+          if (_checking) const LinearProgressIndicator(),
+          if (_error != null) Text(_error!, key: const Key('server-error'), style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          if (_ok != null) Text(_ok!, key: const Key('server-ok'), style: const TextStyle(color: Colors.green)),
+        ],
+      ),
+      actions: [
+        if (!isDefault) TextButton(key: const Key('server-reset'), onPressed: _reset, child: const Text('Reset')),
+        TextButton(key: const Key('server-test'), onPressed: _checking ? null : _test, child: const Text('Test')),
+        FilledButton(key: const Key('server-save'), style: FilledButton.styleFrom(minimumSize: const Size(80, 40)), onPressed: _save, child: const Text('Save')),
+      ],
     );
   }
 }

@@ -2,53 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth.dart';
+import '../dashboard/designer_dashboard_screen.dart';
+import '../kanban/kanban_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../requests/requests_screen.dart';
 import '../tasks/board_screen.dart';
 import '../tasks/providers.dart';
+import 'navigation.dart';
 
-class HomeShell extends ConsumerStatefulWidget {
+class HomeShell extends ConsumerWidget {
   const HomeShell({super.key});
 
   @override
-  ConsumerState<HomeShell> createState() => _HomeShellState();
-}
-
-class _HomeShellState extends ConsumerState<HomeShell> {
-  int _index = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final unread = ref.watch(notificationsProvider).maybeWhen(data: (d) => d.unread, orElse: () => 0);
     final role = ref.watch(authProvider.select((s) => s.user?.role));
-    final hasRequests = role == 'designer_head' || role == 'admin';
-    final pending = hasRequests ? ref.watch(pendingRequestsProvider).maybeWhen(data: (d) => d.items.length, orElse: () => 0) : 0;
+    final tabs = tabsFor(role);
+    final current = ref.watch(homeTabProvider);
+    final index = tabs.indexOf(current).clamp(0, tabs.length - 1);
+    final pending = tabs.contains(HomeTab.requests) ? ref.watch(pendingRequestsProvider).maybeWhen(data: (d) => d.items.length, orElse: () => 0) : 0;
 
-    return Scaffold(
-      body: IndexedStack(index: _index, children: [
-        const BoardScreen(),
-        if (hasRequests) const RequestsScreen(),
-        const NotificationsScreen(),
-        const ProfileScreen(),
-      ]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          const NavigationDestination(icon: Icon(Icons.view_kanban_outlined), selectedIcon: Icon(Icons.view_kanban), label: 'Tasks'),
-          if (hasRequests)
-            NavigationDestination(
+    Widget page(HomeTab t) => switch (t) {
+          HomeTab.dashboard => const DesignerDashboardScreen(),
+          // Designers get the web's kanban; the other roles keep the status-chip board for now.
+          HomeTab.tasks => role == 'designer' ? const KanbanScreen() : const BoardScreen(),
+          HomeTab.requests => const RequestsScreen(),
+          HomeTab.alerts => const NotificationsScreen(),
+          HomeTab.profile => const ProfileScreen(),
+        };
+
+    NavigationDestination destination(HomeTab t) => switch (t) {
+          HomeTab.dashboard => const NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          HomeTab.tasks => NavigationDestination(
+              icon: const Icon(Icons.view_kanban_outlined),
+              selectedIcon: const Icon(Icons.view_kanban),
+              label: role == 'designer' ? 'My Tasks' : 'Tasks',
+            ),
+          HomeTab.requests => NavigationDestination(
               icon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check_outlined)),
               selectedIcon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check)),
               label: 'Requests',
             ),
-          NavigationDestination(
-            icon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications_outlined)),
-            selectedIcon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications)),
-            label: 'Alerts',
-          ),
-          const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
-        ],
+          HomeTab.alerts => NavigationDestination(
+              icon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications_outlined)),
+              selectedIcon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications)),
+              label: 'Alerts',
+            ),
+          HomeTab.profile => const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+        };
+
+    return Scaffold(
+      body: IndexedStack(index: index, children: [for (final t in tabs) page(t)]),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (i) => ref.read(homeTabProvider.notifier).goTo(tabs[i]),
+        destinations: [for (final t in tabs) destination(t)],
       ),
     );
   }

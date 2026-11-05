@@ -94,6 +94,16 @@ class ApiClient {
   Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) =>
       _send(() => _dio.get<Object>(path, queryParameters: query));
 
+  /// For endpoints that answer with a bare JSON array.
+  Future<List<dynamic>> getList(String path, {Map<String, dynamic>? query}) async {
+    try {
+      final response = await _dio.get<Object>(path, queryParameters: query);
+      return response.data is List ? response.data as List<dynamic> : <dynamic>[];
+    } catch (e) {
+      throw ApiException.from(e);
+    }
+  }
+
   Future<Map<String, dynamic>> post(String path, {Object? data}) =>
       _send(() => _dio.post<Object>(path, data: data));
 

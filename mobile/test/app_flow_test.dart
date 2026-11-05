@@ -109,8 +109,9 @@ void main() {
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    // Board.
-    expect(find.text('Tasks'), findsWidgets);
+    // Board (a designer lands on the Dashboard first).
+    await openMyTasks(tester);
+    expect(find.text('My Tasks'), findsWidgets);
     expect(find.text('DT-2026-0001'), findsOneWidget);
     expect(find.text('Banner'), findsOneWidget);
     expect(store.token, 'tok');
@@ -157,6 +158,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sign in'), findsNothing);
+    expect(find.text('Designer Dashboard'), findsWidgets);
+    await openMyTasks(tester);
     expect(find.text('DT-2026-0001'), findsOneWidget);
   });
 }

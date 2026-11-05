@@ -56,7 +56,7 @@ void main() {
   late FakeAdapter api;
   late MemoryStore store;
 
-  Future<void> boot(WidgetTester tester, FakePush push, {bool signedIn = true, Map<String, Handler> routes = const {}}) async {
+  Future<void> boot(WidgetTester tester, FakePush push, {bool signedIn = true, bool openTasks = true, Map<String, Handler> routes = const {}}) async {
     store = signedIn ? MemoryStore(token: 'tok', user: AppUser.fromJson(userJson())) : MemoryStore();
     api = FakeAdapter({
       'GET /me': (_) => (status: 200, body: {'user': userJson()}),
@@ -85,6 +85,7 @@ void main() {
       child: const AdinnApp(),
     ));
     await tester.pumpAndSettle();
+    if (signedIn && openTasks) await openMyTasks(tester);
   }
 
   List<String> calls(String method, String path) => api.requests.where((r) => r.method == method && r.path == path).map((r) => '${r.data}').toList();
@@ -161,7 +162,7 @@ void main() {
 
   testWidgets('a token rejected by the server (401) signs out without trying to unregister', (tester) async {
     final push = FakePush();
-    await boot(tester, push, routes: {'GET /designer/tasks': (_) => (status: 401, body: {'message': 'Unauthenticated.'})});
+    await boot(tester, push, openTasks: false, routes: {'GET /designer/tasks': (_) => (status: 401, body: {'message': 'Unauthenticated.'})});
 
     expect(find.text('Sign in'), findsOneWidget);
     expect(api.requests.where((r) => r.method == 'DELETE'), isEmpty);
@@ -179,7 +180,7 @@ void main() {
   });
 
   testWidgets('a push that launched the app opens its task', (tester) async {
-    await boot(tester, FakePush(launch: const PushEvent(taskId: 9)));
+    await boot(tester, FakePush(launch: const PushEvent(taskId: 9)), openTasks: false);
 
     expect(find.text('Pushed task'), findsWidgets);
   });

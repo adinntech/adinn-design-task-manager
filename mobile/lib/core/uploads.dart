@@ -185,3 +185,34 @@ final filePickerProvider = Provider<FilePickerService>((ref) => const NativeFile
 final uploadServiceProvider = Provider<UploadService>((ref) {
   return UploadService(ref.watch(apiClientProvider), Dio(BaseOptions(connectTimeout: const Duration(seconds: 20))));
 });
+
+
+/// Multipart body for the create endpoints: nested values flatten to Laravel's bracket syntax
+/// (`dimension_rows[0][name]`), and each file is streamed from its source under `field[]`.
+Future<FormData> buildMultipart(Map<String, dynamic> values, Map<String, List<UploadSource>> files) async {
+  final form = FormData();
+
+  void add(String key, Object? value) {
+    if (value == null) return;
+    if (value is Map) {
+      value.forEach((k, v) => add('$key[$k]', v));
+    } else if (value is List) {
+      for (var i = 0; i < value.length; i++) {
+        add('$key[$i]', value[i]);
+      }
+    } else {
+      form.fields.add(MapEntry(key, '$value'));
+    }
+  }
+
+  values.forEach(add);
+
+  for (final entry in files.entries) {
+    for (final source in entry.value) {
+      final length = await source.length();
+      form.files.add(MapEntry('${entry.key}[]', MultipartFile.fromStream(() => source.read(0, length), length, filename: source.name)));
+    }
+  }
+
+  return form;
+}

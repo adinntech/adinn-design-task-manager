@@ -32,6 +32,7 @@ void main() {
       child: const AdinnApp(),
     ));
     await tester.pumpAndSettle();
+    if (role == 'designer') await openMyTasks(tester);
   }
 
   Map<String, dynamic> requestJson({int id = 5, String type = 'decline'}) => {

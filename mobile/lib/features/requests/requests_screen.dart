@@ -89,6 +89,7 @@ class _RequestCard extends ConsumerWidget {
       await action();
       ref.invalidate(pendingRequestsProvider);
       ref.invalidate(boardProvider);
+    ref.invalidate(kanbanBoardProvider);
       messenger.showSnackBar(const SnackBar(content: Text('Done.')));
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));

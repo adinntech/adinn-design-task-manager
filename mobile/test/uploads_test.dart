@@ -198,6 +198,7 @@ void main() {
         child: const AdinnApp(),
       ));
       await tester.pumpAndSettle();
+      if (role == 'designer') await openMyTasks(tester);
     }
 
     Map<String, Handler> designerRoutes(String status) => {

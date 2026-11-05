@@ -2,10 +2,13 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceController;
+use App\Http\Controllers\Api\Designer\DashboardController as DesignerDashboardController;
 use App\Http\Controllers\Api\Designer\RequestController as DesignerRequestController;
 use App\Http\Controllers\Api\Designer\TaskController as DesignerTaskController;
 use App\Http\Controllers\Api\Admin\AdminController;
+use App\Http\Controllers\Api\Bd\CreateTaskController;
 use App\Http\Controllers\Api\Bd\TaskController as BdTaskController;
+use App\Http\Controllers\Bd\TaskController as WebBdTaskController;
 use App\Http\Controllers\Api\DesignerHead\HeadController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\RealtimeController;
@@ -41,6 +44,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:designer')->prefix('designer')->group(function () {
+        Route::get('/dashboard', [DesignerDashboardController::class, 'index']);
+        Route::get('/dashboard/tasks', [DesignerDashboardController::class, 'tasks']);
         Route::get('/tasks', [DesignerTaskController::class, 'index']);
         Route::get('/tasks/{task}', [DesignerTaskController::class, 'show']);
         Route::post('/tasks/{task}/move', [DesignerTaskController::class, 'move']);
@@ -65,6 +70,15 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:bd')->prefix('bd')->group(function () {
+        // Task creation: runs the same validation/storage as the web form (see CreateTaskController).
+        Route::get('/task-form', [CreateTaskController::class, 'form']);
+        Route::post('/tasks', [CreateTaskController::class, 'store']);
+        Route::post('/tasks/in-house', [CreateTaskController::class, 'storeInhouse']);
+        Route::post('/drafts', [CreateTaskController::class, 'storeDraft']);
+        Route::post('/drafts/in-house', [CreateTaskController::class, 'storeInhouseDraft']);
+        Route::get('/designers/{designer}/availability', [WebBdTaskController::class, 'availability']);
+        Route::get('/clients/search', [WebBdTaskController::class, 'searchClients']);
+
         Route::get('/tasks', [BdTaskController::class, 'board']);
         Route::get('/tasks/{task}', [BdTaskController::class, 'show']);
         Route::get('/tasks/{task}/comments', [BdTaskController::class, 'comments']);

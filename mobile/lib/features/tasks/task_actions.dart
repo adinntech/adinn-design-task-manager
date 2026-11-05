@@ -24,6 +24,7 @@ class TaskActions extends ConsumerWidget {
       await action();
       ref.invalidate(taskDetailProvider(taskId));
       ref.invalidate(boardProvider);
+    ref.invalidate(kanbanBoardProvider);
       ref.invalidate(pendingRequestsProvider);
       messenger.showSnackBar(SnackBar(content: Text(done)));
     } on ApiException catch (e) {

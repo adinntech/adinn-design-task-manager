@@ -72,6 +72,7 @@ class _OverviewState extends ConsumerState<_Overview> {
       await ref.read(roleApiProvider).moveStatus(widget.taskId, status);
       ref.invalidate(taskDetailProvider(widget.taskId));
       ref.invalidate(boardProvider);
+    ref.invalidate(kanbanBoardProvider);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Moved to ${statusLabel(status)}')));
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));

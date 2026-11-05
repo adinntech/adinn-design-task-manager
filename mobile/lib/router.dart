@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/auth.dart';
 import 'features/auth/login_screen.dart';
+import 'features/create/create_task_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/tasks/task_detail_screen.dart';
 
@@ -27,6 +28,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, _) => const Scaffold(body: Center(child: CircularProgressIndicator()))),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/', builder: (_, _) => const HomeShell()),
+      GoRoute(path: '/create', builder: (_, _) => const CreateTaskScreen()),
       GoRoute(
         path: '/task/:id',
         builder: (_, state) => TaskDetailScreen(taskId: int.parse(state.pathParameters['id']!)),

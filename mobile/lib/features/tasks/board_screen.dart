@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/auth.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
+import '../home/navigation.dart';
 import 'providers.dart';
 
 class BoardScreen extends ConsumerStatefulWidget {
@@ -19,10 +21,39 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   String? _status; // null = all
 
   @override
+  void initState() {
+    super.initState();
+    // A dashboard card may have asked for a particular status before this screen existed.
+    _applyFocus(ref.read(boardFocusProvider));
+  }
+
+  void _applyFocus(String? focus) {
+    if (focus == null) return;
+    _status = focus.isEmpty ? null : focus;
+    // Consume the request so tapping the same card again later still registers as a change.
+    Future.microtask(() {
+      if (mounted) ref.read(boardFocusProvider.notifier).focus(null);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    ref.listen(boardFocusProvider, (_, focus) {
+      if (focus != null) setState(() => _applyFocus(focus));
+    });
     final board = ref.watch(boardProvider(_search));
 
+    final isBd = ref.watch(authProvider.select((s) => s.user?.role)) == 'bd';
+
     return Scaffold(
+      floatingActionButton: isBd
+          ? FloatingActionButton.extended(
+              key: const Key('new-task'),
+              onPressed: () => context.push('/create'),
+              icon: const Icon(Icons.add),
+              label: const Text('New task'),
+            )
+          : null,
       appBar: AppBar(
         title: const Text('Tasks'),
         bottom: PreferredSize(

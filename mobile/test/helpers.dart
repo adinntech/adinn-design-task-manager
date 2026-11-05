@@ -5,6 +5,7 @@ import 'package:adinn_tasks/core/api_client.dart';
 import 'package:adinn_tasks/core/auth.dart';
 import 'package:adinn_tasks/core/models.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// In-memory session store.
 class MemoryStore implements SessionStore {
@@ -35,7 +36,12 @@ typedef Handler = ({int status, Object? body}) Function(RequestOptions options);
 class FakeAdapter implements HttpClientAdapter {
   /// Realtime is off unless a test says otherwise, so app-level tests don't try to open sockets.
   FakeAdapter(Map<String, Handler> routes)
-      : routes = {'GET /realtime': (_) => (status: 200, body: {'enabled': false}), ...routes};
+      : routes = {
+          'GET /realtime': (_) => (status: 200, body: {'enabled': false}),
+          // A designer now lands on the Dashboard; tests that aren't about it get an empty one.
+          'GET /designer/dashboard': (_) => (status: 200, body: emptyDashboardJson()),
+          ...routes,
+        };
 
   final Map<String, Handler> routes;
   final List<RequestOptions> requests = [];
@@ -73,4 +79,41 @@ Map<String, dynamic> taskJson({int id = 1, String status = 'in_progress', String
       'status': status,
       'due_at': '2099-01-01T10:00:00+00:00',
       'total_creatives': 3,
+    };
+
+
+/// A designer lands on the Dashboard; the bottom tab labelled "My Tasks" opens the board.
+Future<void> openMyTasks(WidgetTester tester) async {
+  await tester.tap(find.text('My Tasks'));
+  await tester.pumpAndSettle();
+}
+
+Map<String, dynamic> emptyDashboardJson({List<Map<String, dynamic>> recent = const [], Map<String, dynamic> stats = const {}}) => {
+      'user': {'name': 'Test User', 'last_login_at': null},
+      'stats': {
+        'total': 0, 'assigned': 0, 'ready_to_start': 0, 'in_progress': 0, 'completed': 0, 'pending_approval': 0, 'waiting_bd_confirmation': 0,
+        'waiting_bd_review': 0, 'prepare_printing_file': 0, 'overdue': 0, 'rework': 0, 'rework_creatives': 0,
+        ...stats,
+      },
+      'completion_rate': 0,
+      'overall_rating': {'average': null, 'rated': 0, 'total': 0},
+      'overall_rework': {'cycles': 0, 'creatives': 0},
+      'request_counts': {'swap': 0, 'decline': 0, 'split': 0, 'approved': 0},
+      'recent_tasks': recent,
+      'trend': {
+        'context': 'My Tasks • Nov 2026',
+        'cards': [
+          {'label': 'Assigned Tasks', 'value': 0, 'color': '#2970ff'},
+          {'label': 'In Progress', 'value': 0, 'color': '#7c3aed'},
+          {'label': 'Completed', 'value': 0, 'color': '#027a48'},
+          {'label': 'Overdue & Completed', 'value': 0, 'color': '#f79009'},
+          {'label': 'Declined', 'value': 0, 'color': '#c01048'},
+        ],
+        'line': [
+          for (final m in ['Jun 26', 'Jul 26', 'Aug 26', 'Sep 26', 'Oct 26', 'Nov 26'])
+            {'label': m, 'assigned': 0, 'in_progress': 0, 'completed': 0, 'overdue_completed': 0, 'declined': 0},
+        ],
+      },
+      'reviews': [],
+      'my_requests': [],
     };

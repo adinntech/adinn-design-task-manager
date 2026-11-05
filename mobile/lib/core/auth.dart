@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_client.dart';
 import 'models.dart';
 import 'push.dart';
+import 'server_settings.dart';
 
 /// Where the bearer token + cached user live. Abstract so tests can swap in memory.
 abstract class SessionStore {
@@ -60,7 +61,9 @@ class AuthState {
 final sessionStoreProvider = Provider<SessionStore>((ref) => const SecureSessionStore());
 
 final apiClientProvider = Provider<ApiClient>((ref) {
+  // Rebuilt when the server address changes (login-screen "Server" setting).
   return ApiClient(
+    baseUrl: ref.watch(serverUrlProvider),
     tokenProvider: () => ref.read(authProvider).token,
     onUnauthorized: () => ref.read(authProvider.notifier).signOutLocally(),
   );
@@ -74,6 +77,8 @@ class AuthController extends Notifier<AuthState> {
 
   /// Restores a saved session on app start and confirms the token is still accepted.
   Future<void> restore() async {
+    // The saved server address must be known before the first API call.
+    await ref.read(serverUrlProvider.notifier).load();
     final saved = await ref.read(sessionStoreProvider).read();
     if (saved.token == null || saved.user == null) {
       state = const AuthState(status: AuthStatus.signedOut);

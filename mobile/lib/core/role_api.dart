@@ -1,5 +1,8 @@
 import 'api_client.dart';
+import '../features/dashboard/dashboard_models.dart';
+import '../features/kanban/kanban_models.dart';
 import 'models.dart';
+import 'uploads.dart';
 
 /// The API groups tasks per role (`/designer/…`, `/designer-head/…`, `/bd/…`, `/admin/…`) with the same
 /// shapes, so one class covers the board, detail and chat for all four roles.
@@ -90,6 +93,51 @@ class RoleApi {
       _api.post('/bd/tasks/$taskId/approve', data: {if (comment != null && comment.isNotEmpty) 'comment': comment});
 
   Future<void> rejectNewTask(int taskId, String comment) => _api.post('/bd/tasks/$taskId/reject', data: {'comment': comment});
+
+  // ---- Designer "My Tasks" kanban ----
+  Future<KanbanBoard> designerBoard(BoardFilters filters) async => KanbanBoard.fromJson(await _api.get('/designer/tasks', query: filters.toQuery()));
+
+  /// A designer can't move a task backward directly; this raises the request the Designer Head approves.
+  Future<void> requestBackward(int taskId, {required String toStatus, required String reason}) =>
+      _api.post('/designer/tasks/$taskId/backward-request', data: {'to_status': toStatus, 'reason': reason});
+
+  // ---- Designer dashboard ----
+  Future<DesignerDashboard> designerDashboard() async => DesignerDashboard.fromJson(await _api.get('/designer/dashboard'));
+
+  Future<List<DashRow>> dashboardTasks(String search) async {
+    final json = await _api.get('/designer/dashboard/tasks', query: {'search': search});
+    return ((json['data'] as List?) ?? []).map((r) => DashRow.fromJson(r as Map<String, dynamic>)).toList();
+  }
+
+  // ---- BD: create ----
+  Future<TaskFormDef> taskForm() async => TaskFormDef.fromJson(await _api.get('/bd/task-form'));
+
+  Future<List<ClientSuggestion>> searchClients(String q) async {
+    final json = await _api.getList('/bd/clients/search', query: {'q': q});
+    return json.map((c) => ClientSuggestion.fromJson(c as Map<String, dynamic>)).toList();
+  }
+
+  Future<Availability> availability(int designerId) async => Availability.fromJson(await _api.get('/bd/designers/$designerId/availability'));
+
+  /// Creates a task (`inhouse` for the In-house tab) or saves a draft. Sends JSON, or multipart when files are attached.
+  /// Returns the new task/draft id. Field-level problems arrive as [ApiException.fieldErrors].
+  Future<int> submitTask({
+    required Map<String, dynamic> values,
+    Map<String, List<UploadSource>> files = const {},
+    bool inhouse = false,
+    bool draft = false,
+  }) async {
+    final path = switch ((inhouse, draft)) {
+      (false, false) => '/bd/tasks',
+      (true, false) => '/bd/tasks/in-house',
+      (false, true) => '/bd/drafts',
+      (true, true) => '/bd/drafts/in-house',
+    };
+
+    final hasFiles = files.values.any((l) => l.isNotEmpty);
+    final json = await _api.post(path, data: hasFiles ? await buildMultipart(values, files) : values);
+    return json['id'] as int;
+  }
 
   // ---- Designer requests ----
   Future<({List<String> types, List<Designer> designers})> requestOptions(int taskId) async {

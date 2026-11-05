@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Api\Designer;
 use App\Http\Controllers\Api\Concerns\SerializesTasks;
 use App\Http\Controllers\Controller;
 use App\Models\DesignTask;
+use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 use App\Services\CloudMultipartUploadService;
 use App\Services\CommentReadStateService;
-use App\Services\DesignerHeadTaskBoardService;
+use App\Services\DesignerBoardService;
 use App\Services\DesignerTaskAccessService;
 use App\Services\DesignTaskProgressService;
 use App\Services\DesignTaskRequestService;
@@ -26,58 +27,114 @@ class TaskController extends Controller
 {
     use SerializesTasks;
 
-    /** Kanban board as JSON: same data source as the web board (DesignerHeadTaskBoardService). */
-    public function index(Request $request, DesignerHeadTaskBoardService $boards): JsonResponse
+    /**
+     * "My Tasks" board as JSON. Built by DesignerBoardService — the same code as the web board — so the app
+     * shows the same columns, cards, request tags, split log and counts.
+     */
+    public function index(Request $request, DesignerBoardService $boards): JsonResponse
     {
         $user = $request->user();
 
-        $filters = $request->validate([
+        $f = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'vertical' => ['nullable', 'string', 'max:50'],
             'priority' => ['nullable', 'string', 'max:20'],
+            'bd_id' => ['nullable', 'integer'],
+            'project_number' => ['nullable', 'string', 'max:60'],
             'period' => ['nullable', 'in:current_month,last_month,custom'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
-        $isOverdue = ($filters['priority'] ?? '') === 'overdue';
+        $isOverdue = ($f['priority'] ?? '') === 'overdue';
+        $period = $f['period'] ?? 'current_month';
 
-        $board = $boards->build([
-            'search' => $filters['search'] ?? '',
-            'vertical' => $filters['vertical'] ?? '',
-            'priority' => $isOverdue ? '' : ($filters['priority'] ?? ''),
+        $data = $boards->build($user, [
+            'search' => $f['search'] ?? '',
+            'vertical' => $f['vertical'] ?? '',
+            'priority' => $isOverdue ? '' : ($f['priority'] ?? ''),
             'designerId' => (string) $user->id,
-            'bdId' => '',
-            'projectNumber' => '',
-            'period' => $filters['period'] ?? 'current_month',
-            'dateFrom' => $filters['date_from'] ?? now()->startOfMonth()->format('Y-m-d'),
-            'dateTo' => $filters['date_to'] ?? now()->endOfMonth()->format('Y-m-d'),
+            'bdId' => (string) ($f['bd_id'] ?? ''),
+            'projectNumber' => $f['project_number'] ?? '',
+            'period' => $period,
+            'dateFrom' => $f['date_from'] ?? now()->startOfMonth()->format('Y-m-d'),
+            'dateTo' => $f['date_to'] ?? now()->endOfMonth()->format('Y-m-d'),
             'overdue' => $isOverdue,
         ]);
 
-        // Tasks the Designer created themselves and that await BD confirmation show here only.
-        $pending = DesignTask::query()
-            ->whereIn('status', ['pending_bd_approval', 'bd_rejected'])
-            ->where('designer_id', $user->id)
-            ->orderByDesc('created_at')
-            ->get();
+        // The web renders a card only under a column; a status with no column (e.g. another designer's
+        // approved-decline record) is simply not shown, so it must not be sent either.
+        $tasks = $data['tasks']->filter(fn (DesignTask $t) => array_key_exists($t->status, $data['statuses']))->values();
+        $tasks->each->loadMissing(['assigner:id,name', 'designer:id,name', 'bdReview']);
 
-        $statuses = $board['statuses'];
-        unset($statuses['decline_tasks']);
-        $statuses = ['pending_bd_approval' => 'Awaiting BD Approval', 'bd_rejected' => 'Rejected by BD'] + $statuses;
+        // Web column order: the Split Tasks log sits right after Completed.
+        $columns = [];
+        foreach ($data['statuses'] as $key => $label) {
+            $columns[] = ['key' => $key, 'label' => $label, 'type' => 'status'];
 
-        $tasks = $board['visibleTasks']->concat($pending)->map(fn (DesignTask $t) => $this->summary($t))->values();
+            if ($key === 'completed') {
+                $columns[] = ['key' => 'split_log', 'label' => 'Split Tasks ('.$data['periodLabel'].')', 'type' => 'split_log'];
+            }
+        }
 
         return response()->json([
-            'statuses' => collect($statuses)->map(fn ($label, $key) => ['key' => $key, 'label' => $label])->values(),
-            'tasks' => $tasks,
-            'stats' => [
-                'total' => $board['tasks']->count() + $pending->count(),
-                'active' => $board['tasks']->whereNotIn('status', ['completed'])->count(),
-                'waiting' => $board['tasks']->where('status', 'waiting_confirmation')->count(),
-                'completed' => $board['tasks']->where('status', 'completed')->count(),
-            ],
+            'columns' => $columns,
+            'statuses' => collect($columns)->where('type', 'status')->map(fn ($c) => ['key' => $c['key'], 'label' => $c['label']])->values(),
+            'tasks' => $tasks->map(fn (DesignTask $t) => $this->card($t, $data['taskTags']->get($t->id, [])[0] ?? null))->values(),
+            'split_log' => $data['splitLogRows']->map(fn (array $row) => [
+                'id' => $row['childTask']->id,
+                'task_id' => $row['childTask']->task_id,
+                'name' => $row['childTask']->display_task_name ?? $row['childTask']->task_name,
+                'split_from' => $row['request']->task?->task_id,
+                'designer' => $row['childTask']->designer?->name,
+                'creatives' => (int) $row['childTask']->total_creatives,
+                'approved_at' => $row['request']->responded_at?->toIso8601String(),
+            ])->values(),
+            'stats' => $data['stats'],
+            'active_breakdown' => $data['activeBreakdown'],
+            'period_label' => $data['periodLabel'],
+            'bds' => $data['bds']->map(fn ($b) => ['id' => $b->id, 'name' => $b->name])->values(),
         ]);
+    }
+
+    /** A board card: the summary plus everything the web card shows. */
+    private function card(DesignTask $task, ?array $tag): array
+    {
+        $showsProgress = in_array($task->status, ['in_progress', 'waiting_confirmation', 'rework'], true);
+        $progress = $showsProgress ? app(DesignTaskProgressService::class) : null;
+        $rating = $task->status === 'completed' ? $task->bdReview?->overall_rating : null;
+
+        // Where this card may go, straight from the state machine (never re-implemented in the app).
+        $states = app(DesignTaskStatusService::class);
+        $targets = array_keys(array_diff_key(DesignTaskStatusService::STATUSES, ['swap_tasks' => true]));
+
+        return $this->summary($task) + [
+            'forward_to' => array_values(array_filter($targets, fn ($to) => $states->designerCanMove($task->status, $to))),
+            'backward_to' => array_values(array_filter($targets, fn ($to) => $states->isBackwardMove($task->status, $to))),
+            'party_type' => $task->party_type,
+            'assigner' => $task->assigner?->name,
+            'created_at' => $task->created_at?->toIso8601String(),
+            'completed_at' => $task->status === 'completed' ? $task->bdReview?->created_at?->toIso8601String() : null,
+            'rating' => $rating === null ? null : DesignTaskBdReview::roundToHalfStar($rating),
+            'now_with' => $task->status === 'self_declined' ? $task->designer?->name : null,
+            'progress' => $progress ? [
+                'completed' => $progress->completed($task),
+                'remaining' => $progress->remaining($task),
+                'percentage' => $progress->percentage($task),
+            ] : null,
+            // Lets the app show the live "BD Review Time" the web card shows.
+            'waiting_since' => $task->status === 'waiting_confirmation'
+                ? DesignTaskStatusHistory::where('design_task_id', $task->id)->where('to_status', 'waiting_confirmation')->latest('created_at')->value('created_at')?->toIso8601String()
+                : null,
+            'continuation_label' => $task->continuation_label ?? null,
+            'continuation_event_label' => $task->continuation_event_label ?? null,
+            'previous_month_label' => ($task->is_previous_month_task ?? false) ? $task->previous_month_label : null,
+            'tag' => $tag === null ? null : [
+                'label' => $tag['label'],
+                'title' => $tag['title'] ?? $tag['label'],
+                'tone' => str_contains($tag['class'], 'approved') ? 'approved' : (str_contains($tag['class'], 'declined') ? 'declined' : 'pending'),
+            ],
+        ];
     }
 
     public function show(Request $request, DesignTask $task, DesignerTaskAccessService $access, DesignTaskProgressService $progress, DesignTaskStatusService $statusService): JsonResponse

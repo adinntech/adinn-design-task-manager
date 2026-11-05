@@ -237,3 +237,118 @@ String statusLabel(String key) {
   };
   return labels[key] ?? key.replaceAll('_', ' ');
 }
+
+
+/// One input on the BD task-create form, as described by `GET /bd/task-form` (derived server-side from the
+/// same rules that validate the submission).
+class FormFieldDef {
+  FormFieldDef({
+    required this.key,
+    required this.label,
+    required this.type,
+    required this.required,
+    this.options = const [],
+    this.columns = const [],
+    this.orUpload,
+    this.either,
+  });
+
+  final String key;
+  final String label;
+
+  /// text | multiline | integer | number | email | url | phone | choice | file | audio | rows
+  final String type;
+  final bool required;
+  final List<String> options;
+  final List<String> columns;
+  final String? orUpload;
+  final String? either;
+
+  bool get isFile => type == 'file' || type == 'audio';
+
+  factory FormFieldDef.fromJson(Map<String, dynamic> j) => FormFieldDef(
+        key: j['key'] as String,
+        label: (j['label'] ?? j['key']) as String,
+        type: (j['type'] ?? 'text') as String,
+        required: j['required'] == true,
+        options: ((j['options'] as List?) ?? []).map((o) => '$o').toList(),
+        columns: ((j['columns'] as List?) ?? []).map((o) => '$o').toList(),
+        orUpload: j['or_upload'] as String?,
+        either: j['either'] as String?,
+      );
+}
+
+class Option {
+  Option(this.key, this.label);
+
+  final String key;
+  final String label;
+
+  factory Option.fromJson(Map<String, dynamic> j) => Option(j['key'] as String, (j['label'] ?? j['key']) as String);
+}
+
+class TaskFormDef {
+  TaskFormDef({
+    required this.verticals,
+    required this.natures,
+    required this.inhouseNatures,
+    required this.fields,
+    required this.priorities,
+    required this.designers,
+    this.maxDueAt,
+  });
+
+  final List<Option> verticals;
+  final Map<String, List<Option>> natures;
+  final Map<String, List<Option>> inhouseNatures;
+  final Map<String, Map<String, List<FormFieldDef>>> fields;
+  final List<String> priorities;
+  final List<Designer> designers;
+  final DateTime? maxDueAt;
+
+  List<FormFieldDef> fieldsFor(String vertical, String nature) => fields[vertical]?[nature] ?? const [];
+
+  static List<Option> _options(Object? raw) => ((raw as List?) ?? []).map((o) => Option.fromJson(o as Map<String, dynamic>)).toList();
+
+  factory TaskFormDef.fromJson(Map<String, dynamic> j) {
+    Map<String, List<Option>> optionMap(Object? raw) => ((raw as Map?) ?? {}).map((k, v) => MapEntry('$k', _options(v)));
+
+    return TaskFormDef(
+      verticals: _options(j['verticals']),
+      natures: optionMap(j['natures']),
+      inhouseNatures: optionMap(j['inhouse_natures']),
+      fields: ((j['fields'] as Map?) ?? {}).map((vertical, natures) => MapEntry(
+            '$vertical',
+            (natures as Map).map((nature, list) => MapEntry(
+                  '$nature',
+                  (list as List).map((f) => FormFieldDef.fromJson(f as Map<String, dynamic>)).toList(),
+                )),
+          )),
+      priorities: ((j['priorities'] as List?) ?? []).map((p) => '$p').toList(),
+      designers: ((j['designers'] as List?) ?? []).map((d) => Designer.fromJson(d as Map<String, dynamic>)).toList(),
+      maxDueAt: j['max_due_at'] == null ? null : DateTime.tryParse(j['max_due_at'] as String)?.toLocal(),
+    );
+  }
+}
+
+class ClientSuggestion {
+  ClientSuggestion(this.name, this.contact, this.mobile);
+
+  final String name;
+  final String? contact;
+  final String? mobile;
+
+  factory ClientSuggestion.fromJson(Map<String, dynamic> j) =>
+      ClientSuggestion((j['client_name'] ?? '') as String, j['contact_person_name'] as String?, j['mobile_number'] as String?);
+}
+
+class Availability {
+  Availability(this.label, this.level, this.percent);
+
+  final String label;
+  final String level;
+  final int percent;
+
+  factory Availability.fromJson(Map<String, dynamic> j) =>
+      Availability((j['label'] ?? '') as String, (j['level'] ?? '') as String, (j['availability_percent'] ?? 0) as int);
+}

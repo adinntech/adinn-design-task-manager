@@ -40,4 +40,5 @@ FCM registration + tap-to-open (needs the Firebase files above).
 Realtime: while the app is open it holds a Reverb websocket (settings come from `GET /api/v1/realtime`, so nothing is
 hard-coded) and refreshes alerts, boards, requests and chat when something changes; the socket closes in the background
 (push takes over) and reconnects on resume. It is off automatically if the server isn't set up for Reverb.
-Not yet: BD create/edit, designer-head chat attachments, printing-file mail tab.
+BD create: client + in-house tasks and drafts, with the form (fields, required rules, choices) read from the server.
+Not yet: BD edit and clone, large-file (resumable) uploads at creation, designer-head chat attachments, printing-file mail tab.
