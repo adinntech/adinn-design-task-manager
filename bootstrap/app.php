@@ -33,15 +33,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // orphaned parts linger after a user abandons/never returns.
         $schedule->command('uploads:cleanup-abandoned')->hourly();
 
-        // Admin → Daily Reporting: "no progress today" mail at 23:59 IST, plus
-        // retries of a failed night's run. Idempotent per report date, so a
-        // restart/retry never re-delivers an already-sent report.
-        $schedule->command('reports:daily-designer-progress')
-            ->dailyAt('23:59')->timezone('Asia/Kolkata')
-            ->withoutOverlapping(30)->onOneServer();
-        $schedule->command('reports:daily-designer-progress --retry-failed')
-            ->everyThirtyMinutes()->between('00:15', '06:00')->timezone('Asia/Kolkata')
-            ->withoutOverlapping(30)->onOneServer();
+        // Admin → Daily Reporting mail is manual-only ("Send Mail" button) for
+        // now. Re-enable these two to send it automatically at 23:59 IST:
+        // $schedule->command('reports:daily-designer-progress')
+        //     ->dailyAt('23:59')->timezone('Asia/Kolkata')
+        //     ->withoutOverlapping(30)->onOneServer();
+        // $schedule->command('reports:daily-designer-progress --retry-failed')
+        //     ->everyThirtyMinutes()->between('00:15', '06:00')->timezone('Asia/Kolkata')
+        //     ->withoutOverlapping(30)->onOneServer();
 
         // Admin → Task Monitoring → Daily Report → Live Excel (Google Sheet):
         // every tab is rewritten at 23:59 IST (the panel's "Sync now" updates
@@ -52,9 +51,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Desktop notification (Web Push) to designers with tasks past their
         // due date — once per designer per day.
-        $schedule->command('notifications:overdue-reminders')
-            ->dailyAt(config('webpush.overdue_at', '11:00'))->timezone('Asia/Kolkata')
-            ->withoutOverlapping(10)->onOneServer();
+        // Off for now (live sheet is the only automatic job); re-enable to resume.
+        // $schedule->command('notifications:overdue-reminders')
+        //     ->dailyAt(config('webpush.overdue_at', '11:00'))->timezone('Asia/Kolkata')
+        //     ->withoutOverlapping(10)->onOneServer();
     })
     ->withExceptions(function (Exceptions $exceptions): void {})
     ->create();
