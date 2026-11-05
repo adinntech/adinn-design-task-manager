@@ -359,7 +359,9 @@
     window.adinnAckRefresh = function (btn, scope, isLivewireBoard) {
         // Shake stays on until the ack actually succeeds — a failed request
         // must leave the pending/shake state in place so the user can retry.
-        fetch('/activity/' + scope + '/ack', {
+        // url() carries the /design-workflow base path the app is served under
+        // behind the proxy; a bare '/activity/...' hits the proxy root (404).
+        fetch(@json(url('/activity')) + '/' + scope + '/ack', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken(), Accept: 'application/json' },
         }).then(function (response) {
@@ -396,7 +398,7 @@
             enabledTransports: useTLS ? ['ws', 'wss'] : ['ws'],
             disableStats: true,
             cluster: '',
-            authEndpoint: '/broadcasting/auth',
+            authEndpoint: @json(url('/broadcasting/auth')),
             auth: { headers: { 'X-CSRF-TOKEN': csrfToken() } },
         });
 
