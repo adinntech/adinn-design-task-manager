@@ -99,6 +99,15 @@ class RoleApi {
   // ---- Designer "My Tasks" kanban ----
   Future<KanbanBoard> designerBoard(BoardFilters filters) async => KanbanBoard.fromJson(await _api.get('/designer/tasks', query: filters.toQuery()));
 
+  /// The kanban for the signed-in role: the designer's own board, or the BD's tasks (read-only cards).
+  Future<KanbanBoard> kanbanBoard(BoardFilters filters) async {
+    if (role == 'bd') {
+      // The BD board has no "BD" filter (it is always the BD's own tasks).
+      return KanbanBoard.fromJson(await _api.get('/bd/tasks', query: filters.copyWith(bdId: null).toQuery()));
+    }
+    return designerBoard(filters);
+  }
+
   /// A designer can't move a task backward directly; this raises the request the Designer Head approves.
   Future<void> requestBackward(int taskId, {required String toStatus, required String reason}) =>
       _api.post('/designer/tasks/$taskId/backward-request', data: {'to_status': toStatus, 'reason': reason});

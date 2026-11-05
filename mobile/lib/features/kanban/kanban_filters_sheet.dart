@@ -87,15 +87,18 @@ class _FiltersSheetState extends State<_FiltersSheet> {
             onChanged: (v) => setState(() => _f = _f.copyWith(priority: v ?? '')),
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<int?>(
-            key: const Key('f-bd'),
-            initialValue: widget.bds.any((b) => b.id == _f.bdId) ? _f.bdId : null,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'BD'),
-            items: [const DropdownMenuItem<int?>(value: null, child: Text('All BD')), for (final b in widget.bds) DropdownMenuItem<int?>(value: b.id, child: Text(b.name))],
-            onChanged: (v) => setState(() => _f = _f.copyWith(bdId: v)),
-          ),
-          const SizedBox(height: 12),
+          // A BD only ever sees their own tasks, so the board sends no BD list and the picker is left out.
+          if (widget.bds.isNotEmpty) ...[
+            DropdownButtonFormField<int?>(
+              key: const Key('f-bd'),
+              initialValue: widget.bds.any((b) => b.id == _f.bdId) ? _f.bdId : null,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'BD'),
+              items: [const DropdownMenuItem<int?>(value: null, child: Text('All BD')), for (final b in widget.bds) DropdownMenuItem<int?>(value: b.id, child: Text(b.name))],
+              onChanged: (v) => setState(() => _f = _f.copyWith(bdId: v)),
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             key: const Key('f-project'),
             controller: _project,

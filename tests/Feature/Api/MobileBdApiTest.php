@@ -105,6 +105,23 @@ class MobileBdApiTest extends TestCase
         $this->actingAs($this->designer, 'sanctum')->getJson('/api/v1/bd/tasks')->assertForbidden();
     }
 
+    public function test_board_cards_carry_the_kanban_fields_and_filter_by_project_number(): void
+    {
+        $a = $this->task(['zoho_project_number' => 'ZP-1001']);
+        $b = $this->task(['zoho_project_number' => 'ZP-2002']);
+
+        $this->actingAs($this->bd, 'sanctum');
+
+        $card = collect($this->getJson('/api/v1/bd/tasks')->assertOk()->json('tasks'))->firstWhere('id', $a->id);
+        $this->assertSame('client', $card['party_type']);
+        $this->assertSame($this->designer->name, $card['now_with']);
+        $this->assertNotNull($card['created_at']);
+
+        $ids = collect($this->getJson('/api/v1/bd/tasks?project_number=ZP-1001')->assertOk()->json('tasks'))->pluck('id');
+        $this->assertTrue($ids->contains($a->id));
+        $this->assertFalse($ids->contains($b->id));
+    }
+
     public function test_cannot_touch_another_bds_task(): void
     {
         $theirs = $this->task(['assigned_by' => $this->otherBd->id]);

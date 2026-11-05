@@ -25,8 +25,8 @@ class HomeShell extends ConsumerWidget {
 
     Widget page(HomeTab t) => switch (t) {
           HomeTab.dashboard => const DesignerDashboardScreen(),
-          // Designers get the web's kanban; the other roles keep the status-chip board for now.
-          HomeTab.tasks => role == 'designer' ? const KanbanScreen() : const BoardScreen(),
+          // Designers and BDs get the web's kanban; the other roles keep the status-chip board.
+          HomeTab.tasks => (role == 'designer' || role == 'bd') ? const KanbanScreen() : const BoardScreen(),
           HomeTab.requests => const RequestsScreen(),
           HomeTab.alerts => const NotificationsScreen(),
           HomeTab.profile => const ProfileScreen(),

@@ -161,7 +161,16 @@ class MobileDesignerApprovalsApiTest extends TestCase
         $this->postJson("/api/v1/designer/approvals/{$req->id}/approve", ['approved_designer_id' => $this->third->id])
             ->assertOk()->assertJsonPath('request.overall_status', 'approved');
 
-        $this->assertSame($this->third->id, (int) $task->fresh()->designer_id);
+        // Same as the web: the original stays with the requester as a read-only swap record,
+        // and the approved designer receives a fresh task under Assigned Tasks.
+        $original = $task->fresh();
+        $this->assertSame($this->teammate->id, (int) $original->designer_id);
+        $this->assertSame('swap_tasks', $original->status);
+
+        $active = DesignTask::query()->where('designer_id', $this->third->id)
+            ->where('status', 'assigned_tasks')->where('requirements->_swap_request_id', $req->id)->first();
+        $this->assertNotNull($active);
+        $this->assertSame($original->task_id, $active->requirements['_swapped_from_task_id']);
     }
 
     public function test_rejecting_needs_a_reason(): void

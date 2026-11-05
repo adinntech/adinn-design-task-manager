@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
+import '../../core/auth.dart';
 import '../../core/theme.dart';
 import '../home/navigation.dart';
 import '../tasks/providers.dart';
@@ -266,9 +267,19 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
     final async = ref.watch(kanbanBoardProvider);
     final board = async.asData?.value;
 
+    final isBd = ref.watch(authProvider.select((s) => s.user?.role)) == 'bd';
+
     return Scaffold(
+      floatingActionButton: isBd
+          ? FloatingActionButton.extended(
+              key: const Key('new-task'),
+              onPressed: () => context.push('/create'),
+              icon: const Icon(Icons.add),
+              label: const Text('New task'),
+            )
+          : null,
       appBar: AppBar(
-        title: const Text('My Tasks'),
+        title: Text(isBd ? 'Tasks' : 'My Tasks'),
         actions: [
           if (board != null)
             Padding(padding: const EdgeInsets.only(right: 4), child: Center(child: Text('${board.cards.length} visible', key: const Key('visible-count'), style: Theme.of(context).textTheme.labelMedium))),

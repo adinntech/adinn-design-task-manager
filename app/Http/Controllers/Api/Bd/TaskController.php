@@ -37,6 +37,7 @@ class TaskController extends Controller
             'vertical' => ['nullable', 'string', 'max:50'],
             'priority' => ['nullable', 'string', 'max:20'],
             'designer_id' => ['nullable', 'integer'],
+            'project_number' => ['nullable', 'string', 'max:100'],
             'period' => ['nullable', 'in:current_month,last_month,custom'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d'],
@@ -50,7 +51,7 @@ class TaskController extends Controller
             'priority' => $overdue ? '' : ($f['priority'] ?? ''),
             'designerId' => (string) ($f['designer_id'] ?? ''),
             'bdId' => (string) $bd->id,
-            'projectNumber' => '',
+            'projectNumber' => $f['project_number'] ?? '',
             'period' => $f['period'] ?? 'current_month',
             'dateFrom' => $f['date_from'] ?? now()->startOfMonth()->format('Y-m-d'),
             'dateTo' => $f['date_to'] ?? now()->endOfMonth()->format('Y-m-d'),
@@ -65,7 +66,12 @@ class TaskController extends Controller
 
         return response()->json([
             'statuses' => collect($statuses)->map(fn ($label, $key) => ['key' => $key, 'label' => $label])->values(),
-            'tasks' => $tasks->map(fn (DesignTask $t) => $this->summary($t))->values(),
+            // The extra keys let the app draw the same kanban card as the designer's board.
+            'tasks' => $tasks->map(fn (DesignTask $t) => $this->summary($t) + [
+                'party_type' => $t->party_type,
+                'created_at' => $t->created_at?->toIso8601String(),
+                'now_with' => $t->designer?->name,
+            ])->values(),
             'designers' => User::where('role', 'designer')->where('is_active', true)
                 ->whereHas('assignedTasks', fn ($q) => $q->where('assigned_by', $bd->id))->orderBy('name')->get(['id', 'name']),
             'stats' => [

@@ -37,5 +37,5 @@ class KanbanFilters extends Notifier<BoardFilters> {
 }
 
 final kanbanBoardProvider = FutureProvider.autoDispose<KanbanBoard>((ref) {
-  return ref.watch(roleApiProvider).designerBoard(ref.watch(kanbanFiltersProvider));
+  return ref.watch(roleApiProvider).kanbanBoard(ref.watch(kanbanFiltersProvider));
 });

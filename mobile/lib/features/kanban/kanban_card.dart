@@ -124,7 +124,7 @@ class KanbanTaskCard extends StatelessWidget {
               meta('VERTICAL', _headline(card.vertical)),
               meta('CREATIVES', '${card.totalCreatives}'),
               meta('DUE', _dt(card.dueAt, 'd MMM, h:mm a')),
-              meta('ASSIGNED BY', card.assigner ?? 'BD'),
+              if (card.assigner != null) meta('ASSIGNED BY', card.assigner!),
               meta('CREATED', _dt(card.createdAt, 'd MMM yyyy • h:mm a')),
               if (card.status == 'completed' && card.completedAt != null) meta('COMPLETED', _dt(card.completedAt, 'd MMM yyyy • h:mm a')),
             ]),
