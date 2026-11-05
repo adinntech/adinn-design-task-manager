@@ -449,7 +449,7 @@
         $extraCards = [
             ['Swapped Tasks', $requestTypeCounts['swap'], $focus('swap_tasks'), 'shuffle', 'blue', 'Swap requests raised by you'],
             ['Declined Tasks', $requestTypeCounts['decline'], $focus('self_declined'), 'x', 'red', 'Decline requests raised by you'],
-            ['Split Tasks', $requestTypeCounts['split'], null, 'split', 'blue', 'Split requests raised by you'],
+            ['Split Tasks', $requestTypeCounts['split'], $focus('split_log'), 'split', 'blue', 'Split requests raised by you'],
             ['Approved Requests', $requestTypeCounts['approved'], null, 'check', 'green', 'Across swap/split/decline'],
             ['Overall Rework', new \Illuminate\Support\HtmlString((int) $overallRework['cycles'].'<small> tickets</small><i class="dsh-sep">|</i>'.(int) $overallRework['creatives'].'<small> creatives</small>'), null, 'layers', 'pink', 'All-time: tickets sent for rework | creatives sent for rework'],
         ];

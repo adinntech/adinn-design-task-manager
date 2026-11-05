@@ -145,6 +145,14 @@ class DesignerHeadTaskBoardService
             'childTask' => $splitChildTasks->get($row['child_id']),
         ])->filter(fn (array $row) => $row['childTask'] !== null)->values();
 
+        /* ---- The other half of the Split Tasks column: split requests that did
+         * not (yet) produce a child task — still waiting for the Designer Head,
+         * declined, or closed because the Designer finished every creative
+         * first. Scoped to tasks already visible on this board (so the
+         * Designer / Head / filters apply exactly as for every other card); a
+         * pending request is always shown, a closed one only for its period. ---- */
+        $splitRequestRows = $this->splitRequestRows($visibleTasks->pluck('id')->all(), $inPeriod);
+
         /* ---- Period-scoped summary strip: Total is the distinct union of tasks
          * touched by any of the four events in the period, never a plain sum
          * (a task cannot be double-counted even if it had more than one event).
@@ -185,6 +193,7 @@ class DesignerHeadTaskBoardService
             'visibleTasks' => $visibleTasks,
             'swapShadowTasks' => $swapShadowTasks,
             'splitLogRows' => $splitLogRows,
+            'splitRequestRows' => $splitRequestRows,
             'periodStart' => $periodStart,
             'periodEnd' => $periodEnd,
             'periodStats' => $periodStats,
@@ -221,6 +230,7 @@ class DesignerHeadTaskBoardService
             'visibleTasks' => $tasks,
             'swapShadowTasks' => collect(),
             'splitLogRows' => collect(),
+            'splitRequestRows' => collect(),
             'periodStart' => $now->copy()->startOfMonth(),
             'periodEnd' => $now->copy()->endOfMonth(),
             'periodStats' => ['completed' => 0, 'swapped' => 0, 'declined' => 0, 'split' => 0, 'total' => $tasks->count()],
@@ -545,6 +555,47 @@ class DesignerHeadTaskBoardService
         }
 
         return checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+    }
+
+    /**
+     * Split requests without an approved child task, one card each, with the
+     * figures the card needs (so the views run no queries of their own).
+     *
+     * @param  array<int, int>  $taskIds  Original tasks visible on this board.
+     * @return SupportCollection<int, array{request: DesignTaskRequest, task: DesignTask, completed: int, total: int, requested: int|null, status: array}>
+     */
+    private function splitRequestRows(array $taskIds, callable $inPeriod): SupportCollection
+    {
+        if ($taskIds === []) {
+            return collect();
+        }
+
+        $requests = app(DesignTaskRequestService::class);
+        $progress = app(DesignTaskProgressService::class);
+
+        return DesignTaskRequest::query()
+            ->where('request_type', 'split')
+            ->where('overall_status', '<>', 'approved')
+            ->whereIn('design_task_id', $taskIds)
+            ->with(['task', 'task.designer:id,name', 'requester:id,name'])
+            ->latest()
+            ->get()
+            ->filter(fn (DesignTaskRequest $request) => $request->task !== null
+                && (in_array($request->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true)
+                    || $inPeriod($request->responded_at ?? $request->updated_at)))
+            ->map(function (DesignTaskRequest $request) use ($requests, $progress) {
+                $completed = $progress->completed($request->task);
+
+                return [
+                    'request' => $request,
+                    'task' => $request->task,
+                    'completed' => $completed,
+                    'total' => (int) $request->task->total_creatives,
+                    'requested' => data_get($request->split_details, 'creative_count'),
+                    'status' => $requests->splitStatus($request, $requests->designerCompletedAll($request->task)),
+                ];
+            })
+            ->values();
     }
 
     /**

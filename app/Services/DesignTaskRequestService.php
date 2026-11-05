@@ -429,6 +429,73 @@ class DesignTaskRequestService
         $this->validateSplitCountAgainstProgress($task, (int) $count, 'approved_creative_count');
     }
 
+    /**
+     * Every creative on the task is already done, so a split has nothing left
+     * to take. This can happen while a split request is still waiting for the
+     * Designer Head: until the split is approved the task keeps its full
+     * creative count, so the Designer may simply finish it all.
+     */
+    public function designerCompletedAll(DesignTask $task): bool
+    {
+        return (int) $task->total_creatives > 0
+            && app(DesignTaskProgressService::class)->isComplete($task);
+    }
+
+    /**
+     * What an approver can still split off a task right now — the same limits
+     * validateSplitCountAgainstProgress() enforces, so the approval forms
+     * never offer a quantity the server would refuse.
+     *
+     * @return array{completed:int,max:int,allDone:bool}
+     */
+    public function splitApprovalContext(DesignTask $task): array
+    {
+        $total = (int) $task->total_creatives;
+        $completed = app(DesignTaskProgressService::class)->completed($task);
+
+        return [
+            'completed' => $completed,
+            'max' => max(0, min($total - 1, $total - $completed)),
+            'allDone' => $this->designerCompletedAll($task),
+        ];
+    }
+
+    /**
+     * Lifecycle shown as the "Status" field on a split request's Kanban card.
+     *
+     * A request that was closed by the system (no Designer Head / Admin actor)
+     * is the one auto-rejected when the task moved to Waiting for BD Review —
+     * a Designer can only get there with every creative completed.
+     *
+     * @return array{key:string,tone:string,designer:string,head:string}
+     */
+    public function splitStatus(DesignTaskRequest $request, ?bool $completedAll = null): array
+    {
+        $pending = in_array($request->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true);
+        $systemClosed = $request->overall_status === 'rejected'
+            && ! $request->designer_head_action_by
+            && ! $request->admin_action_by;
+
+        if ($request->overall_status === 'approved') {
+            return ['key' => 'approved', 'tone' => 'approved', 'designer' => 'Approved', 'head' => 'Approved'];
+        }
+
+        if ($systemClosed || ($pending && ($completedAll ?? ($request->task && $this->designerCompletedAll($request->task))))) {
+            return [
+                'key' => 'designer_completed_all',
+                'tone' => 'done',
+                'designer' => 'You completed all creatives',
+                'head' => 'Designer completed all creatives',
+            ];
+        }
+
+        if ($pending) {
+            return ['key' => 'pending', 'tone' => 'pending', 'designer' => 'Awaiting approval', 'head' => 'Awaiting approval'];
+        }
+
+        return ['key' => 'rejected', 'tone' => 'declined', 'designer' => 'Declined', 'head' => 'Declined'];
+    }
+
     private function validateSplitCountAgainstProgress(DesignTask $task, int $count, string $field): void
     {
         $total = (int) $task->total_creatives;
@@ -436,6 +503,12 @@ class DesignTaskRequestService
         if ($total < 2) {
             throw ValidationException::withMessages([
                 $field => 'This task cannot be split because it has fewer than 2 creatives.',
+            ]);
+        }
+
+        if ($this->designerCompletedAll($task)) {
+            throw ValidationException::withMessages([
+                $field => 'All creatives on this task are already completed, so there is nothing left to split.',
             ]);
         }
 

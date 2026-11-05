@@ -298,6 +298,7 @@
                     @php
                         $isPendingRequest = in_array($request->overall_status, ['pending_approval','pending_designer_head','pending_admin'], true);
                         $requestedSplit = $request->splitCreativeSummary()['requested'];
+                        $splitCtx = $isPendingRequest ? app(\App\Services\DesignTaskRequestService::class)->splitApprovalContext($task) : null;
                     @endphp
 
                     <div id="request-{{ $request->id }}">
@@ -320,15 +321,18 @@
                                         </select>
 
                                         <label class="head-label">Final Split Quantity *</label>
-                                        <input class="head-field" type="number" name="approved_creative_count" min="1" max="{{ max(1,((int)$task->total_creatives)-1) }}" value="{{ old('approved_creative_count',$requestedSplit ?: 1) }}" required>
+                                        <input class="head-field" type="number" name="approved_creative_count" min="1" max="{{ max(1, (int) ($splitCtx['max'] ?? 1)) }}" value="{{ old('approved_creative_count',$requestedSplit ?: 1) }}" required>
                                         <div class="head-hint">At least 1 creative must remain with the original task.</div>
-                                        <div class="head-hint">Overall Creative Count: {{ (int) $task->total_creatives }}</div>
+                                        <div class="head-hint">Overall Creative Count: {{ (int) $task->total_creatives }}@if($splitCtx) · Completed so far: {{ $splitCtx['completed'] }} · You can split at most {{ $splitCtx['max'] }}@endif</div>
+                                        @if($splitCtx['allDone'] ?? false)
+                                            <div class="head-hint" style="color:#b42318;font-weight:800">Designer completed all creatives — nothing is left to split. Decline this request instead.</div>
+                                        @endif
 
                                         <label class="head-label">Comment</label>
                                         <textarea class="head-field" name="decision_comment" placeholder="Optional approval comment">{{ old('decision_comment') }}</textarea>
                                         <div class="head-hint">Optional</div>
 
-                                        <div class="head-btn-row"><button class="head-btn head-btn-accept" type="submit">Accept</button></div>
+                                        <div class="head-btn-row"><button class="head-btn head-btn-accept" type="submit" @disabled($splitCtx['allDone'] ?? false)>Accept</button></div>
                                     </form>
 
                                     <form class="head-decision-box" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">

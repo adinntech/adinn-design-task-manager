@@ -230,6 +230,7 @@
                             <form class="dh-decision-box" method="POST" action="{{ route('designer-head.requests.approve', $request) }}">
                                 @csrf
                                 <div class="dh-decision-title">Approve Request</div>
+                                @php $splitCtx = $isSplit && $request->task ? app(\App\Services\DesignTaskRequestService::class)->splitApprovalContext($request->task) : null; @endphp
                                 @unless($isStatusChange)
                                 <label class="dh-label">Final Designer *</label>
                                 <select class="dh-select-field" name="approved_designer_id" required>
@@ -242,13 +243,16 @@
                                 @endunless
                                 @if($isSplit)
                                     <label class="dh-label">Split Quantity *</label>
-                                    <input class="dh-select-field" type="number" name="approved_creative_count" min="1" max="{{ max(1, ((int) ($request->task?->total_creatives ?? 1)) - 1) }}" value="{{ old('approved_creative_count', $requestedSplit ?: 1) }}" required>
+                                    <input class="dh-select-field" type="number" name="approved_creative_count" min="1" max="{{ max(1, (int) ($splitCtx['max'] ?? 1)) }}" value="{{ old('approved_creative_count', $requestedSplit ?: 1) }}" required>
                                     <div class="dh-hint">Designer requested {{ $requestedSplit ?? '—' }} · at least 1 creative must remain with the original task.</div>
-                                    <div class="dh-hint">Overall Creative Count: {{ (int) ($request->task?->total_creatives ?? 0) }}</div>
+                                    <div class="dh-hint">Overall Creative Count: {{ (int) ($request->task?->total_creatives ?? 0) }}@if($splitCtx) · Completed so far: {{ $splitCtx['completed'] }} · You can split at most {{ $splitCtx['max'] }}@endif</div>
+                                    @if($splitCtx['allDone'] ?? false)
+                                        <div class="dh-hint" style="color:#b42318;font-weight:800">Designer completed all creatives — nothing is left to split. Reject this request instead.</div>
+                                    @endif
                                 @endif
                                 <label class="dh-label" style="margin-top:8px">Comment</label>
                                 <textarea class="dh-select-field" name="decision_comment" placeholder="Optional approval comment">{{ old('decision_comment') }}</textarea>
-                                <div class="dh-decision-actions"><button class="dh-btn dh-btn-accept" type="submit">Approve</button></div>
+                                <div class="dh-decision-actions"><button class="dh-btn dh-btn-accept" type="submit" @disabled($splitCtx['allDone'] ?? false)>Approve</button></div>
                             </form>
                             <form class="dh-decision-box" method="POST" action="{{ route('designer-head.requests.reject', $request) }}">
                                 @csrf
