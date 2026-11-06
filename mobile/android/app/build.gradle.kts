@@ -1,5 +1,8 @@
 plugins {
     id("com.android.application")
+    // Needed because android.builtInKotlin=false (gradle.properties): without it MainActivity.kt is never compiled
+    // and the app crashes on launch with ClassNotFoundException.
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
