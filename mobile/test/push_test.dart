@@ -146,7 +146,7 @@ void main() {
 
   testWidgets('signing out removes the device BEFORE the session is revoked', (tester) async {
     final push = FakePush();
-    await boot(tester, push);
+    await boot(tester, push, openTasks: false);
 
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
@@ -197,7 +197,7 @@ void main() {
 
   testWidgets('a push received in the foreground refreshes the alerts', (tester) async {
     final push = FakePush();
-    await boot(tester, push);
+    await boot(tester, push, openTasks: false);
     final before = api.requests.where((r) => r.path == '/notifications').length;
 
     push.foregroundMsgs.add(const PushEvent(taskId: 1));

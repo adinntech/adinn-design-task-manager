@@ -49,16 +49,19 @@ class _Pill extends StatelessWidget {
       );
 }
 
-/// One card, with the same content as the web board card.
+/// One ticket, kept to a few lines so a screen shows several of them. Everything else is on the task page.
 class KanbanTaskCard extends StatelessWidget {
-  const KanbanTaskCard({super.key, required this.card, required this.now, required this.onOpen, this.onMove, this.stageLabel});
+  const KanbanTaskCard({super.key, required this.card, required this.now, required this.onOpen, this.onMove, this.onLongPress, this.stageLabel});
 
   final KanbanCard card;
   final DateTime now;
   final VoidCallback onOpen;
 
-  /// Opens the "Move to…" sheet. The main way to change a status on a phone; dragging is the extra.
+  /// Opens the "Move to…" sheet: the way to change a status on a phone.
   final VoidCallback? onMove;
+
+  /// The same actions from a long press.
+  final VoidCallback? onLongPress;
 
   /// Set in the All Tickets list, where nothing else says which stage the ticket is in.
   final String? stageLabel;
@@ -68,74 +71,67 @@ class KanbanTaskCard extends StatelessWidget {
     final theme = Theme.of(context);
     final due = card.duePill(now);
     final accent = dueColor(due);
+    final muted = theme.textTheme.bodySmall?.copyWith(color: Colors.black54);
 
-    Widget meta(String k, String v) => SizedBox(
-          width: 150,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(k, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.black45)),
-            Text(v, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
-          ]),
-        );
+    final p = card.progress;
+    final creatives = p == null ? '${card.totalCreatives} creative${card.totalCreatives == 1 ? '' : 's'}' : '${p.completed} / ${card.totalCreatives} creatives';
+    final facts = [
+      _headline(card.vertical),
+      creatives,
+      if (card.status != 'completed') 'Due ${_dt(card.dueAt, 'd MMM, h:mm a')}',
+    ].join(' · ');
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onOpen,
+        onLongPress: onLongPress,
         child: Container(
           decoration: BoxDecoration(border: Border(left: BorderSide(color: accent, width: 4))),
-          padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
+          padding: EdgeInsets.fromLTRB(10, 8, onMove == null ? 10 : 2, 8),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(card.taskId, style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800, color: Colors.black54))),
-              _Pill(due.label, accent),
+              _Pill(due.label, accent, tiny: true),
               const SizedBox(width: 4),
-              _Pill(_headline(card.priority).toUpperCase(), priorityColor(card.priority)),
-              const SizedBox(width: 4),
+              _Pill(_headline(card.priority).toUpperCase(), priorityColor(card.priority), tiny: true),
+              if (onMove != null)
+                IconButton(
+                  key: Key('card-menu-${card.id}'),
+                  tooltip: 'Move to…',
+                  visualDensity: VisualDensity.compact,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 32),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.swap_horiz, size: 20),
+                  onPressed: onMove,
+                ),
             ]),
             if (stageLabel != null)
               Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: _Pill('Stage: $stageLabel', statusColor(card.status), key: Key('stage-${card.id}')),
+                padding: const EdgeInsets.only(top: 2),
+                child: Align(alignment: Alignment.centerLeft, child: _Pill('Stage: $stageLabel', statusColor(card.status), key: Key('stage-${card.id}'), tiny: true)),
               ),
-            const SizedBox(height: 4),
             Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Text(card.name, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700), maxLines: 3, overflow: TextOverflow.ellipsis),
+              padding: EdgeInsets.only(right: onMove == null ? 0 : 8, top: 2),
+              child: Text(card.name, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
             ),
-            if (card.tag != null)
+            const SizedBox(height: 2),
+            Text('${_headline(card.partyType)} · ${card.partyName ?? '—'}', style: muted, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(facts, style: muted, maxLines: 1, overflow: TextOverflow.ellipsis),
+            if (card.assigner != null) Text('Assigned by: ${card.assigner}', style: muted, maxLines: 1, overflow: TextOverflow.ellipsis),
+            if (card.nowWith != null) Text('Now with: ${card.nowWith}', style: muted),
+            if (card.tag != null || card.continuationLabel != null || card.previousMonthLabel != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Tooltip(message: card.tag!.title, child: _Pill(card.tag!.label, tagColor(card.tag!.tone), tiny: true)),
+                child: Wrap(spacing: 4, runSpacing: 4, children: [
+                  if (card.tag != null) Tooltip(message: card.tag!.title, child: _Pill(card.tag!.label, tagColor(card.tag!.tone), tiny: true)),
+                  if (card.continuationLabel != null)
+                    _Pill('${card.continuationLabel}${card.continuationEvent != null ? ' · ${card.continuationEvent}' : ''}', const Color(0xFF175CD3), tiny: true),
+                  if (card.previousMonthLabel != null) _Pill(card.previousMonthLabel!, const Color(0xFF6941C6), tiny: true),
+                ]),
               ),
-            const SizedBox(height: 4),
-            Text('${_headline(card.partyType)} · ${card.partyName ?? '—'}', style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
-            if (card.nowWith != null) Text('Now with: ${card.nowWith}', style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
-            if (card.continuationLabel != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: _Pill('${card.continuationLabel}${card.continuationEvent != null ? ' · ${card.continuationEvent}' : ''}', const Color(0xFF175CD3), tiny: true),
-              ),
-            if (card.previousMonthLabel != null)
-              Padding(padding: const EdgeInsets.only(top: 4), child: _Pill(card.previousMonthLabel!, const Color(0xFF6941C6), tiny: true)),
             if (card.progress != null) _Progress(card, now),
-            if (card.status == 'completed' && card.rating != null) _Rating(card.rating!),
-            const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 6, children: [
-              meta('VERTICAL', _headline(card.vertical)),
-              meta('CREATIVES', '${card.totalCreatives}'),
-              meta('DUE', _dt(card.dueAt, 'd MMM, h:mm a')),
-              if (card.assigner != null) meta('ASSIGNED BY', card.assigner!),
-              meta('CREATED', _dt(card.createdAt, 'd MMM yyyy • h:mm a')),
-              if (card.status == 'completed' && card.completedAt != null) meta('COMPLETED', _dt(card.completedAt, 'd MMM yyyy • h:mm a')),
-            ]),
-            if (onMove != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10, right: 4),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(key: Key('card-menu-${card.id}'), onPressed: onMove, icon: const Icon(Icons.swap_horiz, size: 18), label: const Text('Move to…')),
-                ),
-              ),
+            if (card.status == 'completed') _CompletedLine(card),
           ]),
         ),
       ),
@@ -152,58 +148,51 @@ class _Progress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = card.progress!;
-    final tint = switch (card.status) {
-      'rework' => const Color(0xFFFFF7F7),
-      'waiting_confirmation' => const Color(0xFFF5F3FF),
-      _ => const Color(0xFFF8FAFC),
-    };
     final bar = p.percentage >= 100 ? const Color(0xFF2E7D32) : (p.percentage <= 0 ? const Color(0xFF98A2B3) : const Color(0xFFD92D20));
     final caption = card.status == 'rework' ? 'Rework active' : (card.status == 'waiting_confirmation' ? 'Awaiting BD' : 'In progress');
+    const small = TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF667085));
 
-    return Container(
+    return Padding(
       key: Key('progress-${card.id}'),
-      margin: const EdgeInsets.only(top: 10, right: 4),
-      padding: const EdgeInsets.all(9),
-      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE5E7EB))),
+      padding: const EdgeInsets.only(top: 6, right: 6),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Expanded(child: Text('CREATIVE PROGRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5, color: Color(0xFF667085)))),
+          Expanded(child: LinearProgressIndicator(value: (p.percentage / 100).clamp(0, 1), minHeight: 6, borderRadius: BorderRadius.circular(6), color: bar, backgroundColor: const Color(0xFFE9EDF3))),
+          const SizedBox(width: 8),
           Text('${p.percentage}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
         ]),
-        const SizedBox(height: 6),
-        LinearProgressIndicator(value: (p.percentage / 100).clamp(0, 1), minHeight: 7, borderRadius: BorderRadius.circular(8), color: bar, backgroundColor: const Color(0xFFE9EDF3)),
-        const SizedBox(height: 5),
-        Text(caption, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF98A2B3))),
-        if (card.status == 'waiting_confirmation' && card.waitingSince != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text('BD Review Time: ${humanDuration(now.difference(card.waitingSince!))}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF98A2B3))),
-          ),
+        const SizedBox(height: 3),
+        Text(
+          card.status == 'waiting_confirmation' && card.waitingSince != null ? '$caption · BD Review Time: ${humanDuration(now.difference(card.waitingSince!))}' : caption,
+          style: small,
+        ),
       ]),
     );
   }
 }
 
-class _Rating extends StatelessWidget {
-  const _Rating(this.rating);
+/// A finished ticket: its rating and completion date on one line.
+class _CompletedLine extends StatelessWidget {
+  const _CompletedLine(this.card);
 
-  final double rating;
+  final KanbanCard card;
 
   @override
   Widget build(BuildContext context) {
-    final shown = rating == rating.roundToDouble() ? rating.toStringAsFixed(0) : rating.toStringAsFixed(1);
+    final rating = card.rating;
+    final shown = rating == null ? null : (rating == rating.roundToDouble() ? rating.toStringAsFixed(0) : rating.toStringAsFixed(1));
 
-    return Container(
-      margin: const EdgeInsets.only(top: 10, right: 4),
-      padding: const EdgeInsets.all(9),
-      decoration: BoxDecoration(color: const Color(0xFFFFFAEB), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFFEDF89))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Expanded(child: Text('Overall Rating', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF93370D)))),
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(children: [
+        if (rating != null) ...[
+          HalfStars(rating, size: 14),
+          const SizedBox(width: 6),
           Text('$shown / 5', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
-        ]),
-        const SizedBox(height: 4),
-        HalfStars(rating, size: 17),
+          const SizedBox(width: 10),
+        ],
+        if (card.completedAt != null)
+          Flexible(child: Text('Completed ${_dt(card.completedAt, 'd MMM yyyy')}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF667085)))),
       ]),
     );
   }

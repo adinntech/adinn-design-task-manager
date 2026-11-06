@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/app_update.dart';
 import 'core/auth.dart';
 import 'core/push.dart';
 import 'core/realtime.dart';
 import 'core/theme.dart';
 import 'features/requests/requests_screen.dart';
 import 'features/tasks/providers.dart';
+import 'features/update/update_gate.dart';
 import 'router.dart';
 
 void main() {
@@ -34,6 +36,7 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     ref.invalidate(pendingRequestsProvider);
     ref.invalidate(taskDetailProvider);
     ref.invalidate(commentsProvider);
+    ref.invalidate(appUpdateProvider); // a new release may have been published
   }
 
   @override
@@ -50,6 +53,11 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     // Push: tapping a notification opens its task; a push in the foreground refreshes the badges/lists.
     final push = ref.read(pushRegistrarProvider);
     push.onOpened = (event) {
+      // "Update available": opening the app re-checks the release, which raises the Update screen if it is required.
+      if (event.isAppUpdate) {
+        ref.invalidate(appUpdateProvider);
+        return;
+      }
       final id = event.taskId;
       if (id != null) ref.read(routerProvider).push('/task/$id');
     };
@@ -102,6 +110,8 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       routerConfig: ref.watch(routerProvider),
+      // Freezes the app behind an Update screen when the server says this build is too old.
+      builder: (context, child) => UpdateGate(child: child ?? const SizedBox.shrink()),
     );
   }
 }

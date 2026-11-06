@@ -2,6 +2,7 @@ import 'package:adinn_tasks/core/auth.dart';
 import 'package:adinn_tasks/core/models.dart';
 import 'package:adinn_tasks/features/dashboard/dashboard_models.dart';
 import 'package:adinn_tasks/features/home/navigation.dart';
+import 'package:adinn_tasks/features/kanban/stage_tickets_screen.dart';
 import 'package:adinn_tasks/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -233,18 +234,28 @@ void main() {
       expect(find.text('2 tickets | 3 creatives'), findsOneWidget);
     });
 
-    testWidgets('tapping a card jumps to My Tasks and opens that status column', (tester) async {
+    testWidgets('tapping a card jumps to My Tasks and opens that stage', (tester) async {
       await boot(tester);
 
       await tester.tap(find.byKey(const Key('tile-in-progress')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('kanban-pages')), findsOneWidget);
-      expect(tester.widget<ChoiceChip>(find.byKey(const Key('tab-in_progress'))).selected, isTrue);
+      expect(find.byType(StageTicketsScreen), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('stage-title'))).data, 'In Progress');
       expect(find.text('Highway hoarding'), findsOneWidget);
     });
 
-    testWidgets('the Split Tasks card opens the Split Tasks tab', (tester) async {
+    testWidgets('a card for a stage that is not on the first screen of the carousel still opens it', (tester) async {
+      await boot(tester);
+
+      await tester.tap(find.byKey(const Key('tile-completed')));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Text>(find.byKey(const Key('stage-title'))).data, 'Completed');
+      expect(find.text('Festive creative'), findsOneWidget);
+    });
+
+    testWidgets('the Split Tasks card opens the Split Tasks stage', (tester) async {
       final d = _dashboard();
       (d['request_counts'] as Map)['split'] = 2;
       await boot(tester, dashboard: d, routes: {
@@ -261,25 +272,28 @@ void main() {
       await tester.tap(find.byKey(const Key('tile-split')));
       await tester.pumpAndSettle();
 
-      expect(tester.widget<ChoiceChip>(find.byKey(const Key('tab-split_log'))).selected, isTrue);
+      expect(tester.widget<Text>(find.byKey(const Key('stage-title'))).data, 'Split Tasks');
       expect(find.text('Status: Pending approval'), findsOneWidget);
     });
 
-    testWidgets('Open on board jumps to its column and highlights its card', (tester) async {
+    testWidgets('Open on board opens its stage and highlights its card', (tester) async {
       await boot(tester);
 
       await tester.tap(find.byKey(const Key('row-1')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('drawer-board')));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 120)); // sheet closes, tab switches, stage opens (500 ms)
+      }
+      await tester.pump(const Duration(milliseconds: 300)); // the stage has opened; the ring is still showing
 
-      expect(find.byKey(const Key('kanban-pages')), findsOneWidget);
-      expect(tester.widget<ChoiceChip>(find.byKey(const Key('tab-in_progress'))).selected, isTrue);
+      expect(find.byType(StageTicketsScreen), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('stage-title'))).data, 'In Progress');
       expect(find.byKey(const Key('card-1')), findsOneWidget);
       // The ring is a foreground decoration on the flashed card, gone again after a moment.
-      bool ringed() => tester.widgetList<Container>(find.descendant(of: find.byKey(const Key('kanban-pages')), matching: find.byType(Container))).any((c) => c.foregroundDecoration != null);
+      bool ringed() => tester.widgetList<Container>(find.descendant(of: find.byKey(const Key('card-1')), matching: find.byType(Container))).any((c) => c.foregroundDecoration != null);
       expect(ringed(), isTrue);
-      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
       expect(ringed(), isFalse);
     });
 
@@ -289,8 +303,8 @@ void main() {
       await tester.tap(find.byKey(const Key('hero-view-tasks')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('kanban-pages')), findsOneWidget);
-      expect(tester.widget<ChoiceChip>(find.byKey(const Key('tab-all'))).selected, isTrue);
+      expect(find.byKey(const Key('held-card-all')), findsOneWidget);
+      expect(find.byKey(const Key('total-count')), findsOneWidget);
     });
   });
 

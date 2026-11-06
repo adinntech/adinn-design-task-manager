@@ -45,6 +45,7 @@ dependencies:
   firebase_core: ^5.1.0
   firebase_messaging: ^17.0.1
   web_socket_channel: ^3.0.3
+  package_info_plus: ^10.2.2
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +70,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # My Tasks hero: processed copies of the designer-supplied artwork (originals stay in "tasks screen assets").
+  assets:
+    - assets/tasks/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

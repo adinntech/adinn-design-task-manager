@@ -8,6 +8,7 @@ import '../notifications/notifications_screen.dart';
 import '../requests/requests_screen.dart';
 import '../tasks/board_screen.dart';
 import '../tasks/providers.dart';
+import '../widgets/liquid_nav_bar.dart';
 import 'navigation.dart';
 
 class HomeShell extends ConsumerWidget {
@@ -25,39 +26,39 @@ class HomeShell extends ConsumerWidget {
 
     Widget page(HomeTab t) => switch (t) {
           HomeTab.dashboard => const DesignerDashboardScreen(),
-          // Designers and BDs get the web's kanban; the other roles keep the status-chip board.
-          HomeTab.tasks => (role == 'designer' || role == 'bd') ? const KanbanScreen() : const BoardScreen(),
+          // Designers get the web's kanban; the other roles keep the status-chip board for now.
+          HomeTab.tasks => role == 'designer' ? const KanbanScreen() : const BoardScreen(),
           HomeTab.requests => const RequestsScreen(),
           HomeTab.alerts => const NotificationsScreen(),
           HomeTab.profile => const ProfileScreen(),
         };
 
-    NavigationDestination destination(HomeTab t) => switch (t) {
-          HomeTab.dashboard => const NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-          HomeTab.tasks => NavigationDestination(
+    LiquidNavItem destination(HomeTab t) => switch (t) {
+          HomeTab.dashboard => const LiquidNavItem(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          HomeTab.tasks => LiquidNavItem(
               icon: const Icon(Icons.view_kanban_outlined),
               selectedIcon: const Icon(Icons.view_kanban),
               label: role == 'designer' ? 'My Tasks' : 'Tasks',
             ),
-          HomeTab.requests => NavigationDestination(
+          HomeTab.requests => LiquidNavItem(
               icon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check_outlined)),
               selectedIcon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check)),
               label: role == 'designer' ? 'Approvals' : 'Requests',
             ),
-          HomeTab.alerts => NavigationDestination(
+          HomeTab.alerts => LiquidNavItem(
               icon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications_outlined)),
               selectedIcon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications)),
               label: 'Alerts',
             ),
-          HomeTab.profile => const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          HomeTab.profile => const LiquidNavItem(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
         };
 
     return Scaffold(
       body: IndexedStack(index: index, children: [for (final t in tabs) page(t)]),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: LiquidNavBar(
         selectedIndex: index,
-        onDestinationSelected: (i) => ref.read(homeTabProvider.notifier).goTo(tabs[i]),
-        destinations: [for (final t in tabs) destination(t)],
+        onSelected: (i) => ref.read(homeTabProvider.notifier).goTo(tabs[i]),
+        items: [for (final t in tabs) destination(t)],
       ),
     );
   }

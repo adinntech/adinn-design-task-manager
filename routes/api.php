@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AppUpdateController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\Designer\ApprovalController as DesignerApprovalController;
@@ -20,6 +21,9 @@ use Illuminate\Support\Facades\Route;
 
 // Mobile API (prefix api/v1, see bootstrap/app.php). Token auth via Sanctum.
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+
+// In-app update gate: public so it also works before sign-in. Values come from config/app_update.php.
+Route::get('/app-update', [AppUpdateController::class, 'show'])->middleware('throttle:60,1');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
