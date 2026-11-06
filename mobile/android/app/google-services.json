@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "59522780888",
+    "project_id": "adinn-design-tasks-4e56c",
+    "storage_bucket": "adinn-design-tasks-4e56c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:59522780888:android:9858d31f16e3e2e67851ad",
+        "android_client_info": {
+          "package_name": "in.co.adinn.adinn_tasks"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7DcVxdvtq2Q2Is0XxPTzzG-H6TemDnZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

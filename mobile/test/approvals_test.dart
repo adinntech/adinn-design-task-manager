@@ -165,5 +165,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(authProvider).user?.isRequestApprover, isTrue);
+    await tester.pump(const Duration(seconds: 3)); // let the 2 s server-address timeout elapse
   });
 }
