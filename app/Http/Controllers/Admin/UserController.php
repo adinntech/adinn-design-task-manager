@@ -6,6 +6,7 @@ use App\Http\Controllers\Bd\TaskController as BdTaskController;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\DesignerProfileService;
+use App\Services\TaskNotificationService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -70,7 +71,7 @@ class UserController extends Controller
         ]), $this->duplicateMessages());
 
         try {
-            User::create(array_merge([
+            $created = User::create(array_merge([
                 'name' => $data['name'],
                 'username' => $data['username'],
                 'employee_code' => $data['employee_code'],
@@ -85,6 +86,10 @@ class UserController extends Controller
             return back()->withInput()->withErrors([
                 'username' => 'That username, email or employee code is already taken.',
             ]);
+        }
+
+        if ($created->isRequestApprover()) {
+            app(TaskNotificationService::class)->approvalAccessGranted($created, $request->user());
         }
 
         return redirect()
@@ -107,6 +112,7 @@ class UserController extends Controller
         return array_merge($baseRules, [
             'experienced_verticals' => ['nullable', 'array'],
             'experienced_verticals.*' => [Rule::in(array_keys(BdTaskController::VERTICALS))],
+            'can_approve_requests' => ['nullable', 'boolean'],
             'skills' => ['nullable', 'array'],
             'skills.*' => ['string', 'max:100'],
             // BD's "Working Verticals" checkbox block uses its own field name
@@ -135,6 +141,7 @@ class UserController extends Controller
                 'experienced_verticals' => $normalizer->normalizeVerticals($data['experienced_verticals'] ?? []),
                 'skills' => $normalizer->normalizeSkills($data['skills'] ?? []),
                 'designer_head_id' => $data['designer_head_id'] ?? null,
+                'can_approve_requests' => (bool) ($data['can_approve_requests'] ?? false),
             ];
         }
 
@@ -143,10 +150,11 @@ class UserController extends Controller
                 'experienced_verticals' => $normalizer->normalizeVerticals($data['bd_experienced_verticals'] ?? []),
                 'skills' => null,
                 'designer_head_id' => null,
+                'can_approve_requests' => false,
             ];
         }
 
-        return ['experienced_verticals' => null, 'skills' => null, 'designer_head_id' => null];
+        return ['experienced_verticals' => null, 'skills' => null, 'designer_head_id' => null, 'can_approve_requests' => false];
     }
 
     private function duplicateMessages(): array
@@ -220,12 +228,19 @@ class UserController extends Controller
             $update['password'] = Hash::make($data['password']);
         }
 
+        $hadApprovalAccess = $user->isRequestApprover();
+
         try {
             $user->update($update);
         } catch (QueryException $e) {
             return back()->withInput()->withErrors([
                 'username' => 'That username, email or employee code is already taken.',
             ]);
+        }
+
+        // Only when access was just switched on (not on every later save).
+        if (! $hadApprovalAccess && $user->fresh()->isRequestApprover()) {
+            app(TaskNotificationService::class)->approvalAccessGranted($user->fresh(), $request->user());
         }
 
         return redirect()

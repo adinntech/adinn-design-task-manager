@@ -123,47 +123,7 @@ class TaskController extends Controller
     {
         abort_unless($designer->role === 'designer' && $designer->is_active, 404);
 
-        $stats = DesignTask::where('designer_id', $designer->id)
-            ->whereNotIn('status', ['completed'])
-            ->selectRaw('count(*) as active_tasks, coalesce(sum(total_creatives), 0) as active_creatives')
-            ->first();
-
-        $activeTasks = (int) $stats->active_tasks;
-        $activeCreatives = (int) $stats->active_creatives;
-
-        $taskCapacity = max(1, (int) config('workload.designer_capacity'));
-        $creativeCapacity = max(1, (int) config('workload.designer_creative_capacity'));
-
-        $taskWorkloadPercent = (int) min(100, round($activeTasks / $taskCapacity * 100));
-        $creativeWorkloadPercent = (int) min(100, round($activeCreatives / $creativeCapacity * 100));
-        $workloadPercent = max($taskWorkloadPercent, $creativeWorkloadPercent);
-        $availabilityPercent = 100 - $workloadPercent;
-
-        $thresholds = config('workload.availability_thresholds');
-        $level = match (true) {
-            $availabilityPercent >= $thresholds['available'] => 'available',
-            $availabilityPercent >= $thresholds['moderate'] => 'moderate',
-            $availabilityPercent >= $thresholds['busy'] => 'busy',
-            default => 'critical',
-        };
-
-        $label = match ($level) {
-            'available' => 'Available',
-            'moderate' => 'Moderate',
-            'busy' => 'Busy',
-            default => 'Critical',
-        };
-
-        return response()->json([
-            'designer_id' => $designer->id,
-            'designer_name' => $designer->name,
-            'active_tasks' => $activeTasks,
-            'active_creatives' => $activeCreatives,
-            'availability_percent' => $availabilityPercent,
-            'level' => $level,
-            'label' => $label,
-            'checked_in' => app(ZohoAttendanceService::class)->isCheckedIn($designer->email),
-        ]);
+        return response()->json(app(\App\Services\DesignerAvailabilityService::class)->snapshot($designer));
     }
 
     /**

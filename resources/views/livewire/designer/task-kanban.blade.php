@@ -2,8 +2,6 @@
     <style>
         .designer-toolbar{display:grid;grid-template-columns:minmax(220px,1.3fr) repeat(auto-fit,minmax(140px,.6fr));gap:9px;margin-bottom:14px}.designer-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.metric-active-breakdown{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}.metric-active-chip{font-size:8px;font-weight:800;color:#475467;background:#f2f4f7;border-radius:999px;padding:2px 7px;white-space:nowrap}.continuation-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:8px;font-weight:800;line-height:1.4}.previous-month-badge{margin-top:7px;padding:5px 8px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:8px;font-weight:800;line-height:1.4}.request-column{border-color:#fecaca;background:#fff8f7}.request-column .kanban-column-header{background:#fff1f0;border-bottom-color:#fecaca}.request-card{border-left-color:#e30613!important;background:linear-gradient(90deg,#fff1f1 0,#fff 22%)}.request-type-pill{display:inline-flex;align-items:center;min-height:20px;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:950;text-transform:uppercase;letter-spacing:.04em}.request-type-split{background:#f4f0ff;color:#6938ef;border:1px solid #d9d6fe}.request-open-label{margin-top:9px;padding-top:8px;border-top:1px solid #eef0f3;color:#e30613;font-size:9px;font-weight:900}.applied-filters{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid #eef0f3}.applied-filters-label{font-size:9px;font-weight:900;color:#475467;text-transform:uppercase;letter-spacing:.04em}.applied-filter-chip{font-size:9px;font-weight:850;color:#101828;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:999px;padding:5px 10px;white-space:nowrap}.applied-filters-clear{margin-left:auto;padding:6px 12px;font-size:10px;min-height:auto}@media(max-width:900px){.designer-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}.kanban-shell{overflow-x:auto;overflow-y:auto;max-height:70vh;padding-bottom:8px;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none}.kanban-shell::-webkit-scrollbar{display:none}.kanban-shell.is-panning{cursor:grabbing}
 .kanban-shell{position:relative}
-.split-status{display:inline-block;max-width:100%;border:1px solid transparent;border-radius:999px;padding:3px 9px;font-size:9px;font-weight:850;line-height:1.3;text-transform:none;letter-spacing:0;white-space:normal}
-.split-status-pending{color:#9a6700;background:#fffaeb;border-color:#fedf89}.split-status-approved{color:#067647;background:#ecfdf3;border-color:#abefc6}.split-status-declined{color:#b42318;background:#fff1f0;border-color:#fecdca}.split-status-done{color:#175cd3;background:#eff6ff;border-color:#b2ccff}
 body[data-kanban-dragging="1"] .kanban-shell::before,
 body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z-index:50;top:0;width:34px;height:100%;pointer-events:none;opacity:.2}
 .kanban-shell .task-card,.kanban-shell input,.kanban-shell select,.kanban-shell button,.kanban-shell a{user-select:auto}.kanban-board{display:grid;grid-template-columns:repeat(10,270px);grid-auto-flow:column;grid-auto-columns:270px;gap:10px;min-width:max-content}.kanban-column{border:1px solid #e7e9ef;border-radius:14px;background:#f9fafb}.kanban-column-header{padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e7e9ef;background:#fff;border-top:4px solid #98a2b3;border-radius:13px 13px 0 0;position:sticky;top:0;z-index:3}.kanban-column-title{font-size:10px;font-weight:900;color:#344054;text-transform:uppercase;letter-spacing:.04em}.kanban-count{min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#eef0f4;color:#344054;display:grid;place-items:center;font-size:10px;font-weight:900}.kanban-list{padding:9px;min-height:420px}.kanban-empty{height:105px;border:1px dashed #cfd4dd;border-radius:10px;display:grid;place-items:center;color:#9aa1ad;font-size:10px}
@@ -430,51 +428,41 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                 </section>
 
                 @if($statusKey === 'completed')
-                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitLogRows->isEmpty() && $splitRequestRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="designer-split-log">
-                        <header class="kanban-column-header"><span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span><span class="kanban-count">{{ $splitRequestRows->count() + $splitLogRows->count() }}</span></header>
+                    <section class="kanban-column request-column{{ (trim($search) !== '' || trim($projectNumber) !== '') && $splitBoardRows->isEmpty() ? ' is-search-hidden' : '' }}" data-status="split_log" wire:key="designer-split-log">
+                        <header class="kanban-column-header"><span class="kanban-column-title">Split Tasks ({{ $periodLabel }})</span><span class="kanban-count">{{ $splitBoardRows->count() }}</span></header>
                         <div class="kanban-list">
-                            {{-- Requests that have not produced a split task (yet): waiting for the
-                                 Designer Head, declined, or overtaken by the Designer finishing every creative. --}}
-                            @foreach($splitRequestRows as $row)
-                                @php $request = $row['request']; $splitTask = $row['task']; $splitStatus = $row['status']; @endphp
-                                <a href="{{ route('designer.tasks.show', $splitTask) }}" class="task-card request-card" wire:key="designer-split-request-{{ $request->id }}">
+                            @forelse($splitBoardRows as $row)
+                                @php
+                                    $childTask = $row['childTask']; $request = $row['request'];
+                                    $shownTask = $childTask ?? $row['task'];
+                                    $splitStatus = $request->splitStatus(auth()->user());
+                                    $splitCounts = $request->splitCreativeSummary();
+                                @endphp
+                                @continue(! $shownTask)
+                                <a href="{{ route('designer.tasks.show', $shownTask) }}" class="task-card request-card" wire:key="designer-split-{{ $request->id }}">
                                     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-                                        <div class="task-card-id">{{ $splitTask->task_id }}</div>
+                                        <div class="task-card-id">{{ $shownTask->task_id }}</div>
                                         <span class="request-type-pill request-type-split">Split</span>
                                     </div>
-                                    <div class="task-card-name">{{ $splitTask->display_task_name ?? $splitTask->task_name }}</div>
+                                    <div class="task-card-name">{{ $shownTask->display_task_name ?? $shownTask->task_name }}</div>
+                                    <div class="split-status split-status-{{ $splitStatus['key'] }}">Status: {{ $splitStatus['label'] }}</div>
                                     <div class="task-card-meta">
-                                        <div class="task-meta-item" style="grid-column:1/-1"><strong>Status</strong><span class="split-status split-status-{{ $splitStatus['tone'] }}">{{ $splitStatus['designer'] }}</span></div>
-                                        <div class="task-meta-item"><strong>Requested</strong>{{ $row['requested'] ?? '—' }} creative{{ (int) ($row['requested'] ?? 0) === 1 ? '' : 's' }}</div>
-                                        <div class="task-meta-item"><strong>Completed</strong>{{ $row['completed'] }} / {{ $row['total'] }}</div>
-                                        <div class="task-meta-item"><strong>Requested On</strong>{{ $request->created_at?->format('d M Y') ?? '—' }}</div>
+                                        @if($childTask)
+                                            <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
+                                            <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
+                                        @else
+                                            <div class="task-meta-item"><strong>Requested Split</strong>{{ $splitCounts['requested'] ?? '—' }}</div>
+                                            <div class="task-meta-item"><strong>Creatives</strong>{{ $shownTask->total_creatives }}</div>
+                                            <div class="task-meta-item"><strong>Requested</strong>{{ $request->created_at?->format('d M Y') ?? '—' }}</div>
+                                        @endif
                                     </div>
                                     <div class="request-open-label">Open task</div>
                                 </a>
-                            @endforeach
-
-                            @foreach($splitLogRows as $row)
-                                @php $childTask = $row['childTask']; $request = $row['request']; @endphp
-                                <a href="{{ route('designer.tasks.show', $childTask) }}" class="task-card request-card" wire:key="designer-split-{{ $childTask->id }}">
-                                    <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
-                                        <div class="task-card-id">{{ $childTask->task_id }}</div>
-                                        <span class="request-type-pill request-type-split">Split</span>
-                                    </div>
-                                    <div class="task-card-name">{{ $childTask->display_task_name ?? $childTask->task_name }}</div>
-                                    <div class="task-card-meta">
-                                        <div class="task-meta-item" style="grid-column:1/-1"><strong>Status</strong><span class="split-status split-status-approved">Approved</span></div>
-                                        <div class="task-meta-item"><strong>Split From</strong>{{ $request->task?->task_id ?? '—' }}</div>
-                                        <div class="task-meta-item"><strong>Designer</strong>{{ $childTask->designer?->name ?? '—' }}</div>
-                                        <div class="task-meta-item"><strong>Creatives</strong>{{ $childTask->total_creatives }}</div>
-                                        <div class="task-meta-item"><strong>Approved</strong>{{ optional($request->responded_at)->format('d M Y') ?? '—' }}</div>
-                                    </div>
-                                    <div class="request-open-label">Open task</div>
-                                </a>
-                            @endforeach
-
-                            @if($splitRequestRows->isEmpty() && $splitLogRows->isEmpty())
+                            @empty
                                 <div class="empty-state">No split requests in {{ $periodLabel }}.</div>
-                            @endif
+                            @endforelse
                         </div>
                     </section>
                 @endif
@@ -610,13 +598,7 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                                 }
                             };
 
-                            if (target) {
-                                // A specific ticket was asked for: bring the TICKET into view,
-                                // not the column. Columns are as tall as the fullest one, so
-                                // scrolling to the column's bottom edge would scroll straight
-                                // past a ticket sitting near the top of a short column.
-                                this.scrollTargetIntoView(target, afterScroll);
-                            } else if (shell && column) {
+                            if (shell && column) {
                                 this.scrollShellToColumn(shell, column, afterScroll);
                             } else {
                                 afterScroll();
@@ -624,45 +606,6 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         };
 
                         attempt(0);
-                    },
-
-                    // Centers `target` on both axes, scrolling the board and the page as
-                    // needed (native scrollIntoView handles every scrollable ancestor).
-                    // Calls `done` once scrolling has settled so the highlight starts on a
-                    // card that is already in view; if nothing needs to move, it fires
-                    // after a short beat.
-                    scrollTargetIntoView(target, done){
-                        let finished = false;
-                        let debounce = null;
-
-                        const finish = () => {
-                            if (finished) return;
-                            finished = true;
-                            clearTimeout(debounce);
-                            clearTimeout(safety);
-                            document.removeEventListener('scroll', onScroll, true);
-
-                            // Safety net: if the smooth scroll was interrupted or never started,
-                            // jump straight to the ticket so it is always on screen when the
-                            // highlight runs.
-                            const rect = target.getBoundingClientRect();
-                            if (rect.left < 0 || rect.right > window.innerWidth || rect.top < 0 || rect.bottom > window.innerHeight) {
-                                target.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
-                            }
-
-                            done();
-                        };
-
-                        const onScroll = () => {
-                            clearTimeout(debounce);
-                            debounce = setTimeout(finish, 150);
-                        };
-
-                        document.addEventListener('scroll', onScroll, true);
-                        debounce = setTimeout(finish, 300);
-                        const safety = setTimeout(finish, 2000);
-
-                        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
                     },
 
                     // Scrolls the shell however far is actually needed on EACH axis to bring
@@ -686,10 +629,10 @@ body[data-kanban-dragging="1"] .kanban-shell::after{content:'';position:sticky;z
                         }
 
                         let top = shell.scrollTop;
-                        if (colRect.top < shellRect.top) {
+                        // Not fully visible vertically (above, or taller than the viewport): always align the
+                        // column's TOP with the shell top so its header and first cards show, never its bottom.
+                        if (colRect.top < shellRect.top || colRect.bottom > shellRect.bottom) {
                             top += colRect.top - shellRect.top - buffer;
-                        } else if (colRect.bottom > shellRect.bottom) {
-                            top += colRect.bottom - shellRect.bottom + buffer;
                         }
 
                         left = Math.max(0, left);

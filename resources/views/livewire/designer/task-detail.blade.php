@@ -1061,7 +1061,7 @@
                         <div class="eod-entry-card">
                             <div class="eod-entry-title">Add Progress Update</div>
                             <div class="eod-entry-grid">
-                                <div class="eod-field">
+                                <div class="eod-field" x-data="{ limit: {{ (int) $eodRemaining }}, over: false }">
                                     <label class="label" for="eodCompletedCount">Creatives Completed Now</label>
                                     <input
                                         id="eodCompletedCount"
@@ -1071,7 +1071,19 @@
                                         max="{{ $eodRemaining }}"
                                         wire:model="eodCompletedCount"
                                         placeholder="e.g. 10"
+                                        x-on:input="
+                                            if ($event.detail && $event.detail.clamped) return;
+                                            const v = parseInt($el.value, 10);
+                                            if (!isNaN(v) && v > limit) {
+                                                over = true;
+                                                $el.value = limit;
+                                                $el.dispatchEvent(new CustomEvent('input', { bubbles: true, detail: { clamped: true } }));
+                                            } else { over = false; }
+                                        "
                                     >
+                                    <div class="muted" x-show="over" x-cloak style="color:#b4232f;margin-top:5px;display:none">
+                                        Warning: you can add only {{ (int) $eodRemaining }} creative{{ (int) $eodRemaining === 1 ? '' : 's' }} for this task. The value was reset to the maximum.
+                                    </div>
                                     @error('eodCompletedCount')
                                         <div class="muted" style="color:#b4232f;margin-top:5px">{{ $message }}</div>
                                     @enderror

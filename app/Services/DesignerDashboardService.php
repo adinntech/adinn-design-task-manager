@@ -1,0 +1,415 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\DesignTask;
+use App\Models\DesignTaskBdReview;
+use App\Models\DesignTaskRequest;
+use App\Models\DesignTaskStatusHistory;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+
+/**
+ * Everything the Designer dashboard shows, in one place. Extracted verbatim from
+ * Designer\DashboardController::index() so the web page and the mobile API compute the
+ * same numbers from the same code (no second copy to drift).
+ */
+class DesignerDashboardService
+{
+    /** @return array<string, mixed> the exact variables the `designer.dashboard` view receives */
+    public function build(User $designer): array
+    {
+        $designerId = (int) $designer->id;
+
+        $tasks = DesignTask::query()
+            ->with(['assigner:id,name'])
+            ->where('designer_id', $designerId)
+            ->latest('assigned_at')
+            ->get();
+
+        $taskIds = $tasks->pluck('id');
+
+        $ownRequests = DesignTaskRequest::query()
+            ->with([
+                'task:id,task_id,task_name,designer_id,status',
+                'task.designer:id,name',
+                'approvedDesigner:id,name',
+                'targetDesigner:id,name',
+            ])
+            ->where('requested_by', $designerId)
+            ->latest()
+            ->get();
+
+        $pendingStatuses = ['pending_approval', 'pending_designer_head', 'pending_admin'];
+        $pendingRequests = $ownRequests->whereIn('overall_status', $pendingStatuses)->values();
+
+        $now = now();
+
+        $stats = [
+            'total' => $tasks->count(),
+            'assigned' => $tasks->where('status', 'assigned_tasks')->count(),
+            'ready_to_start' => $tasks->where('status', 'yet_to_start')->count(),
+            'in_progress' => $tasks->where('status', 'in_progress')->count(),
+            'completed' => $tasks->where('status', 'completed')->count(),
+            'pending_approval' => $pendingRequests->count(),
+            // Tasks THIS designer created themselves, still awaiting the
+            // selected BD's confirmation decision — separate from
+            // 'pending_approval' above (which is decline/split/swap/status_change
+            // requests awaiting Designer Head/Admin).
+            'waiting_bd_confirmation' => $tasks->where('status', 'pending_bd_approval')->count(),
+            // "Waiting for BD Review" = designer's own work is done and sitting in
+            // waiting_confirmation; every task only reaches 'completed' once BD rates
+            // it (same DB transaction in Bd\AssignedTaskController::completeWithRating),
+            // so there is no "completed but unrated" state to detect separately.
+            'waiting_bd_review' => $tasks->where('status', 'waiting_confirmation')->count(),
+            'prepare_printing_file' => $tasks->where('status', 'prepare_printing_file')->count(),
+            'overdue' => $tasks
+                ->filter(fn (DesignTask $task) => $task->status !== 'completed' && $task->due_at && $task->due_at->lt($now))
+                ->count(),
+        ];
+
+        // Rework counters reuse DesignTaskProgressService — the same source that
+        // already drives the per-task rework tab — instead of a fresh calculation,
+        // so "current" vs "overall" semantics stay identical everywhere in the app.
+        $progressService = app(DesignTaskProgressService::class);
+        $reworkTasks = $tasks->where('status', 'rework');
+
+        $stats['rework'] = $reworkTasks->count();
+        $stats['rework_creatives'] = $reworkTasks->sum(fn (DesignTask $task) => $progressService->currentReworkPending($task));
+
+        // Cumulative, all-time — never decreases when a task leaves Rework.
+        $overallRework = [
+            'cycles' => $tasks->sum(fn (DesignTask $task) => $progressService->reworkCount($task)),
+            'creatives' => $taskIds->isEmpty() ? 0 : (int) DesignTaskBdReview::query()
+                ->where('action', 'rework')
+                ->whereIn('design_task_id', $taskIds)
+                ->sum('number_of_creatives'),
+        ];
+
+        $statusLabels = DesignTaskStatusService::STATUSES;
+        unset($statusLabels['swap_tasks']);
+        $statusLabels['swap_tasks'] = 'Swapped Tasks';
+
+        $statusSummary = collect($statusLabels)
+            ->map(fn (string $label, string $status) => [
+                'key' => $status,
+                'label' => $label,
+                'count' => $tasks->where('status', $status)->count(),
+            ])
+            ->values();
+
+        $requestSummary = [
+            'swap' => $pendingRequests->where('request_type', 'swap')->count(),
+            'split' => $pendingRequests->where('request_type', 'split')->count(),
+            'decline' => $pendingRequests->where('request_type', 'decline')->count(),
+        ];
+
+        $requestTypeCounts = [
+            'swap' => $ownRequests->where('request_type', 'swap')->count(),
+            'decline' => $ownRequests->where('request_type', 'decline')->count(),
+            'split' => $ownRequests->where('request_type', 'split')->count(),
+            'approved' => $ownRequests->where('overall_status', 'approved')->count(),
+        ];
+
+        $completionRate = $stats['total'] > 0 ? (int) round(($stats['completed'] / $stats['total']) * 100) : 0;
+
+        // Monthly completed-task trend for the last 6 months, driven by the task's own
+        // "-> completed" history event (not who clicked it — the final confirmation is
+        // often recorded as the BD via bd_completion_rating, not the designer).
+        $completions = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskStatusHistory::query()
+                ->where('to_status', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->get(['design_task_id', 'created_at']);
+
+        $monthlyTrend = collect(range(5, 0))
+            ->map(function (int $offset) use ($completions) {
+                $month = now()->startOfMonth()->subMonths($offset);
+                $monthEnd = $month->copy()->endOfMonth();
+
+                return [
+                    'label' => $month->format('M'),
+                    'count' => $completions
+                        ->filter(fn ($row) => $row->created_at->betweenIncluded($month, $monthEnd))
+                        ->pluck('design_task_id')
+                        ->unique()
+                        ->count(),
+                ];
+            })
+            ->values();
+
+        // Only 'completed'-action rows carry a rating; 'rework' rows are BD's earlier
+        // send-backs on the same task and are excluded so they never skew the average.
+        $completedReviews = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->with('submitter:id,name')
+                ->where('action', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->latest()
+                ->get();
+
+        $ratedCount = $completedReviews->count();
+
+        // A task can only ever be completed-with-rating once (guarded in
+        // AssignedTaskController::completeWithRating), so there's exactly one
+        // to_status='completed' history row per task — safe to key by task id.
+        $completedAtByTask = $completions->keyBy('design_task_id')->map(fn ($row) => $row->created_at);
+
+        $overallRating = [
+            'average' => $ratedCount > 0 ? DesignTaskBdReview::roundToHalfStar($completedReviews->avg('overall_rating')) : null,
+            'rated' => $ratedCount,
+            'total' => $stats['completed'],
+        ];
+
+        // Per-task rework creative totals (grouped in one query — avoids N+1 per task row).
+        $reworkCreativesByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->where('action', 'rework')
+                ->whereIn('design_task_id', $taskIds)
+                ->selectRaw('design_task_id, SUM(number_of_creatives) as total')
+                ->groupBy('design_task_id')
+                ->pluck('total', 'design_task_id')
+                ->map(fn ($value) => (int) $value);
+
+        $reviewByTask = $completedReviews->keyBy('design_task_id');
+
+        // Your own Task Details table — same design/data rules as the Designer Head
+        // dashboard's Designer Task Details table, scoped to this Designer's tasks only.
+        $taskRows = $tasks
+            ->map(fn (DesignTask $task) => [
+                'task' => $task,
+                'done' => $progressService->completed($task),
+                'remaining' => $progressService->remaining($task),
+                'percentage' => $progressService->percentage($task),
+                'rework_count' => $progressService->reworkCount($task),
+                'rework_creatives' => (int) ($reworkCreativesByTask[$task->id] ?? 0),
+                'completed_at' => $completedAtByTask->get($task->id),
+                'overdue' => $task->status !== 'completed' && $task->due_at && $task->due_at->lt($now),
+                'completion' => $this->completionInfo($task, $completedAtByTask->get($task->id), $now),
+                'rating' => $reviewByTask->get($task->id)?->overall_rating,
+            ])
+            ->values();
+
+        $reviewCards = $completedReviews
+            ->filter(fn (DesignTaskBdReview $review) => filled($review->comment))
+            ->map(function (DesignTaskBdReview $review) use ($tasks, $completedAtByTask) {
+                $task = $tasks->firstWhere('id', $review->design_task_id);
+
+                return [
+                    'rating' => DesignTaskBdReview::roundToHalfStar($review->overall_rating),
+                    'comment' => $review->comment,
+                    'task' => $task,
+                    'task_id' => $task?->task_id,
+                    'task_name' => $task?->display_task_name ?? $task?->task_name,
+                    'reviewer' => $review->submitter?->name ?? 'BD',
+                    'reviewed_at' => $review->created_at,
+                    'completed_at' => $completedAtByTask->get($review->design_task_id),
+                ];
+            })
+            ->values();
+
+        $requestOutcomes = collect(['swap' => 'Swap', 'decline' => 'Decline', 'split' => 'Split'])
+            ->map(function (string $label, string $type) use ($ownRequests, $pendingStatuses) {
+                $group = $ownRequests->where('request_type', $type);
+
+                return [
+                    'type' => $type,
+                    'label' => $label,
+                    'approved' => $group->where('overall_status', 'approved')->count(),
+                    'rejected' => $group->where('overall_status', 'rejected')->count(),
+                    'pending' => $group->whereIn('overall_status', $pendingStatuses)->count(),
+                ];
+            })
+            ->values();
+
+        // Latest activity first: a request that was just approved/rejected should
+        // surface above an older one that's still merely pending, even if the
+        // pending one was technically created more recently.
+        $myRequests = $ownRequests
+            ->sortByDesc(fn (DesignTaskRequest $request) => ($request->responded_at ?? $request->created_at)?->timestamp ?? 0)
+            ->values()
+            ->take(100);
+
+        /* ---- Performance Trend (shared shape): last 6 months, self-scoped ---- */
+        $today = now();
+        $line = collect(range(5, 0))->map(function (int $offset) use ($today, $tasks, $ownRequests, $completedAtByTask) {
+            $start = $today->copy()->startOfMonth()->subMonths($offset);
+            $end = $start->copy()->endOfMonth();
+            $monthTasks = $tasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($start, $end));
+
+            $completedIds = collect();
+            foreach ($completedAtByTask as $tid => $ts) {
+                if ($ts->betweenIncluded($start, $end)) {
+                    $completedIds->push((int) $tid);
+                }
+            }
+
+            $overdueCompleted = 0;
+            foreach ($completedIds as $tid) {
+                $task = $tasks->firstWhere('id', $tid);
+                if ($task && $task->due_at && $task->due_at->lt($completedAtByTask[$tid])) {
+                    $overdueCompleted++;
+                }
+            }
+
+            $declined = $ownRequests
+                ->filter(fn ($r) => $r->request_type === 'decline'
+                    && $r->overall_status === 'approved'
+                    && $r->responded_at !== null
+                    && $r->responded_at->betweenIncluded($start, $end))
+                ->count();
+
+            return [
+                'label' => $start->format('M y'),
+                'assigned' => $monthTasks->count(),
+                'in_progress' => $monthTasks->where('status', 'in_progress')->count(),
+                'completed' => $completedIds->count(),
+                'overdue_completed' => $overdueCompleted,
+                'declined' => $declined,
+            ];
+        })->values();
+
+        $currentMonthTasks = $tasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($today->copy()->startOfMonth(), $today->copy()->endOfMonth()));
+        $overdueCompletedCount = $currentMonthTasks
+            ->filter(fn (DesignTask $task) => $task->status === 'completed'
+                && $task->due_at
+                && ($completedAtByTask->get($task->id) ?? null)
+                && $task->due_at->lt($completedAtByTask->get($task->id)))
+            ->count();
+        $approvedDeclines = $ownRequests
+            ->filter(fn ($r) => $r->request_type === 'decline'
+                && $r->overall_status === 'approved'
+                && $r->responded_at !== null
+                && $r->responded_at->betweenIncluded($today->copy()->startOfMonth(), $today->copy()->endOfMonth()))
+            ->count();
+        $trendCards = [
+            ['label' => 'Assigned Tasks', 'value' => $currentMonthTasks->count(), 'color' => '#2970ff'],
+            ['label' => 'In Progress', 'value' => $currentMonthTasks->where('status', 'in_progress')->count(), 'color' => '#7c3aed'],
+            ['label' => 'Completed', 'value' => $currentMonthTasks->where('status', 'completed')->count(), 'color' => '#027a48'],
+            ['label' => 'Overdue & Completed', 'value' => $overdueCompletedCount, 'color' => '#f79009'],
+            ['label' => 'Declined', 'value' => $approvedDeclines, 'color' => '#c01048'],
+        ];
+        $trendContext = trim('My Tasks'.' • '.$today->format('M Y'));
+
+
+        return [
+            'stats' => $stats,
+            'recentTasks' => $tasks->take(12),
+            'taskRows' => $taskRows,
+            'myRequests' => $myRequests,
+            'requestSummary' => $requestSummary,
+            'requestTypeCounts' => $requestTypeCounts,
+            'statusSummary' => $statusSummary,
+            'completionRate' => $completionRate,
+            'monthlyTrend' => $monthlyTrend,
+            'requestOutcomes' => $requestOutcomes,
+            'overallRating' => $overallRating,
+            'reviewCards' => $reviewCards,
+            'overallRework' => $overallRework,
+            'line' => $line,
+            'trendCards' => $trendCards,
+            'trendContext' => $trendContext,
+        ];
+    }
+
+    /**
+     * Timeliness against the ORIGINAL due date, using the actual completion timestamp —
+     * never derived from rework/status text. A task completed after its due date is
+     * "late" (with days-late), not "overdue" (which only applies while still incomplete).
+     * Mirrors DesignerHead\DashboardController::completionInfo() for identical semantics.
+     */
+    public function completionInfo(DesignTask $task, ?Carbon $completedAt, Carbon $now): array
+    {
+        if ($completedAt) {
+            $isLate = (bool) ($task->due_at && $completedAt->gt($task->due_at));
+            $daysLate = $isLate ? (int) $task->due_at->diffInDays($completedAt) : 0;
+
+            return ['status' => $isLate ? 'late' : 'on_time', 'days' => $daysLate];
+        }
+
+        if ($task->status !== 'completed' && $task->due_at && $task->due_at->lt($now)) {
+            return ['status' => 'overdue', 'days' => (int) $task->due_at->diffInDays($now)];
+        }
+
+        return ['status' => 'in_progress', 'days' => 0];
+    }
+
+    /** The "Your Task Details" rows for every task of this designer, optionally narrowed by a text search. */
+    public function taskRows(int $designerId, string $search = ''): Collection
+    {
+        $tasks = DesignTask::query()
+            ->with(['assigner:id,name'])
+            ->where('designer_id', $designerId)
+            ->latest('assigned_at')
+            ->get();
+
+        if ($search !== '') {
+            $tasks = $tasks->filter(fn (DesignTask $task) => $this->taskMatchesSearch($task, $search))->values();
+        }
+
+        $taskIds = $tasks->pluck('id');
+        $now = now();
+        $progressService = app(DesignTaskProgressService::class);
+
+        $completedAtByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskStatusHistory::query()
+                ->where('to_status', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->pluck('created_at', 'design_task_id');
+
+        $reworkCreativesByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->where('action', 'rework')
+                ->whereIn('design_task_id', $taskIds)
+                ->selectRaw('design_task_id, SUM(number_of_creatives) as total')
+                ->groupBy('design_task_id')
+                ->pluck('total', 'design_task_id')
+                ->map(fn ($value) => (int) $value);
+
+        $reviewByTask = $taskIds->isEmpty()
+            ? collect()
+            : DesignTaskBdReview::query()
+                ->where('action', 'completed')
+                ->whereIn('design_task_id', $taskIds)
+                ->latest()
+                ->get()
+                ->keyBy('design_task_id');
+
+        return $tasks->map(fn (DesignTask $task) => [
+            'task' => $task,
+            'done' => $progressService->completed($task),
+            'remaining' => $progressService->remaining($task),
+            'percentage' => $progressService->percentage($task),
+            'rework_count' => $progressService->reworkCount($task),
+            'rework_creatives' => (int) ($reworkCreativesByTask[$task->id] ?? 0),
+            'completed_at' => $completedAtByTask->get($task->id),
+            'overdue' => $task->status !== 'completed' && $task->due_at && $task->due_at->lt($now),
+            'completion' => $this->completionInfo($task, $completedAtByTask->get($task->id), $now),
+            'rating' => $reviewByTask->get($task->id)?->overall_rating,
+        ])->values();
+    }
+
+    /** Same field set as the BD/Designer Head dashboard search. */
+    public function taskMatchesSearch(DesignTask $task, string $term): bool
+    {
+        $haystacks = [
+            $task->task_id, $task->zoho_project_number, $task->task_name, $task->party_name,
+            $task->contact_person, $task->mobile_number, $task->vertical, $task->task_nature,
+            $task->priority, $task->status, $task->assigner?->name,
+        ];
+
+        foreach ($haystacks as $value) {
+            if ($value !== null && stripos((string) $value, $term) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

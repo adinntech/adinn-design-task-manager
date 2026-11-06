@@ -7,6 +7,7 @@ use App\Models\DesignTaskBdReview;
 use App\Models\DesignTaskRequest;
 use App\Models\User;
 use App\Models\UserActivityFlag;
+use App\Notifications\ApprovalAccessNotification;
 use App\Notifications\ReworkRequestedNotification;
 use App\Notifications\TaskAssignedNotification;
 use App\Notifications\TaskCommentNotification;
@@ -282,6 +283,19 @@ class TaskNotificationService
             }
         }
 
+        // A Designer with delegated approval rights decided a teammate's request:
+        // tell the requester's Designer Head what was decided on their behalf.
+        if ($actor->role === 'designer' && $requester) {
+            $head = $requester->designerHead;
+
+            if ($head && $head->is_active && (int) $head->id !== (int) $actor->id) {
+                $this->send($head, new TaskRequestNotification($task, $taskRequest->request_type, $event, $actor, null, $requester));
+                $this->flag($head, $taskRequest->request_type);
+                $verb = $event === 'rejected' ? 'rejected' : 'approved';
+                $this->push($head, $task, ucfirst($taskRequest->request_type)." request {$verb} by Designer", "{$actor->name} {$verb} {$requester->name}'s request", 'request', $taskRequest->request_type);
+            }
+        }
+
         if ($event === 'approved' && $taskRequest->approvedDesigner) {
             $newDesigner = $taskRequest->approvedDesigner;
             $newTaskId = data_get($taskRequest->split_details, 'created_task_id')
@@ -293,6 +307,28 @@ class TaskNotificationService
                 $this->flag($newDesigner, 'assignment');
                 $this->pushAssigned($newDesigner, $newTask, $actor);
             }
+        }
+    }
+
+    /**
+     * Admin just enabled "Permission to approve (Swap / Split)" for a Designer:
+     * bell notification (database + live broadcast) and a desktop push that
+     * opens the Approvals page.
+     */
+    public function approvalAccessGranted(User $designer, User $admin): void
+    {
+        $this->send($designer, new ApprovalAccessNotification($admin));
+
+        try {
+            app(WebPushService::class)->send(
+                $designer,
+                'Approval access granted',
+                "{$admin->name} gave you permission to approve Swap and Split requests from your teammates.",
+                route('designer.approvals.index'),
+                'approval-access-'.$designer->id
+            );
+        } catch (Throwable $e) {
+            Log::warning('Approval access push failed', ['user_id' => $designer->id, 'error' => $e->getMessage()]);
         }
     }
 
@@ -357,7 +393,8 @@ class TaskNotificationService
             $title,
             "{$task->task_id} — {$name}\n{$detail}",
             $this->pushUrl($user, $task, $event ?? self::PUSH_TAB_EVENTS[$tag] ?? null),
-            "{$tag}-{$task->id}"
+            "{$tag}-{$task->id}",
+            ['task_id' => $task->id, 'task_ref' => $task->task_id]
         );
     }
 

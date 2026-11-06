@@ -36,8 +36,11 @@ class WebPushService
     /**
      * @param  string  $tag  Same tag replaces the previous notification instead of stacking.
      */
-    public function send(User $user, string $title, string $body, ?string $url = null, ?string $tag = null): int
+    public function send(User $user, string $title, string $body, ?string $url = null, ?string $tag = null, array $data = []): int
     {
+        // Mobile app (FCM) gets the same alert; independent of whether browser push is configured.
+        app(FcmService::class)->send($user, $title, $body, $url, $tag, $data);
+
         if (! $this->isConfigured() || ! $this->isEnabledFor($user) || ! $this->isOnFor($user)) {
             return 0;
         }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Adaptive launcher icon background (the logo artwork is on white). -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Tint of the notification small icon (Adinn red). -->
+    <color name="notification_accent">#E30613</color>
+</resources>

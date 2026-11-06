@@ -104,6 +104,52 @@ class DesignTaskRequest extends Model
     }
 
     /**
+     * True when a split request was closed automatically because the Designer
+     * finished every creative before the Designer Head/Admin decided on it
+     * (flag written by DesignTaskRequestService::autoRejectPendingForStatus()).
+     */
+    public function splitCompletedBeforeApproval(): bool
+    {
+        return $this->request_type === 'split'
+            && (bool) data_get($this->split_details, 'completed_before_approval', false);
+    }
+
+    /**
+     * The "Status" shown on a split ticket in the Kanban. The wording for the
+     * "completed everything before approval" case depends on who is looking:
+     * the requesting Designer sees "You completed all creatives", everyone else
+     * (Designer Head, Admin) sees "Designer completed all creatives".
+     *
+     * @return array{key:string,label:string}
+     */
+    public function splitStatus(?User $viewer = null): array
+    {
+        if ($this->overall_status === 'approved') {
+            return ['key' => 'approved', 'label' => 'Split approved'];
+        }
+
+        $pending = in_array($this->overall_status, ['pending_approval', 'pending_designer_head', 'pending_admin'], true);
+
+        // Closed by the system, or still pending but every creative is already done
+        // (nothing left to split) — both read as "completed all creatives".
+        if ($this->splitCompletedBeforeApproval()
+            || ($pending && $this->task && app(\App\Services\DesignTaskRequestService::class)->designerCompletedAll($this->task))) {
+            $isRequester = $viewer && (int) $viewer->id === (int) $this->requested_by;
+
+            return [
+                'key' => 'completed_all',
+                'label' => $isRequester ? 'You completed all' : 'Self-completed',
+            ];
+        }
+
+        if ($this->overall_status === 'rejected') {
+            return ['key' => 'rejected', 'label' => 'Split rejected'];
+        }
+
+        return ['key' => 'pending', 'label' => 'Pending approval'];
+    }
+
+    /**
      * Creative-count figures for a 'split' request, derived from split_details
      * (see DesignTaskRequestService::executeSplit()). Total is reconstructed
      * from the immutable approved_creative_count + original_remaining_creatives

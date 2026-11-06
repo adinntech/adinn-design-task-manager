@@ -53,12 +53,13 @@
 
                         <div>
                             <label class="label">Preferred Designer (optional)</label>
-                            <select class="premium-select" wire:model="targetDesignerId">
+                            <select class="premium-select" wire:model="targetDesignerId" data-availability-url="{{ url('/designer/designers/__ID__/availability') }}">
                                 <option value="">No preference</option>
                                 @foreach($designers as $designer)
                                     <option value="{{ $designer->id }}">{{ $designer->name }}</option>
                                 @endforeach
                             </select>
+                            <div class="designer-availability hidden" data-availability-box wire:ignore></div>
                             @error('targetDesignerId') <div class="field-error">{{ $message }}</div> @enderror
                         </div>
                     @endif
@@ -66,12 +67,13 @@
                     @if($type === 'swap')
                         <div>
                             <label class="label">Swap With Designer *</label>
-                            <select class="premium-select" wire:model="targetDesignerId">
+                            <select class="premium-select" wire:model="targetDesignerId" data-availability-url="{{ url('/designer/designers/__ID__/availability') }}">
                                 <option value="">Choose an active designer</option>
                                 @foreach($designers as $designer)
                                     <option value="{{ $designer->id }}">{{ $designer->name }}</option>
                                 @endforeach
                             </select>
+                            <div class="designer-availability hidden" data-availability-box wire:ignore></div>
                             @error('targetDesignerId') <div class="field-error">{{ $message }}</div> @enderror
                         </div>
 

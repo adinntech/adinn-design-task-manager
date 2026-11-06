@@ -57,6 +57,12 @@ class TaskNotificationUrlResolver
     /** Maps a stored database notification to the tab that shows what it is about. */
     public static function forNotificationData(User $user, array $data): ?string
     {
+        if (($data['category'] ?? null) === 'approval_access') {
+            return $user->isRequestApprover() && Route::has('designer.approvals.index')
+                ? route('designer.approvals.index')
+                : null;
+        }
+
         $taskId = (int) ($data['task_id'] ?? 0);
 
         if ($taskId < 1) {
