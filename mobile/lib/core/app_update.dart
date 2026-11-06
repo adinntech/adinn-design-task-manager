@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'auth.dart';
@@ -32,6 +33,62 @@ class AppUpdateInfo {
 final appBuildProvider = FutureProvider<int>((ref) async {
   final info = await PackageInfo.fromPlatform();
   return int.tryParse(info.buildNumber) ?? 0;
+});
+
+/// Remembers the last build this phone ran, so the first launch after an update can say what changed.
+abstract class SeenBuildStore {
+  Future<int?> read();
+  Future<void> write(int build);
+}
+
+class SecureSeenBuildStore implements SeenBuildStore {
+  const SecureSeenBuildStore([this._storage = const FlutterSecureStorage()]);
+
+  final FlutterSecureStorage _storage;
+  static const _key = 'last_seen_build';
+
+  @override
+  Future<int?> read() async {
+    try {
+      return int.tryParse(await _storage.read(key: _key) ?? '');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> write(int build) async {
+    try {
+      await _storage.write(key: _key, value: '$build');
+    } catch (_) {}
+  }
+}
+
+final seenBuildStoreProvider = Provider<SeenBuildStore>((ref) => const SecureSeenBuildStore());
+
+/// "What's new" for the release this phone just updated to.
+class WhatsNew {
+  const WhatsNew({required this.version, required this.notes});
+
+  final String? version;
+  final String notes;
+}
+
+/// Non-null exactly once: on the first launch of a build newer than the last one this phone ran, when the server
+/// has release notes. A brand-new install (nothing remembered yet) just records the build and says nothing.
+final whatsNewProvider = FutureProvider<WhatsNew?>((ref) async {
+  final build = await ref.watch(appBuildProvider.future);
+  final info = await ref.watch(appUpdateProvider.future);
+  if (info == null) return null; // can't read the notes right now: don't mark this build as seen yet
+
+  final store = ref.read(seenBuildStoreProvider);
+  final seen = await store.read();
+  if (seen == build) return null;
+  await store.write(build);
+
+  final notes = info.notes?.trim() ?? '';
+  if (seen == null || seen > build || notes.isEmpty) return null;
+  return WhatsNew(version: info.latestVersion, notes: notes);
 });
 
 /// The server's release info, or null when it can't be read. Offline or a server error must never lock

@@ -18,6 +18,7 @@ class UpdateGate extends ConsumerStatefulWidget {
 
 class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObserver {
   bool _dismissed = false;
+  WhatsNew? _whatsNew; // held here so a refresh can't remove it before the user taps "Got it"
 
   @override
   void initState() {
@@ -42,10 +43,28 @@ class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObse
     final info = ref.watch(appUpdateProvider).asData?.value;
     final build = ref.watch(appBuildProvider).asData?.value;
 
+    // First launch after an update: show what changed, once.
+    ref.listen(whatsNewProvider, (_, next) {
+      final v = next.asData?.value;
+      if (v != null && _whatsNew == null) setState(() => _whatsNew = v);
+    });
+    ref.watch(whatsNewProvider);
+
     if (info == null || build == null) return widget.child;
 
     if (info.mustUpdate(build)) return _UpdateRequired(info: info);
 
+    final Widget app = _withBar(info, build);
+
+    if (_whatsNew == null) return app;
+
+    return Stack(children: [
+      Positioned.fill(child: app),
+      Positioned.fill(child: _WhatsNewOverlay(whatsNew: _whatsNew!, onClose: () => setState(() => _whatsNew = null))),
+    ]);
+  }
+
+  Widget _withBar(AppUpdateInfo info, int build) {
     if (info.canUpdate(build) && !_dismissed) {
       return Column(children: [
         Material(
@@ -133,6 +152,45 @@ class _UpdateRequired extends ConsumerWidget {
               const SizedBox(height: 8),
               TextButton(key: const Key('update-recheck'), onPressed: () => ref.invalidate(appUpdateProvider), child: const Text("I've updated — check again")),
             ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One-time "What's new" card shown over the app after it has been updated.
+class _WhatsNewOverlay extends StatelessWidget {
+  const _WhatsNewOverlay({required this.whatsNew, required this.onClose});
+
+  final WhatsNew whatsNew;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      key: const Key('whats-new'),
+      color: Colors.black54,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Icon(Icons.celebration_outlined, size: 44, color: theme.colorScheme.primary),
+                  const SizedBox(height: 12),
+                  Text("What's new${whatsNew.version == null ? '' : ' in v${whatsNew.version}'}", textAlign: TextAlign.center, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 12),
+                  Flexible(child: SingleChildScrollView(child: Text(whatsNew.notes, key: const Key('whats-new-notes'), style: theme.textTheme.bodyMedium))),
+                  const SizedBox(height: 20),
+                  FilledButton(key: const Key('whats-new-close'), onPressed: onClose, child: const Text('Got it')),
+                ]),
+              ),
+            ),
           ),
         ),
       ),

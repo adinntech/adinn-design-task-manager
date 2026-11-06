@@ -10,11 +10,16 @@ import 'auth.dart';
 
 /// A push the user tapped (or one received while the app is open).
 class PushEvent {
-  const PushEvent({this.taskId});
+  const PushEvent({this.taskId, this.type});
 
   final int? taskId;
 
-  factory PushEvent.fromData(Map<String, dynamic> data) => PushEvent(taskId: int.tryParse('${data['task_id'] ?? ''}'));
+  /// `app_update` for the "Update available" announcement; null for task notifications.
+  final String? type;
+
+  bool get isAppUpdate => type == 'app_update';
+
+  factory PushEvent.fromData(Map<String, dynamic> data) => PushEvent(taskId: int.tryParse('${data['task_id'] ?? ''}'), type: data['type'] as String?);
 }
 
 /// The bits of Firebase Messaging the app needs. Abstract so tests don't touch Firebase.

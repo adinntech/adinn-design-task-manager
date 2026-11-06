@@ -150,7 +150,7 @@ class MobileDesignerApprovalsApiTest extends TestCase
         $this->getJson('/api/v1/designer/approvals/'.$this->request($this->task($this->approver), $this->approver)->id)->assertForbidden();
     }
 
-    public function test_approving_a_swap_reassigns_the_task(): void
+    public function test_approving_a_swap_hands_a_new_task_to_the_approved_designer(): void
     {
         $task = $this->task($this->teammate);
         $req = $this->request($task, $this->teammate, 'swap');
@@ -161,7 +161,12 @@ class MobileDesignerApprovalsApiTest extends TestCase
         $this->postJson("/api/v1/designer/approvals/{$req->id}/approve", ['approved_designer_id' => $this->third->id])
             ->assertOk()->assertJsonPath('request.overall_status', 'approved');
 
-        $this->assertSame($this->third->id, (int) $task->fresh()->designer_id);
+        // A swap keeps the original as the requester's read-only "Swap Tasks" record and hands a new task to the approved designer.
+        $this->assertSame('swap_tasks', $task->fresh()->status);
+        $handed = DesignTask::query()->where('designer_id', $this->third->id)->where('status', 'assigned_tasks')
+            ->where('requirements->_swap_request_id', $req->id)->first();
+        $this->assertNotNull($handed);
+        $this->assertSame($task->task_id, data_get($handed->requirements, '_swapped_from_task_id'));
     }
 
     public function test_rejecting_needs_a_reason(): void

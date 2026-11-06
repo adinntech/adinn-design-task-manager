@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/app_update.dart';
 import 'core/auth.dart';
 import 'core/push.dart';
 import 'core/realtime.dart';
@@ -35,6 +36,7 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     ref.invalidate(pendingRequestsProvider);
     ref.invalidate(taskDetailProvider);
     ref.invalidate(commentsProvider);
+    ref.invalidate(appUpdateProvider); // a new release may have been published
   }
 
   @override
@@ -51,6 +53,11 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     // Push: tapping a notification opens its task; a push in the foreground refreshes the badges/lists.
     final push = ref.read(pushRegistrarProvider);
     push.onOpened = (event) {
+      // "Update available": opening the app re-checks the release, which raises the Update screen if it is required.
+      if (event.isAppUpdate) {
+        ref.invalidate(appUpdateProvider);
+        return;
+      }
       final id = event.taskId;
       if (id != null) ref.read(routerProvider).push('/task/$id');
     };

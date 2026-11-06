@@ -1,21 +1,26 @@
-import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../home/navigation.dart';
 import '../tasks/providers.dart';
-import 'kanban_card.dart';
-import 'kanban_filters_sheet.dart';
+import 'board_toolbar.dart';
 import 'kanban_models.dart';
+import 'stage3d/designer_character.dart';
+import 'stage3d/held_card.dart';
+import 'stage3d/stage_meta.dart';
+import 'stage_tickets_screen.dart';
+import 'stage_tiles.dart';
+import 'ticket_actions.dart';
 
-/// Designer "My Tasks". The web board's columns keep their order and names, but on a phone you see one column
-/// at a time: swipe between them or tap a tab in the strip. Each card has a "Move to…" button (the main way to
-/// change a status); long-press-and-drag onto a tab, or to the screen edge, works as an extra. What may move where
-/// is decided by the server's state machine (sent on each card), and the server still has the last word.
+/// Designer "My Tasks". The Adinn representative fills the screen holding a square card for one stage (All Tickets
+/// first), with the rest of the stack peeking out behind it. Swipe the card, or use the arrows, to turn to the next stage;
+/// tap it to see that stage's tickets (the card flies into the header of the list, [StageTicketsScreen]).
+///
+/// A slight drag up steps the man back and brings a small tile for every workflow stage up into the space under his
+/// feet. Tapping a tile puts that stage's card in his hands.
 class KanbanScreen extends ConsumerStatefulWidget {
   const KanbanScreen({super.key});
 
@@ -23,284 +28,252 @@ class KanbanScreen extends ConsumerStatefulWidget {
   ConsumerState<KanbanScreen> createState() => _KanbanScreenState();
 }
 
-class _KanbanScreenState extends ConsumerState<KanbanScreen> {
-  final _search = TextEditingController();
-  final _pages = PageController();
-  final _tabScroll = ScrollController();
-  final _tabKeys = <String, GlobalKey>{};
+class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProviderStateMixin {
+  // The introduction, as one timeline (1400 ms) so there is a single controller:
+  //   character fades and scales in   0 – 500 ms
+  //   card stack moves into place   140 – 980 ms (600 ms)
+  //   camera zoom onto the card      490 – 1190 ms (700 ms)
+  //   edges fan out                  700 – 1330 ms (450 ms)
+  //   count scales in               1050 – 1400 ms
+  static const _introDuration = Duration(milliseconds: 1400);
+  late final AnimationController _intro = AnimationController(vsync: this, duration: _introDuration);
 
-  Timer? _debounce;
-  Timer? _edgeTimer;
-  Timer? _highlightTimer;
-  Timer? _cardFlashTimer;
-  int? _flashCard;
-  Offset? _dragAt;
-  DateTime _lastEdgeSwitch = DateTime.fromMillisecondsSinceEpoch(0);
+  late final Animation<double> _character = CurvedAnimation(parent: _intro, curve: const Interval(0.0, 0.36, curve: Curves.easeOutCubic));
+  late final Animation<double> _stackIn = CurvedAnimation(parent: _intro, curve: const Interval(0.10, 0.70, curve: Curves.easeOutCubic));
+  late final Animation<double> _camera = CurvedAnimation(parent: _intro, curve: const Interval(0.35, 0.85, curve: Curves.easeInOutCubic));
+  late final Animation<double> _fan = CurvedAnimation(parent: _intro, curve: const Interval(0.50, 0.95, curve: Curves.easeOutCubic));
+  late final Animation<double> _count = CurvedAnimation(parent: _intro, curve: const Interval(0.75, 1.0));
 
-  String? _selected;
-  String? _highlight;
+  /// 0 → the man fills the screen; 1 → he has stepped back and the stage tiles are up (350 ms).
+  late final AnimationController _panel = AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+  double _panelDragStart = 0;
+
+  /// Which stage's card is on top of the stack in his hands, and the turn in progress (0 → 1) to the next or the
+  /// previous one: the top card slides away while the one beneath rises out of the stack.
+  late final AnimationController _turn = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+  String _currentKey = allStageKey;
+  int _turnTo = -1;
+  int _turnDir = 1; // 1 = on to the next stage (card slides left), -1 = back (slides right)
+  double _dragS = 0;
+  List<StageInfo> _pagesNow = const [];
+
+  bool _started = false;
+  bool _played = false;
+  bool _searchOpen = false;
+  bool _opening = false;
   String? _pendingFocus;
-  List<KanbanColumn> _visible = const [];
+  int? _pendingTask;
 
   @override
   void initState() {
     super.initState();
-    _search.text = ref.read(kanbanFiltersProvider).search;
-    _takeFocus(ref.read(boardFocusProvider));
+    _searchOpen = ref.read(kanbanFiltersProvider).search.isNotEmpty;
+    _pendingFocus = ref.read(boardFocusProvider);
+    if (_pendingFocus != null) Future.microtask(() => ref.read(boardFocusProvider.notifier).focus(null));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+
+    // Decode the artwork once, up front, so the first frame of the introduction is not waiting on an image.
+    precacheImage(const AssetImage(DesignerCharacterWidget.asset), context);
+    precacheImage(const AssetImage(GrippingHand.leftAsset), context);
+    precacheImage(const AssetImage(GrippingHand.rightAsset), context);
+
+    if (ref.read(homeTabProvider) == HomeTab.tasks) _playIntro();
+  }
+
+  /// All tabs are built when the app starts, so the introduction waits until My Tasks is actually on screen.
+  void _playIntro() {
+    if (_played) return;
+    _played = true;
+    // Respect "remove animations": show the finished screen at once.
+    MediaQuery.disableAnimationsOf(context) ? _intro.value = 1 : _intro.forward();
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
-    _edgeTimer?.cancel();
-    _highlightTimer?.cancel();
-    _cardFlashTimer?.cancel();
-    _search.dispose();
-    _pages.dispose();
-    _tabScroll.dispose();
+    _intro.dispose();
+    _panel.dispose();
+    _turn.dispose();
     super.dispose();
   }
 
-  // ---- selection ------------------------------------------------------------------------------
+  Future<void> _open(String key, {int? flash}) async {
+    if (_opening || !mounted) return;
+    _opening = true;
+    await openStage(context, key, flashCard: flash);
+    _opening = false;
+  }
 
-  int get _selectedIndex => _visible.indexWhere((c) => c.key == _selected);
+  // ---- the drag that brings the tiles up --------------------------------------------------------
 
-  void _select(String key, {bool animate = true}) {
-    final index = _visible.indexWhere((c) => c.key == key);
-    if (index < 0) return;
-    setState(() => _selected = key);
+  void _dragStart(DragStartDetails d) {
+    _panel.stop();
+    _panelDragStart = _panel.value;
+  }
 
-    if (_pages.hasClients && (_pages.page ?? 0).round() != index) {
-      animate ? _pages.animateToPage(index, duration: const Duration(milliseconds: 280), curve: Curves.easeOut) : _pages.jumpToPage(index);
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = _tabKeys[key]?.currentContext;
-      if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 220), alignment: 0.5);
+  void _dragUpdate(DragUpdateDetails d, double panelHeight) {
+    _panel.value = (_panel.value - (d.primaryDelta ?? 0) / panelHeight).clamp(0.0, 1.0);
+  }
+
+  /// A slight drag is enough: past a small distance (or on a flick) the panel goes the rest of the way.
+  void _dragEnd(DragEndDetails d) {
+    final v = d.primaryVelocity ?? 0;
+    final wasOpen = _panelDragStart > 0.5;
+    final open = v < -300 ? true : (v > 300 ? false : (wasOpen ? _panel.value > 0.85 : _panel.value > 0.05));
+    _panel.animateTo(open ? 1 : 0, curve: Curves.easeOutCubic);
+  }
+
+  // ---- turning the cards -------------------------------------------------------------------------
+
+  int get _currentIndex {
+    final i = _pagesNow.indexWhere((p) => p.key == _currentKey);
+    return i < 0 ? 0 : i;
+  }
+
+  void _commitTurn() {
+    if (!mounted) return;
+    if (_turnTo >= 0 && _turnTo < _pagesNow.length) _currentKey = _pagesNow[_turnTo].key;
+    setState(() => _turnTo = -1);
+    _turn.value = 0;
+  }
+
+  /// Turn to [page] (arrows, tiles): the top card slides away and that stage's card comes out of the stack.
+  Future<void> _goTo(int page) async {
+    if (page < 0 || page >= _pagesNow.length || page == _currentIndex) return;
+    _turn.stop();
+    if (_turnTo >= 0) _commitTurn(); // a turn in progress finishes first
+    setState(() {
+      _turnDir = page > _currentIndex ? 1 : -1;
+      _turnTo = page;
     });
+    _turn.value = 0;
+    await _turn.animateTo(1, curve: Curves.easeOutCubic);
+    _commitTurn();
   }
 
-  /// Keeps the selection valid as data or filters change.
-  void _syncSelection(KanbanBoard board) {
-    final keys = _visible.map((c) => c.key).toSet();
-    if (_selected == null || !keys.contains(_selected)) {
-      // Normally land on All Tickets. While searching that tab is hidden, so land on the first stage with a match.
-      final firstWithCards = _visible.where((c) => board.countFor(c) > 0).map((c) => c.key).firstOrNull;
-      _selected = keys.contains(KanbanColumn.allKey) ? KanbanColumn.allKey : (firstWithCards ?? _visible.firstOrNull?.key);
-    }
+  // ---- swiping the card ---------------------------------------------------------------------------
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_pages.hasClients) return;
-      final index = _selectedIndex;
-      if (index >= 0 && (_pages.page ?? 0).round() != index) _pages.jumpToPage(index);
-    });
+  void _swipeStart(DragStartDetails d) {
+    _turn.stop();
+    if (_turnTo >= 0) _commitTurn();
+    _dragS = 0;
   }
 
-  /// A dashboard card asked for a status: select that column's tab and flash it.
-  void _takeFocus(String? focus) {
-    if (focus == null) return;
-    _pendingFocus = focus.isEmpty ? KanbanColumn.allKey : focus; // '' = "show everything"
-    Future.microtask(() {
-      if (mounted) ref.read(boardFocusProvider.notifier).focus(null);
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showPendingFocus());
-  }
-
-  void _showPendingFocus() {
-    final key = _pendingFocus;
-    if (!mounted || key == null || !_visible.any((c) => c.key == key)) return; // retried when the data arrives
-    _pendingFocus = null;
-    _select(key);
-    setState(() => _highlight = key);
-    _highlightTimer?.cancel();
-    _highlightTimer = Timer(const Duration(milliseconds: 1800), () {
-      if (mounted) setState(() => _highlight = null);
-    });
-  }
-
-  // ---- actions --------------------------------------------------------------------------------
-
-  void _onSearch(String v) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 350), () {
-      if (mounted) ref.read(kanbanFiltersProvider.notifier).update(ref.read(kanbanFiltersProvider).copyWith(search: v));
-    });
-  }
-
-  void _toast(String message) => ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
-
-  void _refresh() {
-    ref.invalidate(kanbanBoardProvider);
-    ref.invalidate(boardProvider);
-  }
-
-  String _label(KanbanBoard board, String key) => board.columns.where((c) => c.key == key).map((c) => c.label).firstOrNull ?? key;
-
-  Future<void> _move(KanbanCard card, String to) async {
-    try {
-      await ref.read(roleApiProvider).moveStatus(card.id, to);
-      _refresh();
-      if (mounted) _toast('Task status updated successfully.');
-    } on ApiException catch (e) {
-      // e.g. "Creative Work Incomplete: Complete all creatives before BD Review. 1 of 4 completed • 3 remaining."
-      if (mounted) _toast(e.message);
-    }
-  }
-
-  Future<void> _backward(KanbanCard card, String to, KanbanBoard board) async {
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (_) => _BackwardDialog(taskLabel: '${card.taskId} — ${card.name}', from: _label(board, card.status), to: _label(board, to)),
-    );
-    if (reason == null || !mounted) return;
-
-    try {
-      await ref.read(roleApiProvider).requestBackward(card.id, toStatus: to, reason: reason);
-      _refresh();
-      if (mounted) _toast('Backward status request submitted — waiting for Designer Head approval.');
-    } on ApiException catch (e) {
-      if (mounted) _toast(e.message);
-    }
-  }
-
-  /// The "Move to…" sheet: forward moves happen straight away, a move back asks for a reason first.
-  Future<void> _openMoveSheet(KanbanCard card, KanbanBoard board) async {
-    final choice = await showModalBottomSheet<(String, bool)>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Text('Move ${card.taskId}', style: Theme.of(context).textTheme.titleMedium),
-            ),
-            for (final to in card.forwardTo)
-              ListTile(key: Key('move-$to'), leading: const Icon(Icons.arrow_forward), title: Text('Move to ${_label(board, to)}'), onTap: () => Navigator.pop(context, (to, false))),
-            if (card.backwardTo.isNotEmpty) const Divider(height: 8),
-            for (final to in card.backwardTo)
-              ListTile(
-                key: Key('back-$to'),
-                leading: const Icon(Icons.arrow_back),
-                title: Text('Request move back to ${_label(board, to)}'),
-                subtitle: const Text('Needs Designer Head approval'),
-                onTap: () => Navigator.pop(context, (to, true)),
-              ),
-          ]),
-        ),
-      ),
-    );
-
-    if (choice == null || !mounted) return;
-    choice.$2 ? _backward(card, choice.$1, board) : _move(card, choice.$1);
-  }
-
-  void _drop(KanbanCard card, KanbanColumn target, KanbanBoard board) {
-    if (target.isSplitLog || target.isAll || target.key == card.status) return;
-
-    if (card.forwardTo.contains(target.key)) {
-      _move(card, target.key);
-    } else if (card.backwardTo.contains(target.key)) {
-      _backward(card, target.key, board);
-    } else {
-      _toast("This task can't be moved to ${target.label}.");
-    }
-  }
-
-  /// While a card is held near the screen's left/right edge the board turns to the neighbouring column.
-  void _trackDrag({required bool active}) {
-    if (!active) {
-      _dragAt = null;
-      _edgeTimer?.cancel();
-      _edgeTimer = null;
+  /// Dragging left pulls the top card off towards the next stage; dragging right, back to the previous one.
+  void _swipeUpdate(DragUpdateDetails d, double span) {
+    _dragS = (_dragS + (d.primaryDelta ?? 0) / span).clamp(-1.0, 1.0);
+    final dir = _dragS < 0 ? 1 : -1;
+    final to = _currentIndex + dir;
+    if (to < 0 || to >= _pagesNow.length) {
+      // nothing beyond the first or last card: it only gives a little
+      setState(() => _turnTo = -1);
       return;
     }
-
-    // Until the finger has actually moved there is no position, so a card that is merely held never counts as
-    // being "at the edge".
-    _edgeTimer ??= Timer.periodic(const Duration(milliseconds: 120), (_) {
-      final pos = _dragAt;
-      if (pos == null || !mounted || DateTime.now().difference(_lastEdgeSwitch) < const Duration(milliseconds: 800)) return;
-      final width = MediaQuery.sizeOf(context).width;
-      final i = _selectedIndex;
-      if (pos.dx < 48 && i > 0) {
-        _lastEdgeSwitch = DateTime.now();
-        _select(_visible[i - 1].key);
-      } else if (pos.dx > width - 48 && i >= 0 && i < _visible.length - 1) {
-        _lastEdgeSwitch = DateTime.now();
-        _select(_visible[i + 1].key);
-      }
+    setState(() {
+      _turnDir = dir;
+      _turnTo = to;
     });
+    _turn.value = _dragS.abs();
   }
 
-  Future<void> _openFilters(KanbanBoard? board) async {
-    final next = await showKanbanFilters(context, current: ref.read(kanbanFiltersProvider), bds: board?.bds ?? const []);
-    if (next != null) {
-      _search.text = next.search;
-      ref.read(kanbanFiltersProvider.notifier).update(next);
+  void _swipeEnd(DragEndDetails d) {
+    if (_turnTo < 0) return;
+    final v = d.primaryVelocity ?? 0;
+    final flick = v * (_turnDir == 1 ? -1 : 1) > 500;
+    if (flick || _turn.value > 0.4) {
+      _turn.animateTo(1, curve: Curves.easeOutCubic).then((_) => _commitTurn());
+    } else {
+      _turn.animateTo(0, curve: Curves.easeOut).then((_) {
+        if (mounted) setState(() => _turnTo = -1);
+      });
     }
   }
 
-  // ---- build ----------------------------------------------------------------------------------
+  /// A tile: put that stage's card in his hands (a second tap on the card already there opens it). A stage with no
+  /// tickets has no card in the stack, so it opens straight away.
+  void _onTile(StageInfo s, List<StageInfo> pages) {
+    final i = pages.indexWhere((p) => p.key == s.key);
+    if (i < 0 || s.key == _currentKey) {
+      _open(s.key);
+    } else {
+      _goTo(i);
+    }
+  }
+
+  // ---- the dashboard's shortcuts ------------------------------------------------------------------
+
+  /// A dashboard card asked for a stage (or one ticket): open it as soon as the board is loaded.
+  void _applyPending(KanbanBoard b) {
+    final focus = _pendingFocus;
+    final task = _pendingTask;
+    if (focus == null && task == null) return;
+    _pendingFocus = null;
+    _pendingTask = null;
+
+    if (task != null) {
+      final card = b.cards.where((c) => c.id == task).firstOrNull;
+      if (card != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _open(card.status, flash: card.id));
+        return;
+      }
+    }
+    if (focus != null && focus.isNotEmpty && (focus == allStageKey || b.columns.any((c) => c.key == focus))) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _open(focus));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(boardFocusProvider, (_, focus) {
-      if (focus != null) _takeFocus(focus);
+    ref.listen(homeTabProvider, (_, tab) {
+      if (tab == HomeTab.tasks) _playIntro();
     });
-    // "Open on board": ring that task's card once its column is showing,.
+    ref.listen(boardFocusProvider, (_, focus) {
+      if (focus == null) return;
+      _pendingFocus = focus;
+      Future.microtask(() => ref.read(boardFocusProvider.notifier).focus(null));
+      final b = ref.read(kanbanBoardProvider).asData?.value;
+      if (b != null) _applyPending(b);
+    });
     ref.listen(boardTaskFocusProvider, (_, id) {
       if (id == null) return;
-      Future.microtask(() {
-        if (mounted) ref.read(boardTaskFocusProvider.notifier).focus(null);
-      });
-      setState(() => _flashCard = id);
-      _cardFlashTimer?.cancel();
-      _cardFlashTimer = Timer(const Duration(milliseconds: 2500), () {
-        if (mounted) setState(() => _flashCard = null);
-      });
+      _pendingTask = id;
+      Future.microtask(() => ref.read(boardTaskFocusProvider.notifier).focus(null));
+      final b = ref.read(kanbanBoardProvider).asData?.value;
+      if (b != null) _applyPending(b);
     });
 
-    final filters = ref.watch(kanbanFiltersProvider);
     final async = ref.watch(kanbanBoardProvider);
     final board = async.asData?.value;
+    final unread = ref.watch(notificationsProvider).maybeWhen(data: (d) => d.unread, orElse: () => 0);
+    final actions = TicketActions(ref);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Tasks'),
         actions: [
-          if (board != null)
-            Padding(padding: const EdgeInsets.only(right: 4), child: Center(child: Text('${board.cards.length} visible', key: const Key('visible-count'), style: Theme.of(context).textTheme.labelMedium))),
-          IconButton(key: const Key('kanban-refresh'), tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: _refresh),
           IconButton(
-            key: const Key('kanban-filters'),
-            tooltip: 'Filters',
-            icon: Badge(isLabelVisible: !filters.copyWith(search: '').isDefault, smallSize: 9, child: const Icon(Icons.tune)),
-            onPressed: () => _openFilters(board),
+            key: const Key('kanban-search-toggle'),
+            tooltip: 'Search',
+            icon: Icon(_searchOpen ? Icons.search_off : Icons.search),
+            onPressed: () => setState(() => _searchOpen = !_searchOpen || ref.read(kanbanFiltersProvider).search.isNotEmpty),
+          ),
+          BoardFilterButton(board: board),
+          IconButton(
+            key: const Key('kanban-alerts'),
+            tooltip: 'Notifications',
+            icon: Badge(isLabelVisible: unread > 0, label: Text('$unread'), child: const Icon(Icons.notifications_outlined)),
+            onPressed: () => ref.read(homeTabProvider.notifier).goTo(HomeTab.alerts),
           ),
         ],
       ),
       body: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-          child: TextField(
-            key: const Key('kanban-search'),
-            controller: _search,
-            onChanged: _onSearch,
-            textInputAction: TextInputAction.search,
-            decoration: const InputDecoration(hintText: 'Search Task ID, project number, task, client, vertical, BD…', prefixIcon: Icon(Icons.search), isDense: true),
-          ),
-        ),
-        if (board != null)
-          _AppliedFilters(
-            filters: filters,
-            board: board,
-            onClear: () {
-              _search.clear();
-              ref.read(kanbanFiltersProvider.notifier).clear();
-            },
-          ),
+        if (_searchOpen) const BoardSearchField(),
+        if (board != null) AppliedFilters(board: board),
         Expanded(
           child: async.when(
             skipLoadingOnRefresh: true,
@@ -312,28 +285,13 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Text('$e', textAlign: TextAlign.center),
                   const SizedBox(height: 12),
-                  OutlinedButton(onPressed: _refresh, child: const Text('Try again')),
+                  OutlinedButton(onPressed: actions.refresh, child: const Text('Try again')),
                 ]),
               ),
             ),
             data: (b) {
-              // While a text search is active the web hides empty columns.
-              // "All Tickets" is the overview; while you search, matches are shown under the stage they are in instead,
-              // and stages with no match are hidden (as on the web).
-              _visible = [
-                if (!filters.isSearching) KanbanColumn.all(),
-                for (final c in b.columns) if (!filters.isSearching || b.countFor(c) > 0) c,
-              ];
-              _syncSelection(b);
-              WidgetsBinding.instance.addPostFrameCallback((_) => _showPendingFocus());
-
-              if (_visible.isEmpty) return const Center(child: Text('No tasks match.', key: Key('board-empty')));
-
-              return Column(children: [
-                _Summary(b),
-                _tabs(b),
-                Expanded(child: _pager(b)),
-              ]);
+              _applyPending(b);
+              return _overview(context, b);
             },
           ),
         ),
@@ -341,346 +299,300 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
     );
   }
 
-  Widget _tabs(KanbanBoard b) {
-    return SizedBox(
-      height: 52,
-      child: ListView.separated(
-        key: const Key('kanban-tabs'),
-        controller: _tabScroll,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        itemCount: _visible.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final c = _visible[i];
-          final accent = c.isAll ? Theme.of(context).colorScheme.primary : (c.isSplitLog ? const Color(0xFF7C3AED) : statusColor(c.key));
-          final selected = c.key == _selected;
-          final flashing = c.key == _highlight;
+  Widget _overview(BuildContext context, KanbanBoard b) {
+    final total = b.stats['total'] ?? b.cards.length;
+    final secondary = ModalRoute.of(context)?.secondaryAnimation ?? kAlwaysDismissedAnimation;
+    final stages = [for (final c in b.columns) StageInfo(key: c.key, label: c.label, count: b.countFor(c))];
 
-          // A card can be dropped straight onto a tab to move it to that column.
-          return DragTarget<KanbanCard>(
-            key: _tabKeys.putIfAbsent(c.key, GlobalKey.new),
-            onWillAcceptWithDetails: (_) => true,
-            onAcceptWithDetails: (d) => _drop(d.data, c, b),
-            builder: (context, candidates, _) {
-              final dragged = candidates.isEmpty ? null : candidates.first;
-              final allowed = dragged != null && (dragged.forwardTo.contains(c.key) || dragged.backwardTo.contains(c.key));
-              final ring = dragged == null ? (flashing ? accent : null) : (allowed ? const Color(0xFF2E7D32) : const Color(0xFFB00020));
+    // The cards in his hands: All Tickets, then every stage that has tickets.
+    final pages = [StageInfo(key: allStageKey, label: 'All Tickets', count: total), ...stages.where((s) => s.count > 0)];
+    _pagesNow = pages;
+    final current = pages.indexWhere((p) => p.key == _currentKey);
+    if (current < 0) {
+      _currentKey = allStageKey; // the stage emptied (or a search narrowed the board): back to All Tickets
+      _turnTo = -1;
+    }
+    final here = pages[current < 0 ? 0 : current];
 
-              return ChoiceChip(
-                key: Key('tab-${c.key}'),
-                selected: selected,
-                showCheckmark: false,
-                selectedColor: accent.withValues(alpha: 0.16),
-                side: BorderSide(color: ring ?? (selected ? accent : Colors.black12), width: ring != null ? 2.5 : 1),
-                label: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(c.label, key: Key('title-${c.key}'), style: TextStyle(fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(color: accent.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
-                    child: Text('${b.countFor(c)}', key: Key('count-${c.key}'), style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 11)),
+    return LayoutBuilder(builder: (context, box) {
+      final w = box.maxWidth;
+      final h = box.maxHeight;
+      // The man is as tall as the screen allows, kept centred; the card he holds is as wide as his two hands are apart.
+      final u = math.min(h, w * 1.95);
+      final side = math.min(0.38 * u, w * 0.6);
+      final cardTop = 0.30 * u; // below the Adinn logo on his shirt
+      final charLeft = w / 2 - 0.333 * u;
+
+      // The tiles' space, and how far the man has to shrink to leave it free.
+      const rows = 3;
+      final panelH = rows * 62.0 + (rows - 1) * 7 + 62;
+      final stepBack = math.min(0.72, math.max(0.45, (h - panelH - 8) / u));
+      final cur = current < 0 ? 0 : current;
+      final next = pages.sublist(cur + 1); // only the cards that are really left, none on the last one
+
+      return GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onVerticalDragStart: _dragStart,
+        onVerticalDragUpdate: (d) => _dragUpdate(d, panelH),
+        onVerticalDragEnd: _dragEnd,
+        child: ClipRect(
+          child: SizedBox(
+            width: w,
+            height: h,
+            child: Stack(children: [
+              // The man and the cards. A drag up pushes them back: smaller, and up to make room underneath.
+              Positioned(
+                left: 0,
+                top: 0,
+                width: w,
+                height: u,
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_intro, secondary, _panel]),
+                  builder: (context, child) {
+                    final s = Curves.easeInOut.transform(secondary.value.clamp(0.0, 1.0));
+                    final v = Curves.easeInOut.transform(_panel.value);
+                    final scale = 1 - (1 - stepBack) * v;
+                    final camera = 1.12 - 0.12 * _camera.value; // the camera pulls back and settles on the card
+                    return Opacity(
+                      opacity: (1 - s * 1.25).clamp(0.0, 1.0),
+                      child: Transform(
+                        alignment: Alignment.topCenter,
+                        transform: Matrix4.identity()
+                          ..translateByDouble(0.0, -s * u * 0.3, 0.0, 1.0)
+                          ..scaleByDouble(scale * camera, scale * camera, 1.0, 1.0),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: _hero(u: u, w: w, side: side, cardTop: cardTop, charLeft: charLeft, pages: pages, current: current < 0 ? 0 : current, next: next),
+                ),
+              ),
+              // "Swipe up" hint; it goes as the tiles arrive.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 14,
+                child: Center(
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([_count, _panel]),
+                    builder: (context, child) => Opacity(opacity: (_count.value * (1 - _panel.value * 2)).clamp(0.0, 1.0), child: child),
+                    child: GestureDetector(
+                      key: const Key('hero-hint'),
+                      onTap: () => _panel.animateTo(1, curve: Curves.easeOutCubic),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10, offset: const Offset(0, 3))]),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.keyboard_double_arrow_up, size: 18, color: adinnRed),
+                          SizedBox(width: 6),
+                          Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Swipe up for your stages', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)))),
+                        ]),
+                      ),
+                    ),
                   ),
+                ),
+              ),
+              // The stage tiles: straight on the page, rising into the space under his feet.
+              AnimatedBuilder(
+                animation: Listenable.merge([_panel, secondary]),
+                builder: (context, child) {
+                  final v = Curves.easeOutCubic.transform(_panel.value);
+                  final s = Curves.easeInOut.transform(secondary.value.clamp(0.0, 1.0));
+                  return Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: panelH,
+                    child: IgnorePointer(
+                      ignoring: v < 0.5,
+                      child: Opacity(
+                        opacity: (v * (1 - s * 1.25)).clamp(0.0, 1.0),
+                        child: Transform.translate(offset: Offset(0, (1 - v) * 50 + s * 30), child: child),
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  key: const Key('stage-panel'),
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                  // On a short screen the tiles shrink to fit instead of overflowing.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.bottomCenter,
+                    child: SizedBox(
+                      width: w - 28,
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 8),
+                          child: Align(alignment: Alignment.centerLeft, child: Text('Your stages', key: Key('panel-title'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF475467)))),
+                        ),
+                        StageTiles(stages: stages, selectedKey: here.key, onTap: (s) => _onTile(s, pages)),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      );
+    });
+  }
+
+  /// The representative holding the card: the real artwork of the man, with the stack, the pager, arrows and dots laid
+  /// out in units of his height.
+  Widget _hero({required double u, required double w, required double side, required double cardTop, required double charLeft, required List<StageInfo> pages, required int current, required List<StageInfo> next}) {
+    final shown = _turnTo >= 0 && _turn.value > 0.5 ? _turnTo : current; // the dots and arrows follow the card once it is half way
+    final accent = pages[shown].key == allStageKey ? adinnRed : stageAccent(pages[shown].key);
+
+    return AnimatedBuilder(
+      animation: _intro,
+      builder: (context, _) {
+        final stackSlide = (1 - _stackIn.value) * u * 0.16;
+
+        return SizedBox(
+          width: w,
+          height: u,
+          child: Stack(clipBehavior: Clip.none, children: [
+            Positioned(
+              left: charLeft,
+              top: 0,
+              child: Opacity(
+                opacity: _character.value,
+                child: Transform.scale(scale: 0.92 + 0.08 * _character.value, alignment: Alignment.bottomCenter, child: DesignerCharacterWidget(height: u)),
+              ),
+            ),
+            // The rest of the stack, peeking out behind the card.
+            Positioned(
+              left: w / 2 - side / 2,
+              top: cardTop + stackSlide,
+              child: Opacity(opacity: _stackIn.value, child: HeldCardEdges(side: side, colors: [for (final s in next) s.key == allStageKey ? adinnRed : stageAccent(s.key)], open: _fan)),
+            ),
+            // The card in his hands, on top of the stack: swipe it away to bring up the next one.
+            Positioned(
+              left: 0,
+              width: w,
+              top: cardTop - side * 0.05 + stackSlide,
+              height: side * 1.1,
+              child: Opacity(
+                opacity: _stackIn.value,
+                child: GestureDetector(
+                  key: const Key('card-pager'),
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragStart: _swipeStart,
+                  onHorizontalDragUpdate: (d) => _swipeUpdate(d, side * 1.1),
+                  onHorizontalDragEnd: _swipeEnd,
+                  child: AnimatedBuilder(
+                    animation: _turn,
+                    builder: (context, _) => _deck(w: w, side: side, pages: pages, current: current),
+                  ),
+                ),
+              ),
+            ),
+            // His hands grip the cards. The left one is on the card's left edge; the right one holds the whole stack, so it
+            // sits on the outer edge of the last card peeking out and moves in as the stack thins.
+            ..._hands(u: u, w: w, side: side, edges: math.min(next.length, HeldCardEdges.maxEdges)),
+            // Where he is in the stack.
+            Positioned(
+              left: 0,
+              right: 0,
+              top: u - 64,
+              child: Opacity(
+                opacity: _count.value,
+                child: Row(key: const Key('pager-dots'), mainAxisAlignment: MainAxisAlignment.center, children: [
+                  for (var i = 0; i < pages.length; i++)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: i == shown ? 16 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(color: i == shown ? accent : Colors.black26, borderRadius: BorderRadius.circular(3)),
+                    ),
                 ]),
-                onSelected: (_) => _select(c.key),
-              );
-            },
+              ),
+            ),
+          ]),
+        );
+      },
+    );
+  }
+
+  /// His two hands, in place over the edges of the cards. They are sized to his arms (the hand and its cuff are about as
+  /// tall as his sleeve cuffs) and sit where his arms end, so they join the sleeves.
+  List<Widget> _hands({required double u, required double w, required double side, required int edges}) {
+    final hh = u * 0.072;
+    final hw = hh * GrippingHand.aspect;
+    final top = u * 0.382 - hh / 2;
+    final cardLeft = w / 2 - side / 2;
+    final cardRight = w / 2 + side / 2;
+
+    return [
+      Positioned(
+        left: cardLeft - hw * 0.46,
+        top: top,
+        child: Opacity(opacity: _stackIn.value, child: GrippingHand(left: true, height: hh)),
+      ),
+      // each edge still to come puts the outer edge of the stack a little further out, so the hand follows
+      TweenAnimationBuilder<double>(
+        tween: Tween(end: edges.toDouble()),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        builder: (context, n, _) {
+          final open = Curves.easeOutCubic.transform(_fan.value.clamp(0.0, 1.0));
+          return Positioned(
+            left: cardRight + n * 0.06 * side * open - hw * 0.54,
+            top: top,
+            child: Opacity(opacity: _stackIn.value, child: GrippingHand(left: false, height: hh)),
           );
         },
       ),
-    );
+    ];
   }
 
-  Widget _pager(KanbanBoard b) {
-    final now = DateTime.now();
+  /// The top card and, while one is being turned to, the card it turns to.
+  ///  - On to the next stage: the top card slides off to the side (tilting, fading) and the next one rises out of the
+  ///    stack, from where its edge was peeking.
+  ///  - Back: the previous card slides in from the side onto the top, and the one it covers drops back into the stack.
+  Widget _deck({required double w, required double side, required List<StageInfo> pages, required int current}) {
+    final t = _turn.value;
+    final top = pages[current];
+    final to = _turnTo >= 0 && _turnTo < pages.length ? pages[_turnTo] : null;
+    final forward = _turnDir == 1;
 
-    return PageView.builder(
-      key: const Key('kanban-pages'),
-      controller: _pages,
-      itemCount: _visible.length,
-      onPageChanged: (i) {
-        if (i < _visible.length && _visible[i].key != _selected) {
-          setState(() => _selected = _visible[i].key);
-          final ctx = _tabKeys[_selected]?.currentContext;
-          if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 220), alignment: 0.5);
-        }
-      },
-      itemBuilder: (_, i) {
-        final column = _visible[i];
-
-        return _KeepAlive(
-            child: DragTarget<KanbanCard>(
-          onWillAcceptWithDetails: (_) => true,
-          onAcceptWithDetails: (d) => _drop(d.data, column, b),
-          builder: (context, candidates, _) {
-            final dragged = candidates.isEmpty ? null : candidates.first;
-            final allowed = dragged != null && (dragged.forwardTo.contains(column.key) || dragged.backwardTo.contains(column.key));
-
-            return AnimatedContainer(
-              key: Key('page-${column.key}'),
-              duration: const Duration(milliseconds: 150),
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              decoration: BoxDecoration(
-                color: dragged == null ? Colors.transparent : (allowed ? const Color(0xFFEFFAF1) : const Color(0xFFFFF1F0)),
-                borderRadius: BorderRadius.circular(16),
-                border: dragged == null ? null : Border.all(color: allowed ? const Color(0xFF2E7D32) : const Color(0xFFB00020), width: 2),
-              ),
-              child: _columnBody(context, column, b, now),
-            );
-          },
-        ));
-      },
-    );
-  }
-
-  Widget _columnBody(BuildContext context, KanbanColumn column, KanbanBoard b, DateTime now) {
-    if (column.isSplitLog) {
-      if (b.splitLog.isEmpty) {
-        return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('No split requests in ${b.periodLabel}.', key: const Key('split-empty'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.black45))));
-      }
-      return ListView.separated(
-        padding: const EdgeInsets.only(top: 4, bottom: 16),
-        itemCount: b.splitLog.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => SplitLogCard(key: Key('split-${b.splitLog[i].id}'), entry: b.splitLog[i], onOpen: () => context.push('/task/${b.splitLog[i].id}')),
-      );
-    }
-
-    if (column.isAll) {
-      if (b.cards.isEmpty) {
-        return const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('No tasks', style: TextStyle(color: Colors.black45))));
-      }
-
-      // Pipeline order first (so the list reads like the board), then the soonest deadline.
-      final order = {for (var i = 0; i < b.columns.length; i++) b.columns[i].key: i};
-      final all = [...b.cards]..sort((x, y) {
-          final byStage = (order[x.status] ?? 999).compareTo(order[y.status] ?? 999);
-          return byStage != 0 ? byStage : (x.dueAt ?? DateTime(9999)).compareTo(y.dueAt ?? DateTime(9999));
-        });
-
-      return ListView.separated(
-        padding: const EdgeInsets.only(top: 4, bottom: 16),
-        itemCount: all.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _draggable(context, all[i], b, now, stageLabel: _label(b, all[i].status)),
-      );
-    }
-
-    var cards = b.inColumn(column.key);
-    if (column.key == 'assigned_tasks') {
-      cards = [...cards]..sort((a, c) => (c.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
-    }
-
-    if (cards.isEmpty) {
-      return const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('No tasks', style: TextStyle(color: Colors.black45))));
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.only(top: 4, bottom: 16),
-      itemCount: cards.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _draggable(context, cards[i], b, now),
-    );
-  }
-
-  Widget _draggable(BuildContext context, KanbanCard card, KanbanBoard b, DateTime now, {String? stageLabel}) {
-    Widget tile = KanbanTaskCard(card: card, now: now, stageLabel: stageLabel, onOpen: () => context.push('/task/${card.id}'), onMove: card.canMove ? () => _openMoveSheet(card, b) : null);
-    if (card.id == _flashCard) {
-      tile = Container(
-        foregroundDecoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: Theme.of(context).colorScheme.primary, width: 3)),
-        child: tile,
-      );
-    }
-
-    if (!card.canMove) return KeyedSubtree(key: Key('card-${card.id}'), child: tile);
-
-    return LongPressDraggable<KanbanCard>(
-      key: Key('card-${card.id}'),
-      data: card,
-      onDragStarted: () => _trackDrag(active: true),
-      onDragUpdate: (d) => _dragAt = d.globalPosition,
-      onDragEnd: (_) => _trackDrag(active: false),
-      onDraggableCanceled: (_, _) => _trackDrag(active: false),
-      feedback: Material(
-        color: Colors.transparent,
-        child: SizedBox(width: MediaQuery.sizeOf(context).width - 40, child: Opacity(opacity: 0.92, child: tile)),
-      ),
-      childWhenDragging: Opacity(opacity: 0.35, child: tile),
-      child: tile,
-    );
-  }
-}
-
-class _Summary extends StatelessWidget {
-  const _Summary(this.board);
-
-  final KanbanBoard board;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget metric(String key, String label, int value, {Widget? extra, double width = 118}) => SizedBox(
-          width: width,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.black54)),
-                Text('$value', key: Key('metric-$key'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                ?extra,
-              ]),
-            ),
+    // the card leaving the top, or coming back onto it, travels to / from the side
+    Widget travelling(StageInfo s, double progress, {required VoidCallback onTap}) => Opacity(
+          opacity: (1 - 0.8 * progress).clamp(0.0, 1.0),
+          child: Transform(
+            alignment: Alignment.bottomCenter,
+            transform: Matrix4.identity()
+              ..translateByDouble(-progress * w * 0.55, progress * side * 0.05, 0.0, 1.0)
+              ..rotateZ(-progress * 0.28),
+            child: HeldStageCard(key: ValueKey('deck-${s.key}'), stage: s, side: side, count: _count, onTap: onTap),
           ),
         );
 
-    final chips = board.activeBreakdown.where((r) => r.count > 0);
+    // the card in the stack: rising out of it (forward) or dropping back into it (back)
+    Widget inStack(StageInfo s, double rise, {required VoidCallback onTap}) => Transform(
+          alignment: Alignment.bottomLeft,
+          transform: Matrix4.identity()
+            ..translateByDouble((1 - rise) * side * 0.034, -(1 - rise) * side * 0.01, 0.0, 1.0)
+            ..rotateZ((1 - rise) * 0.04)
+            ..scaleByDouble(0.97 + 0.03 * rise, 0.97 + 0.03 * rise, 1.0, 1.0),
+          child: HeldStageCard(key: ValueKey('deck-${s.key}'), stage: s, side: side, count: _count, onTap: onTap),
+        );
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-      // IntrinsicHeight: every card takes the height of the tallest, however many status chips the Active card wraps to.
-      child: IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          metric('total', 'Total Tasks', board.stats['total'] ?? 0),
-          const SizedBox(width: 8),
-          metric(
-            'active',
-            'Active',
-            board.stats['active'] ?? 0,
-            width: chips.isEmpty ? 118 : 300,
-            extra: chips.isEmpty
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Wrap(spacing: 4, runSpacing: 4, children: [
-                      for (final r in chips)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(10)),
-                          child: Text('${r.label}: ${r.count}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
-                        ),
-                    ]),
-                  ),
-          ),
-          const SizedBox(width: 8),
-          metric('waiting', 'Waiting Confirmation', board.stats['waiting'] ?? 0, width: 140),
-          const SizedBox(width: 8),
-          metric('completed', 'Completed', board.stats['completed'] ?? 0),
-        ]),
-      ),
-    );
-  }
-}
-
-class _AppliedFilters extends StatelessWidget {
-  const _AppliedFilters({required this.filters, required this.board, required this.onClear});
-
-  final BoardFilters filters;
-  final KanbanBoard board;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final chips = appliedChips(filters, board.bds, board.periodLabel);
-    if (chips.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      key: const Key('applied-filters'),
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-      child: Wrap(spacing: 6, runSpacing: 0, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        const Text('Applied Filters:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-        for (final c in chips) Chip(label: Text('${c.label}: ${c.value}', style: const TextStyle(fontSize: 11)), visualDensity: VisualDensity.compact, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
-        TextButton(key: const Key('clear-filters-chip'), onPressed: onClear, child: const Text('Clear Filters')),
-      ]),
-    );
-  }
-}
-
-/// The web's "Are you sure you want to move this ticket?" modal for a backward move.
-class _BackwardDialog extends StatefulWidget {
-  const _BackwardDialog({required this.taskLabel, required this.from, required this.to});
-
-  final String taskLabel;
-  final String from;
-  final String to;
-
-  @override
-  State<_BackwardDialog> createState() => _BackwardDialogState();
-}
-
-class _BackwardDialogState extends State<_BackwardDialog> {
-  final _reason = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _reason.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final text = _reason.text.trim();
-    if (text.isEmpty) {
-      setState(() => _error = 'Enter a reason for the backward movement.');
-      return;
+    if (to == null || t == 0) {
+      return Center(child: HeldStageCard(key: ValueKey('deck-${top.key}'), stage: top, side: side, count: _count, onTap: () => _open(top.key)));
     }
-    Navigator.pop(context, text);
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AlertDialog(
-      title: const Text('Are you sure you want to move this ticket?'),
-      content: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(widget.taskLabel, style: theme.textTheme.bodySmall),
-          const SizedBox(height: 8),
-          Text('${widget.from}  ↓  ${widget.to}', key: const Key('backward-transition'), style: theme.textTheme.labelLarge),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: const Color(0xFFFFF7F8), border: Border.all(color: const Color(0xFFF1D5D8)), borderRadius: BorderRadius.circular(10)),
-            child: const Text('Backward status movement requires Designer Head approval. You cannot directly move the ticket backward.', style: TextStyle(fontSize: 11)),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const Key('backward-reason'),
-            controller: _reason,
-            minLines: 3,
-            maxLines: 5,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(labelText: 'Reason for backward movement *', hintText: 'Explain why this ticket needs to move back...', errorText: _error),
-          ),
-        ]),
-      ),
-      actions: [
-        TextButton(key: const Key('backward-no'), onPressed: () => Navigator.pop(context), child: const Text('No')),
-        FilledButton(key: const Key('backward-yes'), style: FilledButton.styleFrom(minimumSize: const Size(80, 40)), onPressed: _submit, child: const Text('Yes')),
-      ],
-    );
-  }
-}
-
-
-/// Keeps a column page mounted after you leave it. A card being dragged lives in its page, and turning the page at
-/// the screen edge would otherwise dispose the page — and drop the card — mid-drag.
-class _KeepAlive extends StatefulWidget {
-  const _KeepAlive({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_KeepAlive> createState() => _KeepAliveState();
-}
-
-class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
+    return Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: forward
+        ? [
+            inStack(to, t, onTap: () {}),
+            travelling(top, t, onTap: () => _open(top.key)),
+          ]
+        : [
+            inStack(top, 1 - t, onTap: () {}),
+            travelling(to, 1 - t, onTap: () {}),
+          ]);
   }
 }

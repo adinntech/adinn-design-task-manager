@@ -138,9 +138,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Hello BD'), findsOneWidget);
 
-    // Back to the shell and sign out.
-    await tester.pageBack();
-    await tester.pumpAndSettle();
+    // Back out of the task and the stage, to the shell, and sign out.
+    for (var i = 0; i < 2; i++) {
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
     expect(find.textContaining('t@example.test'), findsOneWidget);

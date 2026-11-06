@@ -5,6 +5,7 @@ import 'package:adinn_tasks/core/api_client.dart';
 import 'package:adinn_tasks/core/auth.dart';
 import 'package:adinn_tasks/core/models.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// In-memory session store.
@@ -82,9 +83,15 @@ Map<String, dynamic> taskJson({int id = 1, String status = 'in_progress', String
     };
 
 
-/// A designer lands on the Dashboard; the bottom tab labelled "My Tasks" opens the board.
+/// A designer lands on the Dashboard; the bottom tab labelled "My Tasks" opens the man holding the cards. Tapping the cards
+/// opens All Tickets, so the tickets themselves are on screen, as the old flat board had them.
 Future<void> openMyTasks(WidgetTester tester) async {
   await tester.tap(find.text('My Tasks'));
+  await tester.pumpAndSettle();
+
+  final cards = find.byKey(const Key('held-card-all'));
+  if (cards.evaluate().isEmpty) return; // the board failed to load
+  await tester.tap(cards);
   await tester.pumpAndSettle();
 }
 

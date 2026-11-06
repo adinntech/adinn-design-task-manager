@@ -23,6 +23,13 @@ which passes straight through. If the server can't be reached the app is never b
    ```
    then `php artisan config:clear` (or `config:cache`).
 
+5. Tell every phone: `php artisan app:announce-update` (add `--dry-run` first to see how many users would be notified).
+   Each phone gets an **Update available** push; tapping it opens the app, which re-checks the release and shows the
+   Update screen (or the small bar, if the update is optional).
+
+After a phone installs the new APK, the first launch shows a one-time **What's new** card with `APP_UPDATE_NOTES`
+(a brand-new install shows nothing). Keep the notes short and written for users.
+
 | Setting | Effect on phones below it |
 |---|---|
 | `APP_MIN_BUILD` | Frozen behind the Update screen |

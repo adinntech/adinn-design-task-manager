@@ -1,6 +1,8 @@
 import 'package:adinn_tasks/core/app_update.dart';
 import 'package:adinn_tasks/core/auth.dart';
 import 'package:adinn_tasks/core/models.dart';
+import 'package:adinn_tasks/core/push.dart';
+import 'package:adinn_tasks/features/widgets/liquid_nav_bar.dart';
 import 'package:adinn_tasks/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,15 +10,29 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
 
+class MemorySeen implements SeenBuildStore {
+  MemorySeen([this.value]);
+
+  int? value;
+
+  @override
+  Future<int?> read() async => value;
+
+  @override
+  Future<void> write(int build) async => value = build;
+}
+
 /// The in-app update gate: a too-old build is frozen behind the Update screen; everything else passes.
 void main() {
   late FakeAdapter adapter;
   late ProviderContainer container;
+  late MemorySeen seen;
 
   Map<String, dynamic> release({int min = 0, int latest = 0, String? url = 'https://example.test/adinn.apk'}) =>
       {'platform': 'android', 'min_build': min, 'latest_build': latest, 'latest_version': '2.0.0', 'url': url, 'notes': 'Faster boards'};
 
-  Future<void> boot(WidgetTester tester, {required int build, Handler? update, bool signedIn = true}) async {
+  Future<void> boot(WidgetTester tester, {required int build, Handler? update, bool signedIn = true, int? lastSeen}) async {
+    seen = MemorySeen(lastSeen);
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -25,11 +41,12 @@ void main() {
       'GET /me': (_) => (status: 200, body: {'user': userJson(role: 'bd')}),
       'GET /notifications': (_) => (status: 200, body: {'unread_count': 0, 'data': []}),
       'GET /bd/tasks': (_) => (status: 200, body: {'statuses': [], 'tasks': []}),
-      if (update != null) 'GET /app-update': update,
+      'GET /app-update': ?update,
     });
 
     container = ProviderContainer(overrides: [
       appBuildProvider.overrideWith((ref) async => build),
+      seenBuildStoreProvider.overrideWithValue(seen),
       sessionStoreProvider.overrideWithValue(MemoryStore(token: signedIn ? 'tok' : null, user: signedIn ? AppUser.fromJson(userJson(role: 'bd')) : null)),
       apiClientProvider.overrideWith((ref) => fakeClient(adapter, token: () => ref.read(authProvider).token)),
     ]);
@@ -77,7 +94,7 @@ void main() {
     expect(find.text('Update required'), findsOneWidget);
     expect(find.text('Faster boards'), findsOneWidget);
     expect(tester.widget<FilledButton>(find.byKey(const Key('update-now'))).onPressed, isNotNull);
-    expect(find.byType(NavigationBar), findsNothing); // nothing behind it is reachable
+    expect(find.byType(LiquidNavBar), findsNothing); // nothing behind it is reachable
     await drain(tester);
   });
 
@@ -131,5 +148,54 @@ void main() {
 
     expect(find.byKey(const Key('update-required')), findsNothing);
     expect(find.byKey(const Key('update-available')), findsNothing);
+  });
+
+  group("what's new", () {
+    testWidgets('after an update it shows the release notes once, and "Got it" closes it', (tester) async {
+      await boot(tester, build: 4, lastSeen: 3, update: (_) => (status: 200, body: release(min: 0, latest: 4)));
+
+      expect(find.byKey(const Key('whats-new')), findsOneWidget);
+      expect(find.text("What's new in v2.0.0"), findsOneWidget);
+      expect(find.text('Faster boards'), findsOneWidget);
+      expect(seen.value, 4); // remembered, so it won't repeat
+
+      await tester.tap(find.byKey(const Key('whats-new-close')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('whats-new')), findsNothing);
+      await drain(tester);
+    });
+
+    testWidgets('a brand-new install says nothing and just remembers the build', (tester) async {
+      await boot(tester, build: 4, update: (_) => (status: 200, body: release(min: 0, latest: 4)));
+
+      expect(find.byKey(const Key('whats-new')), findsNothing);
+      expect(seen.value, 4);
+    });
+
+    testWidgets('the same build again shows nothing', (tester) async {
+      await boot(tester, build: 4, lastSeen: 4, update: (_) => (status: 200, body: release(min: 0, latest: 4)));
+
+      expect(find.byKey(const Key('whats-new')), findsNothing);
+    });
+
+    testWidgets('no release notes means no card, but the build is still recorded', (tester) async {
+      await boot(tester, build: 4, lastSeen: 3, update: (_) => (status: 200, body: {...release(latest: 4), 'notes': null}));
+
+      expect(find.byKey(const Key('whats-new')), findsNothing);
+      expect(seen.value, 4);
+    });
+
+    testWidgets('if the notes cannot be read yet, the build is not marked as seen', (tester) async {
+      await boot(tester, build: 4, lastSeen: 3, update: (_) => (status: 500, body: {'message': 'down'}));
+
+      expect(find.byKey(const Key('whats-new')), findsNothing);
+      expect(seen.value, 3); // it will show on a later launch when the server answers
+    });
+  });
+
+  test('an update push is recognised and a task push is not', () {
+    expect(PushEvent.fromData({'type': 'app_update', 'build': '4'}).isAppUpdate, isTrue);
+    final task = PushEvent.fromData({'task_id': '9'});
+    expect((task.isAppUpdate, task.taskId), (false, 9));
   });
 }
