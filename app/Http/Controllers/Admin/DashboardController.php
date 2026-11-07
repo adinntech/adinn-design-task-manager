@@ -96,8 +96,12 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
+        // A pending request whose task was deleted can never be decided (approve/reject
+        // both need the task), and has no page to link to — leave it out of the list
+        // and the counts instead of crashing the dashboard on it.
         $pendingRequests = DesignTaskRequest::query()
             ->pending()
+            ->whereHas('task')
             ->where('request_type', '!=', 'decline')
             ->with([
                 'task:id,task_id,task_name,vertical,status,total_creatives,designer_id',
@@ -116,10 +120,10 @@ class DashboardController extends Controller
             ->get(['id', 'name']);
 
         $requestStats = [
-            'pending' => DesignTaskRequest::query()->pending()->count(),
-            'decline' => DesignTaskRequest::query()->pending()->where('request_type', 'decline')->count(),
-            'split' => DesignTaskRequest::query()->pending()->where('request_type', 'split')->count(),
-            'swap' => DesignTaskRequest::query()->pending()->where('request_type', 'swap')->count(),
+            'pending' => DesignTaskRequest::query()->pending()->whereHas('task')->count(),
+            'decline' => DesignTaskRequest::query()->pending()->whereHas('task')->where('request_type', 'decline')->count(),
+            'split' => DesignTaskRequest::query()->pending()->whereHas('task')->where('request_type', 'split')->count(),
+            'swap' => DesignTaskRequest::query()->pending()->whereHas('task')->where('request_type', 'swap')->count(),
         ];
 
         return view('admin.dashboard', compact(

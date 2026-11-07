@@ -242,7 +242,7 @@
                 <tbody>
                     @forelse($pendingRequests as $item)
                         <tr>
-                            <td><a class="file-link" href="{{ route('admin.tasks.show', $item->task) }}">{{ $item->task?->task_id ?? '—' }}</a><div style="margin-top:3px;font-weight:700">{{ $item->task?->task_name ?? 'Task removed' }}</div></td>
+                            <td>@if($item->task)<a class="file-link" href="{{ route('admin.tasks.show', $item->task) }}">{{ $item->task->task_id ?? '—' }}</a>@else<span class="file-link">—</span>@endif<div style="margin-top:3px;font-weight:700">{{ $item->task?->task_name ?? 'Task removed' }}</div></td>
                             <td><span class="badge badge-warning">{{ ucfirst($item->request_type) }} · Pending</span></td>
                             <td>{{ $item->requester?->name ?? '—' }}</td>
                             <td style="max-width:320px"><div>{{ \Illuminate\Support\Str::limit($item->reason, 150) }}</div>@if($item->request_type === 'split' && !empty($item->split_details['creative_count']))<div class="muted" style="margin-top:4px">Split {{ $item->split_details['creative_count'] }} creatives</div>@endif @if($item->targetDesigner)<div class="muted" style="margin-top:4px">Preferred: {{ $item->targetDesigner->name }}</div>@endif</td>
