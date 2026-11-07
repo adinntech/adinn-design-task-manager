@@ -148,7 +148,7 @@ class TaskActions extends ConsumerWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [for (final b in buttons) Padding(padding: const EdgeInsets.only(top: 10), child: b)],
+      children: [for (var i = 0; i < buttons.length; i++) Padding(padding: EdgeInsets.only(top: i == 0 ? 0 : 8), child: buttons[i])],
     );
   }
 

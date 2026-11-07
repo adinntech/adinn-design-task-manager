@@ -295,6 +295,21 @@ void main() {
       expect(find.text('2'), findsWidgets); // the Alerts badge picked up the new unread count
     });
 
+    testWidgets('when the Admin grants approval access the Approvals tab appears at once, without reopening the app', (tester) async {
+      await boot(tester);
+      socket.established();
+      await tester.pumpAndSettle();
+      expect(find.text('Approvals'), findsNothing);
+
+      // The Admin grants the right; the server tells the app on the user's channel.
+      api.routes['GET /me'] = (_) => (status: 200, body: {'user': {...userJson(), 'is_request_approver': true}});
+      api.routes['GET /designer/approvals'] = (_) => (status: 200, body: {'data': [], 'designers': []});
+      socket.notification({'title': 'Approval access granted', 'category': 'approval_access'});
+      await tester.pumpAndSettle();
+
+      expect(find.text('Approvals'), findsWidgets);
+    });
+
     testWidgets('no socket while signed out; one opens on login and closes on sign-out', (tester) async {
       await boot(tester, signedIn: false);
       expect(sockets, isEmpty);

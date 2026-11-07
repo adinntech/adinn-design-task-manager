@@ -5,6 +5,7 @@ import '../../core/auth.dart';
 import '../dashboard/designer_dashboard_screen.dart';
 import '../kanban/kanban_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../profile/profile_screen.dart';
 import '../requests/requests_screen.dart';
 import '../tasks/board_screen.dart';
 import '../tasks/providers.dart';
@@ -59,39 +60,6 @@ class HomeShell extends ConsumerWidget {
         selectedIndex: index,
         onSelected: (i) => ref.read(homeTabProvider.notifier).goTo(tabs[i]),
         items: [for (final t in tabs) destination(t)],
-      ),
-    );
-  }
-}
-
-class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider).user;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: ListTile(
-              leading: CircleAvatar(child: Text((user?.name.isNotEmpty ?? false) ? user!.name[0].toUpperCase() : '?')),
-              title: Text(user?.name ?? ''),
-              subtitle: Text('${user?.roleLabel ?? ''}\n${user?.email ?? ''}'),
-              isThreeLine: true,
-            ),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            key: const Key('sign-out'),
-            onPressed: () => ref.read(authProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
-            label: const Text('Sign out'),
-          ),
-        ],
       ),
     );
   }

@@ -131,15 +131,15 @@ void main() {
     await tester.pumpAndSettle();
 
     // Chat.
-    await tester.tap(find.text('Chat'));
+    await tester.tap(find.byKey(const Key('open-chat')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('chat-input')), 'Hello BD');
     await tester.tap(find.byKey(const Key('chat-send')));
     await tester.pumpAndSettle();
     expect(find.text('Hello BD'), findsOneWidget);
 
-    // Back out of the task and the stage, to the shell, and sign out.
-    for (var i = 0; i < 2; i++) {
+    // Back out of the chat, the task and the stage, to the shell, and sign out.
+    for (var i = 0; i < 3; i++) {
       await tester.pageBack();
       await tester.pumpAndSettle();
     }

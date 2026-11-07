@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Bd\TaskController as BdTaskController;
 use App\Http\Controllers\Bd\TaskController as WebBdTaskController;
 use App\Http\Controllers\Api\DesignerHead\HeadController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RealtimeController;
 use App\Http\Controllers\FileUploadController;
 use Illuminate\Support\Facades\Broadcast;
@@ -28,6 +29,13 @@ Route::get('/app-update', [AppUpdateController::class, 'show'])->middleware('thr
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+
+    // My Profile (same self-service rules as the web page, which is untouched).
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::patch('/profile/basic-info', [ProfileController::class, 'updateBasicInfo']);
+    Route::patch('/profile/password', [ProfileController::class, 'updatePassword']);
+    Route::patch('/profile/notifications', [ProfileController::class, 'updateNotifications']);
+    Route::patch('/profile/verticals', [ProfileController::class, 'updateVerticals']);
 
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);

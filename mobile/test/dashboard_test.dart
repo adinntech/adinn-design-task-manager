@@ -316,7 +316,8 @@ void main() {
       expect(find.byKey(const Key('row-2')), findsOneWidget);
       expect(find.byKey(const Key('row-3')), findsOneWidget);
       expect(find.text('Overdue'), findsWidgets);
-      expect(find.text('Total Tasks 3'), findsOneWidget);
+      expect(find.text('Total Tasks'), findsWidgets);
+      expect(tester.widget<Text>(find.byKey(const Key('overview-total'))).data, '3');
     });
 
     testWidgets('filters by status, priority and vertical, and clears them', (tester) async {
@@ -436,18 +437,37 @@ void main() {
     testWidgets('the second tab switches to the grouped bars', (tester) async {
       await boot(tester);
 
-      await tester.tap(find.text('Overdue & Completed · Declined'));
+      await tester.tap(find.byKey(const Key('trend-tab-1')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('chart-bars')), findsOneWidget);
       expect(find.byKey(const Key('chart-line')), findsNothing);
     });
 
+    testWidgets('touching and dragging a chart picks months without error, on both charts', (tester) async {
+      await boot(tester);
+
+      final chart = find.byKey(const Key('trend-touch'));
+      await tester.ensureVisible(chart);
+      await tester.tap(chart);
+      await tester.pump();
+      await tester.drag(chart, const Offset(120, 0));
+      await tester.pump();
+      await tester.tap(chart); // tapping the same month again hides it
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('trend-tab-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('trend-touch')));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('a quiet account (all zeros) draws without error', (tester) async {
       await boot(tester, dashboard: emptyDashboardJson());
 
       expect(find.byKey(const Key('chart-line')), findsOneWidget);
-      await tester.tap(find.text('Overdue & Completed · Declined'));
+      await tester.tap(find.byKey(const Key('trend-tab-1')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('chart-bars')), findsOneWidget);
       expect(tester.takeException(), isNull);

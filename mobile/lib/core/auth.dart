@@ -98,6 +98,14 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Keeps the saved login in step with details the user just changed in My Profile (name, role name).
+  Future<void> setUser(AppUser user) async {
+    final current = state;
+    if (current.status != AuthStatus.signedIn || current.token == null) return;
+    await ref.read(sessionStoreProvider).write(current.token!, user);
+    state = AuthState(status: AuthStatus.signedIn, token: current.token, user: user);
+  }
+
   /// Re-reads /me so a role-side change (e.g. the Admin granting approval rights) shows without signing in again.
   /// Never throws: offline keeps the cached user.
   Future<void> refreshUser() async {

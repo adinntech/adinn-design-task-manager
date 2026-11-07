@@ -30,9 +30,46 @@ void main() {
       expect(find.text(l), findsOneWidget);
     }
     expect(find.byIcon(Icons.dashboard), findsOneWidget); // selected: filled icon in the bubble
-    expect(find.byIcon(Icons.dashboard_outlined), findsNothing);
-    expect(find.byIcon(Icons.view_kanban_outlined), findsOneWidget); // the others stay in the bar
+    // the selected tab's own icon is faded out of the bar (the bubble carries it); the others stay visible
+    double opacityOf(IconData icon) => tester.widget<Opacity>(find.ancestor(of: find.byIcon(icon), matching: find.byType(Opacity)).first).opacity;
+    expect(opacityOf(Icons.dashboard_outlined), 0);
+    expect(opacityOf(Icons.view_kanban_outlined), 1);
     expect(find.byIcon(Icons.view_kanban), findsNothing);
+  });
+
+  testWidgets('hold and drag across the icons: the highlight follows, and the tab under the finger is selected on release', (tester) async {
+    final selected = await boot(tester);
+    final start = tester.getCenter(find.text('Dashboard'));
+    final end = tester.getCenter(find.text('Alerts'));
+
+    final g = await tester.startGesture(start);
+    await tester.pump(LiquidNavBar.holdToDrag + const Duration(milliseconds: 50)); // held: the bubble lifts
+    await g.moveTo(tester.getCenter(find.text('My Tasks')));
+    for (var i = 0; i < 25; i++) {
+      await tester.pump(const Duration(milliseconds: 16)); // the bubble glides after the finger, frame by frame
+    }
+    expect(find.byIcon(Icons.view_kanban), findsOneWidget); // highlighted while passing over it
+    expect(selected.value, 0); // nothing is committed until release
+
+    await g.moveTo(end);
+    for (var i = 0; i < 25; i++) {
+      await tester.pump(const Duration(milliseconds: 16)); // the bubble glides after the finger, frame by frame
+    }
+    await g.up();
+    await tester.pumpAndSettle();
+
+    expect(selected.value, 2);
+    expect(find.byIcon(Icons.notifications), findsOneWidget);
+    expect(tester.hasRunningAnimations, isFalse);
+  });
+
+  testWidgets('a quick tap is still a tap, not a drag', (tester) async {
+    final selected = await boot(tester);
+
+    await tester.tap(find.text('My Tasks'));
+    await tester.pumpAndSettle();
+
+    expect(selected.value, 1);
   });
 
   testWidgets('tapping a tab selects it, the bubble melts across, and the icons swap', (tester) async {

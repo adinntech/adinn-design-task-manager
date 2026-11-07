@@ -2,11 +2,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../home/navigation.dart';
 import '../tasks/providers.dart';
 import 'board_toolbar.dart';
+import 'kanban_card.dart';
 import 'kanban_models.dart';
 import 'stage3d/designer_character.dart';
 import 'stage3d/held_card.dart';
@@ -58,7 +60,6 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
   List<StageInfo> _pagesNow = const [];
 
   bool _started = false;
-  bool _played = false;
   bool _searchOpen = false;
   bool _opening = false;
   String? _pendingFocus;
@@ -86,12 +87,11 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
     if (ref.read(homeTabProvider) == HomeTab.tasks) _playIntro();
   }
 
-  /// All tabs are built when the app starts, so the introduction waits until My Tasks is actually on screen.
+  /// All tabs are built when the app starts, so the introduction waits until My Tasks is on screen, and plays again
+  /// every time the tab is switched back to.
   void _playIntro() {
-    if (_played) return;
-    _played = true;
     // Respect "remove animations": show the finished screen at once.
-    MediaQuery.disableAnimationsOf(context) ? _intro.value = 1 : _intro.forward();
+    MediaQuery.disableAnimationsOf(context) ? _intro.value = 1 : _intro.forward(from: 0);
   }
 
   @override
@@ -232,6 +232,10 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
     ref.listen(homeTabProvider, (_, tab) {
       if (tab == HomeTab.tasks) _playIntro();
     });
+    // Deleting the last letter of a search puts the man back; so does the back button or the search icon.
+    ref.listen(kanbanFiltersProvider.select((f) => f.search), (prev, now) {
+      if (_searchOpen && (prev ?? '').isNotEmpty && now.isEmpty) _closeSearch(clear: false);
+    });
     ref.listen(boardFocusProvider, (_, focus) {
       if (focus == null) return;
       _pendingFocus = focus;
@@ -252,7 +256,12 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
     final unread = ref.watch(notificationsProvider).maybeWhen(data: (d) => d.unread, orElse: () => 0);
     final actions = TicketActions(ref);
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_searchOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _closeSearch();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('My Tasks'),
         actions: [
@@ -260,7 +269,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
             key: const Key('kanban-search-toggle'),
             tooltip: 'Search',
             icon: Icon(_searchOpen ? Icons.search_off : Icons.search),
-            onPressed: () => setState(() => _searchOpen = !_searchOpen || ref.read(kanbanFiltersProvider).search.isNotEmpty),
+            onPressed: () => _searchOpen ? _closeSearch() : setState(() => _searchOpen = true),
           ),
           BoardFilterButton(board: board),
           IconButton(
@@ -291,11 +300,63 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
             ),
             data: (b) {
               _applyPending(b);
-              return _overview(context, b);
+              return _searchOpen ? _results(context, b, actions) : _overview(context, b);
             },
           ),
         ),
       ]),
+    ));
+  }
+
+  /// Leaves search: the keyboard goes, the text is cleared (unless it is already empty) and the man comes back.
+  void _closeSearch({bool clear = true}) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (clear && ref.read(kanbanFiltersProvider).search.isNotEmpty) {
+      ref.read(kanbanFiltersProvider.notifier).update(ref.read(kanbanFiltersProvider).copyWith(search: ''));
+    }
+    if (mounted) setState(() => _searchOpen = false);
+  }
+
+  /// While searching the man steps aside: just the tickets that match, each with the stage it is in.
+  Widget _results(BuildContext context, KanbanBoard b, TicketActions actions) {
+    final query = ref.watch(kanbanFiltersProvider).search.trim();
+
+    if (query.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.manage_search_rounded, size: 52, color: Colors.black26),
+            SizedBox(height: 10),
+            Text('Search by ticket ID, project number or task name', key: Key('search-hint'), textAlign: TextAlign.center, style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      );
+    }
+
+    final now = DateTime.now();
+    if (b.cards.isEmpty) {
+      return const Center(child: Text('No matching tickets', key: Key('search-empty'), style: TextStyle(color: Colors.black45, fontWeight: FontWeight.w600)));
+    }
+
+    return ListView.separated(
+      key: const Key('search-results'),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      itemCount: b.cards.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final card = b.cards[i];
+        return KanbanTaskCard(
+          key: Key('result-${card.id}'),
+          card: card,
+          now: now,
+          stageLabel: actions.label(b, card.status),
+          onOpen: () => context.push('/task/${card.id}'),
+          onMove: card.canMove ? () => actions.openMoveSheet(context, card, b) : null,
+          onLongPress: () => actions.openMoveSheet(context, card, b),
+        );
+      },
     );
   }
 
@@ -324,7 +385,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
       final charLeft = w / 2 - 0.333 * u;
 
       // The tiles' space, and how far the man has to shrink to leave it free.
-      const rows = 3;
+      final rows = math.max(1, (stages.where((s) => s.count > 0).length / 5).ceil());
       final panelH = rows * 62.0 + (rows - 1) * 7 + 62;
       final stepBack = math.min(0.72, math.max(0.45, (h - panelH - 8) / u));
       final cur = current < 0 ? 0 : current;
@@ -371,7 +432,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 14,
+                bottom: 40, // clear of the nav bar's bubble, which rises over the page
                 child: Center(
                   child: AnimatedBuilder(
                     animation: Listenable.merge([_count, _panel]),
@@ -379,15 +440,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
                     child: GestureDetector(
                       key: const Key('hero-hint'),
                       onTap: () => _panel.animateTo(1, curve: Curves.easeOutCubic),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 10, offset: const Offset(0, 3))]),
-                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.keyboard_double_arrow_up, size: 18, color: adinnRed),
-                          SizedBox(width: 6),
-                          Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Swipe up for your stages', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)))),
-                        ]),
-                      ),
+                      child: const _SwipeUpHint(),
                     ),
                   ),
                 ),
@@ -426,7 +479,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
                           padding: EdgeInsets.only(bottom: 8),
                           child: Align(alignment: Alignment.centerLeft, child: Text('Your stages', key: Key('panel-title'), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF475467)))),
                         ),
-                        StageTiles(stages: stages, selectedKey: here.key, onTap: (s) => _onTile(s, pages)),
+                        StageTiles(stages: [for (final s in stages) if (s.count > 0) s], selectedKey: here.key, onTap: (s) => _onTile(s, pages)),
                       ]),
                     ),
                   ),
@@ -442,9 +495,6 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
   /// The representative holding the card: the real artwork of the man, with the stack, the pager, arrows and dots laid
   /// out in units of his height.
   Widget _hero({required double u, required double w, required double side, required double cardTop, required double charLeft, required List<StageInfo> pages, required int current, required List<StageInfo> next}) {
-    final shown = _turnTo >= 0 && _turn.value > 0.5 ? _turnTo : current; // the dots and arrows follow the card once it is half way
-    final accent = pages[shown].key == allStageKey ? adinnRed : stageAccent(pages[shown].key);
-
     return AnimatedBuilder(
       animation: _intro,
       builder: (context, _) {
@@ -491,24 +541,15 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
             ),
             // His hands grip the cards. The left one is on the card's left edge; the right one holds the whole stack, so it
             // sits on the outer edge of the last card peeking out and moves in as the stack thins.
-            ..._hands(u: u, w: w, side: side, edges: math.min(next.length, HeldCardEdges.maxEdges)),
-            // Where he is in the stack.
-            Positioned(
-              left: 0,
-              right: 0,
-              top: u - 64,
-              child: Opacity(
-                opacity: _count.value,
-                child: Row(key: const Key('pager-dots'), mainAxisAlignment: MainAxisAlignment.center, children: [
-                  for (var i = 0; i < pages.length; i++)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: i == shown ? 16 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(color: i == shown ? accent : Colors.black26, borderRadius: BorderRadius.circular(3)),
-                    ),
-                ]),
+            // While a card is being swiped away or brought back his left hand lets go (fades out and, as it lands, back in),
+            // so a card never slides through it. The right hand keeps holding the stack.
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _turn,
+                builder: (context, _) {
+                  final hide = Curves.easeInOut.transform((math.sin(math.pi * _turn.value.clamp(0.0, 1.0)) * 1.6).clamp(0.0, 1.0));
+                  return Stack(clipBehavior: Clip.none, children: _hands(u: u, w: w, side: side, edges: math.min(next.length, HeldCardEdges.maxEdges), hide: hide));
+                },
               ),
             ),
           ]),
@@ -519,7 +560,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
 
   /// His two hands, in place over the edges of the cards. They are sized to his arms (the hand and its cuff are about as
   /// tall as his sleeve cuffs) and sit where his arms end, so they join the sleeves.
-  List<Widget> _hands({required double u, required double w, required double side, required int edges}) {
+  List<Widget> _hands({required double u, required double w, required double side, required int edges, double hide = 0}) {
     final hh = u * 0.072;
     final hw = hh * GrippingHand.aspect;
     final top = u * 0.382 - hh / 2;
@@ -530,7 +571,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
       Positioned(
         left: cardLeft - hw * 0.46,
         top: top,
-        child: Opacity(opacity: _stackIn.value, child: GrippingHand(left: true, height: hh)),
+        child: Opacity(opacity: _stackIn.value * (1 - hide), child: GrippingHand(left: true, height: hh)),
       ),
       // each edge still to come puts the outer edge of the stack a little further out, so the hand follows
       TweenAnimationBuilder<double>(
@@ -594,5 +635,60 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
             inStack(top, 1 - t, onTap: () {}),
             travelling(to, 1 - t, onTap: () {}),
           ]);
+  }
+}
+
+
+/// Tests switch this off: a hint that loops forever would keep `pumpAndSettle` from ever settling.
+bool swipeHintAnimates = true;
+
+/// No box and no words: three see-through chevrons that light up one after another, bottom to top, forever.
+class _SwipeUpHint extends StatefulWidget {
+  const _SwipeUpHint();
+
+  @override
+  State<_SwipeUpHint> createState() => _SwipeUpHintState();
+}
+
+class _SwipeUpHintState extends State<_SwipeUpHint> with SingleTickerProviderStateMixin {
+  late final AnimationController _flow = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // With "remove animations" the chevrons stay lit and still.
+    if (MediaQuery.disableAnimationsOf(context) || !swipeHintAnimates) {
+      _flow.stop();
+      _flow.value = 0.5;
+    } else if (!_flow.isAnimating) {
+      _flow.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _flow.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(label: 'Swipe up for your stages', child: Column(mainAxisSize: MainAxisSize.min, children: [
+      AnimatedBuilder(
+        animation: _flow,
+        builder: (context, _) => Column(mainAxisSize: MainAxisSize.min, children: [
+          for (var i = 0; i < 3; i++)
+            // the wave starts at the bottom chevron and runs up
+            Align(
+              heightFactor: 0.55,
+              child: Icon(
+                Icons.keyboard_arrow_up_rounded,
+                size: 28,
+                color: adinnRed.withValues(alpha: 0.15 + 0.7 * math.sin(math.pi * ((_flow.value - (2 - i) / 3.5) % 1.0)).clamp(0.0, 1.0)),
+              ),
+            ),
+        ]),
+      ),
+    ]));
   }
 }
