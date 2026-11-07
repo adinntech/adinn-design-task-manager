@@ -121,8 +121,7 @@ class TaskController extends Controller
                     'id' => $r->id, 'action' => $r->action, 'number_of_creatives' => $r->number_of_creatives, 'comment' => $r->comment,
                     'overall_rating' => $r->overall_rating, 'created_at' => $r->created_at?->toIso8601String(),
                 ]),
-            'history' => DesignTaskStatusHistory::where('design_task_id', $task->id)->orderBy('id')
-                ->get(['from_status', 'to_status', 'change_source', 'note', 'created_at']),
+            'history' => $this->timeline($task),
             'requests' => DesignTaskRequest::with(['requester:id,name', 'targetDesigner:id,name'])
                 ->where('design_task_id', $task->id)->latest()->get()->map(fn ($r) => $this->requestPayload($r))->values(),
             'clarifications' => $clarifications->map(fn ($c) => $this->commentPayload($c))->values(),

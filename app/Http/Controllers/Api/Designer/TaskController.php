@@ -177,8 +177,7 @@ class TaskController extends Controller
                 'percentage' => $progress->percentage($task),
             ],
             'next_status' => $nextStatus,
-            'history' => DesignTaskStatusHistory::where('design_task_id', $task->id)->orderBy('id')
-                ->get(['from_status', 'to_status', 'change_source', 'note', 'created_at']),
+            'history' => $this->timeline($task),
             'requests' => DesignTaskRequest::where('design_task_id', $task->id)->latest()
                 ->get(['id', 'request_type', 'from_status', 'to_status', 'reason', 'overall_status', 'created_at']),
         ]);

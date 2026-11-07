@@ -124,8 +124,7 @@ class AdminController extends Controller
                 'percentage' => $progress->percentage($task),
                 'rework_count' => $progress->reworkCount($task),
             ],
-            'history' => DesignTaskStatusHistory::where('design_task_id', $task->id)->orderBy('id')
-                ->get(['from_status', 'to_status', 'change_source', 'note', 'created_at']),
+            'history' => $this->timeline($task),
             'requests' => DesignTaskRequest::with(['requester:id,name', 'targetDesigner:id,name'])
                 ->where('design_task_id', $task->id)->latest()->get()->map(fn ($r) => $this->requestPayload($r))->values(),
             'comments' => DesignTaskComment::with(['user:id,name,role', 'attachments'])

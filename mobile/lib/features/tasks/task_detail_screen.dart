@@ -289,6 +289,10 @@ class _History extends StatelessWidget {
     final primary = Theme.of(context).colorScheme.primary;
     const grey = Color(0xFF667085);
 
+    // Chat messages sit between the status changes; "Current step" is still the latest status change, whatever was
+    // said after it. (Older servers send no `kind`: every row is then a status change.)
+    final current = history.lastIndexWhere((h) => h['kind'] != 'comment');
+
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
@@ -299,19 +303,67 @@ class _History extends StatelessWidget {
             const Text('Timeline', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
             const SizedBox(height: 16),
             for (var i = 0; i < history.length; i++)
-              _step(
-                history[i],
-                last: i == history.length - 1,
-                primary: primary,
-                grey: grey,
-              ),
+              history[i]['kind'] == 'comment'
+                  ? _comment(history[i], last: i == history.length - 1, grey: grey)
+                  : _step(
+                      history[i],
+                      last: i == current,
+                      lastRow: i == history.length - 1,
+                      primary: primary,
+                      grey: grey,
+                    ),
           ]),
         ),
       ],
     );
   }
 
-  Widget _step(Map<String, dynamic> h, {required bool last, required Color primary, required Color grey}) {
+  /// A chat message in the timeline: who said it, when, and the text.
+  Widget _comment(Map<String, dynamic> h, {required bool last, required Color grey}) {
+    final at = h['created_at'] == null ? null : DateTime.tryParse(h['created_at'] as String)?.toLocal();
+    final text = (h['note'] ?? '').toString().trim();
+    final by = (h['by'] ?? 'Someone').toString();
+    final role = (h['role'] ?? '').toString().replaceAll('_', ' ');
+    final files = (h['attachments'] as num?)?.toInt() ?? 0;
+
+    return IntrinsicHeight(
+      key: Key('history-comment-${h['created_at']}'),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SizedBox(
+          width: 30,
+          child: Column(children: [
+            const Icon(Icons.chat_bubble_outline_rounded, size: 20, color: Color(0xFF667085)),
+            if (!last) Expanded(child: Container(width: 1.5, margin: const EdgeInsets.symmetric(vertical: 4), color: const Color(0xFFD0D5DD))),
+          ]),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: last ? 12 : 18),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(at == null ? '' : DateFormat('dd/MM/yyyy, h:mm a').format(at), style: TextStyle(fontSize: 12, color: grey)),
+              const SizedBox(height: 2),
+              Text(role.isEmpty ? by : '$by · ${role[0].toUpperCase()}${role.substring(1)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF344054))),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(color: const Color(0xFFF4F5F8), borderRadius: BorderRadius.circular(12)),
+                child: Text(
+                  text.isEmpty ? (files > 0 ? 'Sent ${files == 1 ? 'a file' : '$files files'}' : 'Message') : text,
+                  style: const TextStyle(fontSize: 13.5, color: Color(0xFF344054)),
+                ),
+              ),
+              if (text.isNotEmpty && files > 0)
+                Padding(padding: const EdgeInsets.only(top: 3), child: Text('+ ${files == 1 ? '1 file' : '$files files'}', style: TextStyle(fontSize: 12, color: grey))),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _step(Map<String, dynamic> h, {required bool last, required bool lastRow, required Color primary, required Color grey}) {
     final at = h['created_at'] == null ? null : DateTime.tryParse(h['created_at'] as String)?.toLocal();
     final to = h['to_status'] as String?;
     final note = (h['note'] ?? '').toString();
@@ -324,13 +376,13 @@ class _History extends StatelessWidget {
           width: 30,
           child: Column(children: [
             Icon(last ? Icons.visibility_outlined : _icon(to), size: 22, color: color),
-            if (!last) Expanded(child: Container(width: 1.5, margin: const EdgeInsets.symmetric(vertical: 4), color: const Color(0xFFD0D5DD))),
+            if (!lastRow) Expanded(child: Container(width: 1.5, margin: const EdgeInsets.symmetric(vertical: 4), color: const Color(0xFFD0D5DD))),
           ]),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Padding(
-            padding: EdgeInsets.only(bottom: last ? 12 : 18),
+            padding: EdgeInsets.only(bottom: lastRow ? 12 : 18),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(last ? 'Current step' : (at == null ? '' : DateFormat('dd/MM/yyyy, h:mm a').format(at)), style: TextStyle(fontSize: 12, color: grey)),
               const SizedBox(height: 2),

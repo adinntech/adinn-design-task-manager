@@ -3,7 +3,9 @@
 namespace Tests\Feature\Api;
 
 use App\Models\DesignTask;
+use App\Models\DesignTaskComment;
 use App\Models\DesignTaskEodRecord;
+use App\Models\DesignTaskStatusHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Notification;
@@ -120,6 +122,30 @@ class MobileBdApiTest extends TestCase
         $ids = collect($this->getJson('/api/v1/bd/tasks?project_number=ZP-1001')->assertOk()->json('tasks'))->pluck('id');
         $this->assertTrue($ids->contains($a->id));
         $this->assertFalse($ids->contains($b->id));
+    }
+
+    public function test_history_lists_chat_messages_between_status_changes_but_not_clarification_replies(): void
+    {
+        $task = $this->task();
+        $t0 = now()->subHours(3)->startOfSecond();
+
+        $first = DesignTaskStatusHistory::create(['design_task_id' => $task->id, 'from_status' => null, 'to_status' => 'assigned_tasks', 'changed_by' => $this->bd->id, 'change_source' => 'test', 'note' => 'Task Created']);
+        $first->forceFill(['created_at' => $t0])->save();
+        $chat = DesignTaskComment::create(['design_task_id' => $task->id, 'user_id' => $this->designer->id, 'comment' => 'Working on it', 'status_at_comment' => 'assigned_tasks']);
+        $chat->forceFill(['created_at' => $t0->copy()->addHour()])->save();
+        $clar = DesignTaskComment::create(['design_task_id' => $task->id, 'user_id' => $this->designer->id, 'comment' => 'Which logo?', 'status_at_comment' => 'assigned_tasks', 'context' => 'clarification']);
+        $clar->forceFill(['created_at' => $t0->copy()->addMinutes(90)])->save();
+        $second = DesignTaskStatusHistory::create(['design_task_id' => $task->id, 'from_status' => 'assigned_tasks', 'to_status' => 'in_progress', 'changed_by' => $this->designer->id, 'change_source' => 'test']);
+        $second->forceFill(['created_at' => $t0->copy()->addHours(2)])->save();
+
+        $history = $this->actingAs($this->bd, 'sanctum')->getJson("/api/v1/bd/tasks/{$task->id}")->assertOk()->json('history');
+
+        $this->assertSame(['status', 'comment', 'status'], array_column($history, 'kind'));
+        $this->assertSame('Working on it', $history[1]['note']);
+        $this->assertSame($this->designer->name, $history[1]['by']);
+        $this->assertSame('designer', $history[1]['role']);
+        $this->assertNotContains('Which logo?', array_column($history, 'note'));
+        $this->assertSame('in_progress', $history[2]['to_status']);
     }
 
     public function test_cannot_touch_another_bds_task(): void
