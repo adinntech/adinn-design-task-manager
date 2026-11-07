@@ -18,6 +18,8 @@ void main() {
   runApp(ProviderScope(retry: (_, _) => null, child: const AdinnApp()));
 }
 
+final _theme = buildTheme();
+
 class AdinnApp extends ConsumerStatefulWidget {
   const AdinnApp({super.key});
 
@@ -27,6 +29,13 @@ class AdinnApp extends ConsumerStatefulWidget {
 
 class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver {
   StreamSubscription<RealtimeEvent>? _live;
+
+  /// The Admin changed what this designer may do (Approvals): re-read the login, and the approvals list with it, so the tab
+  /// appears (and fills) without reopening the app.
+  Future<void> _refreshAccess() async {
+    await ref.read(authProvider.notifier).refreshUser();
+    ref.invalidate(pendingRequestsProvider);
+  }
 
   /// Everything a server-side change can make stale: alerts, boards, request lists, open tasks and chats.
   void _refreshLiveData() {
@@ -45,7 +54,7 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     _live = ref.read(realtimeProvider).events.listen((e) {
       _refreshLiveData();
-      if (e.category == 'approval_access') ref.read(authProvider.notifier).refreshUser();
+      if (e.category == 'approval_access') _refreshAccess();
     });
     // Restore a saved session; the router shows a splash until this resolves.
     Future.microtask(() => ref.read(authProvider.notifier).restore());
@@ -61,7 +70,10 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
       final id = event.taskId;
       if (id != null) ref.read(routerProvider).push('/task/$id');
     };
-    push.onForeground = _refreshLiveData;
+    push.onForeground = () {
+      _refreshLiveData();
+      _refreshAccess(); // a push carries no category, and re-reading /me is cheap and does nothing if nothing changed
+    };
   }
 
   @override
@@ -108,7 +120,8 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     return MaterialApp.router(
       title: 'Adinn Tasks',
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
+      theme: _theme,
+      scrollBehavior: const SmoothScrollBehavior(),
       routerConfig: ref.watch(routerProvider),
       // Freezes the app behind an Update screen when the server says this build is too old.
       builder: (context, child) => UpdateGate(child: child ?? const SizedBox.shrink()),

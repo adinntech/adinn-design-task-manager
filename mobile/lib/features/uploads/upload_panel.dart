@@ -131,10 +131,13 @@ String formatBytes(int bytes) {
 
 /// Add-files button plus a progress row per file.
 class UploadPanel extends ConsumerWidget {
-  const UploadPanel({super.key, required this.controller, this.label = 'Add files'});
+  const UploadPanel({super.key, required this.controller, this.label = 'Add files', this.showButton = true});
 
   final UploadsController controller;
   final String label;
+
+  /// False when the screen has its own attach button (the chat composer): only the notice and file rows show.
+  final bool showButton;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -143,6 +146,7 @@ class UploadPanel extends ConsumerWidget {
       builder: (context, _) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (showButton)
           OutlinedButton.icon(
             key: const Key('add-files'),
             icon: const Icon(Icons.attach_file),
@@ -154,7 +158,7 @@ class UploadPanel extends ConsumerWidget {
           ),
           if (controller.notice != null)
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: EdgeInsets.only(top: showButton ? 6 : 0),
               child: Text(controller.notice!, key: const Key('upload-notice'), style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
           for (final e in controller.entries) _Row(entry: e, controller: controller),

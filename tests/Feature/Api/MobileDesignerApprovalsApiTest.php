@@ -97,10 +97,15 @@ class MobileDesignerApprovalsApiTest extends TestCase
         ], $extra));
     }
 
-    public function test_me_flags_a_delegate_approver_only_when_allowed_and_on_a_team(): void
+    public function test_me_flags_a_delegate_approver_only_when_the_admin_allowed_it_like_the_web_menu(): void
     {
         $this->actingAs($this->approver, 'sanctum')->getJson('/api/v1/me')->assertOk()->assertJsonPath('user.is_request_approver', true);
         $this->actingAs($this->plain, 'sanctum')->getJson('/api/v1/me')->assertOk()->assertJsonPath('user.is_request_approver', false);
+
+        // Allowed but not on a team yet: the web still lists Approvals, so the app does too (the list itself stays closed).
+        $noTeam = $this->makeUser('designer', null, true);
+        $this->actingAs($noTeam, 'sanctum')->getJson('/api/v1/me')->assertOk()->assertJsonPath('user.is_request_approver', true);
+        $this->actingAs($noTeam, 'sanctum')->getJson('/api/v1/designer/approvals')->assertForbidden();
     }
 
     public function test_only_allowed_designers_can_open_approvals(): void

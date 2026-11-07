@@ -8,6 +8,7 @@ import 'package:adinn_tasks/features/kanban/kanban_models.dart';
 import 'package:adinn_tasks/features/kanban/stage3d/designer_character.dart';
 import 'package:adinn_tasks/features/kanban/stage3d/stage_meta.dart';
 import 'package:adinn_tasks/features/kanban/stage_tickets_screen.dart';
+import 'package:adinn_tasks/features/kanban/stage_tickets_screen.dart' as stage;
 import 'package:adinn_tasks/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -646,11 +647,14 @@ void main() {
       expect(heldStage(tester), 'self_declined');
     });
 
-    testWidgets('only stages that have tickets get a card; the dots count them', (tester) async {
+    testWidgets('only stages that have tickets get a card: stepping through them ends on the last such stage', (tester) async {
       await boot(tester);
 
-      final dots = tester.widget<Row>(find.byKey(const Key('pager-dots')));
-      expect(dots.children, hasLength(order.length)); // All Tickets and the eight stages with tickets
+      expect(heldStage(tester), 'all');
+      for (var i = 1; i < order.length; i++) {
+        await nextCard(tester); // All Tickets, then the eight stages with tickets
+      }
+      expect(heldStage(tester), order.last);
     });
 
     testWidgets('each card is in its stage\'s colour, with the next stages\' colours peeking out behind it', (tester) async {
@@ -707,7 +711,7 @@ void main() {
       expect(find.text('Festive creative'), findsOneWidget);
     });
 
-    testWidgets('searching narrows the cards; if the stage in his hands empties he goes back to All Tickets', (tester) async {
+    testWidgets('searching shows just the matching tickets in place of the man', (tester) async {
       await boot(tester, routes: {
         'GET /designer/tasks': (o) {
           boardFetches++;
@@ -734,10 +738,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
-      expect(heldStage(tester), 'all');
-      expect(tester.widget<Text>(find.byKey(const Key('total-count'))).data, '1');
-      expect(find.byType(Row).evaluate().isNotEmpty, isTrue);
-      expect(tester.widget<Row>(find.byKey(const Key('pager-dots'))).children, hasLength(2)); // All Tickets and New Assignments
+      // the man steps aside for the matching ticket, which shows the stage it is in
+      expect(find.byKey(const Key('search-results')), findsOneWidget);
+      expect(find.byKey(const Key('result-2')), findsOneWidget);
     });
   });
 
@@ -814,21 +817,19 @@ void main() {
       expect(panelOpacity(tester), 1);
     });
 
-    testWidgets('there is a tile for every one of the 14 stages, empty ones included, with its count', (tester) async {
+    testWidgets('only stages that have tickets get a tile, each with its count; empty ones are left out', (tester) async {
       await boot(tester);
       await openPanel(tester);
 
-      const stages = ['pending_bd_approval', 'bd_rejected', 'assigned_tasks', 'review_analysis', 'need_clarification', 'yet_to_start', 'in_progress', 'waiting_confirmation', 'rework', 'prepare_printing_file', 'completed', 'split_log', 'swap_tasks', 'self_declined'];
-      expect(stages, hasLength(14));
-      for (final k in stages) {
+      const withTickets = ['pending_bd_approval', 'assigned_tasks', 'yet_to_start', 'in_progress', 'waiting_confirmation', 'completed', 'split_log', 'self_declined'];
+      for (final k in withTickets) {
         expect(find.byKey(Key('tile-$k')), findsOneWidget, reason: k);
       }
-      expect(tester.widget<Text>(find.byKey(const Key('tile-count-rework'))).data, '0');
+      for (final k in ['bd_rejected', 'review_analysis', 'need_clarification', 'rework', 'prepare_printing_file', 'swap_tasks']) {
+        expect(find.byKey(Key('tile-$k')), findsNothing, reason: '$k is empty');
+      }
       expect(tester.widget<Text>(find.byKey(const Key('tile-count-in_progress'))).data, '1');
       expect(tester.widget<Text>(find.byKey(const Key('tile-count-split_log'))).data, '4');
-      for (final label in ['Awaiting BD', 'Rejected', 'New', 'Review', 'Clarify', 'Start', 'Progress', 'BD Review', 'Rework', 'Print File', 'Completed', 'Split', 'Swapped', 'Declined']) {
-        expect(find.text(label), findsOneWidget, reason: label);
-      }
     });
 
     testWidgets('tiles come five to a row', (tester) async {
@@ -836,8 +837,8 @@ void main() {
       await openPanel(tester);
 
       final first = tester.getTopLeft(find.byKey(const Key('tile-pending_bd_approval'))).dy;
-      expect(tester.getTopLeft(find.byKey(const Key('tile-need_clarification'))).dy, first); // 5th in the row
-      expect(tester.getTopLeft(find.byKey(const Key('tile-yet_to_start'))).dy, greaterThan(first)); // 6th starts the next
+      expect(tester.getTopLeft(find.byKey(const Key('tile-waiting_confirmation'))).dy, first); // 5th tile with tickets, still in the row
+      expect(tester.getTopLeft(find.byKey(const Key('tile-completed'))).dy, greaterThan(first)); // 6th starts the next
     });
 
     testWidgets('tapping a tile puts that stage\'s card in his hands, and outlines the tile', (tester) async {
@@ -877,15 +878,11 @@ void main() {
       expect(stageTitle(tester), 'In Progress');
     });
 
-    testWidgets('a tile for a stage with no tickets has no card, so it opens the stage and says so', (tester) async {
+    testWidgets('a stage with no tickets has no tile at all', (tester) async {
       await boot(tester);
       await openPanel(tester);
 
-      await tester.tap(find.byKey(const Key('tile-rework')));
-      await tester.pumpAndSettle();
-
-      expect(stageTitle(tester), 'Rework');
-      expect(find.byKey(const Key('stage-empty')), findsOneWidget);
+      expect(find.byKey(const Key('tile-rework')), findsNothing);
     });
   });
 
@@ -942,7 +939,9 @@ void main() {
       expect(find.text('URGENT'), findsOneWidget);
       expect(find.text('Fresh brief'), findsOneWidget);
       expect(find.text('Agency · Zebra Agency'), findsOneWidget);
-      expect(find.textContaining('Roadshow · 4 creatives · Due '), findsOneWidget);
+      expect(find.text('Roadshow'), findsOneWidget);
+      expect(find.text('4 creatives'), findsOneWidget);
+      expect(find.byIcon(Icons.access_time_rounded), findsWidgets); // the due date and time chips
       expect(find.text('Assigned by: Bela BD'), findsOneWidget);
       expect(find.text('Decline · Pending'), findsOneWidget);
       expect(find.text('Previous Month Task • Oct 2026'), findsOneWidget);
@@ -952,7 +951,8 @@ void main() {
       await boot(tester);
       await openStage(tester, 'in_progress');
 
-      expect(find.textContaining('Roadshow · 1 / 4 creatives · Due '), findsOneWidget);
+      expect(find.text('Roadshow'), findsWidgets);
+      expect(find.text('1 / 4 creatives'), findsOneWidget);
       expect(find.byKey(const Key('progress-3')), findsOneWidget);
       expect(find.text('25%'), findsOneWidget);
       expect(find.text('Due Soon'), findsOneWidget);
@@ -1014,7 +1014,9 @@ void main() {
 
     testWidgets('an empty Split Tasks stage uses the web wording', (tester) async {
       await boot(tester, board: _board()..['split_log'] = []);
-      await openStage(tester, 'split_log');
+      // an empty stage has no tile, so open it directly
+      stage.openStage(tester.element(find.byType(Scaffold).first), 'split_log');
+      await tester.pumpAndSettle();
 
       expect(find.text('No split requests in Nov 2026.'), findsOneWidget);
     });
@@ -1259,9 +1261,43 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(lastBoardQuery()['search'], 'zebra');
-      expect(tester.widget<Text>(find.byKey(const Key('total-count'))).data, '1');
+      // the man steps aside: the matching ticket is listed with the stage it is in
+      expect(find.byKey(const Key('search-results')), findsOneWidget);
+      expect(find.byKey(const Key('result-2')), findsOneWidget);
+      expect(find.byKey(const Key('total-count')), findsNothing);
       expect(find.byKey(const Key('applied-filters')), findsOneWidget);
       expect(find.text('Search: zebra'), findsOneWidget);
+    });
+
+    testWidgets('deleting the whole search, the back button and the search icon all bring the man back', (tester) async {
+      await boot(tester);
+      Future<void> openAndType(String text) async {
+        await tester.tap(find.byKey(const Key('kanban-search-toggle')));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(const Key('kanban-search')), text);
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('search-results')).evaluate().isNotEmpty || find.byKey(const Key('search-empty')).evaluate().isNotEmpty, isTrue);
+      }
+
+      await openAndType('zebra');
+      await tester.enterText(find.byKey(const Key('kanban-search')), '');
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('kanban-search')), findsNothing);
+      expect(find.byKey(const Key('card-pager')), findsOneWidget);
+
+      await openAndType('zebra');
+      await tester.binding.handlePopRoute(); // the system back button
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('kanban-search')), findsNothing);
+      expect(find.byKey(const Key('card-pager')), findsOneWidget);
+
+      await openAndType('zebra');
+      await tester.tap(find.byKey(const Key('kanban-search-toggle')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('kanban-search')), findsNothing);
+      expect(find.byKey(const Key('card-pager')), findsOneWidget);
     });
 
     testWidgets('search also works from inside a stage', (tester) async {

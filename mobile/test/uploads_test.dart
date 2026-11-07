@@ -296,7 +296,7 @@ void main() {
       await boot(tester, 'designer', designerRoutes('in_progress'));
       await tester.tap(find.text('Banner'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Chat'));
+      await tester.tap(find.byKey(const Key('open-chat')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('add-files')));
@@ -321,7 +321,7 @@ void main() {
       });
       await tester.tap(find.text('Banner'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Chat'));
+      await tester.tap(find.byKey(const Key('open-chat')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('add-files')), findsNothing);

@@ -33,8 +33,9 @@ class HalfStars extends StatelessWidget {
 
 /// White rounded card with a title/subtitle header, matching the web dashboard's sections.
 class SectionCard extends StatelessWidget {
-  const SectionCard({super.key, required this.title, this.subtitle, this.trailing, required this.child});
+  const SectionCard({super.key, required this.title, this.subtitle, this.trailing, this.icon, required this.child});
 
+  final IconData? icon;
   final String title;
   final String? subtitle;
   final Widget? trailing;
@@ -43,14 +44,17 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return RepaintBoundary(child: Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFFEAECF0))),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (icon != null) ...[IconBadge(icon!, color: theme.colorScheme.primary), const SizedBox(width: 12)],
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                 if (subtitle != null) Text(subtitle!, style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
               ]),
             ),
@@ -60,18 +64,40 @@ class SectionCard extends StatelessWidget {
           child,
         ]),
       ),
-    );
+    ));
   }
+}
+
+/// A soft gradient rounded square holding an icon; the dashboard's one icon treatment.
+class IconBadge extends StatelessWidget {
+  const IconBadge(this.icon, {super.key, required this.color, this.size = 38});
+
+  final IconData icon;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(size * 0.32),
+          gradient: LinearGradient(colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0.07)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          border: Border.all(color: color.withValues(alpha: 0.14)),
+        ),
+        child: Icon(icon, size: size * 0.55, color: color),
+      );
 }
 
 /// A single stat tile. Tappable when [onTap] is given (the web links these to the matching board column).
 class StatTile extends StatelessWidget {
-  const StatTile({super.key, required this.label, required this.value, this.hint, this.accent, this.onTap, this.child});
+  const StatTile({super.key, required this.label, required this.value, this.hint, this.accent, this.icon, this.onTap, this.child});
 
   final String label;
   final String value;
   final String? hint;
   final Color? accent;
+  final IconData? icon;
   final VoidCallback? onTap;
   final Widget? child;
 
@@ -79,27 +105,56 @@ class StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = accent ?? theme.colorScheme.primary;
+    final radius = BorderRadius.circular(18);
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(label, style: theme.textTheme.labelMedium?.copyWith(color: Colors.black54), maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            Text(value, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: color)),
-            ?child,
-            if (hint != null) Text(hint!, style: theme.textTheme.bodySmall?.copyWith(color: Colors.black45, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
-          ]),
+    return RepaintBoundary(child: Container(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFEAECF0)),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 14, offset: const Offset(0, 6))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 88),
+            child: Stack(children: [
+              // a quiet accent wash in the corner
+              Positioned(top: -22, right: -22, child: Container(width: 66, height: 66, decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.07)))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF667085), fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                    if (icon != null) ...[const SizedBox(width: 8), IconBadge(icon!, color: color, size: 28)],
+                  ]),
+                  const SizedBox(height: 2),
+                  Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: color, letterSpacing: -0.4)),
+                  ?child,
+                  if (hint != null) ...[
+                    const SizedBox(height: 2),
+                    Text(hint!, style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF98A2B3), fontSize: 10.5), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ],
+                ]),
+              ),
+            ]),
+          ),
         ),
       ),
-    );
+    ));
   }
 }
 
-/// Two tiles per row; wraps to any number of tiles.
+/// Two tiles per row, each row as tall as its tallest tile; a last tile with no partner spans the full width.
 class StatGrid extends StatelessWidget {
   const StatGrid({super.key, required this.tiles});
 
@@ -107,10 +162,20 @@ class StatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final width = (c.maxWidth - 10) / 2;
-      return Wrap(spacing: 10, runSpacing: 10, children: [for (final t in tiles) SizedBox(width: width, child: t)]);
-    });
+    final rows = <Widget>[];
+    for (var i = 0; i < tiles.length; i += 2) {
+      final pair = tiles.skip(i).take(2).toList();
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: 12));
+      rows.add(IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var j = 0; j < pair.length; j++) ...[
+            if (j > 0) const SizedBox(width: 12),
+            Expanded(child: pair[j]),
+          ],
+        ]),
+      ));
+    }
+    return Column(children: rows);
   }
 }
 
@@ -123,53 +188,94 @@ class Series {
 }
 
 /// Months across, counts up: filled line series with a value on each point (the web's "Assigned · In Progress · Completed").
+/// Touch or drag along it and a tooltip shows every series for that month.
 class TrendLineChart extends StatelessWidget {
-  const TrendLineChart({super.key, required this.months, required this.series});
+  const TrendLineChart({super.key, required this.months, required this.series, this.height = 220});
 
   final List<TrendMonth> months;
   final List<Series> series;
+  final double height;
 
   @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Line chart of ${series.map((s) => s.label).join(', ')} over the last ${months.length} months',
-      child: SizedBox(
-        height: 220,
-        width: double.infinity,
-        child: CustomPaint(painter: _TrendPainter(months.map((m) => m.label).toList(), series, bars: false)),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _InteractiveTrend(months: months, series: series, bars: false, height: height);
 }
 
-/// The web's "Overdue & Completed · Declined" grouped bars.
+/// The web's "Overdue & Completed · Declined" grouped bars, also touchable.
 class TrendBarChart extends StatelessWidget {
-  const TrendBarChart({super.key, required this.months, required this.series});
+  const TrendBarChart({super.key, required this.months, required this.series, this.height = 220});
 
   final List<TrendMonth> months;
   final List<Series> series;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => _InteractiveTrend(months: months, series: series, bars: true, height: height);
+}
+
+class _InteractiveTrend extends StatefulWidget {
+  const _InteractiveTrend({required this.months, required this.series, required this.bars, required this.height});
+
+  final List<TrendMonth> months;
+  final List<Series> series;
+  final bool bars;
+  final double height;
+
+  @override
+  State<_InteractiveTrend> createState() => _InteractiveTrendState();
+}
+
+class _InteractiveTrendState extends State<_InteractiveTrend> {
+  int? _selected;
+
+  int _indexAt(double dx, double width) {
+    final n = widget.months.length;
+    final plotWidth = width - _TrendPainter.left - _TrendPainter.right;
+    if (widget.bars) return ((dx - _TrendPainter.left) / (plotWidth / n)).floor().clamp(0, n - 1);
+    if (n == 1) return 0;
+    return ((dx - _TrendPainter.left) / (plotWidth / (n - 1))).round().clamp(0, n - 1);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final kind = widget.bars ? 'Bar' : 'Line';
     return Semantics(
-      label: 'Bar chart of ${series.map((s) => s.label).join(', ')} over the last ${months.length} months',
-      child: SizedBox(
-        height: 220,
-        width: double.infinity,
-        child: CustomPaint(painter: _TrendPainter(months.map((m) => m.label).toList(), series, bars: true)),
-      ),
+      label: '$kind chart of ${widget.series.map((s) => s.label).join(', ')} over the last ${widget.months.length} months. Touch a month for its figures.',
+      child: LayoutBuilder(builder: (context, box) {
+        final width = box.maxWidth;
+        return GestureDetector(
+          key: const Key('trend-touch'),
+          behavior: HitTestBehavior.opaque,
+          // a tap picks a month (tapping the same one again hides it); dragging sideways scrubs across them
+          onTapDown: (d) {
+            final i = _indexAt(d.localPosition.dx, width);
+            setState(() => _selected = _selected == i ? null : i);
+          },
+          onHorizontalDragStart: (d) => setState(() => _selected = _indexAt(d.localPosition.dx, width)),
+          onHorizontalDragUpdate: (d) {
+            final i = _indexAt(d.localPosition.dx, width);
+            if (i != _selected) setState(() => _selected = i);
+          },
+          child: SizedBox(
+            height: widget.height,
+            width: double.infinity,
+            child: CustomPaint(painter: _TrendPainter(widget.months.map((m) => m.label).toList(), widget.series, bars: widget.bars, selected: _selected)),
+          ),
+        );
+      }),
     );
   }
 }
 
 class _TrendPainter extends CustomPainter {
-  _TrendPainter(this.labels, this.series, {required this.bars});
+  _TrendPainter(this.labels, this.series, {required this.bars, this.selected});
 
   final List<String> labels;
   final List<Series> series;
   final bool bars;
+  final int? selected;
 
-  static const _left = 28.0;
+  static const left = 28.0;
+  static const right = 16.0;
   static const _bottom = 26.0;
   static const _top = 12.0;
 
@@ -179,7 +285,7 @@ class _TrendPainter extends CustomPainter {
 
     final maxValue = series.expand((s) => s.values).fold<int>(0, (a, b) => a > b ? a : b);
     final top = maxValue < 4 ? 4 : maxValue; // a flat chart still gets a readable 0..4 axis
-    final plot = Rect.fromLTRB(_left, _top, size.width - 8, size.height - _bottom);
+    final plot = Rect.fromLTRB(left, _top, size.width - right, size.height - _bottom);
 
     final grid = Paint()
       ..color = const Color(0xFFE4E7EC)
@@ -213,6 +319,7 @@ class _TrendPainter extends CustomPainter {
           if (v > 0) _text(canvas, '$v', Offset(x + (barWidth - 3) / 2, plot.bottom - h - 8), TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: series[s].color), center: true);
         }
       }
+      _drawSelection(canvas, size, plot, top, step, slot);
       return;
     }
 
@@ -248,6 +355,66 @@ class _TrendPainter extends CustomPainter {
         _text(canvas, '${s.values[i]}', Offset(p.dx, p.dy - 11), TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: s.color), center: true);
       }
     }
+
+    _drawSelection(canvas, size, plot, top, step, slot);
+  }
+
+  /// The touched month: a guide line (or highlighted band for bars), ringed points, and a box listing every series.
+  void _drawSelection(Canvas canvas, Size size, Rect plot, int top, double step, double slot) {
+    final i = selected;
+    if (i == null || i < 0 || i >= labels.length) return;
+
+    final x = bars ? plot.left + slot * (i + 0.5) : plot.left + step * i;
+
+    if (bars) {
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(x - slot / 2, plot.top, x + slot / 2, plot.bottom), const Radius.circular(8)), Paint()..color = const Color(0xFF101828).withValues(alpha: 0.05));
+    } else {
+      canvas.drawLine(Offset(x, plot.top), Offset(x, plot.bottom), Paint()
+        ..color = const Color(0xFF98A2B3)
+        ..strokeWidth = 1.2);
+      for (final s in series) {
+        final p = Offset(x, plot.bottom - plot.height * s.values[i] / top);
+        canvas.drawCircle(p, 7, Paint()..color = s.color.withValues(alpha: 0.2));
+        canvas.drawCircle(p, 5, Paint()..color = Colors.white);
+        canvas.drawCircle(p, 3.6, Paint()..color = s.color);
+      }
+    }
+
+    // the tooltip
+    const titleStyle = TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white);
+    TextPainter measure(String text, TextStyle style) => TextPainter(text: TextSpan(text: text, style: style), textDirection: TextDirection.ltr)..layout();
+
+    final title = measure(labels[i], titleStyle);
+    final names = [for (final s in series) measure(s.label, const TextStyle(fontSize: 11, color: Color(0xFFD0D5DD)))];
+    final values = [for (final s in series) measure('${s.values[i]}', const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white))];
+
+    final nameWidth = names.fold<double>(0, (a, t) => t.width > a ? t.width : a);
+    final valueWidth = values.fold<double>(0, (a, t) => t.width > a ? t.width : a);
+    final inner = [title.width, 12 + nameWidth + 10 + valueWidth].reduce((a, b) => a > b ? a : b);
+    final box = Size(inner + 20, 14 + 16 + series.length * 16.0);
+
+    final left = (x - box.width / 2).clamp(2.0, size.width - box.width - 2);
+    final rect = Rect.fromLTWH(left, plot.top - 4, box.width, box.height);
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(10));
+
+    canvas.drawShadow(Path()..addRRect(rrect), Colors.black.withValues(alpha: 0.4), 6, false);
+    canvas.drawRRect(rrect, Paint()..color = const Color(0xFF1D2939));
+
+    // a little pointer toward the month
+    final tip = Path()
+      ..moveTo(x - 5, rect.bottom - 0.5)
+      ..lineTo(x + 5, rect.bottom - 0.5)
+      ..lineTo(x, rect.bottom + 5)
+      ..close();
+    canvas.drawPath(tip, Paint()..color = const Color(0xFF1D2939));
+
+    title.paint(canvas, Offset(rect.left + 10, rect.top + 7));
+    for (var r = 0; r < series.length; r++) {
+      final y = rect.top + 7 + 16 + 4 + r * 16.0;
+      canvas.drawCircle(Offset(rect.left + 14, y + 6), 3.5, Paint()..color = series[r].color);
+      names[r].paint(canvas, Offset(rect.left + 10 + 12, y));
+      values[r].paint(canvas, Offset(rect.right - 10 - values[r].width, y));
+    }
   }
 
   void _text(Canvas canvas, String text, Offset at, TextStyle style, {bool center = false, bool alignRight = false}) {
@@ -257,7 +424,7 @@ class _TrendPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TrendPainter old) => old.labels != labels || old.series != series || old.bars != bars;
+  bool shouldRepaint(_TrendPainter old) => old.labels != labels || old.series != series || old.bars != bars || old.selected != selected;
 }
 
 class Legend extends StatelessWidget {
