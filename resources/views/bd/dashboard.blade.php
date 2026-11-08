@@ -178,36 +178,190 @@
     .bd-dash-btn.primary{background:#e30613;color:#fff}
     .bd-dash-btn.secondary{background:#fff;color:#344054;border:1px solid #d0d5dd}
 
+    /* ===== Unified visual system (mirrors the Designer dashboard) ===== */
+    .dsh-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:160px;padding:18px 22px;border:1px solid #eef0f3;border-radius:16px;background:#fff url('{{ asset('images/dashboard-hero-bg.webp') }}') center/cover no-repeat;overflow:hidden}
+    .dsh-hero-text{min-width:0;position:relative;z-index:1}
+    .dsh-eyebrow{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#667085}
+    .dsh-eyebrow span{width:26px;height:3px;border-radius:3px;background:#e30613}
+    .dsh-hero h1{margin:8px 0 0;font-size:26px;line-height:1.15;font-weight:900;color:#101828}
+    .dsh-hero h1 em{font-style:normal;color:#e30613}
+    .dsh-hero p{margin:6px 0 0;font-size:12px;color:#667085}
+    .dsh-login{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:11px;color:#667085}
+    .dsh-login svg{width:14px;height:14px;flex:none}
+    .dsh-login strong{color:#344054}
+    .dsh-hero-art{position:absolute;right:320px;top:0;height:100%;width:auto;max-width:48%;object-fit:contain;object-position:right center;mix-blend-mode:multiply;pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18%,#000 82%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 18%,#000 82%,transparent 100%)}
+    .dsh-actions{display:flex;gap:9px;position:relative;z-index:1;flex:none}
+    .dsh-btn{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:8px 16px;border-radius:10px;text-decoration:none;font-size:12px;font-weight:800;transition:.15s}
+    .dsh-btn svg{width:15px;height:15px;flex:none}
+    .dsh-btn.primary{background:#e30613;color:#fff;box-shadow:0 6px 14px rgba(227,6,19,.22)}
+    .dsh-btn.primary:hover{background:#c8050f}
+    .dsh-btn.secondary{background:#fff;color:#344054;border:1px solid #e4e7ec;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+    .dsh-btn.secondary:hover{border-color:#e30613;color:#e30613}
+
+    .dh-toolbar{display:grid;grid-template-columns:minmax(260px,2.4fr) minmax(170px,1fr) minmax(170px,1fr);gap:12px;align-items:end;padding:12px 14px;border:1px solid #eceff4;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+    .dh-tb-search{position:relative;display:flex;align-items:center;height:42px;border:1px solid #dfe3ea;border-radius:10px;background:#fff}
+    .dh-tb-search svg{position:absolute;left:13px;width:16px;height:16px;color:#667085;pointer-events:none}
+    .dh-tb-search input{width:100%;height:100%;border:0;background:transparent;padding:0 12px 0 38px;font-size:12.5px;color:#101828;outline:none;border-radius:10px}
+    .dh-tb-search:focus-within,.dh-tb-field .dh-select:focus{border-color:#e30613;box-shadow:0 0 0 3px rgba(227,6,19,.1)}
+    .dh-tb-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+    .dh-tb-field span{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#667085}
+    .dh-tb-field .dh-select{width:100%;height:42px;font-size:12.5px;font-weight:700}
+
+    .dsh-grid{display:grid;gap:12px}
+    .dsh-primary{grid-template-columns:1.45fr repeat(5,minmax(0,1fr))}
+    .dsh-secondary{grid-template-columns:repeat(5,minmax(0,1fr))}
+    .dsh-extra{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .dsh-card{--t1:#f8fafc;--t2:#f8fafc;--ic:#475467;--icbg:#eef1f5;display:flex;align-items:center;gap:12px;min-width:0;min-height:96px;padding:14px 15px;border-radius:14px;border:1px solid rgba(16,24,40,.07);background:linear-gradient(135deg,var(--t1),var(--t2));color:inherit;text-decoration:none;box-shadow:0 1px 3px rgba(16,24,40,.05);transition:.15s}
+    .dsh-card>div{min-width:0}
+    .dsh-card.is-link{cursor:pointer}
+    .dsh-card.is-link:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(16,24,40,.1);border-color:rgba(227,6,19,.35)}
+    .dsh-icon{display:grid;place-items:center;width:42px;height:42px;flex:none;border-radius:12px;background:var(--icbg);color:var(--ic)}
+    .dsh-icon svg{width:22px;height:22px}
+    .dsh-label{font-size:11.5px;font-weight:700;color:#475467;line-height:1.25}
+    .dsh-value{font-size:26px;font-weight:900;line-height:1.1;color:#101828;margin-top:3px}
+    .dsh-note{font-size:10.5px;color:rgba(255,255,255,.85);margin-top:4px;line-height:1.3}
+    .dsh-sub-note{font-size:10px;color:#98a2b3;margin-top:3px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+    .dsh-total{background:linear-gradient(135deg,#e30613,#b8040f);border-color:#b8040f;color:#fff;box-shadow:0 12px 24px rgba(227,6,19,.25)}
+    .dsh-total .dsh-icon{background:rgba(255,255,255,.2);color:#fff}
+    .dsh-total .dsh-label{color:rgba(255,255,255,.92)}
+    .dsh-total .dsh-value{color:#fff;font-size:32px}
+    .dsh-flat{background:#fff;border-color:#eceff4}
+    .dsh-blue{--t1:#eaf4ff;--t2:#f3f9ff;--ic:#2563eb;--icbg:#d9eaff}
+    .dsh-green{--t1:#e9f9ee;--t2:#f3fcf6;--ic:#16a34a;--icbg:#d3f3de}
+    .dsh-purple{--t1:#f1ecff;--t2:#f8f5ff;--ic:#7c3aed;--icbg:#e4daff}
+    .dsh-orange{--t1:#fff1e2;--t2:#fff8ef;--ic:#ea580c;--icbg:#ffe0c2}
+    .dsh-pink{--t1:#ffeaf1;--t2:#fff5f8;--ic:#e11d48;--icbg:#ffd6e3}
+    .dsh-teal{--t1:#e6f8f1;--t2:#f1fcf8;--ic:#059669;--icbg:#ccf2e4}
+    .dsh-amber{--t1:#fff6e0;--t2:#fffaf0;--ic:#d97706;--icbg:#ffe8b8}
+    .dsh-red{--t1:#ffeceb;--t2:#fff5f4;--ic:#dc2626;--icbg:#ffd9d6}
+    .dsh-flat.dsh-blue,.dsh-flat.dsh-green,.dsh-flat.dsh-purple,.dsh-flat.dsh-orange,.dsh-flat.dsh-pink,.dsh-flat.dsh-teal,.dsh-flat.dsh-amber,.dsh-flat.dsh-red{background:linear-gradient(135deg,#fff,var(--t2))}
+    .dsh-card.is-alert{border-color:#f5b5b0;box-shadow:0 0 0 3px rgba(220,38,38,.07)}
+    .dsh-card.is-alert .dsh-value{color:#c01048}
+    .dsh-completion{display:flex;align-items:center;gap:16px;padding:14px 18px;border:1px solid #eceff4;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+    .dsh-completion-label{font-size:13px;font-weight:900;color:#101828;white-space:nowrap}
+    .dsh-completion-label span{display:block;font-size:10.5px;font-weight:600;color:#98a2b3;margin-top:2px}
+    .dsh-progress-track{flex:1;height:11px;border-radius:999px;background:#f2f4f7;overflow:hidden}
+    .dsh-completion-value{min-width:56px;text-align:center;padding:6px 10px;border-radius:10px;background:#fff1e0;font-size:15px;font-weight:900;color:#101828}
+
+    /* Section cards: icon badge header + readable type */
+    .dh-card{border-radius:16px;border-color:#eceff4;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+    .dh-card-head{justify-content:flex-start;gap:12px;padding:14px 16px;background:linear-gradient(180deg,#fff7f8,#fff);border-bottom-color:#f3e3e6}
+    .dh-card-head>div:not(.dh-card-badge){flex:1;min-width:0}
+    .dh-card-head .dh-card-badge,.dh-card-head>.dh-select{margin-left:auto}
+    .dh-card-icon{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:11px;background:var(--icbg);color:var(--ic)}
+    .dh-card-icon svg{width:19px;height:19px}
+    .dh-card-title{font-size:15px;font-weight:900}
+    .dh-card-sub{font-size:11px;margin-top:3px}
+    .dh-card-badge{min-width:26px;height:26px;font-size:11px;background:#e30613}
+    .dh-table th{font-size:10px;padding:11px 12px;background:#fafbfc;color:#667085;letter-spacing:.05em}
+    .dh-table td{font-size:11.5px;padding:11px 12px}
+    .dh-table{min-width:1100px}
+    .dh-table td{white-space:nowrap}
+    .dh-table td.dh-cell-main{white-space:normal;min-width:190px;max-width:260px}
+    .dh-table tbody tr:hover td{background:#fff8f8}
+    .dh-cell-sub{font-size:10.5px}
+    .dh-pill{font-size:10px;padding:4px 9px;min-height:22px}
+    .dh-progress-note{font-size:10px}
+    .dh-empty{font-size:12px;padding:30px 12px}
+    .dh-bar-label{font-size:11.5px}
+    .dh-bar-value{font-size:13px}
+    .dh-req-top strong{font-size:12px}
+    .dh-req-reason{font-size:11px}
+    .dhr-task-name{font-size:12px}.dhr-designer-name,.dhr-comment-text,.dhr-by-name{font-size:11px}
+    .dhr-chip-label{font-size:8.5px}.dhr-chip-value{font-size:11.5px}
+    .dhr-completed-date,.dhr-by-date,.dhr-foot-info,.dhr-comment-label{font-size:10px}
+
+    /* Monthly Analytics fills the row beside the tall Performance Trend card */
+    .dh-grid-fill{align-items:stretch}
+    .dh-card-fill{display:flex;flex-direction:column}
+    /* chart hover states */
+    .dh-tip{position:fixed;z-index:100001;display:none;pointer-events:none;min-width:150px;max-width:260px;padding:10px 12px;border-radius:12px;background:#101828;color:#fff;box-shadow:0 14px 34px rgba(16,24,40,.32);font-size:11.5px;line-height:1.35}
+    .dh-tip-title{font-size:12.5px;font-weight:900;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.14)}
+    .dh-tip-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+    .dh-tip-row i{width:9px;height:9px;border-radius:3px;flex:none}
+    .dh-tip-row span{flex:1;color:rgba(255,255,255,.78)}
+    .dh-tip-row b{font-weight:900}
+    .dh-tip-hint{margin-top:8px;font-size:10px;color:rgba(255,255,255,.55)}
+    .dh-bar-row[data-hover]{padding:6px 8px;margin:-6px -8px;border-radius:10px;cursor:pointer;transition:background .15s,opacity .15s}
+    .dh-bar-row.is-active{background:#fff7f0}
+    .dh-bar-row.is-dim{opacity:.4}
+    .dh-bar-row.is-active .dh-bar-fill{filter:brightness(1.1);box-shadow:0 2px 8px rgba(16,24,40,.2)}
+    .dh-bar-fill{transform-origin:left center;animation:dhGrow .7s cubic-bezier(.2,.8,.2,1) both}
+    @keyframes dhGrow{from{transform:scaleX(0)}}
+    .dh-donut{cursor:pointer;transition:transform .2s}
+    .dh-donut:hover{transform:scale(1.02)}
+    .dh-donut-hole strong{transition:color .15s}
+    .dh-donut-hole span{text-align:center;max-width:90px;line-height:1.2}
+    .dh-leg{text-decoration:none;padding:4px 6px;margin:-4px -6px;border-radius:8px;transition:background .15s,opacity .15s}
+    .dh-leg.is-active{background:#f2f4f7}
+    .dh-leg.is-dim{opacity:.4}
+    .pt-guide{stroke:#d0d5dd;stroke-width:1;stroke-dasharray:3 3;pointer-events:none}
+    .pt-point{transition:r .12s}
+    .pt-bar{transition:opacity .15s}
+    .pt-bar.pt-dim{opacity:.3}
+    .pt-hover-strip{cursor:crosshair}
+    .dh-card-fill .dh-card-body{padding:20px 18px;gap:20px}
+    .dh-card-fill .dh-bar-row{grid-template-columns:120px minmax(0,1fr) 38px}
+    .dh-card-fill .dh-bar-track{height:12px}
+    .dh-mix{flex:1;display:flex;flex-direction:column;justify-content:center;padding:18px 18px 20px;border-top:1px dashed #eaecf0;background:linear-gradient(180deg,#fff,#fcfcfd)}
+    .dh-mix-title{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:900;color:#101828;margin-bottom:12px}
+    .dh-mix-title span{font-size:11px;font-weight:700;color:#98a2b3}
+    .dh-mix-body{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+    .dh-donut{position:relative;width:180px;height:180px;border-radius:50%;flex:none}
+    .dh-donut-hole{position:absolute;inset:32px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px #f2f4f7}
+    .dh-donut-hole strong{font-size:26px;font-weight:900;color:#101828;line-height:1}
+    .dh-donut-hole span{font-size:10.5px;color:#98a2b3;margin-top:3px;font-weight:700}
+    .dh-mix-legend{flex:1;min-width:200px;display:grid;grid-template-columns:1fr 1fr;gap:9px 18px}
+    .dh-mix-legend div,.dh-mix-legend a{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#475467;min-width:0}
+    .dh-mix-legend i{width:10px;height:10px;border-radius:3px;flex:none}
+    .dh-mix-legend span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .dh-mix-legend b{font-weight:900;color:#101828}
+    @media(max-width:1400px){.dsh-primary{grid-template-columns:repeat(3,minmax(0,1fr))}.dsh-primary>.dsh-total{grid-column:1/-1}.dsh-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}.dsh-extra{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:1180px){.dsh-hero-art{display:none}}
+    @media(max-width:960px){.dsh-hero{flex-direction:column;align-items:flex-start}.dsh-hero-art{display:none}.dh-toolbar{grid-template-columns:1fr 1fr}.dh-tb-search{grid-column:1/-1}}
+    @media(max-width:640px){.dsh-hero h1{font-size:21px}.dsh-actions{width:100%}.dsh-btn{flex:1;justify-content:center}.dsh-primary,.dsh-secondary,.dsh-extra,.dh-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-card{padding:11px;gap:9px}.dsh-completion{flex-wrap:wrap}.dsh-progress-track{order:3;flex-basis:100%}}
     @media(max-width:1280px){.dh-grid-2{grid-template-columns:1fr}}
     @media(max-width:760px){.dh-top{align-items:flex-start;flex-direction:column}.dh-decision{grid-template-columns:1fr}.dh-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dhr-row{flex-direction:column}.dhr-col-by{text-align:left}}
 </style>
 
 <div class="dh-dash">
-    <div class="dh-top">
-        <div>
-            <div class="dh-eyebrow">BD</div>
-            <h1 class="dh-title">BD Dashboard</h1>
-            <div class="dh-sub">{{ $selectedMonthLabel }} · {{ $selectedDesignerName ?? 'All Designers' }}</div>
-            <div class="dh-sub">Last Login: {{ optional(auth()->user()->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}</div>
-        </div>
-        <div class="dh-filters">
-            <div class="bd-dash-actions">
-                <a class="bd-dash-btn secondary" href="{{ route('bd.tasks.index') }}">View All Tasks</a>
-                <a class="bd-dash-btn primary" href="{{ route('bd.tasks.create') }}">+ Create Task</a>
+    <div class="dsh-hero">
+        <div class="dsh-hero-text">
+            <div class="dsh-eyebrow"><span></span>BD Dashboard</div>
+            <h1>Welcome back, <em>{{ auth()->user()->name }}</em></h1>
+            <p>Live insight into your tickets, Designers, quality, rework and reviews.</p>
+            <div class="dsh-login">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+                <span><strong>Last Login:</strong> {{ optional(auth()->user()->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}</span>
             </div>
-            <input type="text" class="dh-select" id="dh-search" style="min-width:240px" placeholder="Search tasks, project, client, designer, BD..." value="{{ $search ?? '' }}" autocomplete="off">
+        </div>
+        <img class="dsh-hero-art" src="{{ asset('images/dashboard-hero.webp') }}" alt="" aria-hidden="true" loading="eager">
+        <div class="dsh-actions">
+            <a class="dsh-btn secondary" href="{{ route('bd.tasks.index') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/></svg>View All Tasks</a>
+            <a class="dsh-btn primary" href="{{ route('bd.tasks.create') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Create Task</a>
+        </div>
+    </div>
+
+    <div class="dh-toolbar">
+        <label class="dh-tb-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="dh-search" placeholder="Search tasks, project, client, designer, BD..." value="{{ $search ?? '' }}" autocomplete="off">
+        </label>
+        <label class="dh-tb-field"><span>Designer</span>
             <select class="dh-select" id="dh-designer" aria-label="Filter by Designer">
                 <option value="all">All Designers</option>
                 @foreach($designers as $designer)
                     <option value="{{ $designer->id }}" @selected((int) $selectedDesigner === (int) $designer->id)>{{ $designer->name }}</option>
                 @endforeach
             </select>
+        </label>
+        <label class="dh-tb-field"><span>Month</span>
             <select class="dh-select" id="dh-month" aria-label="Filter by Month">
                 @foreach($months as $monthOption)
                     <option value="{{ $monthOption['value'] }}" @selected($selectedMonth === $monthOption['value'])>{{ $monthOption['label'] }}</option>
                 @endforeach
             </select>
-        </div>
+        </label>
     </div>
 
     <div id="dh-root" class="dh-zone">
@@ -267,6 +421,158 @@
         if (!el) return;
         document.getElementById('dh-designer').value = el.dataset.dhDesign;
         reload();
+    });
+
+    /* ===== Chart hover interactivity (bars, donut, trend charts) ===== */
+    var tip = document.createElement('div');
+    tip.className = 'dh-tip';
+    document.body.appendChild(tip);
+
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function showTip(html, e) {
+        tip.innerHTML = html;
+        tip.style.display = 'block';
+        var w = tip.offsetWidth, h = tip.offsetHeight;
+        var x = e.clientX + 16, y = e.clientY + 16;
+        if (x + w > window.innerWidth - 8) x = e.clientX - w - 16;
+        if (y + h > window.innerHeight - 8) y = e.clientY - h - 16;
+        tip.style.left = Math.max(8, x) + 'px';
+        tip.style.top = Math.max(8, y) + 'px';
+    }
+    function row(color, label, value) {
+        return '<div class="dh-tip-row"><i style="background:' + color + '"></i><span>' + esc(label) + '</span><b>' + esc(value) + '</b></div>';
+    }
+
+    var seriesColors = { 'Assigned': '#2970ff', 'In Progress': '#7c3aed', 'Completed': '#027a48', 'Overdue & Completed': '#f79009', 'Declined': '#c01048' };
+
+    function donutPaint(donut, activeIdx) {
+        var segs = JSON.parse(donut.dataset.segs || '[]');
+        if (!segs.length) return segs;
+        var stops = segs.map(function (s) {
+            var c = (activeIdx === null || activeIdx === s.i) ? s.color : 'color-mix(in srgb, ' + s.color + ' 28%, #fff)';
+            return c + ' ' + s.from + '% ' + s.to + '%';
+        });
+        donut.style.background = 'conic-gradient(' + stops.join(',') + ')';
+        return segs;
+    }
+    function donutHole(donut, seg) {
+        var hole = donut.querySelector('.dh-donut-hole');
+        if (!hole) return;
+        hole.querySelector('strong').textContent = seg ? seg.value : (donut.dataset.total || '0');
+        hole.querySelector('span').textContent = seg ? seg.label : 'Tasks';
+    }
+
+    function resetHover() {
+        root.querySelectorAll('.is-dim,.is-active,.pt-dim').forEach(function (el) { el.classList.remove('is-dim', 'is-active', 'pt-dim'); });
+        root.querySelectorAll('.pt-guide').forEach(function (el) { el.remove(); });
+        root.querySelectorAll('.pt-point[data-r]').forEach(function (c) { c.setAttribute('r', c.dataset.r); });
+        root.querySelectorAll('.dh-donut').forEach(function (d) { donutPaint(d, null); donutHole(d, null); });
+        tip.style.display = 'none';
+    }
+
+    function hoverSeg(idx, e) {
+        var donut = root.querySelector('.dh-donut');
+        if (!donut) return;
+        var segs = donutPaint(donut, idx);
+        var seg = segs.filter(function (s) { return s.i === idx; })[0];
+        donutHole(donut, seg || null);
+        root.querySelectorAll('.dh-leg').forEach(function (l) {
+            l.classList.toggle('is-active', Number(l.dataset.segIdx) === idx);
+            l.classList.toggle('is-dim', Number(l.dataset.segIdx) !== idx);
+        });
+        if (seg) showTip('<div class="dh-tip-title">' + esc(seg.label) + '</div>' + row(seg.color, 'Tasks', seg.value) + row('#98a2b3', 'Share', seg.pct + '%') + '<div class="dh-tip-hint">Click to open these tasks</div>', e);
+        else if (e) {
+            var l = root.querySelector('.dh-leg[data-seg-idx="' + idx + '"]');
+            if (l) showTip('<div class="dh-tip-title">' + esc(l.querySelector('span').textContent) + '</div>' + row('#d0d5dd', 'Tasks', l.querySelector('b').textContent) + '<div class="dh-tip-hint">Click to open these tasks</div>', e);
+        }
+    }
+
+    root.addEventListener('mousemove', function (e) {
+        var t = e.target;
+        var leg = t.closest && t.closest('.dh-leg');
+        var donut = t.closest && t.closest('.dh-donut');
+        var barRow = t.closest && t.closest('.dh-bar-row[data-hover]');
+        var strip = t.closest && t.closest('.pt-hover-strip');
+        var bar = t.closest && t.closest('.pt-bar');
+
+        resetHover();
+
+        if (leg) { hoverSeg(Number(leg.dataset.segIdx), e); return; }
+
+        if (donut) {
+            var r = donut.getBoundingClientRect();
+            var dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+            var dist = Math.sqrt(dx * dx + dy * dy), outer = r.width / 2, inner = outer * 0.64;
+            if (dist >= inner && dist <= outer) {
+                var ang = Math.atan2(dx, -dy) * 180 / Math.PI; if (ang < 0) ang += 360;
+                var pct = ang / 360 * 100;
+                var segs = JSON.parse(donut.dataset.segs || '[]');
+                for (var i = 0; i < segs.length; i++) {
+                    if (pct >= segs[i].from && pct < segs[i].to) { hoverSeg(segs[i].i, e); return; }
+                }
+            }
+            return;
+        }
+
+        if (barRow) {
+            root.querySelectorAll('.dh-bar-row[data-hover]').forEach(function (b) { b.classList.toggle('is-dim', b !== barRow); });
+            barRow.classList.add('is-active');
+            showTip('<div class="dh-tip-title">' + esc(barRow.dataset.label) + '</div>' + row(barRow.dataset.color, 'Tasks', barRow.dataset.value) + (barRow.dataset.label !== 'Assigned Tasks' ? row('#98a2b3', 'Of assigned', barRow.dataset.share + '%') : ''), e);
+            return;
+        }
+
+        if (strip) {
+            var svg = strip.ownerSVGElement;
+            var titleEl = strip.querySelector('title');
+            if (titleEl) { strip.dataset.tip = titleEl.textContent; titleEl.remove(); }
+            var lines = (strip.dataset.tip || '').split('\n');
+            var x0 = parseFloat(strip.getAttribute('x')), w0 = parseFloat(strip.getAttribute('width')), cx = x0 + w0 / 2;
+            var g = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            g.setAttribute('class', 'pt-guide');
+            g.setAttribute('x1', cx); g.setAttribute('x2', cx);
+            g.setAttribute('y1', 0); g.setAttribute('y2', strip.getAttribute('height'));
+            svg.insertBefore(g, svg.querySelector('.pt-hover-strip'));
+            svg.querySelectorAll('.pt-point').forEach(function (c) {
+                if (!c.dataset.r) c.dataset.r = c.getAttribute('r');
+                if (Math.abs(parseFloat(c.getAttribute('cx')) - cx) < 1) c.setAttribute('r', parseFloat(c.dataset.r) + 2.5);
+            });
+            var html = '<div class="dh-tip-title">' + esc(lines[0] || '') + '</div>';
+            lines.slice(1).forEach(function (ln) {
+                var p = ln.split(':'); html += row(seriesColors[p[0].trim()] || '#98a2b3', p[0].trim(), (p[1] || '').trim());
+            });
+            showTip(html, e);
+            return;
+        }
+
+        if (bar) {
+            var svg2 = bar.ownerSVGElement;
+            var tEl = bar.querySelector('title');
+            if (tEl) { bar.dataset.tip = tEl.textContent; tEl.remove(); }
+            svg2.querySelectorAll('.pt-bar').forEach(function (b) { if (b !== bar) b.classList.add('pt-dim'); });
+            var parts = (bar.dataset.tip || '').split(' · ');
+            var name = parts[0] || '', rest = (parts[1] || '').split(':');
+            showTip('<div class="dh-tip-title">' + esc((rest[0] || '').trim()) + '</div>' + row(seriesColors[name] || '#98a2b3', name, (rest[1] || '').trim()), e);
+        }
+    });
+    root.addEventListener('mouseleave', resetHover);
+    window.addEventListener('scroll', resetHover, true);
+
+    /* Click a donut segment to open that status in the task list */
+    root.addEventListener('click', function (e) {
+        var donut = e.target.closest && e.target.closest('.dh-donut');
+        if (!donut) return;
+        var r = donut.getBoundingClientRect();
+        var dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < r.width / 2 * 0.64 || dist > r.width / 2) return;
+        var ang = Math.atan2(dx, -dy) * 180 / Math.PI; if (ang < 0) ang += 360;
+        var pct = ang / 360 * 100;
+        JSON.parse(donut.dataset.segs || '[]').forEach(function (s) {
+            if (pct >= s.from && pct < s.to) {
+                var l = root.querySelector('.dh-leg[data-seg-idx="' + s.i + '"]');
+                if (l) window.location = l.getAttribute('href');
+            }
+        });
     });
 
     var ratingsBase = "{{ route('bd.dashboard.ratings') }}";
