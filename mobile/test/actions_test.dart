@@ -20,6 +20,7 @@ void main() {
     adapter = FakeAdapter({
       'GET /me': (_) => (status: 200, body: {'user': userJson(role: role)}),
       'GET /notifications': (_) => (status: 200, body: {'unread_count': 0, 'data': []}),
+      'GET /bd/dashboard': (_) => (status: 200, body: emptyBdDashboardJson()),
       ...routes,
     });
 
@@ -32,7 +33,7 @@ void main() {
       child: const AdinnApp(),
     ));
     await tester.pumpAndSettle();
-    if (role == 'designer') await openMyTasks(tester);
+    if (role == 'designer' || role == 'bd') await openMyTasks(tester);
   }
 
   Map<String, dynamic> requestJson({int id = 5, String type = 'decline'}) => {

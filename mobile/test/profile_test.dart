@@ -98,9 +98,10 @@ void main() {
     expect(find.text('Enter a valid 10-digit phone number.'), findsOneWidget);
   });
 
-  testWidgets('the password is sent with its confirmation, then the boxes empty', (tester) async {
+  testWidgets('the current password is sent with the new one and its confirmation, then the boxes empty', (tester) async {
     await boot(tester, routes: {'PATCH /profile/password': (_) => (status: 200, body: {'message': 'Password updated successfully.'})});
 
+    await tester.enterText(find.byKey(const Key('profile-current_password')), 'OldPass@123');
     await tester.enterText(find.byKey(const Key('profile-password')), 'NewPass@123');
     await tester.enterText(find.byKey(const Key('profile-password_confirmation')), 'NewPass@123');
     await tester.ensureVisible(find.byKey(const Key('save-password')));
@@ -108,9 +109,26 @@ void main() {
     await tester.pumpAndSettle();
 
     final sent = adapter.requests.lastWhere((r) => r.path == '/profile/password').data as Map;
-    expect(sent, {'password': 'NewPass@123', 'password_confirmation': 'NewPass@123'});
+    expect(sent, {'current_password': 'OldPass@123', 'password': 'NewPass@123', 'password_confirmation': 'NewPass@123'});
+    expect(text(tester, 'profile-current_password'), '');
     expect(text(tester, 'profile-password'), '');
     expect(text(tester, 'profile-password_confirmation'), '');
+  });
+
+  testWidgets('a wrong current password shows under that box and keeps what was typed', (tester) async {
+    await boot(tester, routes: {
+      'PATCH /profile/password': (_) => (status: 422, body: {'message': 'The current password is incorrect.', 'errors': {'current_password': ['The current password is incorrect.']}}),
+    });
+
+    await tester.enterText(find.byKey(const Key('profile-current_password')), 'wrong');
+    await tester.enterText(find.byKey(const Key('profile-password')), 'NewPass@123');
+    await tester.enterText(find.byKey(const Key('profile-password_confirmation')), 'NewPass@123');
+    await tester.ensureVisible(find.byKey(const Key('save-password')));
+    await tester.tap(find.byKey(const Key('save-password')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('The current password is incorrect.'), findsOneWidget);
+    expect(text(tester, 'profile-password'), 'NewPass@123');
   });
 
   testWidgets('the bell at the top turns push on or off and saves straight away', (tester) async {

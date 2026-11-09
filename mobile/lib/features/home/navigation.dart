@@ -11,6 +11,7 @@ List<HomeTab> tabsFor(String? role, {bool approver = false}) => switch (role) {
       'designer' when approver => const [HomeTab.dashboard, HomeTab.tasks, HomeTab.requests, HomeTab.alerts, HomeTab.profile],
       'designer' => const [HomeTab.dashboard, HomeTab.tasks, HomeTab.alerts, HomeTab.profile],
       'designer_head' || 'admin' => const [HomeTab.tasks, HomeTab.requests, HomeTab.alerts, HomeTab.profile],
+      'bd' => const [HomeTab.dashboard, HomeTab.tasks, HomeTab.alerts, HomeTab.profile],
       _ => const [HomeTab.tasks, HomeTab.alerts, HomeTab.profile],
     };
 

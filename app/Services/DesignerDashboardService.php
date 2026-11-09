@@ -17,20 +17,111 @@ use Illuminate\Support\Collection;
  */
 class DesignerDashboardService
 {
+    /**
+     * What the dashboard is scoped to. One of:
+     *  - a month: `$month` = "YYYY-MM" (missing, malformed or in the future means the current month);
+     *  - overall (all time): `$month` = "overall";
+     *  - a date range: `$from` and `$to` = "YYYY-MM-DD" (swapped if reversed, `$to` capped at today).
+     *
+     * @return array{start: ?Carbon, end: ?Carbon, mode: string, key: string, label: string, is_current: bool}
+     */
+    public function period(?string $month = null, ?string $from = null, ?string $to = null): array
+    {
+        $today = now();
+
+        if ($month === 'overall') {
+            return ['start' => null, 'end' => null, 'mode' => 'overall', 'key' => 'overall', 'label' => 'Overall', 'is_current' => false];
+        }
+
+        $f = $this->parseDate($from);
+        $t = $this->parseDate($to);
+        if ($f && $t) {
+            if ($f->gt($t)) {
+                [$f, $t] = [$t, $f];
+            }
+            if ($t->gt($today)) {
+                $t = $today->copy();
+            }
+            if ($f->gt($t)) {
+                $f = $t->copy();
+            }
+            $f = $f->startOfDay();
+            $t = $t->endOfDay();
+
+            return [
+                'start' => $f,
+                'end' => $t,
+                'mode' => 'range',
+                'key' => 'range',
+                'label' => $f->format('d M Y').' – '.$t->format('d M Y'),
+                'is_current' => false,
+            ];
+        }
+
+        $current = $today->copy()->startOfMonth();
+        $start = $current->copy();
+
+        if ($month !== null && preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $month, $m)) {
+            $picked = Carbon::create((int) $m[1], (int) $m[2], 1)->startOfMonth();
+            if ($picked->lte($current)) {
+                $start = $picked;
+            }
+        }
+
+        return [
+            'start' => $start,
+            'end' => $start->copy()->endOfMonth(),
+            'mode' => 'month',
+            'key' => $start->format('Y-m'),
+            'label' => $start->format('F Y'),
+            'is_current' => $start->equalTo($current),
+        ];
+    }
+
+    private function parseDate(?string $value): ?Carbon
+    {
+        if ($value === null || ! preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m) || ! checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+            return null;
+        }
+
+        return Carbon::create((int) $m[1], (int) $m[2], (int) $m[3]);
+    }
+
+    /** Whether a moment falls in the period (everything does, for "overall"). */
+    private function within(?Carbon $at, array $period): bool
+    {
+        if ($at === null) {
+            return false;
+        }
+
+        return $period['start'] === null || $at->betweenIncluded($period['start'], $period['end']);
+    }
+
+    /** A task belongs to the period it was assigned in (a Designer-created ticket not yet assigned uses its creation date). */
+    private function inPeriod(DesignTask $task, array $period): bool
+    {
+        return $period['start'] === null || $this->within($task->assigned_at ?? $task->created_at, $period);
+    }
+
     /** @return array<string, mixed> the exact variables the `designer.dashboard` view receives */
-    public function build(User $designer): array
+    public function build(User $designer, ?string $month = null, ?string $from = null, ?string $to = null): array
     {
         $designerId = (int) $designer->id;
+        $period = $this->period($month, $from, $to);
 
-        $tasks = DesignTask::query()
+        $allTasks = DesignTask::query()
             ->with(['assigner:id,name'])
             ->where('designer_id', $designerId)
             ->latest('assigned_at')
             ->get();
 
+        // Everything except the Performance Trend is the selected period's tickets; the trend itself looks at the
+        // six months ending with it (or with this month, for "overall"), so it uses $allTasks.
+        $tasks = $allTasks->filter(fn (DesignTask $task) => $this->inPeriod($task, $period))->values();
+
         $taskIds = $tasks->pluck('id');
 
-        $ownRequests = DesignTaskRequest::query()
+        $allRequests = DesignTaskRequest::query()
             ->with([
                 'task:id,task_id,task_name,designer_id,status',
                 'task.designer:id,name',
@@ -40,6 +131,14 @@ class DesignerDashboardService
             ->where('requested_by', $designerId)
             ->latest()
             ->get();
+
+        // Requests raised in the selected period.
+        $ownRequests = $allRequests
+            ->filter(fn (DesignTaskRequest $r) => $this->within($r->created_at, $period))
+            ->values();
+
+        // The six-month Performance Trend ends with the period's last month (this month for "overall").
+        $anchor = ($period['end'] ?? now())->copy()->startOfMonth();
 
         $pendingStatuses = ['pending_approval', 'pending_designer_head', 'pending_admin'];
         $pendingRequests = $ownRequests->whereIn('overall_status', $pendingStatuses)->values();
@@ -117,16 +216,16 @@ class DesignerDashboardService
         // Monthly completed-task trend for the last 6 months, driven by the task's own
         // "-> completed" history event (not who clicked it — the final confirmation is
         // often recorded as the BD via bd_completion_rating, not the designer).
-        $completions = $taskIds->isEmpty()
+        $completions = $allTasks->isEmpty()
             ? collect()
             : DesignTaskStatusHistory::query()
                 ->where('to_status', 'completed')
-                ->whereIn('design_task_id', $taskIds)
+                ->whereIn('design_task_id', $allTasks->pluck('id'))
                 ->get(['design_task_id', 'created_at']);
 
         $monthlyTrend = collect(range(5, 0))
-            ->map(function (int $offset) use ($completions) {
-                $month = now()->startOfMonth()->subMonths($offset);
+            ->map(function (int $offset) use ($completions, $anchor) {
+                $month = $anchor->copy()->subMonths($offset);
                 $monthEnd = $month->copy()->endOfMonth();
 
                 return [
@@ -235,11 +334,10 @@ class DesignerDashboardService
             ->take(100);
 
         /* ---- Performance Trend (shared shape): last 6 months, self-scoped ---- */
-        $today = now();
-        $line = collect(range(5, 0))->map(function (int $offset) use ($today, $tasks, $ownRequests, $completedAtByTask) {
-            $start = $today->copy()->startOfMonth()->subMonths($offset);
+        $line = collect(range(5, 0))->map(function (int $offset) use ($anchor, $allTasks, $allRequests, $completedAtByTask) {
+            $start = $anchor->copy()->subMonths($offset);
             $end = $start->copy()->endOfMonth();
-            $monthTasks = $tasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($start, $end));
+            $monthTasks = $allTasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($start, $end));
 
             $completedIds = collect();
             foreach ($completedAtByTask as $tid => $ts) {
@@ -250,13 +348,13 @@ class DesignerDashboardService
 
             $overdueCompleted = 0;
             foreach ($completedIds as $tid) {
-                $task = $tasks->firstWhere('id', $tid);
+                $task = $allTasks->firstWhere('id', $tid);
                 if ($task && $task->due_at && $task->due_at->lt($completedAtByTask[$tid])) {
                     $overdueCompleted++;
                 }
             }
 
-            $declined = $ownRequests
+            $declined = $allRequests
                 ->filter(fn ($r) => $r->request_type === 'decline'
                     && $r->overall_status === 'approved'
                     && $r->responded_at !== null
@@ -273,18 +371,18 @@ class DesignerDashboardService
             ];
         })->values();
 
-        $currentMonthTasks = $tasks->filter(fn (DesignTask $task) => $task->assigned_at && $task->assigned_at->betweenIncluded($today->copy()->startOfMonth(), $today->copy()->endOfMonth()));
+        // The trend cards are the selected month's tickets (the same ones as the rest of the page).
+        $currentMonthTasks = $tasks;
         $overdueCompletedCount = $currentMonthTasks
             ->filter(fn (DesignTask $task) => $task->status === 'completed'
                 && $task->due_at
                 && ($completedAtByTask->get($task->id) ?? null)
                 && $task->due_at->lt($completedAtByTask->get($task->id)))
             ->count();
-        $approvedDeclines = $ownRequests
+        $approvedDeclines = $allRequests
             ->filter(fn ($r) => $r->request_type === 'decline'
                 && $r->overall_status === 'approved'
-                && $r->responded_at !== null
-                && $r->responded_at->betweenIncluded($today->copy()->startOfMonth(), $today->copy()->endOfMonth()))
+                && $this->within($r->responded_at, $period))
             ->count();
         $trendCards = [
             ['label' => 'Assigned Tasks', 'value' => $currentMonthTasks->count(), 'color' => '#2970ff'],
@@ -293,7 +391,7 @@ class DesignerDashboardService
             ['label' => 'Overdue & Completed', 'value' => $overdueCompletedCount, 'color' => '#f79009'],
             ['label' => 'Declined', 'value' => $approvedDeclines, 'color' => '#c01048'],
         ];
-        $trendContext = trim('My Tasks'.' • '.$today->format('M Y'));
+        $trendContext = trim('My Tasks'.' • '.($period['mode'] === 'month' ? $period['start']->format('M Y') : $period['label']));
 
 
         return [
@@ -313,7 +411,38 @@ class DesignerDashboardService
             'line' => $line,
             'trendCards' => $trendCards,
             'trendContext' => $trendContext,
+            'period' => [
+                'mode' => $period['mode'],
+                'key' => $period['key'],
+                'label' => $period['label'],
+                'is_current' => $period['is_current'],
+                // For the month picker; an overall / range view opens it on the current month.
+                'year' => (int) ($period['mode'] === 'month' ? $period['start'] : now())->format('Y'),
+                'month' => (int) ($period['mode'] === 'month' ? $period['start'] : now())->format('n'),
+                'from' => $period['mode'] === 'range' ? $period['start']->toDateString() : null,
+                'to' => $period['mode'] === 'range' ? $period['end']->toDateString() : null,
+                'first_date' => $this->firstDate($allTasks),
+                // Years a Designer can pick: from the first ticket they were ever given up to this year.
+                'years' => $this->yearOptions($allTasks),
+            ],
         ];
+    }
+
+    /** The date of the first ticket this designer was given (the earliest a custom range can start). */
+    private function firstDate(Collection $allTasks): string
+    {
+        $first = $allTasks->map(fn (DesignTask $t) => $t->assigned_at ?? $t->created_at)->filter()->min();
+
+        return ($first ?? now())->toDateString();
+    }
+
+    /** @return list<int> newest first */
+    private function yearOptions(Collection $allTasks): array
+    {
+        $thisYear = (int) now()->format('Y');
+        $first = $allTasks->map(fn (DesignTask $t) => ($t->assigned_at ?? $t->created_at)?->year)->filter()->min() ?? $thisYear;
+
+        return range($thisYear, min($first, $thisYear));
     }
 
     /**
@@ -338,14 +467,18 @@ class DesignerDashboardService
         return ['status' => 'in_progress', 'days' => 0];
     }
 
-    /** The "Your Task Details" rows for every task of this designer, optionally narrowed by a text search. */
-    public function taskRows(int $designerId, string $search = ''): Collection
+    /** The "Your Task Details" rows for this designer's tickets of the month, optionally narrowed by a text search. */
+    public function taskRows(int $designerId, string $search = '', ?string $month = null, ?string $from = null, ?string $to = null): Collection
     {
+        $period = $this->period($month, $from, $to);
+
         $tasks = DesignTask::query()
             ->with(['assigner:id,name'])
             ->where('designer_id', $designerId)
             ->latest('assigned_at')
-            ->get();
+            ->get()
+            ->filter(fn (DesignTask $task) => $this->inPeriod($task, $period))
+            ->values();
 
         if ($search !== '') {
             $tasks = $tasks->filter(fn (DesignTask $task) => $this->taskMatchesSearch($task, $search))->values();

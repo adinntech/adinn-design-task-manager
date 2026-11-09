@@ -68,12 +68,22 @@ class ProfileController extends Controller
     public function updatePassword(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password'],
+        ], [
+            'password.different' => 'The new password must be different from the current password.',
         ]);
 
         // Always the authenticated user — never a submitted id, so one account
         // can never change another's password through this form.
-        Auth::user()->update(['password' => Hash::make($data['password'])]);
+        $user = Auth::user();
+
+        // The change is only granted when the current password is right.
+        if (! Hash::check($data['current_password'], $user->password)) {
+            return back()->withErrors(['current_password' => 'The current password is incorrect.']);
+        }
+
+        $user->update(['password' => Hash::make($data['password'])]);
 
         return back()->with('success', 'Password updated successfully.');
     }

@@ -1,4 +1,5 @@
 import 'api_client.dart';
+import '../features/dashboard/bd_dashboard_models.dart';
 import '../features/dashboard/dashboard_models.dart';
 import '../features/kanban/kanban_models.dart';
 import 'models.dart';
@@ -113,10 +114,24 @@ class RoleApi {
       _api.post('/designer/tasks/$taskId/backward-request', data: {'to_status': toStatus, 'reason': reason});
 
   // ---- Designer dashboard ----
-  Future<DesignerDashboard> designerDashboard() async => DesignerDashboard.fromJson(await _api.get('/designer/dashboard'));
+  /// [period] is the query that scopes the dashboard: empty = the current month, `{month: 'yyyy-MM'}`,
+  /// `{month: 'overall'}` or `{from: 'yyyy-MM-dd', to: 'yyyy-MM-dd'}`.
+  Future<DesignerDashboard> designerDashboard({Map<String, String> period = const {}}) async =>
+      DesignerDashboard.fromJson(await _api.get('/designer/dashboard', query: {...period}));
 
-  Future<List<DashRow>> dashboardTasks(String search) async {
-    final json = await _api.get('/designer/dashboard/tasks', query: {'search': search});
+  Future<List<DashRow>> dashboardTasks(String search, {Map<String, String> period = const {}}) async {
+    final json = await _api.get('/designer/dashboard/tasks', query: {'search': search, ...period});
+    return ((json['data'] as List?) ?? []).map((r) => DashRow.fromJson(r as Map<String, dynamic>)).toList();
+  }
+
+  // ---- BD dashboard ----
+  Map<String, dynamic> _bdFilters(String? month, String? designer) =>
+      {if (month != null && month.isNotEmpty) 'month': month, if (designer != null && designer != 'all') 'designer': designer};
+
+  Future<BdDashboard> bdDashboard({String? month, String? designer}) async => BdDashboard.fromJson(await _api.get('/bd/dashboard', query: _bdFilters(month, designer)));
+
+  Future<List<DashRow>> bdDashboardTasks(String search, {String? month, String? designer}) async {
+    final json = await _api.get('/bd/dashboard/tasks', query: {'search': search, ..._bdFilters(month, designer)});
     return ((json['data'] as List?) ?? []).map((r) => DashRow.fromJson(r as Map<String, dynamic>)).toList();
   }
 

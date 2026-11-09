@@ -124,3 +124,18 @@ Map<String, dynamic> emptyDashboardJson({List<Map<String, dynamic>> recent = con
       'reviews': [],
       'my_requests': [],
     };
+
+/// `GET /bd/dashboard` with nothing in it: enough for the BD home tab to render.
+Map<String, dynamic> emptyBdDashboardJson() => {
+      'user': {'name': 'Test BD', 'last_login_at': null},
+      'filters': {'designer': null, 'designer_name': null, 'month': '2026-11', 'month_label': 'November 2026', 'designers': [], 'months': []},
+      'stats': {},
+      'bar': [],
+      'trend': {'context': 'All Designers • Nov 2026', 'cards': [], 'line': []},
+      'workload': [],
+      'recent_tasks': [],
+      'overdue': [],
+      'rework': [],
+      'ratings': [],
+      'completions': [],
+    };

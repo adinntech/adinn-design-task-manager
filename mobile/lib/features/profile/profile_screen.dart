@@ -81,10 +81,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _role = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
+  final _current = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   final _skill = TextEditingController();
 
+  bool _showCurrent = false;
   bool _showPassword = false;
   bool _showConfirm = false;
   bool _filled = false;
@@ -116,6 +118,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       _role,
       _email,
       _phone,
+      _current,
       _password,
       _confirm,
       _skill,
@@ -196,11 +199,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         .patch(
           '/profile/password',
           data: {
+            'current_password': _current.text,
             'password': _password.text,
             'password_confirmation': _confirm.text,
           },
         ),
     onDone: (_) => setState(() {
+      _current.clear();
       _password.clear();
       _confirm.clear();
     }),
@@ -391,8 +396,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _section(
               icon: Icons.lock_rounded,
               title: 'Password',
-              subtitle: 'At least 8 characters.',
+              subtitle: 'Enter your current password, then a new one of at least 8 characters.',
               children: [
+                _field(
+                  'current_password',
+                  'Current Password',
+                  _current,
+                  Icons.lock_outline_rounded,
+                  obscure: !_showCurrent,
+                  onToggle: () => setState(() => _showCurrent = !_showCurrent),
+                  showing: _showCurrent,
+                ),
                 _field(
                   'password',
                   'New Password',
