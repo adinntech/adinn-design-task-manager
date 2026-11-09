@@ -262,12 +262,19 @@ class _Details extends StatelessWidget {
   }
 }
 
-/// The ticket's journey as a vertical timeline: an icon per step joined by a line, the oldest first, ending on the step
-/// the ticket is at now.
-class _History extends StatelessWidget {
+/// The History tab, as on the web: "Pipeline History" (every status change and chat message) and "Edit History" (what a
+/// BD changed on the ticket). Both list the most recent first.
+class _History extends StatefulWidget {
   const _History({required this.data});
 
   final Map<String, dynamic> data;
+
+  @override
+  State<_History> createState() => _HistoryState();
+}
+
+class _HistoryState extends State<_History> {
+  bool _edits = false;
 
   static IconData _icon(String? status) => switch (status) {
         'assigned_tasks' => Icons.send_rounded,
@@ -281,45 +288,98 @@ class _History extends StatelessWidget {
         _ => Icons.arrow_forward_rounded,
       };
 
+  static const _grey = Color(0xFF667085);
+
   @override
   Widget build(BuildContext context) {
-    final history = ((data['history'] as List?) ?? []).cast<Map<String, dynamic>>();
-    if (history.isEmpty) return const Center(child: Text('No history yet.'));
-
     final primary = Theme.of(context).colorScheme.primary;
-    const grey = Color(0xFF667085);
-
-    // Chat messages sit between the status changes; "Current step" is still the latest status change, whatever was
-    // said after it. (Older servers send no `kind`: every row is then a status change.)
-    final current = history.lastIndexWhere((h) => h['kind'] != 'comment');
+    // Newest first. (The server sends oldest first.)
+    final pipeline = ((widget.data['history'] as List?) ?? []).cast<Map<String, dynamic>>().reversed.toList();
+    final edits = ((widget.data['edit_history'] as List?) ?? []).cast<Map<String, dynamic>>();
 
     return ListView(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.fromLTRB(14, 14, 14, 14 + MediaQuery.viewPaddingOf(context).bottom),
       children: [
+        _switcher(primary, pipeline.length, edits.length),
+        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFEAECF0))),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Timeline', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 16),
-            for (var i = 0; i < history.length; i++)
-              history[i]['kind'] == 'comment'
-                  ? _comment(history[i], last: i == history.length - 1, grey: grey)
-                  : _step(
-                      history[i],
-                      last: i == current,
-                      lastRow: i == history.length - 1,
-                      primary: primary,
-                      grey: grey,
-                    ),
-          ]),
+          child: _edits ? _editView(edits) : _pipelineView(pipeline, primary),
         ),
       ],
     );
   }
 
+  Widget _switcher(Color primary, int events, int updates) {
+    Widget seg(String key, String label, bool on, VoidCallback tap) => Expanded(
+          child: GestureDetector(
+            key: Key(key),
+            behavior: HitTestBehavior.opaque,
+            onTap: tap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: on ? primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: on ? [BoxShadow(color: primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
+              ),
+              child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: on ? Colors.white : _grey)),
+            ),
+          ),
+        );
+
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: const Color(0xFFEAECF0), borderRadius: BorderRadius.circular(24)),
+      child: Row(children: [
+        seg('history-pipeline', 'Pipeline History', !_edits, () => setState(() => _edits = false)),
+        seg('history-edits', 'Edit History', _edits, () => setState(() => _edits = true)),
+      ]),
+    );
+  }
+
+  Widget _head(String title, String subtitle, String count) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              Text(subtitle, style: const TextStyle(fontSize: 11.5, color: _grey)),
+            ]),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(color: const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(20)),
+            child: Text(count, key: const Key('history-count'), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF475467))),
+          ),
+        ]),
+      );
+
+  // ---- pipeline ----
+
+  Widget _pipelineView(List<Map<String, dynamic>> rows, Color primary) {
+    // "Current step" is the newest status change, whatever was said after it. (Older servers send no `kind`: every row is
+    // then a status change.)
+    final current = rows.indexWhere((h) => h['kind'] != 'comment');
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _head('Pipeline History', 'Complete workflow, comment and status activity.', '${rows.length} ${rows.length == 1 ? 'Event' : 'Events'}'),
+      if (rows.isEmpty)
+        const Padding(padding: EdgeInsets.only(bottom: 14), child: Text('No pipeline events have been recorded yet.', style: TextStyle(color: Colors.black45)))
+      else
+        for (var i = 0; i < rows.length; i++)
+          rows[i]['kind'] == 'comment'
+              ? _comment(rows[i], lastRow: i == rows.length - 1)
+              : _step(rows[i], current: i == current, lastRow: i == rows.length - 1, primary: primary),
+    ]);
+  }
+
   /// A chat message in the timeline: who said it, when, and the text.
-  Widget _comment(Map<String, dynamic> h, {required bool last, required Color grey}) {
+  Widget _comment(Map<String, dynamic> h, {required bool lastRow}) {
     final at = h['created_at'] == null ? null : DateTime.tryParse(h['created_at'] as String)?.toLocal();
     final text = (h['note'] ?? '').toString().trim();
     final by = (h['by'] ?? 'Someone').toString();
@@ -332,16 +392,16 @@ class _History extends StatelessWidget {
         SizedBox(
           width: 30,
           child: Column(children: [
-            const Icon(Icons.chat_bubble_outline_rounded, size: 20, color: Color(0xFF667085)),
-            if (!last) Expanded(child: Container(width: 1.5, margin: const EdgeInsets.symmetric(vertical: 4), color: const Color(0xFFD0D5DD))),
+            const Icon(Icons.chat_bubble_outline_rounded, size: 20, color: _grey),
+            if (!lastRow) Expanded(child: Container(width: 1.5, margin: const EdgeInsets.symmetric(vertical: 4), color: const Color(0xFFD0D5DD))),
           ]),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Padding(
-            padding: EdgeInsets.only(bottom: last ? 12 : 18),
+            padding: EdgeInsets.only(bottom: lastRow ? 12 : 18),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(at == null ? '' : DateFormat('dd/MM/yyyy, h:mm a').format(at), style: TextStyle(fontSize: 12, color: grey)),
+              Text(at == null ? '' : DateFormat('dd/MM/yyyy, h:mm a').format(at), style: const TextStyle(fontSize: 12, color: _grey)),
               const SizedBox(height: 2),
               Text(role.isEmpty ? by : '$by · ${role[0].toUpperCase()}${role.substring(1)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF344054))),
               const SizedBox(height: 4),
@@ -354,8 +414,7 @@ class _History extends StatelessWidget {
                   style: const TextStyle(fontSize: 13.5, color: Color(0xFF344054)),
                 ),
               ),
-              if (text.isNotEmpty && files > 0)
-                Padding(padding: const EdgeInsets.only(top: 3), child: Text('+ ${files == 1 ? '1 file' : '$files files'}', style: TextStyle(fontSize: 12, color: grey))),
+              if (text.isNotEmpty && files > 0) Padding(padding: const EdgeInsets.only(top: 3), child: Text('+ ${files == 1 ? '1 file' : '$files files'}', style: const TextStyle(fontSize: 12, color: _grey))),
             ]),
           ),
         ),
@@ -363,11 +422,11 @@ class _History extends StatelessWidget {
     );
   }
 
-  Widget _step(Map<String, dynamic> h, {required bool last, required bool lastRow, required Color primary, required Color grey}) {
+  Widget _step(Map<String, dynamic> h, {required bool current, required bool lastRow, required Color primary}) {
     final at = h['created_at'] == null ? null : DateTime.tryParse(h['created_at'] as String)?.toLocal();
     final to = h['to_status'] as String?;
     final note = (h['note'] ?? '').toString();
-    final color = last ? primary : const Color(0xFF101828);
+    final color = current ? primary : const Color(0xFF101828);
 
     return IntrinsicHeight(
       child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -375,7 +434,7 @@ class _History extends StatelessWidget {
         SizedBox(
           width: 30,
           child: Column(children: [
-            Icon(last ? Icons.visibility_outlined : _icon(to), size: 22, color: color),
+            Icon(current ? Icons.visibility_outlined : _icon(to), size: 22, color: color),
             if (!lastRow) Expanded(child: Container(width: 1.5, margin: const EdgeInsets.symmetric(vertical: 4), color: const Color(0xFFD0D5DD))),
           ]),
         ),
@@ -384,14 +443,59 @@ class _History extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.only(bottom: lastRow ? 12 : 18),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(last ? 'Current step' : (at == null ? '' : DateFormat('dd/MM/yyyy, h:mm a').format(at)), style: TextStyle(fontSize: 12, color: grey)),
+              Text(current ? 'Current step' : (at == null ? '' : DateFormat('dd/MM/yyyy, h:mm a').format(at)), style: const TextStyle(fontSize: 12, color: _grey)),
               const SizedBox(height: 2),
-              Text(to == null ? 'Updated' : statusLabel(to), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: last ? primary : const Color(0xFF101828))),
+              Text(to == null ? 'Updated' : statusLabel(to), style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: current ? primary : const Color(0xFF101828))),
               if (note.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(note, style: const TextStyle(fontSize: 13.5, color: Color(0xFF344054)))),
-              if (last && at != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text('Since ${DateFormat('dd/MM/yyyy, h:mm a').format(at)}', style: TextStyle(fontSize: 12, color: grey))),
+              if (current && at != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text('Since ${DateFormat('dd/MM/yyyy, h:mm a').format(at)}', style: const TextStyle(fontSize: 12, color: _grey))),
             ]),
           ),
         ),
+      ]),
+    );
+  }
+
+  // ---- edits ----
+
+  Widget _editView(List<Map<String, dynamic>> batches) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _head('Edit History', 'Every recorded change to task information.', '${batches.length} ${batches.length == 1 ? 'Update' : 'Updates'}'),
+      if (batches.isEmpty)
+        const Padding(padding: EdgeInsets.only(bottom: 14), child: Text('No task edits have been recorded yet.', key: Key('history-edits-empty'), style: TextStyle(color: Colors.black45)))
+      else
+        for (final b in batches) _batch(b),
+    ]);
+  }
+
+  Widget _batch(Map<String, dynamic> b) {
+    final at = b['created_at'] == null ? null : DateTime.tryParse(b['created_at'] as String)?.toLocal();
+    final changes = ((b['changes'] as List?) ?? []).cast<Map<String, dynamic>>();
+    String v(Object? x) => (x == null || '$x'.isEmpty) ? '—' : '$x';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFEAECF0))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.edit_note_rounded, size: 20, color: _grey),
+          const SizedBox(width: 6),
+          Expanded(child: Text((b['editor'] ?? 'User').toString(), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800))),
+          Text(at == null ? '' : DateFormat('dd/MM/yyyy').format(at), style: const TextStyle(fontSize: 12, color: _grey)),
+        ]),
+        for (final c in changes)
+          Padding(
+            padding: const EdgeInsets.only(top: 9),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${c['field']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.4, color: _grey)),
+              const SizedBox(height: 2),
+              Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, children: [
+                Text(v(c['old']), style: const TextStyle(fontSize: 13, color: Color(0xFF98A2B3), decoration: TextDecoration.lineThrough)),
+                const Icon(Icons.arrow_forward_rounded, size: 14, color: _grey),
+                Text(v(c['new']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Color(0xFF101828))),
+              ]),
+            ]),
+          ),
       ]),
     );
   }

@@ -178,6 +178,7 @@ class TaskController extends Controller
             ],
             'next_status' => $nextStatus,
             'history' => $this->timeline($task),
+            'edit_history' => $this->editHistory($task),
             'requests' => DesignTaskRequest::where('design_task_id', $task->id)->latest()
                 ->get(['id', 'request_type', 'from_status', 'to_status', 'reason', 'overall_status', 'created_at']),
         ]);

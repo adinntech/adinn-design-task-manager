@@ -75,34 +75,32 @@ class BdDashboardScreen extends ConsumerWidget {
             ref.invalidate(bdDashboardProvider);
             await ref.read(bdDashboardProvider.future);
           },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
-            children: [
-              _Hero(d),
-              const SizedBox(height: 14),
-              _PrimaryStats(d),
-              const SizedBox(height: 14),
-              _SecondaryStats(d),
-              const SizedBox(height: 14),
-              _CompletionRate(d),
-              const SizedBox(height: 14),
-              _ExtraStats(d),
-              const SizedBox(height: 14),
-              _DesignerAnalytics(d),
-              const SizedBox(height: 14),
-              _Tickets(d),
-              const SizedBox(height: 14),
-              _MonthlyAnalytics(d),
-              const SizedBox(height: 14),
-              PerformanceTrend(contextLabel: d.trendContext, cards: d.trendCards, months: d.trendLine, declinedStage: 'decline_tasks'),
-              const SizedBox(height: 14),
-              _OverdueTasks(d),
-              const SizedBox(height: 14),
-              _ReworkAnalytics(d),
-              const SizedBox(height: 14),
-              _Ratings(d),
-              const SizedBox(height: 14),
-              _Completions(d),
+          // Slivers, so a section's heading can stay pinned at the top until the next section pushes it away.
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+                sliver: SliverMainAxisGroup(slivers: [
+                  _box(_Hero(d)),
+                  _box(_PrimaryStats(d)),
+                  _box(_SecondaryStats(d)),
+                  _box(_CompletionRate(d)),
+                  _box(_ExtraStats(d)),
+                  _Tickets(d),
+                  _gap,
+                  _MonthlyAnalytics(d),
+                  _gap,
+                  _box(PerformanceTrend(contextLabel: d.trendContext, cards: d.trendCards, months: d.trendLine, declinedStage: 'decline_tasks')),
+                  _OverdueTasks(d),
+                  _gap,
+                  _ReworkAnalytics(d),
+                  _gap,
+                  _Ratings(d),
+                  _gap,
+                  _Completions(d),
+                ]),
+              ),
             ],
           ),
         ),
@@ -336,90 +334,6 @@ class _ExtraStats extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Designer Analytics
-// ---------------------------------------------------------------------------------------------
-
-class _DesignerAnalytics extends ConsumerWidget {
-  const _DesignerAnalytics(this.d);
-
-  final BdDashboard d;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final primary = Theme.of(context).colorScheme.primary;
-
-    Widget cell(String label, int v, {Color? color}) => Expanded(
-          child: Column(children: [
-            Text('$v', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: v > 0 ? color : const Color(0xFF98A2B3))),
-            const SizedBox(height: 1),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.5, color: Color(0xFF667085), fontWeight: FontWeight.w600)),
-          ]),
-        );
-
-    return SectionCard(
-      title: 'Designer Analytics',
-      icon: Icons.groups_rounded,
-      subtitle: 'Tap a Designer to filter the dashboard',
-      child: d.workload.isEmpty
-          ? const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: Text('No Designers found for your tickets in this period.')))
-          : Column(children: [
-              for (final w in d.workload)
-                Builder(builder: (context) {
-                  final selected = d.selectedDesigner == '${w.id}';
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: InkWell(
-                      key: Key('designer-${w.id}'),
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () => ref.read(bdDashFilterProvider.notifier).setDesigner(selected ? 'all' : '${w.id}'),
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                        decoration: BoxDecoration(
-                          color: selected ? primary.withValues(alpha: 0.06) : const Color(0xFFF9FAFB),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: selected ? primary : const Color(0xFFEAECF0)),
-                        ),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Row(children: [
-                            CircleAvatar(radius: 14, backgroundColor: primary.withValues(alpha: 0.12), child: Text(w.name.isEmpty ? '?' : w.name[0].toUpperCase(), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: primary))),
-                            const SizedBox(width: 10),
-                            Expanded(child: Text(w.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
-                            if (selected) const StatusPill('viewing', Color(0xFF2E7D32)),
-                            if (w.rating != null) ...[
-                              const SizedBox(width: 6),
-                              const Icon(Icons.star_rounded, size: 16, color: Color(0xFFF5A623)),
-                              Text(_fmt(w.rating!), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                            ],
-                          ]),
-                          const SizedBox(height: 10),
-                          Row(children: [
-                            cell('Assigned', w['assigned']),
-                            cell('Pending', w['pending']),
-                            cell('Ready', w['ready_to_start']),
-                            cell('Progress', w['in_progress']),
-                            cell('Review', w['waiting']),
-                            cell('Done', w['completed'], color: const Color(0xFF2E7D32)),
-                          ]),
-                          const SizedBox(height: 8),
-                          Row(children: [
-                            cell('Overdue', w['overdue'], color: _red),
-                            cell('Rework', w['rework_count'], color: _pink),
-                            cell('Rw. Creatives', w['rework_creatives'], color: _pink),
-                            cell('Split', w['split']),
-                            cell('Swap', w['swap']),
-                            cell('Decline', w['decline']),
-                          ]),
-                        ]),
-                      ),
-                    ),
-                  );
-                }),
-            ]),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------------------------
 // BD Tickets
 // ---------------------------------------------------------------------------------------------
 
@@ -458,18 +372,15 @@ class _TicketsState extends ConsumerState<_Tickets> {
     final searching = _query.isNotEmpty;
     final source = searching ? ref.watch(bdDashboardSearchProvider(_query)) : AsyncData(widget.d.recent);
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(
-          child: Row(children: [
-            Text('BD Tickets', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-              decoration: BoxDecoration(color: const Color(0xFFFEE4E2), borderRadius: BorderRadius.circular(20)),
-              child: Text('${widget.d.stat('total_tasks')}', key: const Key('overview-total'), style: const TextStyle(color: Color(0xFFD92D20), fontWeight: FontWeight.w800, fontSize: 12)),
-            ),
-          ]),
+    return StickySection(
+      title: 'BD Tickets',
+      icon: Icons.confirmation_number_rounded,
+      subtitle: 'Your tickets assigned in ${widget.d.scope}',
+      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+          decoration: BoxDecoration(color: const Color(0xFFFEE4E2), borderRadius: BorderRadius.circular(20)),
+          child: Text('${widget.d.stat('total_tasks')}', key: const Key('overview-total'), style: const TextStyle(color: Color(0xFFD92D20), fontWeight: FontWeight.w800, fontSize: 12)),
         ),
         TextButton(
           key: const Key('overview-view-all'),
@@ -478,8 +389,7 @@ class _TicketsState extends ConsumerState<_Tickets> {
           child: const Text('View All'),
         ),
       ]),
-      Text('Your tickets assigned in ${widget.d.scope}', style: const TextStyle(fontSize: 11.5, color: Color(0xFF667085))),
-      const SizedBox(height: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 3))]),
         child: TextField(
@@ -519,7 +429,8 @@ class _TicketsState extends ConsumerState<_Tickets> {
                   ),
               ]),
       ),
-    ]);
+    ]),
+    );
   }
 }
 
@@ -551,7 +462,7 @@ class _MonthlyAnalytics extends ConsumerWidget {
     mix.add(('Draft / Confirmation', math.max(0, d.stat('total_tasks') - assigned), const Color(0xFFCBD5E1), 'pending_bd_approval'));
     final mixSum = mix.fold<int>(0, (s, m) => s + m.$2);
 
-    return SectionCard(
+    return StickySection(
       title: '${d.monthLabel} — Monthly Analytics',
       icon: Icons.bar_chart_rounded,
       subtitle: d.designerName ?? 'All Designers',
@@ -720,14 +631,17 @@ Widget _meta(String k, String? v) => Padding(
       ]),
     );
 
-class _OverdueTasks extends StatelessWidget {
+class _OverdueTasks extends ConsumerWidget {
   const _OverdueTasks(this.d);
 
   final BdDashboard d;
 
+  /// Only the first few sit on the dashboard; the rest are one tap away on the board.
+  static const _maxRows = 4;
+
   @override
-  Widget build(BuildContext context) {
-    return SectionCard(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return StickySection(
       title: 'Overdue Tasks',
       icon: Icons.warning_amber_rounded,
       subtitle: 'Not completed and past the deadline',
@@ -735,7 +649,7 @@ class _OverdueTasks extends StatelessWidget {
       child: d.overdue.isEmpty
           ? _EmptyNote('${d.designerName ?? 'All Designers'} — ${d.monthLabel}: No overdue tasks.', keyName: 'overdue-empty')
           : Column(children: [
-              for (final o in d.overdue)
+              for (final o in d.overdue.take(_maxRows))
                 _TaskLine(
                   id: o.id,
                   taskId: o.taskId,
@@ -753,27 +667,48 @@ class _OverdueTasks extends StatelessWidget {
                     ]),
                   ]),
                 ),
+              if (d.overdue.length > _maxRows)
+                Center(
+                  child: TextButton.icon(
+                    key: const Key('overdue-more'),
+                    onPressed: () => _openBoard(ref, ''),
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                    iconAlignment: IconAlignment.end,
+                    label: Text('${d.overdue.length - _maxRows} more · View all tasks'),
+                  ),
+                ),
             ]),
     );
   }
 }
 
-class _ReworkAnalytics extends StatelessWidget {
+class _ReworkAnalytics extends StatefulWidget {
   const _ReworkAnalytics(this.d);
 
   final BdDashboard d;
 
   @override
+  State<_ReworkAnalytics> createState() => _ReworkAnalyticsState();
+}
+
+class _ReworkAnalyticsState extends State<_ReworkAnalytics> {
+  static const _firstRows = 5;
+  bool _all = false;
+
+  @override
   Widget build(BuildContext context) {
-    return SectionCard(
+    final rows = widget.d.rework;
+    final shown = _all ? rows : rows.take(_firstRows).toList();
+
+    return StickySection(
       title: 'Rework Analytics',
       icon: Icons.replay_rounded,
       subtitle: 'Every one of your tickets that entered rework',
-      trailing: d.rework.isEmpty ? null : _countBadge(d.rework.length),
-      child: d.rework.isEmpty
+      trailing: rows.isEmpty ? null : _countBadge(rows.length),
+      child: rows.isEmpty
           ? const _EmptyNote('No rework records found for your tickets.', keyName: 'rework-empty')
           : Column(children: [
-              for (final r in d.rework)
+              for (final r in shown)
                 _TaskLine(
                   id: r.id,
                   taskId: r.taskId,
@@ -787,78 +722,184 @@ class _ReworkAnalytics extends StatelessWidget {
                     _meta('Status', pillLabel(r.status)),
                   ]),
                 ),
+              if (rows.length > _firstRows) _MoreToggle(keyName: 'rework-more', hidden: rows.length - _firstRows, expanded: _all, onTap: () => setState(() => _all = !_all)),
             ]),
     );
   }
 }
 
-class _Ratings extends StatelessWidget {
+/// One rating as a card (used in the carousel and in the "View all" sheet).
+Widget _ratingCard(BuildContext context, RatingRow r, int i, {double? height}) {
+  const tones = [Color(0xFFEFF4FF), Color(0xFFFFF4E5), Color(0xFFF4EBFF), Color(0xFFE8F8EF), Color(0xFFFFEAF3)];
+
+  return InkWell(
+    borderRadius: BorderRadius.circular(14),
+    onTap: r.taskDbId == null ? null : () => context.push('/task/${r.taskDbId}'),
+    child: Container(
+      key: Key('rating-$i'),
+      height: height,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(color: tones[i % tones.length], borderRadius: BorderRadius.circular(14)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: height == null ? MainAxisSize.min : MainAxisSize.max, children: [
+        Row(children: [
+          HalfStars(r.rating ?? 0, size: 17),
+          const SizedBox(width: 6),
+          Text(r.rating == null ? '—' : _fmt(r.rating!), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF344054))),
+          const Spacer(),
+          Text(r.taskId ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF344054))),
+        ]),
+        if ((r.comment ?? '').isNotEmpty) ...[
+          const SizedBox(height: 6),
+          if (height == null)
+            Text('“${r.comment}”', maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, height: 1.3, fontWeight: FontWeight.w600, color: Color(0xFF101828)))
+          else
+            Expanded(child: Text('“${r.comment}”', maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, height: 1.3, fontWeight: FontWeight.w600, color: Color(0xFF101828)))),
+        ] else if (height != null)
+          const Spacer(),
+        const SizedBox(height: 6),
+        Text('${r.taskName ?? ''}  ·  ${r.designer ?? '—'}  ·  ${dashDt(r.reviewedAt, 'd MMM yyyy')}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF667085))),
+      ]),
+    ),
+  );
+}
+
+/// Ratings drift past sideways (one card at a time, never fighting a thumb), with "View all" underneath.
+class _Ratings extends StatefulWidget {
   const _Ratings(this.d);
 
   final BdDashboard d;
 
-  static const _tones = [Color(0xFFEFF4FF), Color(0xFFFFF4E5), Color(0xFFF4EBFF), Color(0xFFE8F8EF), Color(0xFFFFEAF3)];
+  @override
+  State<_Ratings> createState() => _RatingsState();
+}
+
+class _RatingsState extends State<_Ratings> {
+  final _controller = PageController(viewportFraction: 0.9);
+  Timer? _auto;
+  DateTime _pausedUntil = DateTime.fromMillisecondsSinceEpoch(0);
+  int _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _auto = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || widget.d.ratings.length < 2 || DateTime.now().isBefore(_pausedUntil) || !_controller.hasClients) return;
+      _controller.animateToPage((_page + 1) % widget.d.ratings.length, duration: const Duration(milliseconds: 450), curve: Curves.easeInOut);
+    });
+  }
+
+  @override
+  void dispose() {
+    _auto?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _viewAll() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.8,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+            child: Text('Completed Task Ratings (${widget.d.ratings.length})', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          ),
+          Expanded(
+            child: ListView.separated(
+              key: const Key('ratings-all'),
+              padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.viewPaddingOf(context).bottom + 24),
+              itemCount: widget.d.ratings.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, i) => _ratingCard(context, widget.d.ratings[i], i),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
+    final ratings = widget.d.ratings;
+
+    return StickySection(
       title: 'Completed Task Ratings',
       icon: Icons.star_rounded,
       subtitle: 'Your feedback on completed work',
-      child: d.ratings.isEmpty
+      child: ratings.isEmpty
           ? const _EmptyNote('No completed ratings in this period.', keyName: 'ratings-empty')
           : Column(children: [
-              for (var i = 0; i < d.ratings.length; i++)
-                Builder(builder: (context) {
-                  final r = d.ratings[i];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: r.taskDbId == null ? null : () => context.push('/task/${r.taskDbId}'),
-                      child: Container(
-                        key: Key('rating-$i'),
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                        decoration: BoxDecoration(color: _tones[i % _tones.length], borderRadius: BorderRadius.circular(14)),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Row(children: [
-                            HalfStars(r.rating ?? 0, size: 17),
-                            const SizedBox(width: 6),
-                            Text(r.rating == null ? '—' : _fmt(r.rating!), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF344054))),
-                            const Spacer(),
-                            Text(r.taskId ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF344054))),
-                          ]),
-                          if ((r.comment ?? '').isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text('“${r.comment}”', maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, height: 1.3, fontWeight: FontWeight.w600, color: Color(0xFF101828))),
-                          ],
-                          const SizedBox(height: 6),
-                          Text('${r.taskName ?? ''}  ·  ${r.designer ?? '—'}  ·  ${dashDt(r.reviewedAt, 'd MMM yyyy')}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF667085))),
-                        ]),
+              SizedBox(
+                height: 150,
+                child: Listener(
+                  onPointerDown: (_) => _pausedUntil = DateTime.now().add(const Duration(milliseconds: 2500)),
+                  child: PageView.builder(
+                    key: const Key('ratings-pager'),
+                    controller: _controller,
+                    itemCount: ratings.length,
+                    onPageChanged: (i) => setState(() => _page = i),
+                    itemBuilder: (context, i) => Padding(padding: const EdgeInsets.only(right: 8), child: _ratingCard(context, ratings[i], i, height: 150)),
+                  ),
+                ),
+              ),
+              if (ratings.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    for (var i = 0; i < math.min(ratings.length, 8); i++)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        width: i == _page ? 18 : 7,
+                        height: 7,
+                        decoration: BoxDecoration(color: i == _page ? Theme.of(context).colorScheme.primary : const Color(0xFFD0D5DD), borderRadius: BorderRadius.circular(8)),
                       ),
-                    ),
-                  );
-                }),
+                  ]),
+                ),
+              const SizedBox(height: 4),
+              Center(
+                child: TextButton.icon(
+                  key: const Key('ratings-view-all'),
+                  onPressed: _viewAll,
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  iconAlignment: IconAlignment.end,
+                  label: Text('View all (${ratings.length})', style: const TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
             ]),
     );
   }
 }
 
-class _Completions extends StatelessWidget {
+class _Completions extends StatefulWidget {
   const _Completions(this.d);
 
   final BdDashboard d;
 
   @override
+  State<_Completions> createState() => _CompletionsState();
+}
+
+class _CompletionsState extends State<_Completions> {
+  static const _firstRows = 5;
+  bool _all = false;
+
+  @override
   Widget build(BuildContext context) {
-    return SectionCard(
+    final rows = widget.d.completions;
+    final shown = _all ? rows : rows.take(_firstRows).toList();
+
+    return StickySection(
       title: 'Recent Completion Activity',
       icon: Icons.check_circle_rounded,
       subtitle: 'Your latest finished tickets',
-      child: d.completions.isEmpty
+      child: rows.isEmpty
           ? const _EmptyNote('No completed tickets yet.', keyName: 'completions-empty')
           : Column(children: [
-              for (final c in d.completions)
+              for (final c in shown)
                 _TaskLine(
                   id: c.id,
                   taskId: c.taskId,
@@ -871,7 +912,114 @@ class _Completions extends StatelessWidget {
                     _meta('Rework', c.reworkCount > 0 ? '${c.reworkCount}' : '0'),
                   ]),
                 ),
+              if (rows.length > _firstRows) _MoreToggle(keyName: 'completions-more', hidden: rows.length - _firstRows, expanded: _all, onTap: () => setState(() => _all = !_all)),
             ]),
     );
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sticky sections
+// ---------------------------------------------------------------------------------------------
+
+const _gap = SliverToBoxAdapter(child: SizedBox(height: 14));
+
+/// A box widget as a sliver, followed by the usual gap.
+Widget _box(Widget child) => SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.only(bottom: 14), child: child));
+
+/// A dashboard section whose heading stays pinned at the top of the screen while its content scrolls under it, until the
+/// next section's heading takes its place.
+class StickySection extends StatelessWidget {
+  const StickySection({super.key, required this.title, this.subtitle, this.icon, this.trailing, required this.child});
+
+  final String title;
+  final String? subtitle;
+  final IconData? icon;
+  final Widget? trailing;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverMainAxisGroup(slivers: [
+      SliverPersistentHeader(pinned: true, delegate: _SectionHeader(title: title, subtitle: subtitle, icon: icon, trailing: trailing, color: Theme.of(context).colorScheme.primary)),
+      SliverToBoxAdapter(
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
+            border: Border(left: BorderSide(color: Color(0xFFEAECF0)), right: BorderSide(color: Color(0xFFEAECF0)), bottom: BorderSide(color: Color(0xFFEAECF0))),
+          ),
+          child: child,
+        ),
+      ),
+    ]);
+  }
+}
+
+class _SectionHeader extends SliverPersistentHeaderDelegate {
+  _SectionHeader({required this.title, this.subtitle, this.icon, this.trailing, required this.color});
+
+  final String title;
+  final String? subtitle;
+  final IconData? icon;
+  final Widget? trailing;
+  final Color color;
+
+  static const _height = 68.0;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        // rounded on top like the card; once it is pinned over scrolling content it gets a soft shadow
+        borderRadius: BorderRadius.vertical(top: const Radius.circular(18), bottom: Radius.circular(overlapsContent ? 14 : 0)),
+        border: const Border(left: BorderSide(color: Color(0xFFEAECF0)), right: BorderSide(color: Color(0xFFEAECF0)), top: BorderSide(color: Color(0xFFEAECF0))),
+        boxShadow: overlapsContent ? [BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 10, offset: const Offset(0, 4))] : null,
+      ),
+      child: Row(children: [
+        if (icon != null) ...[IconBadge(icon!, color: color, size: 38), const SizedBox(width: 12)],
+        Expanded(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+            if (subtitle != null) Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: Color(0xFF667085))),
+          ]),
+        ),
+        ?trailing,
+      ]),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SectionHeader old) => old.title != title || old.subtitle != subtitle || old.icon != icon || old.trailing != trailing || old.color != color;
+}
+
+/// "View N more" / "Show less" under a list that shows only its first few rows.
+class _MoreToggle extends StatelessWidget {
+  const _MoreToggle({required this.keyName, required this.hidden, required this.expanded, required this.onTap});
+
+  final String keyName;
+  final int hidden;
+  final bool expanded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: TextButton.icon(
+          key: Key(keyName),
+          onPressed: onTap,
+          icon: Icon(expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 20),
+          iconAlignment: IconAlignment.end,
+          label: Text(expanded ? 'Show less' : 'View $hidden more', style: const TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      );
 }

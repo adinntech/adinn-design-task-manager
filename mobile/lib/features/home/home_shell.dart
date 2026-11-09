@@ -40,7 +40,8 @@ class HomeShell extends ConsumerWidget {
           HomeTab.tasks => LiquidNavItem(
               icon: const Icon(Icons.view_kanban_outlined),
               selectedIcon: const Icon(Icons.view_kanban),
-              label: role == 'designer' || role == 'bd' ? 'My Tasks' : 'Tasks',
+              // BD sees the tickets they assigned, as on the web; designers see their own work.
+              label: role == 'bd' ? 'Assigned Tasks' : (role == 'designer' ? 'My Tasks' : 'Tasks'),
             ),
           HomeTab.requests => LiquidNavItem(
               icon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check_outlined)),

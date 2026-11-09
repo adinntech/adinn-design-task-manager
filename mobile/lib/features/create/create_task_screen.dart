@@ -237,7 +237,7 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.viewPaddingOf(context).bottom),
       children: [
         SegmentedButton<bool>(
           key: const Key('kind'),

@@ -194,14 +194,25 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
     }
   }
 
-  /// A tile: put that stage's card in his hands (a second tap on the card already there opens it). A stage with no
-  /// tickets has no card in the stack, so it opens straight away.
-  void _onTile(StageInfo s, List<StageInfo> pages) {
+  bool _tileBusy = false;
+
+  /// A tile, in one tap: that stage's card comes up into his hands (the cards turn, as when swiping), and as soon as it
+  /// has landed the stage opens. A stage with no tickets has no card in the stack, so it opens straight away.
+  Future<void> _onTile(StageInfo s, List<StageInfo> pages) async {
+    if (_tileBusy || _opening) return; // a second tap while this one is playing does nothing
     final i = pages.indexWhere((p) => p.key == s.key);
     if (i < 0 || s.key == _currentKey) {
       _open(s.key);
-    } else {
-      _goTo(i);
+      return;
+    }
+
+    _tileBusy = true;
+    try {
+      await _goTo(i);
+      await Future<void>.delayed(const Duration(milliseconds: 160)); // a beat to see the card in his hands
+      if (mounted) await _open(s.key);
+    } finally {
+      _tileBusy = false;
     }
   }
 

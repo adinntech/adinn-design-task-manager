@@ -86,7 +86,9 @@ Map<String, dynamic> taskJson({int id = 1, String status = 'in_progress', String
 /// A designer lands on the Dashboard; the bottom tab labelled "My Tasks" opens the man holding the cards. Tapping the cards
 /// opens All Tickets, so the tickets themselves are on screen, as the old flat board had them.
 Future<void> openMyTasks(WidgetTester tester) async {
-  await tester.tap(find.text('My Tasks'));
+  // The tab is "My Tasks" for a designer and "Assigned Tasks" for a BD.
+  final tab = find.text('My Tasks').evaluate().isNotEmpty ? find.text('My Tasks') : find.text('Assigned Tasks');
+  await tester.tap(tab.last); // the bottom bar is last in the tree (the board's own title shares the BD label)
   await tester.pumpAndSettle();
 
   final cards = find.byKey(const Key('held-card-all'));
