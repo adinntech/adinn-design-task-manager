@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth.dart';
+import '../dashboard/bd_dashboard_screen.dart';
 import '../dashboard/designer_dashboard_screen.dart';
 import '../kanban/kanban_screen.dart';
 import '../notifications/notifications_screen.dart';
@@ -26,9 +27,9 @@ class HomeShell extends ConsumerWidget {
     final pending = tabs.contains(HomeTab.requests) ? ref.watch(pendingRequestsProvider).maybeWhen(data: (d) => d.items.length, orElse: () => 0) : 0;
 
     Widget page(HomeTab t) => switch (t) {
-          HomeTab.dashboard => const DesignerDashboardScreen(),
-          // Designers get the web's kanban; the other roles keep the status-chip board for now.
-          HomeTab.tasks => role == 'designer' ? const KanbanScreen() : const BoardScreen(),
+          HomeTab.dashboard => role == 'bd' ? const BdDashboardScreen() : const DesignerDashboardScreen(),
+          // Designers and BDs get the web's kanban; the other roles keep the status-chip board for now.
+          HomeTab.tasks => role == 'designer' || role == 'bd' ? const KanbanScreen() : const BoardScreen(),
           HomeTab.requests => const RequestsScreen(),
           HomeTab.alerts => const NotificationsScreen(),
           HomeTab.profile => const ProfileScreen(),
@@ -39,7 +40,8 @@ class HomeShell extends ConsumerWidget {
           HomeTab.tasks => LiquidNavItem(
               icon: const Icon(Icons.view_kanban_outlined),
               selectedIcon: const Icon(Icons.view_kanban),
-              label: role == 'designer' ? 'My Tasks' : 'Tasks',
+              // BD sees the tickets they assigned, as on the web; designers see their own work.
+              label: role == 'bd' ? 'Assigned Tasks' : (role == 'designer' ? 'My Tasks' : 'Tasks'),
             ),
           HomeTab.requests => LiquidNavItem(
               icon: Badge(isLabelVisible: pending > 0, label: Text('$pending'), child: const Icon(Icons.fact_check_outlined)),

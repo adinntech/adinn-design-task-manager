@@ -18,7 +18,7 @@ class DashboardController extends Controller
     public function index(Request $request, DesignerDashboardService $dashboard): JsonResponse
     {
         $user = $request->user();
-        $d = $dashboard->build($user);
+        $d = $dashboard->build($user, $this->query($request, 'month'), $this->query($request, 'from'), $this->query($request, 'to'));
 
         // The web query leaves these lazy (one extra query per row); eager-load for the 100 rows we return.
         $d['myRequests']->each->loadMissing(['requester:id,name', 'designerHeadActor:id,name', 'adminActor:id,name']);
@@ -28,6 +28,7 @@ class DashboardController extends Controller
                 'name' => $user->name,
                 'last_login_at' => $user->last_login_at?->toIso8601String(),
             ],
+            'period' => $d['period'],
             'stats' => $d['stats'],
             'completion_rate' => $d['completionRate'],
             'overall_rating' => $d['overallRating'],
@@ -59,8 +60,15 @@ class DashboardController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         return response()->json([
-            'data' => $dashboard->taskRows((int) $request->user()->id, $search)->map(fn (array $row) => $this->row($row))->values(),
+            'data' => $dashboard->taskRows((int) $request->user()->id, $search, $this->query($request, 'month'), $this->query($request, 'from'), $this->query($request, 'to'))->map(fn (array $row) => $this->row($row))->values(),
         ]);
+    }
+
+    private function query(Request $request, string $key): ?string
+    {
+        $value = $request->query($key);
+
+        return is_string($value) ? $value : null;
     }
 
     /** @param array<string, mixed> $row one entry of DesignerDashboardService's task rows */

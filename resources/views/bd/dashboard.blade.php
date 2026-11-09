@@ -38,6 +38,7 @@
 
     .dh-grid{display:grid;gap:14px;align-items:start}
     .dh-grid-2{grid-template-columns:1fr 1.35fr}
+    .dh-grid-2.dh-grid-equal{grid-template-columns:1fr 1fr}
 
     .dh-table-wrap{overflow:auto;max-height:480px}
     .dh-table{width:100%;border-collapse:collapse;min-width:840px}
@@ -259,6 +260,15 @@
     .dh-table td{white-space:nowrap}
     .dh-table td.dh-cell-main{white-space:normal;min-width:190px;max-width:260px}
     .dh-table tbody tr:hover td{background:#fff8f8}
+    /* Fit-to-card variant (Designer Analytics): headers wrap, no horizontal scroll */
+    .dh-table.dh-table-fit{min-width:0;table-layout:auto}
+    .dh-table.dh-table-fit th{font-size:9.5px!important;padding:10px 4px;white-space:normal;line-height:1.25;letter-spacing:.02em;text-align:center}
+    .dh-table.dh-table-fit td{font-size:12.5px!important;padding:11px 4px;text-align:center}
+    .dh-table.dh-table-fit th:first-child,.dh-table.dh-table-fit td:first-child{text-align:left;padding-left:12px;min-width:110px;white-space:normal}
+    /* Text-heavy variant: left-aligned, cells wrap instead of forcing width */
+    .dh-table.dh-fit-wrap th,.dh-table.dh-fit-wrap td{text-align:left;padding-left:8px;padding-right:8px}
+    .dh-table.dh-fit-wrap td{white-space:normal}
+    .dh-table.dh-fit-wrap th:first-child,.dh-table.dh-fit-wrap td:first-child{min-width:130px;padding-left:14px}
     .dh-cell-sub{font-size:10.5px}
     .dh-pill{font-size:10px;padding:4px 9px;min-height:22px}
     .dh-progress-note{font-size:10px}
@@ -320,7 +330,7 @@
     @media(max-width:1180px){.dsh-hero-art{display:none}}
     @media(max-width:960px){.dsh-hero{flex-direction:column;align-items:flex-start}.dsh-hero-art{display:none}.dh-toolbar{grid-template-columns:1fr 1fr}.dh-tb-search{grid-column:1/-1}}
     @media(max-width:640px){.dsh-hero h1{font-size:21px}.dsh-actions{width:100%}.dsh-btn{flex:1;justify-content:center}.dsh-primary,.dsh-secondary,.dsh-extra,.dh-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-card{padding:11px;gap:9px}.dsh-completion{flex-wrap:wrap}.dsh-progress-track{order:3;flex-basis:100%}}
-    @media(max-width:1280px){.dh-grid-2{grid-template-columns:1fr}}
+    @media(max-width:1280px){.dh-grid-2,.dh-grid-2.dh-grid-equal{grid-template-columns:1fr}}
     @media(max-width:760px){.dh-top{align-items:flex-start;flex-direction:column}.dh-decision{grid-template-columns:1fr}.dh-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dhr-row{flex-direction:column}.dhr-col-by{text-align:left}}
 </style>
 

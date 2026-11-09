@@ -155,17 +155,143 @@ void main() {
 
     test('tab sets per role', () {
       expect(tabsFor('designer').first, HomeTab.dashboard);
-      expect(tabsFor('bd'), [HomeTab.tasks, HomeTab.alerts, HomeTab.profile]);
+      expect(tabsFor('bd'), [HomeTab.dashboard, HomeTab.tasks, HomeTab.alerts, HomeTab.profile]);
       expect(tabsFor('designer_head'), contains(HomeTab.requests));
       expect(tabsFor('admin'), contains(HomeTab.requests));
       expect(tabsFor(null), isNotEmpty);
     });
 
-    testWidgets('BD does not get a dashboard tab', (tester) async {
-      await boot(tester, role: 'bd', routes: {'GET /bd/tasks': (_) => (status: 200, body: {'statuses': [], 'tasks': []})});
+    testWidgets('a BD lands on the BD Dashboard, not the Designer one', (tester) async {
+      await boot(tester, role: 'bd', routes: {
+        'GET /bd/dashboard': (_) => (status: 200, body: emptyBdDashboardJson()),
+        'GET /bd/tasks': (_) => (status: 200, body: {'statuses': [], 'tasks': []}),
+      });
 
-      expect(find.text('Dashboard'), findsNothing);
+      expect(find.text('BD Dashboard'), findsWidgets);
       expect(find.text('Designer Dashboard'), findsNothing);
+    });
+  });
+
+  group('period filter in the hero', () {
+    Map<String, dynamic> withPeriod(Map<String, dynamic> base, {required String key, required String label, required bool current, int total = 0}) => {
+          ...base,
+          'period': {'key': key, 'label': label, 'is_current': current, 'year': int.parse(key.substring(0, 4)), 'month': int.parse(key.substring(5)), 'years': [DateTime.now().year, DateTime.now().year - 1]},
+          'stats': {...(base['stats'] as Map<String, dynamic>), 'total': total},
+        };
+
+    List<String?> monthsAsked() => api.requests.where((r) => r.path == '/designer/dashboard').map((r) => r.queryParameters['month'] as String?).toList();
+
+    testWidgets('shows the current month by default and asks the server for nothing special', (tester) async {
+      await boot(tester, dashboard: withPeriod(emptyDashboardJson(), key: '2026-11', label: 'November 2026', current: true));
+
+      expect(find.byKey(const Key('period-chip')), findsOneWidget);
+      expect(find.text('November 2026'), findsOneWidget);
+      expect(find.text('CURRENT'), findsOneWidget);
+      expect(monthsAsked(), [null]);
+    });
+
+    testWidgets('a custom year and month reloads the dashboard for that period, and the current month resets it', (tester) async {
+      var requested = '';
+      await boot(tester, routes: {
+        'GET /designer/dashboard': (o) {
+          requested = (o.queryParameters['month'] as String?) ?? '';
+          return requested.isEmpty
+              ? (status: 200, body: withPeriod(emptyDashboardJson(), key: '2026-11', label: 'November 2026', current: true, total: 10))
+              : (status: 200, body: withPeriod(emptyDashboardJson(), key: requested, label: 'October 2025', current: false, total: 3));
+        },
+      });
+
+      await tester.tap(find.byKey(const Key('period-chip')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('period-sheet')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('period-custom')));
+      await tester.pumpAndSettle();
+
+      // Year: last year, month: October.
+      await tester.tap(find.byKey(const Key('period-year')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('${DateTime.now().year - 1}').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('period-month-10')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('period-apply')));
+      await tester.pumpAndSettle();
+
+      expect(requested, '${DateTime.now().year - 1}-10');
+      expect(find.text('October 2025'), findsOneWidget);
+      expect(find.text('CURRENT'), findsNothing);
+
+      // Back to the current month: no month parameter at all.
+      await tester.tap(find.byKey(const Key('period-chip')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('period-current')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('period-apply')));
+      await tester.pumpAndSettle();
+
+      expect(requested, '');
+      expect(find.text('November 2026'), findsOneWidget);
+    });
+
+    testWidgets('Overall asks for all time and the hero says so', (tester) async {
+      var query = <String, dynamic>{};
+      await boot(tester, routes: {
+        'GET /designer/dashboard': (o) {
+          query = o.queryParameters;
+          final overall = query['month'] == 'overall';
+          return (
+            status: 200,
+            body: {
+              ...emptyDashboardJson(),
+              'period': overall
+                  ? {'mode': 'overall', 'key': 'overall', 'label': 'Overall', 'is_current': false, 'year': 2026, 'month': 11, 'years': [2026]}
+                  : {'mode': 'month', 'key': '2026-11', 'label': 'November 2026', 'is_current': true, 'year': 2026, 'month': 11, 'years': [2026]},
+            },
+          );
+        },
+      });
+
+      await tester.tap(find.byKey(const Key('period-chip')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('period-overall')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('period-apply')));
+      await tester.pumpAndSettle();
+
+      expect(query['month'], 'overall');
+      expect(find.text('Overall'), findsOneWidget);
+      expect(find.text('CURRENT'), findsNothing);
+    });
+
+    testWidgets('a custom range needs both dates before Apply works, and is sent as from / to', (tester) async {
+      await boot(tester, dashboard: withPeriod(emptyDashboardJson(), key: '2026-11', label: 'November 2026', current: true));
+
+      await tester.tap(find.byKey(const Key('period-chip')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('period-range')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('period-from')), findsOneWidget);
+      expect(find.byKey(const Key('period-to')), findsOneWidget);
+      expect(tester.widget<FilledButton>(find.byKey(const Key('period-apply'))).onPressed, isNull);
+    });
+
+    testWidgets('months that have not happened yet cannot be picked in the current year', (tester) async {
+      await boot(tester, dashboard: withPeriod(emptyDashboardJson(), key: '2026-11', label: 'November 2026', current: true));
+
+      await tester.tap(find.byKey(const Key('period-chip')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('period-custom')));
+      await tester.pumpAndSettle();
+
+      final now = DateTime.now();
+      if (now.month < 12) {
+        final future = tester.widget<ChoiceChip>(find.byKey(Key('period-month-${now.month + 1}')));
+        expect(future.onSelected, isNull);
+      }
+      final thisMonth = tester.widget<ChoiceChip>(find.byKey(Key('period-month-${now.month}')));
+      expect(thisMonth.onSelected, isNotNull);
     });
   });
 
@@ -384,7 +510,8 @@ void main() {
       await tester.tap(find.byKey(const Key('row-3')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Your Task Details'), findsOneWidget);
+      expect(find.text('Your Task Details'), findsNothing);
+      expect(find.text('DT-2026-00003'), findsWidgets);
       expect(find.text('100%'), findsWidgets);
       expect(find.text('4 / 4   ·   0 remaining'), findsOneWidget);
       expect(find.text('2 · 3 creatives'), findsOneWidget);
@@ -422,11 +549,11 @@ void main() {
   });
 
   group('performance trend', () {
-    testWidgets('shows the month, five KPI cards and the line chart by default', (tester) async {
+    testWidgets('shows five KPI cards and the line chart by default, without a name / month pill', (tester) async {
       await boot(tester);
 
       expect(find.text('Performance Trend'), findsOneWidget);
-      expect(find.byKey(const Key('trend-context')), findsOneWidget);
+      expect(find.byKey(const Key('trend-context')), findsNothing);
       for (final l in ['Assigned Tasks', 'In Progress', 'Completed', 'Overdue & Completed', 'Declined']) {
         expect(find.byKey(Key('trend-$l')), findsOneWidget, reason: l);
       }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Concerns;
 
 use App\Models\DesignTask;
 use App\Models\DesignTaskComment;
+use App\Models\DesignTaskEditHistory;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
 
@@ -52,6 +53,33 @@ trait SerializesTasks
 
                 return $row;
             })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The task's "Edit History" (what a BD changed on it, as on the web): one entry per save, newest first, each with
+     * the field-by-field old and new values.
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function editHistory(DesignTask $task): array
+    {
+        return DesignTaskEditHistory::with('editor:id,name')
+            ->where('design_task_id', $task->id)
+            ->orderBy('id')
+            ->get()
+            ->groupBy(fn (DesignTaskEditHistory $h) => $h->edit_batch_id ?: 'single-'.$h->id)
+            ->map(fn ($changes) => [
+                'editor' => $changes->first()->editor?->name,
+                'created_at' => $changes->first()->created_at?->toIso8601String(),
+                'changes' => $changes->map(fn (DesignTaskEditHistory $c) => [
+                    'field' => $c->field_name,
+                    'old' => $c->old_value,
+                    'new' => $c->new_value,
+                ])->values()->all(),
+            ])
+            ->sortByDesc('created_at')
             ->values()
             ->all();
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
 import '../../core/auth.dart';
@@ -96,11 +97,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       validator: (v) => (v == null || v.isEmpty) ? 'Enter your password' : null,
                     ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        key: const Key('forgot-password-link'),
+                        onPressed: _busy ? null : () => context.push('/forgot-password'),
+                        child: const Text('Forgot password?'),
+                      ),
+                    ),
                     if (_error != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 4),
                       Text(_error!, key: const Key('login-error'), style: TextStyle(color: theme.colorScheme.error)),
                     ],
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     FilledButton(
                       onPressed: _busy ? null : _submit,
                       child: _busy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Sign in'),

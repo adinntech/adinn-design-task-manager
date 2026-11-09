@@ -12,24 +12,36 @@ import '../tasks/providers.dart';
 import 'dashboard_models.dart';
 import 'dashboard_widgets.dart';
 
-final designerDashboardProvider = FutureProvider.autoDispose<DesignerDashboard>((ref) => ref.watch(roleApiProvider).designerDashboard());
+/// What the Designer dashboard is scoped to, as the query the API takes: empty = the current month (the default),
+/// `{month: 'yyyy-MM'}`, `{month: 'overall'}` or `{from: 'yyyy-MM-dd', to: 'yyyy-MM-dd'}`.
+final designerPeriodProvider = NotifierProvider<DesignerPeriod, Map<String, String>>(DesignerPeriod.new);
 
-final dashboardSearchProvider =
-    FutureProvider.autoDispose.family<List<DashRow>, String>((ref, search) => ref.watch(roleApiProvider).dashboardTasks(search));
+class DesignerPeriod extends Notifier<Map<String, String>> {
+  @override
+  Map<String, String> build() => const {};
 
-String _label(String? key) => (key ?? '—').replaceAll('_', ' ').split(' ').map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1)).join(' ');
+  void pick(Map<String, String> query) => state = query;
+}
+
+final designerDashboardProvider =
+    FutureProvider.autoDispose<DesignerDashboard>((ref) => ref.watch(roleApiProvider).designerDashboard(period: ref.watch(designerPeriodProvider)));
+
+final dashboardSearchProvider = FutureProvider.autoDispose
+    .family<List<DashRow>, String>((ref, search) => ref.watch(roleApiProvider).dashboardTasks(search, period: ref.watch(designerPeriodProvider)));
+
+String dashLabel(String? key) => (key ?? '—').replaceAll('_', ' ').split(' ').map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1)).join(' ');
 
 /// The pill wording the web dashboard uses.
 String pillLabel(String key) => switch (key) {
       'overdue' => 'Overdue',
       'assigned_tasks' => 'Assigned Tasks',
       'waiting_confirmation' => 'Waiting Confirmation',
-      _ => _label(key),
+      _ => dashLabel(key),
     };
 
 Color pillColor(String key) => key == 'overdue' ? const Color(0xFFB00020) : statusColor(key);
 
-String _dt(DateTime? d, [String pattern = 'd MMM yyyy · h:mm a']) => d == null ? '—' : DateFormat(pattern).format(d);
+String dashDt(DateTime? d, [String pattern = 'd MMM yyyy · h:mm a']) => d == null ? '—' : DateFormat(pattern).format(d);
 
 /// Designer home: the same sections, in the same order, as the web "Designer Dashboard".
 class DesignerDashboardScreen extends ConsumerWidget {
@@ -53,6 +65,7 @@ class DesignerDashboardScreen extends ConsumerWidget {
             ]),
           ),
         ),
+        skipLoadingOnReload: true,
         data: (d) => RefreshIndicator(
           onRefresh: () async {
             ref.read(authProvider.notifier).refreshUser(); // picks up an Approvals right the Admin has just granted
@@ -73,7 +86,7 @@ class DesignerDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 14),
               _TasksOverview(d),
               const SizedBox(height: 14),
-              _PerformanceTrend(d),
+              PerformanceTrend(cards: d.trendCards, months: d.trendLine),
               const SizedBox(height: 14),
               _Reviews(d.reviews),
               const SizedBox(height: 14),
@@ -146,12 +159,14 @@ class _Hero extends StatelessWidget {
       const SizedBox(height: 3),
       const Text('All important task and request information in one place.', style: TextStyle(color: Colors.white70, fontSize: 12)),
       const SizedBox(height: 10),
+      Consumer(builder: (context, ref, _) => _PeriodChip(period: d.period, onTap: () => showPeriodSheet(context, ref, d.period))),
+      const SizedBox(height: 10),
       // Side by side when there is room; the button drops under the date on a narrow screen instead of overflowing.
       Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: 10, runSpacing: 8, children: [
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 190),
           child: Text(
-            d.lastLogin == null ? 'This is your first login' : 'Last Login: ${_dt(d.lastLogin, 'd MMM yyyy • h:mm a')}',
+            d.lastLogin == null ? 'This is your first login' : 'Last Login: ${dashDt(d.lastLogin, 'd MMM yyyy • h:mm a')}',
             key: const Key('last-login'),
             maxLines: 2,
             style: const TextStyle(color: Colors.white, fontSize: 11),
@@ -179,6 +194,239 @@ class _Hero extends StatelessWidget {
         ),
       ]),
     ]);
+  }
+}
+
+/// The pill in the hero that shows the month in view and opens the picker.
+class _PeriodChip extends StatelessWidget {
+  const _PeriodChip({required this.period, required this.onTap});
+
+  final DashPeriod period;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        key: const Key('period-chip'),
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 6, 8, 6),
+          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: 0.35))),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.calendar_month_rounded, size: 15, color: Colors.white),
+            const SizedBox(width: 6),
+            Flexible(child: Text(period.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800))),
+            if (period.isCurrent) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                child: const Text('CURRENT', style: TextStyle(color: Color(0xFFB5040F), fontSize: 8.5, fontWeight: FontWeight.w900, letterSpacing: 0.4)),
+              ),
+            ],
+            const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Colors.white),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Select period": the current month, a custom year and month, overall (all time) or a custom From – To range.
+Future<void> showPeriodSheet(BuildContext context, WidgetRef ref, DashPeriod period) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => PeriodSheet(
+      period: period,
+      onApply: (query) => ref.read(designerPeriodProvider.notifier).pick(query),
+    ),
+  );
+}
+
+enum _PeriodMode { current, month, overall, range }
+
+class PeriodSheet extends StatefulWidget {
+  const PeriodSheet({super.key, required this.period, required this.onApply});
+
+  final DashPeriod period;
+
+  /// Called with the API query for the choice (empty for the current month).
+  final ValueChanged<Map<String, String>> onApply;
+
+  @override
+  State<PeriodSheet> createState() => _PeriodSheetState();
+}
+
+class _PeriodSheetState extends State<PeriodSheet> {
+  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  late _PeriodMode _mode = switch (widget.period.mode) {
+    'overall' => _PeriodMode.overall,
+    'range' => _PeriodMode.range,
+    _ => widget.period.isCurrent ? _PeriodMode.current : _PeriodMode.month,
+  };
+  late int _year = widget.period.year;
+  late int _month = widget.period.month;
+  late DateTime? _from = widget.period.from;
+  late DateTime? _to = widget.period.to;
+
+  DateTime get _now => DateTime.now();
+
+  List<int> get _years => {...widget.period.years, _now.year}.toList()..sort((a, b) => b.compareTo(a));
+
+  bool _future(int year, int month) => year > _now.year || (year == _now.year && month > _now.month);
+
+  static String _ymd(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  static String _show(DateTime? d) => d == null ? 'Select' : '${d.day.toString().padLeft(2, '0')} ${_months[d.month - 1]} ${d.year}';
+
+  Future<void> _pickRange() async {
+    final today = DateTime(_now.year, _now.month, _now.day);
+    final first = widget.period.firstDate ?? DateTime(today.year - 3);
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: first.isAfter(today) ? today : first,
+      lastDate: today,
+      initialDateRange: _from != null && _to != null ? DateTimeRange(start: _from!, end: _to!) : null,
+      helpText: 'Select From – To dates',
+      saveText: 'Done',
+    );
+    if (picked != null) {
+      setState(() {
+        _from = picked.start;
+        _to = picked.end;
+        _mode = _PeriodMode.range;
+      });
+    }
+  }
+
+  Map<String, String> get _query => switch (_mode) {
+        _PeriodMode.current => const {},
+        _PeriodMode.month => {'month': '$_year-${_month.toString().padLeft(2, '0')}'},
+        _PeriodMode.overall => const {'month': 'overall'},
+        _PeriodMode.range => {'from': _ymd(_from!), 'to': _ymd(_to!)},
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+
+    Widget option(String key, _PeriodMode value, String title, {String? trailing}) => InkWell(
+          key: Key(key),
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => setState(() => _mode = value),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _mode == value ? primary : const Color(0xFFE4E7EC)),
+              color: _mode == value ? primary.withValues(alpha: 0.05) : Colors.white,
+            ),
+            child: Row(children: [
+              Icon(_mode == value ? Icons.radio_button_checked : Icons.radio_button_off, size: 20, color: _mode == value ? primary : const Color(0xFF98A2B3)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14))),
+              if (trailing != null) Text(trailing, style: const TextStyle(color: Color(0xFF667085), fontSize: 12, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        );
+
+    Widget dateField(String key, String label, DateTime? value) => Expanded(
+          child: InkWell(
+            key: Key(key),
+            borderRadius: BorderRadius.circular(12),
+            onTap: _pickRange,
+            child: InputDecorator(
+              decoration: InputDecoration(labelText: label, isDense: true, suffixIcon: const Icon(Icons.calendar_today_rounded, size: 16)),
+              child: Text(_show(value), style: TextStyle(fontWeight: FontWeight.w700, color: value == null ? const Color(0xFF98A2B3) : null)),
+            ),
+          ),
+        );
+
+    final rangeReady = _mode != _PeriodMode.range || (_from != null && _to != null);
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        key: const Key('period-sheet'),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Select period', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 2),
+          Text('The dashboard shows the tickets assigned in the chosen period.', style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
+          const SizedBox(height: 14),
+          option('period-current', _PeriodMode.current, 'Current month & year', trailing: DashPeriod.current().label),
+          option('period-custom', _PeriodMode.month, 'Custom year & month'),
+          if (_mode == _PeriodMode.month) ...[
+            const SizedBox(height: 4),
+            Row(children: [
+              const Text('Year', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  key: const Key('period-year'),
+                  initialValue: _years.contains(_year) ? _year : _years.first,
+                  isDense: true,
+                  items: [for (final y in _years) DropdownMenuItem(value: y, child: Text('$y'))],
+                  onChanged: (y) => setState(() {
+                    _year = y ?? _year;
+                    if (_future(_year, _month)) _month = _now.month;
+                  }),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 4,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 2.1,
+              children: [
+                for (var m = 1; m <= 12; m++)
+                  ChoiceChip(
+                    key: Key('period-month-$m'),
+                    label: SizedBox(width: double.infinity, child: Text(_months[m - 1], textAlign: TextAlign.center)),
+                    selected: _month == m,
+                    // A month that has not happened yet cannot hold any data.
+                    onSelected: _future(_year, m) ? null : (_) => setState(() => _month = m),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          option('period-overall', _PeriodMode.overall, 'Overall', trailing: 'All time'),
+          option('period-range', _PeriodMode.range, 'Custom range', trailing: 'From – To'),
+          if (_mode == _PeriodMode.range) ...[
+            const SizedBox(height: 4),
+            Row(children: [
+              dateField('period-from', 'From', _from),
+              const SizedBox(width: 12),
+              dateField('period-to', 'To', _to),
+            ]),
+            const SizedBox(height: 12),
+          ],
+          const SizedBox(height: 4),
+          FilledButton(
+            key: const Key('period-apply'),
+            onPressed: rangeReady
+                ? () {
+                    widget.onApply(_query);
+                    Navigator.pop(context);
+                  }
+                : null,
+            child: const Text('Apply'),
+          ),
+        ]),
+      ),
+    );
   }
 }
 
@@ -275,8 +523,8 @@ class _CompletionRate extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill(this.text, this.color);
+class StatusPill extends StatelessWidget {
+  const StatusPill(this.text, this.color, {super.key});
 
   final String text;
   final Color color;
@@ -406,11 +654,11 @@ class _TasksOverviewState extends ConsumerState<_TasksOverview> {
 
             return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Expanded(child: _FilterMenu(keyName: 'status', label: 'Status', value: _status, options: {for (final s in statuses) s: pillLabel(s)}, onChanged: (v) => setState(() => _status = v))),
+                Expanded(child: DashFilterMenu(keyName: 'status', label: 'Status', value: _status, options: {for (final s in statuses) s: pillLabel(s)}, onChanged: (v) => setState(() => _status = v))),
                 const SizedBox(width: 8),
-                Expanded(child: _FilterMenu(keyName: 'priority', label: 'Priority', value: _priority, options: {for (final p in priorities) p: _label(p)}, onChanged: (v) => setState(() => _priority = v))),
+                Expanded(child: DashFilterMenu(keyName: 'priority', label: 'Priority', value: _priority, options: {for (final p in priorities) p: dashLabel(p)}, onChanged: (v) => setState(() => _priority = v))),
                 const SizedBox(width: 8),
-                Expanded(child: _FilterMenu(keyName: 'vertical', label: 'Vertical', value: _vertical, options: {for (final v in verticals) v: _label(v)}, onChanged: (v) => setState(() => _vertical = v))),
+                Expanded(child: DashFilterMenu(keyName: 'vertical', label: 'Vertical', value: _vertical, options: {for (final v in verticals) v: dashLabel(v)}, onChanged: (v) => setState(() => _vertical = v))),
                 if (_status != null || _priority != null || _vertical != null) ...[
                   const SizedBox(width: 6),
                   IconButton(
@@ -430,7 +678,7 @@ class _TasksOverviewState extends ConsumerState<_TasksOverview> {
                   child: Center(child: Text(rows.isEmpty && !searching ? 'No tasks assigned yet.' : 'No matching tasks found.', key: const Key('overview-empty'))),
                 )
               else
-                for (final r in shown.take(_maxRows)) _OverviewRow(r),
+                for (final r in shown.take(_maxRows)) OverviewRow(r),
               if (shown.length > _maxRows)
                 Center(
                   child: TextButton.icon(
@@ -451,8 +699,8 @@ class _TasksOverviewState extends ConsumerState<_TasksOverview> {
   }
 }
 
-class _FilterMenu extends StatelessWidget {
-  const _FilterMenu({required this.keyName, required this.label, required this.value, required this.options, required this.onChanged});
+class DashFilterMenu extends StatelessWidget {
+  const DashFilterMenu({super.key, required this.keyName, required this.label, required this.value, required this.options, required this.onChanged});
 
   final String keyName;
   final String label;
@@ -485,8 +733,8 @@ class _FilterMenu extends StatelessWidget {
       );
 }
 
-class _OverviewRow extends StatelessWidget {
-  const _OverviewRow(this.r);
+class OverviewRow extends StatelessWidget {
+  const OverviewRow(this.r, {super.key});
 
   final DashRow r;
 
@@ -495,7 +743,7 @@ class _OverviewRow extends StatelessWidget {
     final primary = Theme.of(context).colorScheme.primary;
     final bar = r.overdue ? pillColor('overdue') : (r.priority == 'urgent' || r.priority == 'high' ? priorityColor(r.priority) : primary);
     final pillKey = r.overdue ? 'overdue' : r.pillKey;
-    final meta = [r.party, _label(r.nature)].where((x) => x != null && x.isNotEmpty && x != '—').join('  ·  ');
+    final meta = [r.party, dashLabel(r.nature)].where((x) => x != null && x.isNotEmpty && x != '—').join('  ·  ');
 
     Widget chip(IconData icon, String text, {Color? tint}) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -541,7 +789,7 @@ class _OverviewRow extends StatelessWidget {
                                 Flexible(child: Text(r.taskId, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: primary, fontWeight: FontWeight.w800, fontSize: 12.5))),
                                 if (r.projectNumber != null && r.projectNumber!.isNotEmpty) Text('  ·  ${r.projectNumber}', style: const TextStyle(color: Color(0xFF667085), fontSize: 12)),
                                 const Spacer(),
-                                _Pill(pillLabel(pillKey), pillColor(pillKey)),
+                                StatusPill(pillLabel(pillKey), pillColor(pillKey)),
                               ]),
                               const SizedBox(height: 2),
                               Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: -0.2, height: 1.15)),
@@ -555,9 +803,9 @@ class _OverviewRow extends StatelessWidget {
                               ],
                               const SizedBox(height: 6),
                               Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                                if (r.dueAt != null) chip(Icons.calendar_today_rounded, _dt(r.dueAt, 'MMM d, yyyy')),
-                                if (r.dueAt != null) chip(Icons.access_time_rounded, _dt(r.dueAt, 'h:mm a'), tint: r.overdue ? const Color(0xFFD92D20) : const Color(0xFF1565C0)),
-                                if (r.assignedBy != null) Text('${r.assignedBy}', style: const TextStyle(fontSize: 11, color: Color(0xFF667085))),
+                                if (r.dueAt != null) chip(Icons.calendar_today_rounded, dashDt(r.dueAt, 'MMM d, yyyy')),
+                                if (r.dueAt != null) chip(Icons.access_time_rounded, dashDt(r.dueAt, 'h:mm a'), tint: r.overdue ? const Color(0xFFD92D20) : const Color(0xFF1565C0)),
+                                if ((r.designer ?? r.assignedBy) != null) Text('${r.designer ?? r.assignedBy}', style: const TextStyle(fontSize: 11, color: Color(0xFF667085))),
                               ]),
                             ]),
                           ),
@@ -618,18 +866,15 @@ class TaskDrawer extends StatelessWidget {
         key: const Key('task-drawer'),
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Your Task Details', style: theme.textTheme.titleLarge),
-          Text('Progress, creatives and deadlines for this task.', style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
-          const SizedBox(height: 14),
           Row(children: [
             Text(row.taskId, style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w700)),
             const SizedBox(width: 8),
-            _Pill(pillLabel(row.pillKey), pillColor(row.pillKey)),
+            StatusPill(pillLabel(row.pillKey), pillColor(row.pillKey)),
           ]),
           Text(row.name, style: theme.textTheme.titleSmall),
           const Divider(height: 24),
           line('Project Number', Text(row.projectNumber?.isNotEmpty == true ? row.projectNumber! : '—')),
-          line('Assigned At', Text(_dt(row.assignedAt, 'd MMM yyyy'))),
+          line('Assigned At', Text(dashDt(row.assignedAt, 'd MMM yyyy'))),
           line(
             'Progress',
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -640,8 +885,8 @@ class TaskDrawer extends StatelessWidget {
           ),
           line('Creatives', Text('${row.done} / ${row.total}   ·   ${row.remaining} remaining')),
           line('Rework', Text(row.reworkCount > 0 ? '${row.reworkCount} · ${row.reworkCreatives} creatives' : '0')),
-          line('Deadline', Text(_dt(row.dueAt, 'd MMM yyyy'))),
-          line('Completed At', Text(_dt(row.completedAt, 'd MMM yyyy'))),
+          line('Deadline', Text(dashDt(row.dueAt, 'd MMM yyyy'))),
+          line('Completed At', Text(dashDt(row.completedAt, 'd MMM yyyy'))),
           line('Overdue', Text(_overdueText, key: const Key('drawer-overdue'), style: TextStyle(color: row.completionStatus == 'overdue' || row.completionStatus == 'late' ? theme.colorScheme.error : null))),
           line('Rating', row.rating == null ? const Text('—') : HalfStars(row.rating!)),
           const SizedBox(height: 12),
@@ -679,16 +924,22 @@ class TaskDrawer extends StatelessWidget {
 // Performance Trend
 // ---------------------------------------------------------------------------------------------
 
-class _PerformanceTrend extends ConsumerStatefulWidget {
-  const _PerformanceTrend(this.d);
+class PerformanceTrend extends ConsumerStatefulWidget {
+  const PerformanceTrend({super.key, this.contextLabel, required this.cards, required this.months, this.declinedStage = 'self_declined'});
 
-  final DesignerDashboard d;
+  /// A pill beside the title (the BD dashboard names the designer and month here); the Designer's own is in the hero.
+  final String? contextLabel;
+  final List<TrendCard> cards;
+  final List<TrendMonth> months;
+
+  /// Board column the "Declined" figure opens (the designer's own declines vs the BD's approved declines).
+  final String declinedStage;
 
   @override
-  ConsumerState<_PerformanceTrend> createState() => _PerformanceTrendState();
+  ConsumerState<PerformanceTrend> createState() => PerformanceTrendState();
 }
 
-class _PerformanceTrendState extends ConsumerState<_PerformanceTrend> {
+class PerformanceTrendState extends ConsumerState<PerformanceTrend> {
   int _tab = 0;
 
   static const _blue = Color(0xFF2563EB);
@@ -701,10 +952,10 @@ class _PerformanceTrendState extends ConsumerState<_PerformanceTrend> {
   static const _issueLabels = {'Overdue & Completed', 'Declined'};
 
   // Where each figure leads on the My Tasks board.
-  static String _boardStage(String label) => switch (label) {
+  String _boardStage(String label) => switch (label) {
         'In Progress' => 'in_progress',
         'Completed' || 'Overdue & Completed' => 'completed',
-        'Declined' => 'self_declined',
+        'Declined' => widget.declinedStage,
         _ => 'assigned_tasks',
       };
 
@@ -721,8 +972,7 @@ class _PerformanceTrendState extends ConsumerState<_PerformanceTrend> {
 
   @override
   Widget build(BuildContext context) {
-    final d = widget.d;
-    final months = d.trendLine;
+    final months = widget.months;
 
     final progress = [
       Series('Assigned', _blue, [for (final m in months) m.assigned]),
@@ -738,17 +988,19 @@ class _PerformanceTrendState extends ConsumerState<_PerformanceTrend> {
       title: 'Performance Trend',
       subtitle: 'Task status over time',
       icon: Icons.show_chart_rounded,
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(color: const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(20)),
-        child: Text(d.trendContext, key: const Key('trend-context'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF475467))),
-      ),
+      trailing: widget.contextLabel == null
+          ? null
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(color: const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(20)),
+              child: Text(widget.contextLabel!, key: const Key('trend-context'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF475467))),
+            ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // One slim row of figures: the ones for the chart on show are in full colour, the others step back. Tap one to open those tickets in My Tasks.
         Row(children: [
-          for (var i = 0; i < d.trendCards.length; i++) ...[
+          for (var i = 0; i < widget.cards.length; i++) ...[
             if (i > 0) const SizedBox(width: 6),
-            Expanded(child: _kpi(d.trendCards[i])),
+            Expanded(child: _kpi(widget.cards[i])),
           ],
         ]),
         const SizedBox(height: 12),
@@ -823,11 +1075,15 @@ class _ChartSwitch extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: () => onChanged(i),
           child: Center(
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 17, color: color),
-              const SizedBox(width: 6),
-              AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 200), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color), child: Text(text)),
-            ]),
+            // A longer label scales down instead of overflowing on a narrow phone.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 17, color: color),
+                const SizedBox(width: 6),
+                AnimatedDefaultTextStyle(duration: const Duration(milliseconds: 200), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color), child: Text(text)),
+              ]),
+            ),
           ),
         ),
       );
@@ -857,7 +1113,7 @@ class _ChartSwitch extends StatelessWidget {
         ),
         Row(children: [
           segment(0, Icons.show_chart_rounded, 'Progress'),
-          segment(1, Icons.bar_chart_rounded, 'Issues'),
+          segment(1, Icons.bar_chart_rounded, 'Overdue & Declined'),
         ]),
       ]),
     );
@@ -960,7 +1216,7 @@ class _ReviewsState extends ConsumerState<_Reviews> {
                                   Expanded(
                                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                       Text('${r.reviewer ?? 'BD'}  ·  ${r.taskId ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF344054))),
-                                      Text('Reviewed: ${_dt(r.reviewedAt, 'd MMM yyyy')}  ·  Completed: ${_dt(r.completedAt, 'd MMM yyyy')}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: Color(0xFF667085))),
+                                      Text('Reviewed: ${dashDt(r.reviewedAt, 'd MMM yyyy')}  ·  Completed: ${dashDt(r.completedAt, 'd MMM yyyy')}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: Color(0xFF667085))),
                                     ]),
                                   ),
                                 ]),
@@ -1051,16 +1307,16 @@ class _MyRequests extends StatelessWidget {
                           Text('${r.typeLabel} Request', style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
                         ]),
                       ),
-                      _Pill(
+                      StatusPill(
                         r.status == 'approved' ? 'Approved' : (r.status == 'rejected' ? 'Rejected' : 'Pending'),
                         r.status == 'approved' ? const Color(0xFF2E7D32) : (r.status == 'rejected' ? const Color(0xFFB00020) : const Color(0xFFE65100)),
                       ),
                     ]),
                     const SizedBox(height: 8),
                     _kv('Requested by', r.requestedBy),
-                    _kv('Requested at', _dt(r.requestedAt, "d MMM yyyy 'at' h:mm a")),
+                    _kv('Requested at', dashDt(r.requestedAt, "d MMM yyyy 'at' h:mm a")),
                     _kv('Responded by', r.respondedBy),
-                    _kv('Responded at', _dt(r.respondedAt, "d MMM yyyy 'at' h:mm a")),
+                    _kv('Responded at', dashDt(r.respondedAt, "d MMM yyyy 'at' h:mm a")),
                     _kv('Current handler', r.currentHandler),
                   ]),
                 ),

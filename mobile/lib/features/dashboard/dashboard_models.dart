@@ -2,6 +2,12 @@
 library;
 
 DateTime? _date(Object? v) => v == null ? null : DateTime.tryParse('$v')?.toLocal();
+/// A "yyyy-MM-dd" day as a local date (no time zone shift).
+DateTime? _day(Object? v) {
+  final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch('${v ?? ''}');
+  return m == null ? null : DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
+}
+
 int _int(Object? v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('$v') ?? 0);
 double? _dbl(Object? v) => v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v'));
 
@@ -18,6 +24,7 @@ class DashRow {
     this.vertical,
     this.nature,
     this.assignedBy,
+    this.designer,
     this.assignedAt,
     this.dueAt,
     this.total = 0,
@@ -43,6 +50,7 @@ class DashRow {
   final String? vertical;
   final String? nature;
   final String? assignedBy;
+  final String? designer;
   final DateTime? assignedAt;
   final DateTime? dueAt;
   final int total;
@@ -75,6 +83,7 @@ class DashRow {
       vertical: j['vertical'] as String?,
       nature: j['task_nature'] as String?,
       assignedBy: j['assigned_by'] as String?,
+      designer: j['designer'] as String?,
       assignedAt: _date(j['assigned_at']),
       dueAt: _date(j['due_at']),
       total: _int(j['total_creatives']),
@@ -190,6 +199,59 @@ class MyRequest {
       );
 }
 
+/// The month the dashboard is scoped to (`period` in `GET /designer/dashboard`).
+class DashPeriod {
+  DashPeriod({
+    required this.key,
+    required this.label,
+    required this.isCurrent,
+    required this.year,
+    required this.month,
+    required this.years,
+    this.mode = 'month',
+    this.from,
+    this.to,
+    this.firstDate,
+  });
+
+  final String key; // yyyy-MM, "overall" or "range"
+  final String label; // November 2026 / Overall / 01 Oct 2026 – 15 Nov 2026
+  final bool isCurrent;
+  final int year;
+  final int month;
+  final List<int> years; // newest first
+
+  /// month | overall | range
+  final String mode;
+  final DateTime? from;
+  final DateTime? to;
+
+  /// The day of the first ticket (the earliest a custom range can start).
+  final DateTime? firstDate;
+
+  factory DashPeriod.current() {
+    final n = DateTime.now();
+    const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return DashPeriod(key: '${n.year}-${n.month.toString().padLeft(2, '0')}', label: '${names[n.month - 1]} ${n.year}', isCurrent: true, year: n.year, month: n.month, years: [n.year]);
+  }
+
+  factory DashPeriod.fromJson(Map<String, dynamic> j) {
+    final fallback = DashPeriod.current();
+    return DashPeriod(
+      key: (j['key'] ?? fallback.key) as String,
+      label: (j['label'] ?? fallback.label) as String,
+      isCurrent: j['is_current'] != false,
+      year: j['year'] == null ? fallback.year : _int(j['year']),
+      month: j['month'] == null ? fallback.month : _int(j['month']),
+      years: ((j['years'] as List?) ?? const []).map(_int).toList()..sort((a, b) => b.compareTo(a)),
+      mode: (j['mode'] ?? 'month') as String,
+      from: _day(j['from']),
+      to: _day(j['to']),
+      firstDate: _day(j['first_date']),
+    );
+  }
+}
+
 class DesignerDashboard {
   DesignerDashboard({
     required this.name,
@@ -207,6 +269,7 @@ class DesignerDashboard {
     required this.trendLine,
     required this.reviews,
     required this.myRequests,
+    required this.period,
     this.lastLogin,
   });
 
@@ -226,6 +289,7 @@ class DesignerDashboard {
   final List<TrendMonth> trendLine;
   final List<ReviewCard> reviews;
   final List<MyRequest> myRequests;
+  final DashPeriod period;
 
   int stat(String key) => stats[key] ?? 0;
 
@@ -255,6 +319,7 @@ class DesignerDashboard {
       trendLine: list(trend['line'], TrendMonth.fromJson),
       reviews: list(j['reviews'], ReviewCard.fromJson),
       myRequests: list(j['my_requests'], MyRequest.fromJson),
+      period: j['period'] is Map ? DashPeriod.fromJson((j['period'] as Map).cast<String, dynamic>()) : DashPeriod.current(),
     );
   }
 }

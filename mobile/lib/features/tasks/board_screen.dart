@@ -55,7 +55,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             )
           : null,
       appBar: AppBar(
-        title: const Text('Tasks'),
+        title: Text(ref.watch(authProvider.select((u) => u.user?.role)) == 'bd' ? 'Assigned Tasks' : 'Tasks'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: Padding(

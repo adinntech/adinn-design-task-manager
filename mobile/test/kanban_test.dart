@@ -342,7 +342,9 @@ void main() {
       Navigator.of(tester.element(find.byType(StageTicketsScreen))).pop();
       await tester.pumpAndSettle();
       await openPanel(tester);
-      await tester.tap(find.byKey(const Key('tile-in_progress'))); // puts the card in his hands
+      await tester.tap(find.byKey(const Key('tile-in_progress'))); // one tap: the card comes up, then the stage opens
+      await tester.pumpAndSettle();
+      Navigator.of(tester.element(find.byType(StageTicketsScreen))).pop();
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('held-card-in_progress')));
@@ -841,16 +843,21 @@ void main() {
       expect(tester.getTopLeft(find.byKey(const Key('tile-completed'))).dy, greaterThan(first)); // 6th starts the next
     });
 
-    testWidgets('tapping a tile puts that stage\'s card in his hands, and outlines the tile', (tester) async {
+    testWidgets('one tap on a tile brings that stage card up into his hands and then opens the stage', (tester) async {
       await boot(tester);
       await openPanel(tester);
 
       await tester.tap(find.byKey(const Key('tile-waiting_confirmation')));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(StageTicketsScreen), findsNothing); // the card is still turning
       await tester.pumpAndSettle();
 
-      expect(heldStage(tester), 'waiting_confirmation');
+      expect(find.byType(StageTicketsScreen), findsOneWidget); // then the stage opens, with no second tap
+      Navigator.of(tester.element(find.byType(StageTicketsScreen))).pop();
+      await tester.pumpAndSettle();
+
+      expect(heldStage(tester), 'waiting_confirmation'); // the card stayed in his hands
       expect(tester.widget<Text>(find.byKey(const Key('held-count-waiting_confirmation'))).data, '1');
-      expect(find.byType(StageTicketsScreen), findsNothing); // choosing a tile does not open it
       double outline(String k) => (((tester.widget<AnimatedContainer>(find.descendant(of: find.byKey(Key('tile-$k')), matching: find.byType(AnimatedContainer))).decoration!) as BoxDecoration).border! as Border).top.width;
       expect(outline('waiting_confirmation'), greaterThan(2));
       expect(outline('in_progress'), lessThan(2));
@@ -866,16 +873,30 @@ void main() {
       expect(outline('pending_bd_approval'), greaterThan(2));
     });
 
-    testWidgets('tapping the tile of the card already in his hands opens that stage', (tester) async {
+    testWidgets('tapping the tile of the card already in his hands opens that stage at once', (tester) async {
       await boot(tester);
       await openPanel(tester);
       await tester.tap(find.byKey(const Key('tile-in_progress')));
+      await tester.pumpAndSettle();
+      Navigator.of(tester.element(find.byType(StageTicketsScreen))).pop();
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('tile-in_progress')));
       await tester.pumpAndSettle();
 
       expect(stageTitle(tester), 'In Progress');
+    });
+
+    testWidgets('a second tap while the first is still playing does nothing extra', (tester) async {
+      await boot(tester);
+      await openPanel(tester);
+
+      await tester.tap(find.byKey(const Key('tile-waiting_confirmation')));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byKey(const Key('tile-in_progress')), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(stageTitle(tester), 'Waiting for BD Review'); // the first tap's stage, not the second's
     });
 
     testWidgets('a stage with no tickets has no tile at all', (tester) async {

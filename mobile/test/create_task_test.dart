@@ -79,6 +79,7 @@ void main() {
       'GET /me': (_) => (status: 200, body: {'user': userJson(role: role)}),
       'GET /notifications': (_) => (status: 200, body: {'unread_count': 0, 'data': []}),
       'GET /bd/tasks': (_) => (status: 200, body: {'statuses': [], 'tasks': []}),
+      'GET /bd/dashboard': (_) => (status: 200, body: emptyBdDashboardJson()),
       'GET /bd/task-form': (_) => (status: 200, body: _formJson()),
       'GET /bd/tasks/55': (_) => (status: 200, body: {
             'task': taskJson(id: 55, name: 'Created task'),

@@ -136,8 +136,8 @@
                 <div class="dh-card-sub">Click a Designer to filter the dashboard · <span class="dh-strong">Viewing: {{ $selectedDesignerName ?? 'All Designers' }} • {{ $selectedMonthLabel }}</span></div>
             </div>
         </div>
-        <div class="dh-table-wrap">
-            <table class="dh-table">
+        <div class="dh-table-wrap dh-fit">
+            <table class="dh-table dh-table-fit">
                 <thead>
                 <tr>
                     <th>Designer</th><th>Assigned Tasks</th><th>Pending</th><th>Ready to Start</th><th>In Progress</th><th>Waiting for Review</th><th>Completed</th>
@@ -451,7 +451,7 @@
             @if($bdReviewRows->isNotEmpty())<div class="dh-card-badge">{{ $bdReviewRows->count() }}</div>@endif
         </div>
         <div class="dh-table-wrap dh-scroll" style="max-height:560px">
-            <table class="dh-table">
+            <table class="dh-table dh-table-fit dh-fit-wrap">
                 <thead>
                 <tr>
                     <th>Task</th><th>Task Created At</th><th>Task Deadline</th><th>Moved to BD Review At</th>
@@ -519,7 +519,7 @@
     </section>
 
     {{-- Requests & decisions --}}
-    <div class="dh-grid dh-grid-2">
+    <div class="dh-grid dh-grid-2 dh-grid-equal">
         <section class="dh-card">
             <div class="dh-card-head">
                 {!! $cardIcon('shield', 'blue') !!}
@@ -565,31 +565,32 @@
                     <div class="dh-card-sub">Latest approved &amp; rejected requests on your tickets</div>
                 </div>
             </div>
-            <div class="dh-table-wrap">
-                <table class="dh-table">
-                    <thead>
-                    <tr><th>Type</th><th>Task</th><th>Requested By</th><th>Requested At</th><th>Result</th><th>Responded</th></tr>
-                    </thead>
-                    <tbody>
-                    @forelse($recentDecisions as $request)
-                        @php $approved = $request->overall_status === 'approved'; @endphp
-                        <tr>
-                            <td>{{ $request->request_type === 'status_change' ? 'Backward Status' : ucfirst($request->request_type) }}</td>
-                            <td>
-                                @if($request->task)
-                                    <a class="dh-task-link" href="{{ route('bd.tasks.show', $request->task) }}">{{ $request->task->task_id }}</a>
-                                @else — @endif
-                            </td>
-                            <td>{{ $request->requester?->name ?? '—' }}</td>
-                            <td>{{ optional($request->created_at)->format('d M, h:i A') }}</td>
-                            <td><span class="dh-pill {{ $approved ? 'dh-pill-completed' : 'dh-pill-overdue' }}">{{ $approved ? 'Approved' : 'Rejected' }}</span></td>
-                            <td>{{ optional($request->responded_at)->format('d M, h:i A') }}</td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="6"><div class="dh-empty">No decisions recorded yet.</div></td></tr>
-                    @endforelse
-                    </tbody>
-                </table>
+            <div class="dh-card-body dh-scroll" style="max-height:520px">
+                @forelse($recentDecisions as $request)
+                    @php $approved = $request->overall_status === 'approved'; @endphp
+                    <div class="dh-req">
+                        <div class="dh-req-top">
+                            <div>
+                                <strong>{{ $request->request_type === 'status_change' ? 'Backward Status' : ucfirst($request->request_type) }} Request</strong>
+                                <div class="dh-cell-sub">
+                                    @if($request->task)
+                                        <a class="dh-task-link" href="{{ route('bd.tasks.show', $request->task) }}">{{ $request->task->task_id }}</a>
+                                    @else Task unavailable @endif
+                                    · requested by {{ $request->requester?->name ?? '—' }} · {{ optional($request->created_at)->format('d M, h:i A') }}
+                                </div>
+                            </div>
+                            <span class="dh-pill {{ $approved ? 'dh-pill-completed' : 'dh-pill-overdue' }}">{{ $approved ? 'Approved' : 'Rejected' }}</span>
+                        </div>
+                        @if($request->reason)<div class="dh-req-reason">“{{ $request->reason }}”</div>@endif
+                        <div class="dh-cell-sub">
+                            {{ $approved ? 'Approved' : 'Rejected' }}
+                            @if($request->decided_by) by <strong>{{ $request->decided_by->name }}</strong>@endif
+                            · {{ optional($request->responded_at)->format('d M, h:i A') }}
+                        </div>
+                    </div>
+                @empty
+                    <div class="dh-empty">No decisions recorded yet.</div>
+                @endforelse
             </div>
         </section>
     </div>

@@ -8,9 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
 
-/// The History tab lists status changes AND chat messages, oldest first.
+/// The History tab: Pipeline History (status changes AND chat messages) and Edit History, the most recent first.
 void main() {
-  Future<void> openHistory(WidgetTester tester, List<Map<String, dynamic>> history) async {
+  Future<void> openHistory(WidgetTester tester, List<Map<String, dynamic>> history, {List<Map<String, dynamic>> edits = const []}) async {
     tester.view.physicalSize = const Size(800, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -24,6 +24,7 @@ void main() {
             'access': {'current': true, 'read_only': false, 'reason': null},
             'progress': {'completed': 1, 'total': 3, 'remaining': 2, 'percentage': 33},
             'history': history,
+            'edit_history': edits,
             'requests': [],
           }),
       'GET /designer/tasks/1/comments': (_) => (status: 200, body: {'data': []}),
@@ -65,11 +66,60 @@ void main() {
     expect(find.text('Priya · Designer'), findsOneWidget);
     expect(find.text('+ 2 files'), findsOneWidget);
 
-    // The newest message came after the last status change, yet that status is still the current step.
+    // Most recent first. The newest message came after the last status change, yet that status is still the current step:
+    // so the message sits above it, and the older message below.
     expect(find.text('Current step'), findsOneWidget);
     final currentY = tester.getTopLeft(find.text('Current step')).dy;
-    expect(tester.getTopLeft(find.text('Please use the new logo')).dy, lessThan(currentY));
-    expect(tester.getTopLeft(find.text('Sent the first draft')).dy, greaterThan(currentY));
+    expect(tester.getTopLeft(find.text('Sent the first draft')).dy, lessThan(currentY));
+    expect(tester.getTopLeft(find.text('Please use the new logo')).dy, greaterThan(currentY));
+  });
+
+  testWidgets('the newest event is at the top and the oldest at the bottom', (tester) async {
+    await openHistory(tester, [
+      status('assigned_tasks', '2026-11-01T09:00:00+00:00', note: 'Task Created'),
+      status('review_analysis', '2026-11-01T11:00:00+00:00'),
+      status('in_progress', '2026-11-02T09:00:00+00:00'),
+    ]);
+
+    final newest = tester.getTopLeft(find.text('In progress')).dy;
+    final middle = tester.getTopLeft(find.text('Review & analysis')).dy;
+    final oldest = tester.getTopLeft(find.text('Assigned')).dy;
+    expect(newest, lessThan(middle));
+    expect(middle, lessThan(oldest));
+    expect(tester.widget<Text>(find.byKey(const Key('history-count'))).data, '3 Events');
+  });
+
+  testWidgets('Edit History is its own view: who changed what, old value struck through, newest update first', (tester) async {
+    await openHistory(tester, [status('assigned_tasks', '2026-11-01T09:00:00+00:00')], edits: [
+      {'editor': 'Bela BD', 'created_at': '2026-11-03T10:00:00+00:00', 'changes': [{'field': 'Priority', 'old': 'medium', 'new': 'high'}, {'field': 'Total Creatives', 'old': '3', 'new': '5'}]},
+      {'editor': 'Bela BD', 'created_at': '2026-11-02T10:00:00+00:00', 'changes': [{'field': 'Due Date', 'old': null, 'new': '10 Nov'}]},
+    ]);
+
+    expect(find.text('Edit History'), findsOneWidget); // the switch button
+    expect(find.text('Priority'), findsNothing); // still on Pipeline History
+
+    await tester.tap(find.byKey(const Key('history-edits')));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(find.byKey(const Key('history-count'))).data, '2 Updates');
+    expect(find.text('Priority'), findsOneWidget);
+    expect(find.text('medium'), findsOneWidget);
+    expect(find.text('high'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget); // an empty old value
+    expect(tester.getTopLeft(find.text('Priority')).dy, lessThan(tester.getTopLeft(find.text('Due Date')).dy));
+
+    await tester.tap(find.byKey(const Key('history-pipeline')));
+    await tester.pumpAndSettle();
+    expect(find.text('Priority'), findsNothing);
+  });
+
+  testWidgets('with no edits recorded, Edit History says so', (tester) async {
+    await openHistory(tester, [status('assigned_tasks', '2026-11-01T09:00:00+00:00')]);
+
+    await tester.tap(find.byKey(const Key('history-edits')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('history-edits-empty')), findsOneWidget);
   });
 
   testWidgets('an older server without kind still draws every row as a status change', (tester) async {

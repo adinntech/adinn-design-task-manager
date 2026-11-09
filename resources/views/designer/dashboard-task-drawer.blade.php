@@ -15,14 +15,8 @@
 @endphp
 
 <div class="tdr-overlay" id="tdr-overlay" hidden></div>
-<aside class="tdr" id="tdr" role="dialog" aria-modal="true" aria-labelledby="tdr-title" aria-hidden="true">
+<aside class="tdr" id="tdr" role="dialog" aria-modal="true" aria-label="Task details" aria-hidden="true">
     <button type="button" class="tdr-hide" id="tdr-hide" title="Hide details" aria-label="Hide details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
-    <div class="tdr-head">
-        <span class="tov-head-icon ytd-icon">{!! $tdrSvg('list') !!}</span>
-        <div>
-            <h2 id="tdr-title">Your Task Details</h2>
-            <p>Progress, creatives and deadlines for this task.</p>
-        </div>    </div>
     <div class="tdr-body">
         @foreach($recentTasks as $t)
             @php

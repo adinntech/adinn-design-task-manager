@@ -41,6 +41,7 @@ void main() {
       'GET /me': (_) => (status: 200, body: {'user': userJson(role: 'bd')}),
       'GET /notifications': (_) => (status: 200, body: {'unread_count': 0, 'data': []}),
       'GET /bd/tasks': (_) => (status: 200, body: {'statuses': [], 'tasks': []}),
+      'GET /bd/dashboard': (_) => (status: 200, body: emptyBdDashboardJson()),
       'GET /app-update': ?update,
     });
 
@@ -84,7 +85,7 @@ void main() {
 
     expect(find.byKey(const Key('update-required')), findsNothing);
     expect(find.byKey(const Key('update-available')), findsNothing);
-    expect(find.text('Tasks'), findsWidgets); // the BD home
+    expect(find.text('BD Dashboard'), findsWidgets); // the BD home
   });
 
   testWidgets('a build below the minimum is frozen behind the Update screen, on top of the signed-in app', (tester) async {
@@ -140,7 +141,7 @@ void main() {
     await boot(tester, build: 1, update: (_) => (status: 500, body: {'message': 'down'}));
 
     expect(find.byKey(const Key('update-required')), findsNothing);
-    expect(find.text('Tasks'), findsWidgets);
+    expect(find.text('BD Dashboard'), findsWidgets);
   });
 
   testWidgets('with no release configured (min 0) nobody is forced', (tester) async {

@@ -125,6 +125,7 @@ class AdminController extends Controller
                 'rework_count' => $progress->reworkCount($task),
             ],
             'history' => $this->timeline($task),
+            'edit_history' => $this->editHistory($task),
             'requests' => DesignTaskRequest::with(['requester:id,name', 'targetDesigner:id,name'])
                 ->where('design_task_id', $task->id)->latest()->get()->map(fn ($r) => $this->requestPayload($r))->values(),
             'comments' => DesignTaskComment::with(['user:id,name,role', 'attachments'])

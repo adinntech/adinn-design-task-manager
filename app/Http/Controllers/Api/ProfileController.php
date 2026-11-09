@@ -55,10 +55,23 @@ class ProfileController extends Controller
     public function updatePassword(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'different:current_password'],
+        ], [
+            'password.different' => 'The new password must be different from the current password.',
         ]);
 
-        $request->user()->update(['password' => Hash::make($data['password'])]);
+        $user = $request->user();
+
+        // The change is only granted when the current password is right.
+        if (! Hash::check($data['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'The current password is incorrect.',
+                'errors' => ['current_password' => ['The current password is incorrect.']],
+            ], 422);
+        }
+
+        $user->update(['password' => Hash::make($data['password'])]);
 
         return response()->json(['message' => 'Password updated successfully.']);
     }

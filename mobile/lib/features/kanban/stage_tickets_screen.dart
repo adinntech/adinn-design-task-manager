@@ -148,7 +148,7 @@ class _StageTicketsScreenState extends ConsumerState<StageTicketsScreen> {
       child: SingleChildScrollView(
         key: const Key('ticket-list'),
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        padding: EdgeInsets.fromLTRB(12, 8, 12, 24 + MediaQuery.viewPaddingOf(context).bottom),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (final w in items) Padding(padding: const EdgeInsets.only(bottom: 8), child: w)]),
       ),
     );

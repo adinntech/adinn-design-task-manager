@@ -84,6 +84,86 @@ void main() {
     expect(store.token, isNull);
   });
 
+  testWidgets('forgot password: login link → OTP request → reset with the OTP → back on sign in', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    var otpOk = false;
+    adapter.routes['POST /password/forgot'] = (_) => (status: 200, body: {'message': 'If these details match an account, a 6-digit OTP has been sent to its registered email.'});
+    adapter.routes['POST /password/reset'] = (o) {
+      final d = o.data as Map;
+      if (d['otp'] != '482913') {
+        return (status: 422, body: {'message': 'x', 'errors': {'otp': ['Incorrect OTP. Check the mail and try again.']}});
+      }
+      otpOk = true;
+      return (status: 200, body: {'message': 'Password reset successfully.'});
+    };
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('forgot-password-link')));
+    await tester.pumpAndSettle();
+    expect(find.text('Reset your password'), findsOneWidget);
+
+    // Empty identifier is refused locally.
+    await tester.tap(find.byKey(const Key('forgot-send')));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter your username, email or employee code'), findsOneWidget);
+    expect(adapter.requests.where((r) => r.path == '/password/forgot'), isEmpty);
+
+    await tester.enterText(find.byKey(const Key('forgot-login')), '1761');
+    await tester.tap(find.byKey(const Key('forgot-send')));
+    await tester.pumpAndSettle();
+    expect((adapter.requests.lastWhere((r) => r.path == '/password/forgot').data as Map)['login'], '1761');
+    expect(find.text('Check your email'), findsOneWidget);
+    expect(find.byKey(const Key('forgot-info')), findsOneWidget);
+
+    // Wrong OTP stays on the page and shows the server's message under the OTP box.
+    await tester.enterText(find.byKey(const Key('forgot-otp')), '111111');
+    await tester.enterText(find.byKey(const Key('forgot-password')), 'NewPass@123');
+    await tester.enterText(find.byKey(const Key('forgot-confirm')), 'NewPass@123');
+    await tester.tap(find.byKey(const Key('forgot-reset')));
+    await tester.pumpAndSettle();
+    expect(find.text('Incorrect OTP. Check the mail and try again.'), findsOneWidget);
+    expect(otpOk, isFalse);
+
+    await tester.enterText(find.byKey(const Key('forgot-otp')), '482913');
+    await tester.tap(find.byKey(const Key('forgot-reset')));
+    await tester.pumpAndSettle();
+
+    final sent = adapter.requests.lastWhere((r) => r.path == '/password/reset').data as Map;
+    expect(sent, {'login': '1761', 'otp': '482913', 'password': 'NewPass@123', 'password_confirmation': 'NewPass@123'});
+    expect(otpOk, isTrue);
+    expect(find.text('Sign in'), findsOneWidget); // back on the login screen
+    expect(find.text('Password reset successfully. Sign in with your new password.'), findsOneWidget);
+  });
+
+  testWidgets('forgot password: mismatched confirmation is refused without calling the API', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    adapter.routes['POST /password/forgot'] = (_) => (status: 200, body: {'message': 'sent'});
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('forgot-password-link')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('forgot-login')), 'me@x.test');
+    await tester.tap(find.byKey(const Key('forgot-send')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('forgot-otp')), '482913');
+    await tester.enterText(find.byKey(const Key('forgot-password')), 'NewPass@123');
+    await tester.enterText(find.byKey(const Key('forgot-confirm')), 'Different@123');
+    await tester.tap(find.byKey(const Key('forgot-reset')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Passwords do not match'), findsOneWidget);
+    expect(adapter.requests.where((r) => r.path == '/password/reset'), isEmpty);
+  });
+
   testWidgets('validates empty fields without calling the API', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();

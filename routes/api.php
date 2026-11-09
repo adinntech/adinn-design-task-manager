@@ -10,10 +10,12 @@ use App\Http\Controllers\Api\Designer\RequestController as DesignerRequestContro
 use App\Http\Controllers\Api\Designer\TaskController as DesignerTaskController;
 use App\Http\Controllers\Api\Admin\AdminController;
 use App\Http\Controllers\Api\Bd\CreateTaskController;
+use App\Http\Controllers\Api\Bd\DashboardController as BdDashboardController;
 use App\Http\Controllers\Api\Bd\TaskController as BdTaskController;
 use App\Http\Controllers\Bd\TaskController as WebBdTaskController;
 use App\Http\Controllers\Api\DesignerHead\HeadController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\RealtimeController;
 use App\Http\Controllers\FileUploadController;
@@ -22,6 +24,10 @@ use Illuminate\Support\Facades\Route;
 
 // Mobile API (prefix api/v1, see bootstrap/app.php). Token auth via Sanctum.
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+
+// Forgot password (public): mail an OTP to the matching account, then reset with it.
+Route::post('/password/forgot', [PasswordResetController::class, 'send'])->middleware('throttle:5,1');
+Route::post('/password/reset', [PasswordResetController::class, 'reset'])->middleware('throttle:10,1');
 
 // In-app update gate: public so it also works before sign-in. Values come from config/app_update.php.
 Route::get('/app-update', [AppUpdateController::class, 'show'])->middleware('throttle:60,1');
@@ -101,6 +107,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/drafts/in-house', [CreateTaskController::class, 'storeInhouseDraft']);
         Route::get('/designers/{designer}/availability', [WebBdTaskController::class, 'availability']);
         Route::get('/clients/search', [WebBdTaskController::class, 'searchClients']);
+
+        Route::get('/dashboard', [BdDashboardController::class, 'index']);
+        Route::get('/dashboard/tasks', [BdDashboardController::class, 'tasks']);
 
         Route::get('/tasks', [BdTaskController::class, 'board']);
         Route::get('/tasks/{task}', [BdTaskController::class, 'show']);
