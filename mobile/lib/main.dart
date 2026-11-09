@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/app_lock.dart';
 import 'core/app_update.dart';
 import 'core/auth.dart';
 import 'core/push.dart';
 import 'core/realtime.dart';
 import 'core/theme.dart';
+import 'features/lock/lock_gate.dart';
 import 'features/requests/requests_screen.dart';
 import 'features/tasks/providers.dart';
 import 'features/update/update_gate.dart';
@@ -56,8 +58,12 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
       _refreshLiveData();
       if (e.category == 'approval_access') _refreshAccess();
     });
-    // Restore a saved session; the router shows a splash until this resolves.
-    Future.microtask(() => ref.read(authProvider.notifier).restore());
+    // Restore a saved session; the router shows a splash until this resolves. The app lock is read alongside it: a saved
+    // PIN means a cold start begins locked.
+    Future.microtask(() {
+      ref.read(appLockProvider.notifier).load();
+      ref.read(authProvider.notifier).restore();
+    });
 
     // Push: tapping a notification opens its task; a push in the foreground refreshes the badges/lists.
     final push = ref.read(pushRegistrarProvider);
@@ -79,6 +85,10 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final realtime = ref.read(realtimeProvider);
+    final lock = ref.read(appLockProvider.notifier);
+    if (state == AppLifecycleState.paused) lock.appPaused();
+    if (state == AppLifecycleState.resumed) lock.appResumed(); // locks again if the app was away for 30 s or more
+
     if (state == AppLifecycleState.resumed) {
       // Anything that happened while the socket was closed is picked up by a refresh.
       if (ref.read(authProvider).status == AuthStatus.signedIn) {
@@ -124,7 +134,9 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
       scrollBehavior: const SmoothScrollBehavior(),
       routerConfig: ref.watch(routerProvider),
       // Freezes the app behind an Update screen when the server says this build is too old.
-      builder: (context, child) => UpdateGate(child: child ?? const SizedBox.shrink()),
+      // The lock goes outermost so it covers everything, the Update screen included.
+      // The lock goes outermost so it covers everything, the Update screen included.
+      builder: (context, child) => LockGate(child: UpdateGate(child: child ?? const SizedBox.shrink())),
     );
   }
 }

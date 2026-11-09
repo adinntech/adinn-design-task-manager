@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api_client.dart';
+import 'app_lock.dart';
 import 'models.dart';
 import 'push.dart';
 import 'server_settings.dart';
@@ -131,6 +132,8 @@ class AuthController extends Notifier<AuthState> {
     final token = body['token'] as String;
     final user = AppUser.fromJson(body['user'] as Map<String, dynamic>);
     await ref.read(sessionStoreProvider).write(token, user);
+    // A password sign-in just proved who this is: nothing to unlock, and the fingerprint-unlock question is asked.
+    await ref.read(appLockProvider.notifier).onSignedIn();
     state = AuthState(status: AuthStatus.signedIn, token: token, user: user);
   }
 
@@ -148,6 +151,8 @@ class AuthController extends Notifier<AuthState> {
   Future<void> signOutLocally() async {
     await ref.read(pushRegistrarProvider).stop(unregister: false);
     await ref.read(sessionStoreProvider).clear();
+    // The PIN belongs to this sign-in: the next person (or the same one, again) sets up their own.
+    await ref.read(appLockProvider.notifier).reset();
     state = const AuthState(status: AuthStatus.signedOut);
   }
 }

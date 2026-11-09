@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_lock.dart';
 import '../../core/auth.dart';
 import '../../core/models.dart';
+import '../lock/lock_gate.dart';
 
 /// What `/profile` returns: the editable details plus the vertical choices.
 class ProfileData {
@@ -436,6 +439,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            _section(
+              icon: Icons.fingerprint_rounded,
+              title: 'App lock',
+              subtitle: 'Ask for your fingerprint, face or a 4-digit PIN whenever the app is opened.',
+              children: [
+                Consumer(
+                  builder: (context, ref, _) {
+                    final lock = ref.watch(appLockProvider);
+
+                    // Its own Material: the card around it is painted, and a ListTile draws on the nearest one.
+                    return Material(
+                      color: Colors.transparent,
+                      child: SwitchListTile(
+                        key: const Key('app-lock-switch'),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Lock the app', style: TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: Text(lock.enabled ? (lock.biometric ? 'PIN and fingerprint / face' : 'PIN only') : 'Off'),
+                        value: lock.enabled,
+                        onChanged: (on) => on ? _turnLockOn() : _turnLockOff(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             if (data != null && data.hasVerticals) ...[
               const SizedBox(height: 12),
               _verticalsSection(data),
@@ -444,6 +473,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  /// Same PIN setup as the first-time offer, opened as a page.
+  void _turnLockOn() => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LockSetupScreen(fromProfile: true)));
+
+  /// Turning the lock off needs the current PIN, so a borrowed, unlocked phone cannot quietly remove it.
+  Future<void> _turnLockOff() async {
+    final pin = TextEditingController();
+    String? error;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialog) => AlertDialog(
+          title: const Text('Turn off app lock'),
+          content: TextField(
+            key: const Key('lock-off-pin'),
+            controller: pin,
+            autofocus: true,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            maxLength: 4,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(labelText: 'Enter your PIN', errorText: error, counterText: ''),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+            FilledButton(
+              key: const Key('lock-off-confirm'),
+              onPressed: () {
+                if (ref.read(appLockProvider.notifier).verifyPin(pin.text)) {
+                  Navigator.of(dialogContext).pop(true);
+                } else {
+                  setDialog(() => error = 'That is not your PIN.');
+                }
+              },
+              child: const Text('Turn off'),
+            ),
+          ],
+        ),
+      ),
+    );
+    pin.dispose();
+
+    if (ok == true) await ref.read(appLockProvider.notifier).reset();
   }
 
   Widget _header(AppUser? user, Color primary) {
