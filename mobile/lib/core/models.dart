@@ -159,10 +159,11 @@ class Designer {
 }
 
 class ChatAttachment {
-  ChatAttachment({required this.name, required this.url});
+  ChatAttachment({required this.name, required this.url, this.mimeType});
 
   final String name;
   final String url;
+  final String? mimeType;
 }
 
 class ChatMessage {
@@ -194,7 +195,7 @@ class ChatMessage {
       role: (user?['role'] ?? '') as String,
       createdAt: j['created_at'] == null ? null : DateTime.tryParse(j['created_at'] as String)?.toLocal(),
       attachments: ((j['attachments'] as List?) ?? [])
-          .map((a) => ChatAttachment(name: (a['name'] ?? 'file') as String, url: (a['url'] ?? '') as String))
+          .map((a) => ChatAttachment(name: (a['name'] ?? 'file') as String, url: (a['url'] ?? '') as String, mimeType: a['mime_type'] as String?))
           .toList(),
     );
   }

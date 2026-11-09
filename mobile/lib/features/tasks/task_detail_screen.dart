@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,8 +10,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api_client.dart';
 import '../../core/auth.dart';
 import '../../core/models.dart';
+import '../../core/task_files.dart';
 import '../../core/uploads.dart';
 import '../../core/theme.dart';
+import '../../core/voice.dart';
+import '../files/file_widgets.dart';
 import '../uploads/upload_panel.dart';
 import 'providers.dart';
 import 'task_actions.dart';
@@ -106,6 +111,7 @@ class _OverviewState extends ConsumerState<_Overview> {
     final percentage = ((progress?['percentage'] ?? 0) as num).toDouble();
 
     final canMove = role == 'designer' && next != null && access?['read_only'] != true;
+    final files = TaskFiles.fromDetail(widget.data);
 
     // Everything is laid out to fit one screen: the details sit in two columns, and the actions are pushed to the bottom.
     // It only scrolls if a very small screen (or large text) really cannot hold it.
@@ -149,6 +155,11 @@ class _OverviewState extends ConsumerState<_Overview> {
                     if (task['bd'] != null) ('BD', '${(task['bd'] as Map)['name']}', null),
                     if (task['designer'] != null) ('Designer', '${(task['designer'] as Map)['name']}', null),
                   ]),
+                  // What the BD attached when creating the task, and what the designer has handed in.
+                  if (!files.isEmpty) ...[
+                    const SizedBox(height: 10),
+                    AttachmentsCard(files: files),
+                  ],
                   const Spacer(),
                   const SizedBox(height: 10),
                   TaskActions(taskId: widget.taskId, data: widget.data),
@@ -549,6 +560,17 @@ class _ChatTabState extends ConsumerState<ChatTab> {
   Timer? _poller;
   UploadsController? _uploads;
 
+  // Voice notes: hold the mic to record, release to send, slide left to cancel (as in WhatsApp).
+  static const _minVoice = Duration(seconds: 1);
+  static const _cancelSlide = 90.0;
+  bool _recording = false;
+  bool _starting = false;
+  bool _cancelling = false;
+  bool _pointerDown = false;
+  double _downX = 0;
+  Duration _elapsed = Duration.zero;
+  Timer? _recTimer;
+
   /// Only designers and BD have the direct-upload chat endpoints.
   bool get _canAttach {
     final role = ref.read(authProvider).user?.role;
@@ -561,6 +583,8 @@ class _ChatTabState extends ConsumerState<ChatTab> {
     if (_canAttach) {
       _uploads = UploadsController(service: ref.read(uploadServiceProvider), taskId: widget.taskId, purpose: UploadPurpose.comment);
     }
+    // The mic turns into the send button as soon as there is text.
+    _text.addListener(() => setState(() {}));
     _poller = Timer.periodic(const Duration(seconds: 8), (_) {
       if (mounted) ref.invalidate(commentsProvider(widget.taskId));
     });
@@ -569,10 +593,92 @@ class _ChatTabState extends ConsumerState<ChatTab> {
   @override
   void dispose() {
     _poller?.cancel();
+    _recTimer?.cancel();
+    if (_recording) ref.read(voiceRecorderProvider).cancel();
     _uploads?.dispose();
     _text.dispose();
     super.dispose();
   }
+
+  void _snack(String message) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _startRecording() async {
+    if (_recording || _starting || _sending) return;
+    _starting = true;
+    final recorder = ref.read(voiceRecorderProvider);
+
+    try {
+      final ok = await recorder.start(); // the first time, this is where Android asks for the microphone
+      if (!ok) {
+        _snack('Allow microphone access to send voice notes.');
+        return;
+      }
+      // The finger already lifted (e.g. while the permission dialog was up): nothing to record.
+      if (!_pointerDown || !mounted) {
+        await recorder.cancel();
+        _snack('Hold the mic button to record, release to send.');
+        return;
+      }
+
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _recording = true;
+        _cancelling = false;
+        _elapsed = Duration.zero;
+      });
+      _recTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+        if (mounted) setState(() => _elapsed += const Duration(milliseconds: 250));
+      });
+    } catch (_) {
+      _snack('Could not start recording.');
+    } finally {
+      _starting = false;
+    }
+  }
+
+  Future<void> _finishRecording({bool cancel = false}) async {
+    if (!_recording) return;
+
+    _recTimer?.cancel();
+    final slidCancel = _cancelling;
+    final tooShort = _elapsed < _minVoice;
+    setState(() {
+      _recording = false;
+      _cancelling = false;
+    });
+
+    final recorder = ref.read(voiceRecorderProvider);
+    if (cancel || slidCancel || tooShort) {
+      await recorder.cancel();
+      if (tooShort && !cancel && !slidCancel) _snack('Hold the mic button to record, release to send.');
+      return;
+    }
+
+    final path = await recorder.stop();
+    if (path != null) await _sendVoice(path);
+  }
+
+  Future<void> _sendVoice(String path) async {
+    if (mounted) setState(() => _sending = true);
+
+    try {
+      final id = await ref.read(uploadServiceProvider).upload(taskId: widget.taskId, purpose: UploadPurpose.comment, source: FileUploadSource(File(path)));
+      await ref.read(roleApiProvider).sendComment(widget.taskId, voiceNoteText, uploadIds: '$id');
+      ref.invalidate(commentsProvider(widget.taskId));
+    } on ApiException catch (e) {
+      _snack(e.message);
+    } catch (_) {
+      _snack('Could not send the voice note. Please try again.');
+    } finally {
+      // The recording is only a temp file; tidy it up without making the user wait.
+      unawaited(File(path).delete().then<void>((_) {}, onError: (_) {}));
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  String _clock(Duration d) => '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 
   Future<void> _send() async {
     final body = _text.text.trim();
@@ -651,25 +757,45 @@ class _ChatTabState extends ConsumerState<ChatTab> {
               ),
               child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Expanded(
-                  child: TextField(
-                    key: const Key('chat-input'),
-                    controller: _text,
-                    minLines: 1,
-                    maxLines: 4,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a message…',
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      filled: false,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
+                  child: _recording
+                      // While recording the field gives way to a red dot, the clock and the slide-to-cancel hint.
+                      ? Padding(
+                          key: const Key('recording-bar'),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Row(children: [
+                            const Icon(Icons.fiber_manual_record_rounded, size: 14, color: Color(0xFFD92D20)),
+                            const SizedBox(width: 8),
+                            Text(_clock(_elapsed), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                _cancelling ? 'Release to cancel' : '‹  Slide to cancel',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _cancelling ? const Color(0xFFD92D20) : const Color(0xFF667085)),
+                              ),
+                            ),
+                          ]),
+                        )
+                      : TextField(
+                          key: const Key('chat-input'),
+                          controller: _text,
+                          minLines: 1,
+                          maxLines: 4,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            hintText: 'Write a message…',
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
                 ),
                 // the paperclip sits beside send, inside the same pill
-                if (_uploads != null)
+                if (_uploads != null && !_recording)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
                     child: IconButton(
@@ -680,18 +806,49 @@ class _ChatTabState extends ConsumerState<ChatTab> {
                       onPressed: () async {
                         final picked = await ref.read(filePickerProvider).pick();
                         await _uploads!.add(picked);
+                        if (mounted) setState(() {}); // a file in the list turns the mic into send
                       },
                     ),
                   ),
                 const SizedBox(width: 2),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 2),
-                  child: IconButton.filled(
-                    key: const Key('chat-send'),
-                    style: IconButton.styleFrom(backgroundColor: primary, minimumSize: const Size(44, 44)),
-                    onPressed: _sending ? null : _send,
-                    icon: _sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded, size: 20),
-                  ),
+                  child: _uploads != null && !_sending && (_recording || (_text.text.trim().isEmpty && !_uploads!.hasFiles))
+                      // Empty field: a mic you hold (press, speak, release). Any text or file turns it into send.
+                      ? Listener(
+                          key: const Key('chat-mic'),
+                          onPointerDown: (e) {
+                            _pointerDown = true;
+                            _downX = e.position.dx;
+                            _startRecording();
+                          },
+                          onPointerMove: (e) {
+                            if (!_recording) return;
+                            final cancelling = e.position.dx - _downX < -_cancelSlide;
+                            if (cancelling != _cancelling) setState(() => _cancelling = cancelling);
+                          },
+                          onPointerUp: (_) {
+                            _pointerDown = false;
+                            _finishRecording();
+                          },
+                          onPointerCancel: (_) {
+                            _pointerDown = false;
+                            _finishRecording(cancel: true);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            width: _recording ? 56 : 44,
+                            height: _recording ? 56 : 44,
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: _cancelling ? const Color(0xFF667085) : primary),
+                            child: Icon(_cancelling ? Icons.delete_outline_rounded : Icons.mic_rounded, color: Colors.white, size: _recording ? 28 : 22),
+                          ),
+                        )
+                      : IconButton.filled(
+                          key: const Key('chat-send'),
+                          style: IconButton.styleFrom(backgroundColor: primary, minimumSize: const Size(44, 44)),
+                          onPressed: _sending ? null : _send,
+                          icon: _sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded, size: 20),
+                        ),
                 ),
               ]),
             ),
@@ -715,6 +872,8 @@ class _Bubble extends StatelessWidget {
     final at = message.createdAt == null ? '' : DateFormat('d MMM, h:mm a').format(message.createdAt!);
     final fg = mine ? Colors.white : const Color(0xFF101828);
     final initial = message.userName.trim().isEmpty ? '?' : message.userName.trim()[0].toUpperCase();
+    final files = [for (final a in message.attachments) TaskFile.fromNameAndMime(a.name, a.url, a.mimeType)];
+    final isVoice = message.text == voiceNoteText && files.any((f) => f.isAudio);
 
     final bubble = Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
@@ -732,21 +891,29 @@ class _Bubble extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (!mine && firstInRun) Text(message.userName, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: theme.colorScheme.primary)),
-        Text(message.text, style: TextStyle(fontSize: 14.5, height: 1.3, color: fg)),
-        for (final a in message.attachments)
-          InkWell(
-            onTap: a.url.isEmpty ? null : () => launchUrl(Uri.parse(a.url), mode: LaunchMode.externalApplication),
-            child: Container(
-              margin: const EdgeInsets.only(top: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(color: (mine ? Colors.white : theme.colorScheme.primary).withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.attach_file_rounded, size: 15, color: mine ? Colors.white : theme.colorScheme.primary),
-                const SizedBox(width: 4),
-                Flexible(child: Text(a.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: mine ? Colors.white : theme.colorScheme.primary))),
-              ]),
+        // A voice note is just the player: its placeholder text ("Voice message") is not shown.
+        if (!isVoice) Text(message.text, style: TextStyle(fontSize: 14.5, height: 1.3, color: fg)),
+        for (final f in files)
+          if (f.isAudio)
+            Padding(padding: const EdgeInsets.only(top: 4), child: SizedBox(width: 230, child: AudioNote(url: f.url, onDark: mine)))
+          else if (f.isImage)
+            Padding(padding: const EdgeInsets.only(top: 6), child: FileTile(file: f, gallery: [for (final i in files) if (i.isImage) i]))
+          else
+            Consumer(
+              builder: (context, ref, _) => InkWell(
+                onTap: f.url.isEmpty ? null : () => downloadAndOpen(context, ref, f),
+                child: Container(
+                  margin: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: (mine ? Colors.white : theme.colorScheme.primary).withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.attach_file_rounded, size: 15, color: mine ? Colors.white : theme.colorScheme.primary),
+                    const SizedBox(width: 4),
+                    Flexible(child: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: mine ? Colors.white : theme.colorScheme.primary))),
+                  ]),
+                ),
+              ),
             ),
-          ),
         const SizedBox(height: 3),
         Align(alignment: Alignment.centerRight, child: Text(at, style: TextStyle(fontSize: 10, color: mine ? Colors.white70 : const Color(0xFF98A2B3)))),
       ]),

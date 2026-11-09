@@ -214,6 +214,7 @@ void main() {
     await tester.tap(find.byKey(const Key('open-chat')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('chat-input')), 'Hello BD');
+    await tester.pump(); // with text in the field the mic becomes the send button
     await tester.tap(find.byKey(const Key('chat-send')));
     await tester.pumpAndSettle();
     expect(find.text('Hello BD'), findsOneWidget);

@@ -5,12 +5,85 @@ namespace App\Http\Controllers\Api\Concerns;
 use App\Models\DesignTask;
 use App\Models\DesignTaskComment;
 use App\Models\DesignTaskEditHistory;
+use App\Models\DesignTaskEodRecord;
 use App\Models\DesignTaskRequest;
 use App\Models\DesignTaskStatusHistory;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /** Shared JSON shapes for the mobile API (tasks, comments, requests). */
 trait SerializesTasks
 {
+    /**
+     * Files for the Overview tab, same data the web detail pages show:
+     *  - requirement_files: the reference files the BD attached when creating the task (every vertical / nature has its
+     *    own upload fields), grouped by field. Stored in the `requirements` JSON as paths on the spaces disk.
+     *  - submissions: what the designer handed in, one entry per progress submission (primary + extra files).
+     *
+     * @return array{requirement_files: list<array<string, mixed>>, submissions: list<array<string, mixed>>}
+     */
+    protected function taskFiles(DesignTask $task): array
+    {
+        $groups = [];
+        foreach ((array) $task->requirements as $key => $value) {
+            if (str_starts_with((string) $key, '_')) {
+                continue;
+            }
+            $found = [];
+            $this->collectStoredFiles($value, $found);
+            if ($found !== []) {
+                $groups[] = ['key' => (string) $key, 'label' => Str::headline((string) $key), 'files' => $found];
+            }
+        }
+
+        $submissions = DesignTaskEodRecord::where('design_task_id', $task->id)->latest('submitted_at')->get()
+            ->map(fn (DesignTaskEodRecord $r) => [
+                'id' => $r->id,
+                'update_type' => $r->update_type,
+                'completed_count' => (int) $r->completed_count,
+                'cumulative_completed' => (int) $r->cumulative_completed,
+                'submitted_at' => $r->submitted_at?->toIso8601String(),
+                'files' => collect($r->attachment_links)->map(fn (array $l) => $this->fileEntry($l['name'], $l['url']))->values()->all(),
+            ])
+            ->filter(fn (array $s) => $s['files'] !== [])
+            ->values()->all();
+
+        return ['requirement_files' => $groups, 'submissions' => $submissions];
+    }
+
+    /** @param  list<array<string, mixed>>  $files */
+    private function collectStoredFiles(mixed $value, array &$files): void
+    {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                $this->collectStoredFiles($item, $files);
+            }
+
+            return;
+        }
+
+        $path = is_string($value) ? trim($value) : '';
+        if ($path === '' || filter_var($path, FILTER_VALIDATE_URL) || ! str_contains($path, '/') || pathinfo($path, PATHINFO_EXTENSION) === '') {
+            return;
+        }
+
+        $files[] = $this->fileEntry(basename($path), Storage::disk('spaces')->url($path));
+    }
+
+    /** @return array{name: string, extension: string, kind: string, url: string} kind = image|audio|video|file */
+    private function fileEntry(string $name, string $url): array
+    {
+        $ext = strtolower(pathinfo(parse_url($name, PHP_URL_PATH) ?: $name, PATHINFO_EXTENSION));
+        $kind = match (true) {
+            in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic'], true) => 'image',
+            in_array($ext, ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'opus', 'amr'], true) => 'audio',
+            in_array($ext, ['mp4', 'mov', 'webm', 'mkv'], true) => 'video',
+            default => 'file',
+        };
+
+        return ['name' => $name, 'extension' => strtoupper($ext ?: 'FILE'), 'kind' => $kind, 'url' => $url];
+    }
+
     /**
      * The History tab: status changes and chat messages on one time-ordered list. Chat uses the same filter as the
      * chat tab itself, so clarification-thread replies stay out. `kind` tells the app which one a row is.

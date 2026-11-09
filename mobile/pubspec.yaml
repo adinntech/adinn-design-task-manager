@@ -46,6 +46,12 @@ dependencies:
   firebase_messaging: ^17.0.1
   web_socket_channel: ^3.0.3
   package_info_plus: ^10.2.2
+  record: ^7.1.2
+  audioplayers: ^6.8.1
+  path_provider: ^2.1.6
+  open_filex: ^5.0.0
+  local_auth: ^3.0.2
+  crypto: ^3.0.8
 
 dev_dependencies:
   flutter_test:

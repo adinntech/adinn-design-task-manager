@@ -148,6 +148,71 @@ class MobileBdApiTest extends TestCase
         $this->assertSame('in_progress', $history[2]['to_status']);
     }
 
+    public function test_detail_lists_requirement_files_and_submitted_work_for_every_role(): void
+    {
+        $task = $this->task(['requirements' => [
+            'reference_images' => ['dtm/2026/roadshow/DT-1/reference_images/look-a.jpg', 'dtm/2026/roadshow/DT-1/reference_images/look-b.PNG'],
+            'client_audio' => 'dtm/2026/roadshow/DT-1/client_audio/call.m4a',
+            'brief_file' => 'dtm/2026/roadshow/DT-1/brief_file/brief.pdf',
+            'notes' => 'plain text with no slash.txt',
+            'link' => 'https://example.test/a/b.jpg',
+            '_internal' => ['x/y.jpg'],
+        ]]);
+        DesignTaskEodRecord::create([
+            'design_task_id' => $task->id, 'designer_id' => $this->designer->id, 'update_type' => 'progress',
+            'completed_count' => 2, 'total_creatives_snapshot' => 3, 'cumulative_completed' => 2, 'remaining_creatives' => 1,
+            'attachment_disk' => 'spaces', 'attachment_path' => 'dtm/eod/round1.zip', 'attachment_original_name' => 'round1.zip',
+            'extra_attachments' => [['disk' => 'spaces', 'path' => 'dtm/eod/preview.jpg', 'name' => 'preview.jpg']],
+            'submitted_at' => now(),
+        ]);
+        DesignTaskEodRecord::create([
+            'design_task_id' => $task->id, 'designer_id' => $this->designer->id, 'update_type' => 'progress',
+            'completed_count' => 0, 'total_creatives_snapshot' => 3, 'cumulative_completed' => 2, 'remaining_creatives' => 1,
+            'submitted_at' => now()->subDay(),
+        ]);
+
+        $head = $this->makeUser('designer_head');
+        $admin = $this->makeUser('admin');
+
+        $urls = [
+            [$this->bd, "/api/v1/bd/tasks/{$task->id}"],
+            [$this->designer, "/api/v1/designer/tasks/{$task->id}"],
+            [$admin, "/api/v1/admin/tasks/{$task->id}"],
+        ];
+        $this->designer->update(['designer_head_id' => $head->id]);
+        $urls[] = [$head, "/api/v1/designer-head/tasks/{$task->id}"];
+
+        foreach ($urls as [$user, $url]) {
+            $files = $this->actingAs($user, 'sanctum')->getJson($url)->assertOk()->json('files');
+
+            $groups = collect($files['requirement_files'])->keyBy('key');
+            $this->assertSame(['reference_images', 'client_audio', 'brief_file'], $groups->keys()->all(), $url);
+            $this->assertSame('Reference Images', $groups['reference_images']['label']);
+
+            $images = $groups['reference_images']['files'];
+            $this->assertSame(['look-a.jpg', 'look-b.PNG'], array_column($images, 'name'));
+            $this->assertSame(['image', 'image'], array_column($images, 'kind'));
+            $this->assertSame('audio', $groups['client_audio']['files'][0]['kind']);
+            $this->assertSame('file', $groups['brief_file']['files'][0]['kind']);
+            $this->assertSame('PDF', $groups['brief_file']['files'][0]['extension']);
+            $this->assertStringEndsWith('reference_images/look-a.jpg', $images[0]['url']);
+
+            // Only the submission that actually carries files is listed: primary first, then the extras.
+            $this->assertCount(1, $files['submissions'], $url);
+            $this->assertSame(2, $files['submissions'][0]['completed_count']);
+            $this->assertSame(['round1.zip', 'preview.jpg'], array_column($files['submissions'][0]['files'], 'name'));
+            $this->assertSame('image', $files['submissions'][0]['files'][1]['kind']);
+        }
+    }
+
+    public function test_detail_files_are_empty_when_the_task_has_none(): void
+    {
+        $task = $this->task();
+
+        $this->actingAs($this->bd, 'sanctum')->getJson("/api/v1/bd/tasks/{$task->id}")
+            ->assertOk()->assertJsonPath('files.requirement_files', [])->assertJsonPath('files.submissions', []);
+    }
+
     public function test_cannot_touch_another_bds_task(): void
     {
         $theirs = $this->task(['assigned_by' => $this->otherBd->id]);

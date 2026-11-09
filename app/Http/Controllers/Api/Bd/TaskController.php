@@ -122,6 +122,7 @@ class TaskController extends Controller
                     'overall_rating' => $r->overall_rating, 'created_at' => $r->created_at?->toIso8601String(),
                 ]),
             'history' => $this->timeline($task),
+            'files' => $this->taskFiles($task),
             'edit_history' => $this->editHistory($task),
             'requests' => DesignTaskRequest::with(['requester:id,name', 'targetDesigner:id,name'])
                 ->where('design_task_id', $task->id)->latest()->get()->map(fn ($r) => $this->requestPayload($r))->values(),
