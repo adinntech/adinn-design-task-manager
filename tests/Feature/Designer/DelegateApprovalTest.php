@@ -150,7 +150,15 @@ class DelegateApprovalTest extends TestCase
         $this->assertSame(4, $request->task->fresh()->total_creatives);
 
         Notification::assertSentTo($this->head, TaskRequestNotification::class);
-        Notification::assertSentTo($this->requester, TaskRequestNotification::class);
+        Notification::assertSentTo($this->requester, TaskRequestNotification::class, function (TaskRequestNotification $n) {
+            $data = $n->toArray($this->requester);
+
+            // The requester is told it was approved, by whom, and which Designer the split went to.
+            return str_contains($data['message'], 'approved by '.$this->delegate->name)
+                && str_contains($data['message'], 'assigned to '.$this->teammate->name);
+        });
+        // ...and the Designer who received the split gets the "new task assigned" alert.
+        Notification::assertSentTo($this->teammate, \App\Notifications\TaskAssignedNotification::class);
 
         // Decided requests leave the delegate's list and the head's pending list.
         $this->actingAs($this->delegate)->get(route('designer.approvals.index'))->assertDontSee($request->task->task_id);

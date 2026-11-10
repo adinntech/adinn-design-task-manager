@@ -262,6 +262,48 @@ class TaskNotificationService
                 $this->push($approver, $task, ucfirst($taskRequest->request_type).' request', ($requester?->name ?? 'A designer').' needs your approval', 'request-in', $taskRequest->request_type);
             }
         }
+
+        $this->notifyDelegatedApprovers($taskRequest, $task, $requester);
+    }
+
+    /**
+     * Designers the Admin allowed to approve Swap / Split ("Permission to approve") get the same heads-up as the
+     * Designer Head: a bell notification (live), plus a desktop / mobile push that opens the Approvals page.
+     * Mirrors who can actually decide it (ApprovalController / DesignTaskRequestService::guardApprover):
+     * the requester's teammates under the same Designer Head, never the requester, and only Swap / Split.
+     */
+    private function notifyDelegatedApprovers(DesignTaskRequest $taskRequest, DesignTask $task, ?User $requester): void
+    {
+        if (! $requester || ! $requester->designer_head_id || ! in_array($taskRequest->request_type, ['split', 'swap'], true)) {
+            return;
+        }
+
+        $approvers = User::query()
+            ->where('role', 'designer')
+            ->where('is_active', true)
+            ->where('can_approve_requests', true)
+            ->where('designer_head_id', $requester->designer_head_id)
+            ->whereKeyNot($requester->id)
+            ->get();
+
+        foreach ($approvers as $approver) {
+            $this->send($approver, new TaskRequestNotification($task, $taskRequest->request_type, 'submitted', $requester, null, null, true));
+            $this->flag($approver, $taskRequest->request_type);
+
+            try {
+                app(WebPushService::class)->send(
+                    $approver,
+                    ucfirst($taskRequest->request_type).' request needs your approval',
+                    "{$task->task_id} — ".($task->display_task_name ?? $task->task_name)."
+{$requester->name} asked for approval",
+                    route('designer.approvals.index'),
+                    'approval-request-'.$taskRequest->id,
+                    ['task_id' => $task->id, 'task_ref' => $task->task_id]
+                );
+            } catch (Throwable $e) {
+                Log::warning('Approval request push failed', ['user_id' => $approver->id, 'error' => $e->getMessage()]);
+            }
+        }
     }
 
     public function requestDecided(DesignTaskRequest $taskRequest, string $event, User $actor): void
@@ -275,11 +317,13 @@ class TaskNotificationService
         $requester = $taskRequest->requester;
 
         if ($requester && (int) $requester->id !== (int) $actor->id) {
-            $this->send($requester, new TaskRequestNotification($task, $taskRequest->request_type, $event, $actor));
+            $assignedTo = $event === 'approved' && in_array($taskRequest->request_type, ['split', 'swap'], true) ? $taskRequest->approvedDesigner : null;
+
+            $this->send($requester, new TaskRequestNotification($task, $taskRequest->request_type, $event, $actor, null, null, false, $assignedTo));
             $this->flag($requester, $taskRequest->request_type);
 
             if ($event === 'approved' && in_array($taskRequest->request_type, ['decline', 'split', 'swap'], true)) {
-                $this->push($requester, $task, ucfirst($taskRequest->request_type).' request approved', "Approved by {$actor->name}", 'request', $taskRequest->request_type);
+                $this->push($requester, $task, ucfirst($taskRequest->request_type).' request approved', "Approved by {$actor->name}".($assignedTo ? " · assigned to {$assignedTo->name}" : ''), 'request', $taskRequest->request_type);
             }
         }
 

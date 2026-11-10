@@ -18,6 +18,9 @@ class TaskRequestNotification extends Notification
      * @param  string|null  $comment  Only used by 'bd_approval' — the BD's approval/rejection comment.
      * @param  User|null  $requester  Set when a delegated Designer decided someone else's request, so the
      *                                Designer Head is told who asked and who decided on their behalf.
+     * @param  bool  $asApprover  A 'submitted' alert for a Designer who may approve it on the Head's behalf
+     *                            (Swap / Split of a teammate): worded as "needs your approval", opens Approvals.
+     * @param  User|null  $assignedTo  On an approval sent to the requester: the Designer the Swap / Split went to.
      */
     public function __construct(
         private DesignTask $task,
@@ -25,7 +28,9 @@ class TaskRequestNotification extends Notification
         private string $event,
         private User $actor,
         private ?string $comment = null,
-        private ?User $requester = null
+        private ?User $requester = null,
+        private bool $asApprover = false,
+        private ?User $assignedTo = null
     ) {}
 
     public function via(object $notifiable): array
@@ -40,6 +45,17 @@ class TaskRequestNotification extends Notification
         }
 
         $typeLabel = Str::headline($this->requestType);
+
+        if ($this->asApprover && $this->event === 'submitted') {
+            return [
+                'title' => "Approval needed: {$typeLabel} request",
+                'message' => "{$this->task->task_id}: {$this->actor->name} asked for approval of a {$this->requestType} request. You can approve or decline it on your Designer Head's behalf from the Approvals tab.",
+                'task_id' => $this->task->id,
+                'task_ref' => $this->task->task_id,
+                'task_name' => $this->task->display_task_name ?? $this->task->task_name,
+                'category' => 'approval_request',
+            ];
+        }
 
         if ($this->requester) {
             $verb = $this->event === 'rejected' ? 'rejected' : 'approved';
@@ -61,7 +77,7 @@ class TaskRequestNotification extends Notification
         };
 
         $message = match ($this->event) {
-            'approved' => "{$this->task->task_id}: your {$this->requestType} request was approved by {$this->actor->name}.",
+            'approved' => "{$this->task->task_id}: your {$this->requestType} request was approved by {$this->actor->name}.".($this->assignedTo ? " It was assigned to {$this->assignedTo->name}." : ''),
             'rejected' => "{$this->task->task_id}: your {$this->requestType} request was rejected by {$this->actor->name}.",
             default => "{$this->task->task_id}: {$this->actor->name} submitted a {$this->requestType} request.",
         };
