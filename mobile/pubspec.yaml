@@ -80,6 +80,7 @@ flutter:
   # My Tasks hero: processed copies of the designer-supplied artwork (originals stay in "tasks screen assets").
   assets:
     - assets/tasks/
+    - assets/branding/logo.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

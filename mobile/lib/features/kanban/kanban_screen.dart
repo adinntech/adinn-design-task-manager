@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/auth.dart';
 import '../../core/theme.dart';
 import '../home/navigation.dart';
 import '../tasks/providers.dart';
@@ -274,7 +275,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
       },
       child: Scaffold(
       appBar: AppBar(
-        title: const Text('My Tasks'),
+        title: Text(ref.watch(authProvider.select((s) => s.user?.role)) == 'bd' ? 'Assigned Tasks' : 'My Tasks'), // a BD's list is the tickets they assigned
         actions: [
           IconButton(
             key: const Key('kanban-search-toggle'),
