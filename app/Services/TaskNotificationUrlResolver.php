@@ -63,6 +63,14 @@ class TaskNotificationUrlResolver
                 : null;
         }
 
+        // A teammate's Swap / Split waiting for this Designer's approval: the bell opens the Approvals list
+        // (the task page itself belongs to the requester, so it is not the right place).
+        if (($data['category'] ?? null) === 'approval_request') {
+            return $user->isRequestApprover() && Route::has('designer.approvals.index')
+                ? route('designer.approvals.index')
+                : null;
+        }
+
         $taskId = (int) ($data['task_id'] ?? 0);
 
         if ($taskId < 1) {
