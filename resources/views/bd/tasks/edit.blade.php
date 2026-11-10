@@ -219,7 +219,6 @@
                                         multiple
                                         data-accumulate-files
                                         @if($type === 'audio') accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" @endif
-                                        @if($type === 'mediafiles') accept="image/*,video/*" @endif
                                     >
                                     <div class="edit-help">Existing files stay unless you select Remove. New files are added to the same requirement.</div>
 

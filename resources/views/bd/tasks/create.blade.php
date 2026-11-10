@@ -680,7 +680,7 @@ function fieldHtml(f){
   </div>`;
  }
  if(type==='file'||type==='files')return uploadHtml(name,label,required);
- if(type==='mediafiles')return uploadHtml(name,label,required,'image/*,video/*');
+ if(type==='mediafiles')return uploadHtml(name,label,required); // no type filter: the picker lists all files (the server does not restrict these)
  if(type==='zipfiles')return uploadHtml(name,label,required,'',false,true);
  if(type==='audio')return uploadHtml(name,label,required,'.mp3,.wav,audio/mpeg,audio/mp3,audio/wav,audio/x-wav',true);
  if(type==='location')return `<div class="${wrap}"><label class="label">${label}${star}</label><input class="field" type="text" list="locationOptions" name="${name}" value="${old}" placeholder="Search or enter location" ${req}></div>`;
