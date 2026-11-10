@@ -12,6 +12,9 @@
         <h1>Welcome back</h1>
         <p>Sign in to Adinn Design Task Manager. Your workspace will open automatically based on your account role.</p>
 
+        @if(session('status'))
+            <div class="flash flash-success">{{ session('status') }}</div>
+        @endif
         @if($errors->any())
             <div class="flash flash-error">{{ $errors->first() }}</div>
         @endif
@@ -76,7 +79,7 @@
 
             <div class="auth-options">
                 <label style="display:flex;align-items:center;gap:7px;"><input type="checkbox" name="remember" value="1"> Keep me signed in</label>
-                <span>Secure role-based access</span>
+                <a href="{{ route('password.request') }}" style="color:#e30613;font-weight:800;text-decoration:none">Forgot password?</a>
             </div>
 
             <button class="btn btn-primary auth-submit" type="submit">Sign in to workspace</button>

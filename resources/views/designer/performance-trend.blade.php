@@ -4,7 +4,6 @@
     $trendData = collect($trendData ?? [])->values();
     $cards = collect($trendCards ?? [])->values();
     $months = $trendData->pluck('label');
-    [$ctxWho, $ctxMonth] = array_pad(array_map('trim', explode('•', (string) ($trendContext ?? ''), 2)), 2, '');
 
     $icons = [
         'trend' => '<path d="M12 16v5"/><path d="M16 14v7"/><path d="M20 10v11"/><path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15"/><path d="M4 18v3"/><path d="M8 14v7"/>',
@@ -69,8 +68,6 @@
             <h2>Performance Trend</h2>
             <p>Track the status-wise performance of your tasks over time.</p>
         </div>
-        @if($ctxWho !== '')<span class="dpt-chip">{!! $ico('user') !!}{{ $ctxWho }}</span>@endif
-        @if($ctxMonth !== '')<span class="dpt-chip">{!! $ico('calendar') !!}{{ $ctxMonth }}</span>@endif
     </div>
 
     <div class="dpt-kpis">

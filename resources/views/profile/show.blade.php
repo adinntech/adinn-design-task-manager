@@ -31,11 +31,19 @@
         @method('PUT')
         @if($errors->any())<div class="flash flash-error">{{ $errors->first() }}</div>@endif
 
+        <div style="margin-bottom:14px">
+            <label class="label" for="profile-current-password">Current Password</label>
+            <div style="position:relative">
+                <input class="premium-input" id="profile-current-password" type="password" name="current_password" required autocomplete="current-password" style="padding-right:65px">
+                <button type="button" onclick="const i=document.getElementById('profile-current-password');const b=this;if(i.type==='password'){i.type='text';b.innerText='Hide';}else{i.type='password';b.innerText='Show';}" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);border:0;background:transparent;padding:0;margin:0;font-size:11px;font-weight:800;color:#667085;cursor:pointer;width:auto">Show</button>
+            </div>
+        </div>
+
         <div class="form-grid">
             <div>
                 <label class="label" for="profile-password">New Password</label>
                 <div style="position:relative">
-                    <input class="premium-input" id="profile-password" type="password" name="password" required style="padding-right:65px">
+                    <input class="premium-input" id="profile-password" type="password" name="password" required autocomplete="new-password" style="padding-right:65px">
                     <button type="button" onclick="const i=document.getElementById('profile-password');const b=this;if(i.type==='password'){i.type='text';b.innerText='Hide';}else{i.type='password';b.innerText='Show';}" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);border:0;background:transparent;padding:0;margin:0;font-size:11px;font-weight:800;color:#667085;cursor:pointer;width:auto">Show</button>
                 </div>
             </div>

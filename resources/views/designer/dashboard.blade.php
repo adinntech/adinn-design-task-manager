@@ -133,6 +133,32 @@
     .dsh-login{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:10px;color:#667085}
     .dsh-login svg{width:14px;height:14px;flex:none}
     .dsh-login strong{color:#344054}
+    .dsh-period{display:inline-flex;align-items:center;gap:8px;margin-top:12px;min-height:36px;padding:6px 12px;border:1px solid #e4e7ec;border-radius:10px;background:#fff;color:#101828;font:inherit;font-size:11px;font-weight:800;cursor:pointer;box-shadow:0 1px 3px rgba(16,24,40,.06);transition:.15s;width:auto}
+    .dsh-period:hover{border-color:#e30613;color:#e30613}
+    .dsh-period svg{width:15px;height:15px;flex:none;color:#e30613}
+    .dsh-period .dsh-period-tag{padding:2px 7px;border-radius:999px;background:#fff0f1;color:#e30613;font-size:8.5px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+    .dsh-period .dsh-period-caret{font-size:9px;color:#98a2b3}
+    .dsh-dialog{border:0;border-radius:16px;padding:0;width:min(400px,calc(100vw - 32px));box-shadow:0 28px 70px rgba(16,24,40,.28);color:#101828}
+    .dsh-dialog::backdrop{background:rgba(16,24,40,.45)}
+    .dsh-dialog form{padding:20px}
+    .dsh-dialog h3{margin:0;font-size:16px;font-weight:900}
+    .dsh-dialog .dsh-dialog-sub{margin:4px 0 14px;font-size:11px;color:#667085;line-height:1.5}
+    .dsh-opt{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid #e4e7ec;border-radius:12px;margin-bottom:8px;cursor:pointer;font-size:12px;font-weight:800;transition:.15s}
+    .dsh-opt input{accent-color:#e30613;width:16px;height:16px;margin:0;flex:none}
+    .dsh-opt small{margin-left:auto;font-size:10px;font-weight:700;color:#667085}
+    .dsh-opt:has(input:checked){border-color:#e30613;background:#fff7f7}
+    .dsh-custom{display:grid;grid-template-columns:1fr 1.3fr;gap:8px;margin:0 0 4px 0}
+    .dsh-custom select{height:40px;border:1px solid #dfe3ea;border-radius:10px;padding:0 10px;font:inherit;font-size:12px;font-weight:700;background:#fff;color:#101828}
+    .dsh-custom.off{opacity:.5}
+    .dsh-range{grid-template-columns:1fr 1fr}
+    .dsh-range>div{display:flex;flex-direction:column;gap:4px}
+    .dsh-range span{font-size:10px;font-weight:800;color:#667085}
+    .dsh-range input[type=date]{height:40px;border:1px solid #dfe3ea;border-radius:10px;padding:0 10px;font:inherit;font-size:12px;font-weight:700;background:#fff;color:#101828;width:100%}
+    .dsh-range input[type=date]:disabled{background:#f2f4f7;color:#98a2b3}
+    .dsh-dialog-error{margin-top:8px;padding:8px 10px;border-radius:9px;background:#fff2f2;border:1px solid #ffd2d5;color:#b4232f;font-size:11px;font-weight:700}
+    .dsh-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+    .dsh-dialog-actions button{width:auto;min-height:38px;padding:8px 16px;border-radius:10px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;border:1px solid #e4e7ec;background:#fff;color:#344054}
+    .dsh-dialog-actions button.primary{background:#e30613;border-color:#e30613;color:#fff}
     .dsh-hero-art{position:absolute;right:320px;top:0;height:100%;width:auto;max-width:48%;object-fit:contain;object-position:right center;mix-blend-mode:multiply;pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18%,#000 82%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 18%,#000 82%,transparent 100%)}
     .dsh-actions{display:flex;gap:9px;position:relative;z-index:1;flex:none}
     .dsh-btn{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:8px 14px;border-radius:10px;text-decoration:none;font-size:11px;font-weight:800;transition:.15s}
@@ -266,7 +292,7 @@
     .tdr-hide{position:absolute;left:-34px;top:50%;width:34px;height:64px;margin-top:-32px;border:0;border-radius:12px 0 0 12px;background:#e30613;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:-4px 0 14px rgba(16,24,40,.18);transition:background .15s,width .15s,left .15s}
     .tdr-hide svg{width:20px;height:20px}
     .tdr-hide:hover,.tdr-hide:focus-visible{background:#b9050f;width:38px;left:-38px;outline:none}
-    @media (max-width:560px){.tdr-hide{left:0;width:26px;border-radius:0 12px 12px 0;transform:rotate(0)}.tdr-hide:hover,.tdr-hide:focus-visible{width:26px;left:0}.tdr-head,.tdr-body{padding-left:38px}}
+    @media (max-width:560px){.tdr-hide{left:0;width:26px;border-radius:0 12px 12px 0;transform:rotate(0)}.tdr-hide:hover,.tdr-hide:focus-visible{width:26px;left:0}.tdr-body{padding-left:38px}}
     .tdr-head{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #f3d9dd;background:linear-gradient(180deg,#fff4f5,#fff)}
     .tdr-head h2{margin:0;font-size:16px;font-weight:800;color:#101828}
     .tdr-head p{margin:2px 0 0;font-size:12px;color:#667085}
@@ -468,6 +494,7 @@
             <h1>Welcome back, <em>{{ auth()->user()->name }}</em></h1>
             <p>All important task and request information in one place.</p>
             <div class="dsh-login">{!! $svg('calendar') !!}<span><strong>Last Login:</strong> {{ optional(auth()->user()->last_login_at)->format('d M Y \• h:i A') ?? 'This is your first login' }}</span></div>
+            <button type="button" class="dsh-period" id="dsh-period-open" aria-haspopup="dialog" title="Choose the month shown on this dashboard">{!! $svg('calendar') !!}<span>{{ $period['label'] }}</span>@if($period['is_current'])<span class="dsh-period-tag">Current</span>@endif<span class="dsh-period-caret">&#9662;</span></button>
         </div>
         <img class="dsh-hero-art" src="{{ asset('images/dashboard-hero.webp') }}" alt="" aria-hidden="true" loading="eager">
         <div class="dsh-actions">
@@ -475,6 +502,118 @@
             <a class="dsh-btn primary" href="{{ route('designer.tasks.create') }}">{!! $svg('plus') !!}Create Task</a>
         </div>
     </div>
+
+    @php
+        $periodNow = now();
+        $periodMonths = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    @endphp
+    <dialog class="dsh-dialog" id="dsh-period-dialog" aria-labelledby="dsh-period-title">
+        <form method="GET" action="{{ route('designer.dashboard') }}" id="dsh-period-form">
+            <h3 id="dsh-period-title">Select period</h3>
+            <p class="dsh-dialog-sub">The dashboard shows the tickets assigned in the chosen period, with their status and ratings.</p>
+
+            <label class="dsh-opt"><input type="radio" name="period_mode" value="current" @checked($period['mode'] === 'month' && $period['is_current'])> Current month &amp; year <small>{{ $periodNow->format('F Y') }}</small></label>
+
+            <label class="dsh-opt"><input type="radio" name="period_mode" value="month" @checked($period['mode'] === 'month' && ! $period['is_current'])> Custom year &amp; month</label>
+            <div class="dsh-custom" id="dsh-box-month">
+                <select id="dsh-year" aria-label="Year">
+                    @foreach($period['years'] as $y)
+                        <option value="{{ $y }}" @selected($y === $period['year'])>{{ $y }}</option>
+                    @endforeach
+                </select>
+                <select id="dsh-month" aria-label="Month">
+                    @foreach($periodMonths as $i => $name)
+                        <option value="{{ str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT) }}" @selected(($i + 1) === $period['month'])>{{ $name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <label class="dsh-opt"><input type="radio" name="period_mode" value="overall" @checked($period['mode'] === 'overall')> Overall <small>All time</small></label>
+
+            <label class="dsh-opt"><input type="radio" name="period_mode" value="range" @checked($period['mode'] === 'range')> Custom range <small>From &ndash; To</small></label>
+            <div class="dsh-custom dsh-range" id="dsh-box-range">
+                <div><span>From</span><input type="date" id="dsh-from" min="{{ $period['first_date'] }}" max="{{ $periodNow->toDateString() }}" value="{{ $period['from'] ?? $periodNow->copy()->startOfMonth()->toDateString() }}"></div>
+                <div><span>To</span><input type="date" id="dsh-to" min="{{ $period['first_date'] }}" max="{{ $periodNow->toDateString() }}" value="{{ $period['to'] ?? $periodNow->toDateString() }}"></div>
+            </div>
+            <div class="dsh-dialog-error" id="dsh-range-error" hidden>Choose both dates (From must not be after To).</div>
+
+            <input type="hidden" name="month" id="dsh-month-value" value="">
+            <input type="hidden" name="from" id="dsh-from-value" value="">
+            <input type="hidden" name="to" id="dsh-to-value" value="">
+
+            <div class="dsh-dialog-actions">
+                <button type="button" id="dsh-period-cancel">Cancel</button>
+                <button type="submit" class="primary">Apply</button>
+            </div>
+        </form>
+    </dialog>
+    <script>
+    (function () {
+        var dlg = document.getElementById('dsh-period-dialog');
+        var open = document.getElementById('dsh-period-open');
+        if (!dlg || !open) return;
+        var form = document.getElementById('dsh-period-form');
+        var year = document.getElementById('dsh-year');
+        var month = document.getElementById('dsh-month');
+        var from = document.getElementById('dsh-from');
+        var to = document.getElementById('dsh-to');
+        var monthValue = document.getElementById('dsh-month-value');
+        var fromValue = document.getElementById('dsh-from-value');
+        var toValue = document.getElementById('dsh-to-value');
+        var rangeError = document.getElementById('dsh-range-error');
+        var nowYear = {{ (int) $periodNow->format('Y') }};
+        var nowMonth = {{ (int) $periodNow->format('n') }};
+        var radios = form.querySelectorAll('input[name=period_mode]');
+
+        function mode() { return form.querySelector('input[name=period_mode]:checked').value; }
+        function sync() {
+            var m = mode();
+            // Both pickers stay usable: touching one selects its option, the other is only dimmed.
+            document.getElementById('dsh-box-month').classList.toggle('off', m !== 'month');
+            document.getElementById('dsh-box-range').classList.toggle('off', m !== 'range');
+            rangeError.hidden = true;
+            // No future months: they cannot hold any data.
+            Array.prototype.forEach.call(month.options, function (o) {
+                o.disabled = parseInt(year.value, 10) === nowYear && parseInt(o.value, 10) > nowMonth;
+            });
+            if (month.options[month.selectedIndex].disabled) month.value = ('0' + nowMonth).slice(-2);
+        }
+
+        open.addEventListener('click', function () { sync(); dlg.showModal(); });
+        document.getElementById('dsh-period-cancel').addEventListener('click', function () { dlg.close(); });
+        dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+        year.addEventListener('change', sync);
+        radios.forEach(function (r) { r.addEventListener('change', sync); });
+        // Picking a date or a month implies the option it belongs to.
+        [year, month].forEach(function (el) { el.addEventListener('focus', function () { form.querySelector('input[value=month]').checked = true; sync(); }); });
+        [from, to].forEach(function (el) {
+            el.addEventListener('focus', function () { form.querySelector('input[value=range]').checked = true; sync(); });
+            el.addEventListener('change', function () { rangeError.hidden = true; });
+        });
+
+        form.addEventListener('submit', function (e) {
+            var m = mode();
+            if (m === 'range' && (!from.value || !to.value || from.value > to.value)) {
+                e.preventDefault();
+                rangeError.hidden = false;
+                return;
+            }
+            // The current month is the default, so it needs no parameter; the radios and pickers are only UI.
+            radios.forEach(function (r) { r.disabled = true; });
+            monthValue.disabled = fromValue.disabled = toValue.disabled = true;
+            if (m === 'month') { monthValue.value = year.value + '-' + month.value; monthValue.disabled = false; }
+            if (m === 'overall') { monthValue.value = 'overall'; monthValue.disabled = false; }
+            if (m === 'range') { fromValue.value = from.value; toValue.value = to.value; fromValue.disabled = toValue.disabled = false; }
+        });
+        // Coming back with the browser's Back button must not leave the form disabled.
+        window.addEventListener('pageshow', function () {
+            radios.forEach(function (r) { r.disabled = false; });
+            monthValue.disabled = fromValue.disabled = toValue.disabled = false;
+            sync();
+        });
+        sync();
+    })();
+    </script>
 
     <div class="dsh-primary">
         <div class="dsh-card dsh-total">

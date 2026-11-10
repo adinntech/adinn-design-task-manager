@@ -180,6 +180,13 @@
 
             <div class="topbar-right">
                 @hasSection('topbar-actions')<div class="topbar-actions" style="display:flex;align-items:center;gap:8px">@yield('topbar-actions')</div>@endif
+                {{-- BD and Designers are pointed at the Android app (the link is APP_APK_URL, the same one the in-app update uses). --}}
+                @if(in_array($role, ['bd', 'designer'], true) && filled(config('app_update.android.url')))
+                    <a class="topbar-app-link" href="{{ config('app_update.android.url') }}" target="_blank" rel="noopener" title="Download the Adinn Tasks Android app" data-app-download>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85a.637.637 0 00-.83.22l-1.88 3.24a11.463 11.463 0 00-8.94 0L5.65 5.67a.643.643 0 00-.87-.2c-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 001 18h22a10.78 10.78 0 00-5.4-8.52zM7 15.25a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5zm10 0a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/></svg>
+                        <span>Get the app</span>
+                    </a>
+                @endif
                 <div class="topbar-role-pill">{{ ucwords(str_replace('_', ' ', $role)) }}</div>
                 @livewire('notification-bell')
                 <div class="topbar-avatar" title="{{ auth()->user()->name }}">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>

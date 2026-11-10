@@ -73,7 +73,7 @@ class DashboardController extends Controller
         return view('bd.ratings-rows', $data);
     }
 
-    private function analytics(Request $request): array
+    public function analytics(Request $request): array
     {
         $now = now();
         $bdId = (int) $request->user()->id;

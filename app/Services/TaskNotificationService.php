@@ -393,7 +393,8 @@ class TaskNotificationService
             $title,
             "{$task->task_id} — {$name}\n{$detail}",
             $this->pushUrl($user, $task, $event ?? self::PUSH_TAB_EVENTS[$tag] ?? null),
-            "{$tag}-{$task->id}"
+            "{$tag}-{$task->id}",
+            ['task_id' => $task->id, 'task_ref' => $task->task_id]
         );
     }
 
