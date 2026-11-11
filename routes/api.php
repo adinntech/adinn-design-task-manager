@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AppUpdateController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\Designer\ApprovalController as DesignerApprovalController;
+use App\Http\Controllers\Api\Designer\CreateTaskController as DesignerCreateTaskController;
 use App\Http\Controllers\DesignerAvailabilityController;
 use App\Http\Controllers\Api\Designer\DashboardController as DesignerDashboardController;
 use App\Http\Controllers\Api\Designer\RequestController as DesignerRequestController;
@@ -72,6 +73,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/approvals/{taskRequest}', [DesignerApprovalController::class, 'show']);
         Route::post('/approvals/{taskRequest}/approve', [DesignerApprovalController::class, 'approve']);
         Route::post('/approvals/{taskRequest}/reject', [DesignerApprovalController::class, 'reject']);
+
+        // Task creation by a Designer (assigned to themself, approved by the BD they choose): the web Designer form's rules.
+        Route::get('/task-form', [DesignerCreateTaskController::class, 'form']);
+        Route::post('/tasks', [DesignerCreateTaskController::class, 'store']);
+        Route::post('/tasks/in-house', [DesignerCreateTaskController::class, 'storeInhouse']);
 
         Route::get('/dashboard', [DesignerDashboardController::class, 'index']);
         Route::get('/dashboard/tasks', [DesignerDashboardController::class, 'tasks']);
