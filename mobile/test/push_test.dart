@@ -162,7 +162,7 @@ void main() {
 
   testWidgets('a token rejected by the server (401) signs out without trying to unregister', (tester) async {
     final push = FakePush();
-    await boot(tester, push, openTasks: false, routes: {'GET /designer/tasks': (_) => (status: 401, body: {'message': 'Unauthenticated.'})});
+    await boot(tester, push, openTasks: true, routes: {'GET /designer/tasks': (_) => (status: 401, body: {'message': 'Unauthenticated.'})});
 
     expect(find.text('Sign in'), findsOneWidget);
     expect(api.requests.where((r) => r.method == 'DELETE'), isEmpty);

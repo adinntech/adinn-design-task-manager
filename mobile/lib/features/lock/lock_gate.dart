@@ -1,3 +1,5 @@
+import '../../core/brand_shapes.dart';
+import '../splash/splash_screen.dart' show AdinnWordmark;
 import 'dart:math' as math;
 import 'dart:async';
 
@@ -8,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_lock.dart';
 import '../../core/auth.dart';
 
-/// Sits above the whole app. Covers it with the lock screen (MPIN or fingerprint/face) when the lock is on and the app is
+/// Sits above the whole app. Covers it with the lock screen (PIN or fingerprint/face) when the lock is on and the app is
 /// locked, and with the "enable fingerprint unlock?" flow for someone who has not set it up yet.
 class LockGate extends ConsumerWidget {
   const LockGate({super.key, required this.child});
@@ -39,7 +41,7 @@ class LockGate extends ConsumerWidget {
   }
 }
 
-/// The gate sits above the app's Navigator, so it has no Overlay of its own, and a text field (the MPIN input) needs one.
+/// The gate sits above the app's Navigator, so it has no Overlay of its own, and a text field (the PIN input) needs one.
 /// This gives the lock screens a small private Overlay.
 class _WithOverlay extends StatefulWidget {
   const _WithOverlay({super.key, required this.child});
@@ -75,9 +77,15 @@ class _Backdrop extends StatelessWidget {
     // re-centres in the space that is left, above the keyboard, and the dots stay in view while typing.
     return Material(
       color: _neoBase,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: SafeArea(child: child),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const BrandShapes(animate: false),
+          Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+            child: SafeArea(child: child),
+          ),
+        ],
       ),
     );
   }
@@ -88,7 +96,7 @@ class _Backdrop extends StatelessWidget {
 // ---------------------------------------------------------------------------------------------
 
 /// Minimal red and white: a warm white page, blush-grey shadows, red as the only colour.
-const _neoBase = Color(0xFFFCF9F9);
+const _neoBase = Color(0xFFFFFFFF);
 const _neoLight = Color(0xFFFFFFFF);
 const _neoDark = Color(0xFFE2CFD1);
 
@@ -135,7 +143,7 @@ class _NeoPainter extends CustomPainter {
   bool shouldRepaint(_NeoPainter old) => old.depth != depth || old.fill != fill;
 }
 
-/// One box of the MPIN: raised and empty until a digit is typed, then sunk in, with the digit itself showing in red.
+/// One box of the PIN: raised and empty until a digit is typed, then sunk in, with the digit itself showing in red.
 class _NeoDot extends StatefulWidget {
   const _NeoDot({super.key, required this.digit, this.size = 34});
 
@@ -203,7 +211,7 @@ class _PinEntryState extends State<PinEntry> with SingleTickerProviderStateMixin
   @override
   void didUpdateWidget(PinEntry old) {
     super.didUpdateWidget(old);
-    // A wrong MPIN: the dots shake, and the phone buzzes once.
+    // A wrong PIN: the dots shake, and the phone buzzes once.
     if (widget.messageIsError && (!old.messageIsError || old.message != widget.message)) {
       HapticFeedback.heavyImpact();
       _shake.forward(from: 0);
@@ -238,9 +246,9 @@ class _PinEntryState extends State<PinEntry> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      Text(widget.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.4, color: Color(0xFF1F0A0C))),
+      Text(widget.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Color(0xFF16161A))),
       const SizedBox(height: 6),
-      Text(widget.subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13.5, color: Color(0xFF8C6F72))),
+      Text(widget.subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF9A9DA6))),
       const SizedBox(height: 28),
       // Tapping the dots brings the keyboard back if it was dismissed.
       GestureDetector(
@@ -251,9 +259,10 @@ class _PinEntryState extends State<PinEntry> with SingleTickerProviderStateMixin
           child: AnimatedBuilder(
             animation: _shake,
             builder: (context, child) => Transform.translate(offset: Offset(math.sin(_shake.value * math.pi * 5) * 12 * (1 - _shake.value), 0), child: child),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            // painted once and then only moved: the soft shadows are the costly part to draw
+            child: RepaintBoundary(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             for (var i = 0; i < 4; i++) Padding(padding: const EdgeInsets.symmetric(horizontal: 11), child: _NeoDot(key: Key('pin-dot-$i'), digit: i < _pin.length ? _pin[i] : null, size: 54)),
-            ]),
+            ])),
           ),
         ),
       ),
@@ -294,7 +303,7 @@ class _PinEntryState extends State<PinEntry> with SingleTickerProviderStateMixin
   }
 }
 
-/// "Enter your MPIN", with the fingerprint / face prompt opening by itself when it is allowed and enrolled.
+/// "Enter your PIN", with the fingerprint / face prompt opening by itself when it is allowed and enrolled.
 class LockScreen extends ConsumerStatefulWidget {
   const LockScreen({super.key});
 
@@ -323,7 +332,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     try {
       final usable = await lock.biometricUsable();
       if (mounted) setState(() => _bioUsable = usable);
-      if (usable) await lock.unlockWithBiometric(); // a cancelled or failed scan just leaves the MPIN pad
+      if (usable) await lock.unlockWithBiometric(); // a cancelled or failed scan just leaves the PIN pad
     } finally {
       _bioBusy = false;
     }
@@ -339,11 +348,11 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         break; // the gate removes this screen
       case PinResult.wrong:
         final left = ref.read(appLockProvider).attemptsLeft;
-        setState(() => _error = 'Wrong MPIN. $left ${left == 1 ? 'try' : 'tries'} left');
+        setState(() => _error = 'Wrong PIN. $left ${left == 1 ? 'try' : 'tries'} left');
       case PinResult.lockedOut:
         setState(() {
           _signingOut = true;
-          _error = 'Too many wrong MPINs. Signing you out…';
+          _error = 'Too many wrong PINs. Signing you out…';
         });
         await Future<void>.delayed(const Duration(milliseconds: 1200));
         await ref.read(authProvider.notifier).logout();
@@ -373,14 +382,11 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                // the mark, over a soft ring
+                // the Adinn lockup
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: typing ? 56 : 84,
-                  height: typing ? 56 : 84,
-                  padding: EdgeInsets.all(typing ? 9 : 14),
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white, boxShadow: [BoxShadow(color: primary.withValues(alpha: 0.14), blurRadius: 26, offset: const Offset(0, 10))]),
-                  child: Image.asset('assets/branding/logo.png', errorBuilder: (_, _, _) => Icon(Icons.lock_rounded, color: primary, size: 36)),
+                  width: typing ? 120 : 190,
+                  child: const AdinnWordmark(t: 99),
                 ),
                 SizedBox(height: typing ? 10 : 18),
                 if (name.isNotEmpty)
@@ -391,8 +397,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   ]),
                 SizedBox(height: typing ? 12 : 22),
                 PinEntry(
-                  title: 'Enter your MPIN',
-                  subtitle: 'Your 4-digit code to open Adinn Tasks',
+                  title: 'Enter your PIN',
+                  subtitle: 'Your 4-digit code to open Adinn Design Tasks',
                   message: _error,
                   messageIsError: _error != null,
                   onComplete: _onPin,
@@ -420,7 +426,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   key: const Key('lock-forgot'),
                   onPressed: _signingOut ? null : _forgot,
                   style: TextButton.styleFrom(foregroundColor: primary),
-                  child: Text(_confirmForgot ? 'Tap again to sign out and use your password' : 'Forgot MPIN?', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  child: Text(_confirmForgot ? 'Tap again to sign out and use your password' : 'Forgot PIN?', style: const TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ]),
             ),
@@ -443,7 +449,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
 enum _Step { offer, create, confirm, done }
 
-/// The one-time "turn on fingerprint / face unlock?" flow: ask → new MPIN → confirm MPIN → (verify the fingerprint) → done.
+/// The one-time "turn on fingerprint / face unlock?" flow: ask → new PIN → confirm PIN → (verify the fingerprint) → done.
 /// Shown by the [LockGate] after sign-in, and pushed from Profile (where there is no question first and it can be closed).
 class LockSetupScreen extends ConsumerStatefulWidget {
   const LockSetupScreen({super.key, this.fromProfile = false});
@@ -465,7 +471,7 @@ class _LockSetupScreenState extends ConsumerState<LockSetupScreen> {
   @override
   void initState() {
     super.initState();
-    // Gate: a fresh offer starts at the question; one already accepted (rebuilt) carries on at the MPIN.
+    // Gate: a fresh offer starts at the question; one already accepted (rebuilt) carries on at the PIN.
     _step = widget.fromProfile || ref.read(appLockProvider).setupActive ? _Step.create : _Step.offer;
   }
 
@@ -494,7 +500,7 @@ class _LockSetupScreenState extends ConsumerState<LockSetupScreen> {
     if (pin != _first) {
       setState(() {
         _first = '';
-        _error = 'The MPINs did not match. Try again.';
+        _error = 'The PINs did not match. Try again.';
         _step = _Step.create;
       });
       return;
@@ -525,7 +531,7 @@ class _LockSetupScreenState extends ConsumerState<LockSetupScreen> {
       _Step.offer => _Message(
           icon: Icons.fingerprint_rounded,
           title: 'Unlock with your fingerprint or face?',
-          text: 'Skip typing every time: open Adinn Tasks with your fingerprint or face. You will also create a 4-digit MPIN as a backup.',
+          text: 'Skip typing every time: open Adinn Design Tasks with your fingerprint or face. You will also create a 4-digit PIN as a backup.',
           primaryKey: 'lock-offer-yes',
           primary: 'Yes, turn it on',
           onPrimary: _accept,
@@ -533,18 +539,18 @@ class _LockSetupScreenState extends ConsumerState<LockSetupScreen> {
           secondary: 'Do it later',
           onSecondary: _later,
         ),
-      _Step.create => PinEntry(key: const ValueKey('create'), title: 'Create a 4-digit MPIN', subtitle: 'Pick digits only you will remember', message: _error ?? 'You will use it when the fingerprint is not available.', messageIsError: _error != null, onComplete: _onCreate),
+      _Step.create => PinEntry(key: const ValueKey('create'), title: 'Create a 4-digit PIN', subtitle: 'Pick digits only you will remember', message: _error ?? 'You will use it when the fingerprint is not available.', messageIsError: _error != null, onComplete: _onCreate),
       _Step.confirm => _working
           ? const Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())
-          : PinEntry(key: const ValueKey('confirm'), title: 'Confirm your MPIN', subtitle: 'One more time, to be sure', message: 'Enter the same MPIN again.', onComplete: _onConfirm),
+          : PinEntry(key: const ValueKey('confirm'), title: 'Confirm your PIN', subtitle: 'One more time, to be sure', message: 'Enter the same PIN again.', onComplete: _onConfirm),
       _Step.done => _Message(
           icon: Icons.verified_user_rounded,
           title: 'App lock is on',
           text: _biometricOn
-              ? 'Adinn Tasks now asks for your fingerprint or face when you open it, or your MPIN if you prefer.'
+              ? 'Adinn Design Tasks now asks for your fingerprint or face when you open it, or your PIN if you prefer.'
               : _needsEnrolling
-                  ? 'Adinn Tasks now asks for your MPIN. Add a fingerprint or face in your phone Settings and it will be offered here too.'
-                  : 'Adinn Tasks now asks for your MPIN when you open it.',
+                  ? 'Adinn Design Tasks now asks for your PIN. Add a fingerprint or face in your phone Settings and it will be offered here too.'
+                  : 'Adinn Design Tasks now asks for your PIN when you open it.',
           primaryKey: 'lock-done',
           primary: 'Done',
           onPrimary: _close,

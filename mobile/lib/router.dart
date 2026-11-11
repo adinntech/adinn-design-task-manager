@@ -7,6 +7,7 @@ import 'features/auth/forgot_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/create/create_task_screen.dart';
 import 'features/home/home_shell.dart';
+import 'features/splash/splash_screen.dart' show AdinnWordmark;
 import 'features/tasks/task_detail_screen.dart';
 
 /// Redirects purely from auth state: unknown → splash, signed out → login, signed in → app.
@@ -26,7 +27,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       return (here == '/login' || here == '/forgot-password' || here == '/splash') ? '/' : null;
     },
     routes: [
-      GoRoute(path: '/splash', builder: (_, _) => const Scaffold(body: Center(child: CircularProgressIndicator()))),
+      GoRoute(
+        path: '/splash',
+        // Shown while the saved session is checked: the finished logo with a small spinner, never a blank screen.
+        builder: (_, _) => Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              FractionallySizedBox(widthFactor: 0.6, child: AdinnWordmark(t: 99, tagline: 'DESIGNER TASK TOOL')),
+              SizedBox(height: 28),
+              SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFFE30613))),
+            ]),
+          ),
+        ),
+      ),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/forgot-password', builder: (_, _) => const ForgotPasswordScreen()),
       GoRoute(path: '/', builder: (_, _) => const HomeShell()),

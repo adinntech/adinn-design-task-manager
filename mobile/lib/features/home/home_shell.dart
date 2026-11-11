@@ -13,17 +13,27 @@ import '../tasks/providers.dart';
 import '../widgets/liquid_nav_bar.dart';
 import 'navigation.dart';
 
-class HomeShell extends ConsumerWidget {
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends ConsumerState<HomeShell> {
+  /// Tabs the user has opened. A tab is built the first time it is shown (not all at launch, which made starting the app
+  /// slow), then kept alive so it keeps its scroll position and state.
+  final _visited = <HomeTab>{};
+
+  @override
+  Widget build(BuildContext context) {
     final unread = ref.watch(notificationsProvider).maybeWhen(data: (d) => d.unread, orElse: () => 0);
     final role = ref.watch(authProvider.select((s) => s.user?.role));
     final approver = ref.watch(authProvider.select((s) => s.user?.isRequestApprover ?? false));
     final tabs = tabsFor(role, approver: approver);
     final current = ref.watch(homeTabProvider);
     final index = tabs.indexOf(current).clamp(0, tabs.length - 1);
+    _visited.add(tabs[index]);
     final pending = tabs.contains(HomeTab.requests) ? ref.watch(pendingRequestsProvider).maybeWhen(data: (d) => d.items.length, orElse: () => 0) : 0;
 
     Widget page(HomeTab t) => switch (t) {
@@ -57,7 +67,7 @@ class HomeShell extends ConsumerWidget {
         };
 
     return Scaffold(
-      body: IndexedStack(index: index, children: [for (final t in tabs) page(t)]),
+      body: IndexedStack(index: index, children: [for (final t in tabs) KeyedSubtree(key: ValueKey(t), child: _visited.contains(t) ? page(t) : const SizedBox.shrink())]),
       bottomNavigationBar: LiquidNavBar(
         selectedIndex: index,
         onSelected: (i) => ref.read(homeTabProvider.notifier).goTo(tabs[i]),

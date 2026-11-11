@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:adinn_tasks/core/app_lock.dart';
+import 'package:adinn_tasks/features/auth/intro/adinn_intro.dart';
+import 'package:adinn_tasks/features/auth/login_screen.dart';
 import 'package:adinn_tasks/features/kanban/kanban_screen.dart';
+import 'package:adinn_tasks/features/splash/launch_flow.dart';
 
 /// Runs before every test file.
 ///
@@ -11,6 +14,9 @@ import 'package:adinn_tasks/features/kanban/kanban_screen.dart';
 ///   sees a phone with no lock set and no biometric hardware; tests of the lock itself override the providers.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   swipeHintAnimates = false;
+  LoginScreen.animateBackground = false; // an endless background drift would keep pumpAndSettle from settling
+  LaunchFlow.enabled = false; // no launch splash or tour under test
+  AdinnIntro.enabled = false; // the sign-in screen starts in its final state; the sequence has its own test
   defaultAppLockStore = _NoLockStore.new;
   defaultBiometricService = _NoBiometrics.new;
 

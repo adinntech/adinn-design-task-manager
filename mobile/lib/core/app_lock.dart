@@ -272,7 +272,7 @@ class AppLockController extends Notifier<AppLockState> {
 
   Future<bool> unlockWithBiometric() async {
     if (!await biometricUsable()) return false;
-    if (!await _bio.authenticate('Unlock Adinn Tasks')) return false;
+    if (!await _bio.authenticate('Unlock Adinn Design Tasks')) return false;
 
     _config = _config?.copyWith(failed: 0);
     if (_config != null) await _store.write(_config!);

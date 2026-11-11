@@ -150,12 +150,21 @@ class RequestItem {
 }
 
 class Designer {
-  Designer(this.id, this.name);
+  Designer(this.id, this.name, {this.verticals = const [], this.skills = const []});
 
   final int id;
   final String name;
 
-  factory Designer.fromJson(Map<String, dynamic> j) => Designer(j['id'] as int, (j['name'] ?? '') as String);
+  /// Verticals the designer has experience in (keys) and their skills: shown when choosing who to assign.
+  final List<String> verticals;
+  final List<String> skills;
+
+  factory Designer.fromJson(Map<String, dynamic> j) => Designer(
+        j['id'] as int,
+        (j['name'] ?? '') as String,
+        verticals: ((j['experienced_verticals'] as List?) ?? []).map((v) => '$v').toList(),
+        skills: ((j['skills'] as List?) ?? []).map((v) => '$v').toList(),
+      );
 }
 
 class ChatAttachment {
@@ -261,7 +270,8 @@ class FormFieldDef {
   final String key;
   final String label;
 
-  /// text | multiline | integer | number | email | url | phone | choice | file | audio | rows
+  /// section | text | textarea | select | vehicle_select | number | url | email | location |
+  /// file | files | mediafiles | zipfiles | audio | dimensions | sizes | media_sizes
   final String type;
   final bool required;
   final List<String> options;
@@ -269,18 +279,70 @@ class FormFieldDef {
   final String? orUpload;
   final String? either;
 
-  bool get isFile => type == 'file' || type == 'audio';
+  bool get isFile => const {'file', 'files', 'mediafiles', 'zipfiles', 'audio'}.contains(type);
+  bool get isRows => const {'dimensions', 'sizes', 'media_sizes'}.contains(type);
+  bool get isSection => type == 'section';
 
-  factory FormFieldDef.fromJson(Map<String, dynamic> j) => FormFieldDef(
-        key: j['key'] as String,
-        label: (j['label'] ?? j['key']) as String,
-        type: (j['type'] ?? 'text') as String,
-        required: j['required'] == true,
-        options: ((j['options'] as List?) ?? []).map((o) => '$o').toList(),
-        columns: ((j['columns'] as List?) ?? []).map((o) => '$o').toList(),
-        orUpload: j['or_upload'] as String?,
-        either: j['either'] as String?,
-      );
+  /// One file only (the others take several).
+  bool get singleFile => type == 'file' || type == 'audio';
+
+  /// The name the rows are posted under (the web form's `dimension_rows[0][name]`...).
+  String get rowsKey => switch (type) {
+        'dimensions' => 'dimension_rows',
+        'sizes' => 'size_rows',
+        'media_sizes' => 'media_size_rows',
+        _ => key,
+      };
+
+  /// The web form's own definition: `[name, label, type, required, options]`.
+  factory FormFieldDef.fromWeb(List<dynamic> t) {
+    final type = '${t[2]}';
+    return FormFieldDef(
+      key: '${t[0]}',
+      label: '${t[1]}',
+      type: type,
+      required: t.length > 3 && t[3] == true,
+      options: t.length > 4 ? ((t[4] as List?) ?? []).map((o) => '$o').toList() : const [],
+      columns: switch (type) {
+        'dimensions' || 'sizes' => const ['name', 'width', 'height'],
+        'media_sizes' => const ['name', 'width', 'height', 'ratio'],
+        _ => const [],
+      },
+      orUpload: switch (type) {
+        'dimensions' => 'dimension_upload',
+        'sizes' => 'size_upload',
+        _ => null,
+      },
+    );
+  }
+
+  /// The server's derived definition (required fields only), as an older server still sends it.
+  factory FormFieldDef.fromJson(Map<String, dynamic> j) {
+    final key = j['key'] as String;
+    var type = (j['type'] ?? 'text') as String;
+    type = switch (type) {
+      'multiline' => 'textarea',
+      'choice' => 'select',
+      'integer' || 'number' => 'number',
+      'phone' => 'text',
+      'rows' => switch (key) {
+          'size_rows' => 'sizes',
+          'media_size_rows' => 'media_sizes',
+          _ => 'dimensions',
+        },
+      _ => type,
+    };
+    return FormFieldDef(
+      key: key,
+      label: (j['label'] ?? key) as String,
+      type: type,
+      required: j['required'] == true,
+      options: ((j['options'] as List?) ?? []).map((o) => '$o').toList(),
+      columns: ((j['columns'] as List?) ?? []).map((o) => '$o').toList(),
+      orUpload: j['or_upload'] as String?,
+      either: j['either'] as String?,
+    );
+  }
 }
 
 class Option {
@@ -301,6 +363,11 @@ class TaskFormDef {
     required this.priorities,
     required this.designers,
     this.maxDueAt,
+    this.webForms = const {},
+    this.vehicleImages = const {},
+    this.locations = const [],
+    this.creativeTypes = const [],
+    this.inhouseClientName = 'Adinn Advertising Services Ltd',
   });
 
   final List<Option> verticals;
@@ -311,7 +378,17 @@ class TaskFormDef {
   final List<Designer> designers;
   final DateTime? maxDueAt;
 
-  List<FormFieldDef> fieldsFor(String vertical, String nature) => fields[vertical]?[nature] ?? const [];
+  /// The web form's own field lists, by vertical then nature (with sections and every optional field). Empty on an older
+  /// server, which then only has the required fields in [fields].
+  final Map<String, Map<String, List<FormFieldDef>>> webForms;
+
+  /// Road Show vehicle name -> picture path on the server (`/images/roadshow-vehicles/...`).
+  final Map<String, String> vehicleImages;
+  final List<String> locations;
+  final List<String> creativeTypes;
+  final String inhouseClientName;
+
+  List<FormFieldDef> fieldsFor(String vertical, String nature) => webForms[vertical]?[nature] ?? fields[vertical]?[nature] ?? const [];
 
   static List<Option> _options(Object? raw) => ((raw as List?) ?? []).map((o) => Option.fromJson(o as Map<String, dynamic>)).toList();
 
@@ -332,6 +409,17 @@ class TaskFormDef {
       priorities: ((j['priorities'] as List?) ?? []).map((p) => '$p').toList(),
       designers: ((j['designers'] as List?) ?? []).map((d) => Designer.fromJson(d as Map<String, dynamic>)).toList(),
       maxDueAt: j['max_due_at'] == null ? null : DateTime.tryParse(j['max_due_at'] as String)?.toLocal(),
+      webForms: ((j['web_forms'] as Map?) ?? {}).map((vertical, cfg) => MapEntry(
+            '$vertical',
+            (((cfg as Map)['natures'] as Map?) ?? {}).map((nature, form) => MapEntry(
+                  '$nature',
+                  ((((form as Map)['fields']) as List?) ?? []).map((f) => FormFieldDef.fromWeb(f as List)).toList(),
+                )),
+          )),
+      vehicleImages: ((j['vehicle_images'] as Map?) ?? {}).map((k, v) => MapEntry('$k', '$v')),
+      locations: ((j['locations'] as List?) ?? []).map((l) => '$l').toList(),
+      creativeTypes: ((j['creative_types'] as List?) ?? []).map((l) => '$l').toList(),
+      inhouseClientName: (j['inhouse_client_name'] ?? 'Adinn Advertising Services Ltd') as String,
     );
   }
 }
@@ -364,5 +452,72 @@ class Availability {
         activeTasks: j['active_tasks'] as int?,
         activeCreatives: j['active_creatives'] as int?,
         checkedIn: j['checked_in'] as bool?,
+      );
+}
+
+/// A file already stored on the server (kept from a draft or a cloned ticket).
+class StoredFile {
+  StoredFile({required this.path, required this.name, this.url});
+
+  final String path;
+  final String name;
+  final String? url;
+
+  factory StoredFile.fromJson(Map<String, dynamic> j) => StoredFile(path: '${j['path']}', name: '${j['name'] ?? j['path']}', url: j['url'] as String?);
+}
+
+/// A previous ticket offered by "Clone existing ticket".
+class CloneHit {
+  CloneHit({required this.id, required this.taskId, required this.name, this.party, this.zoho});
+
+  final int id;
+  final String taskId;
+  final String name;
+  final String? party;
+  final String? zoho;
+
+  factory CloneHit.fromJson(Map<String, dynamic> j) =>
+      CloneHit(id: j['id'] as int, taskId: '${j['task_id'] ?? ''}', name: '${j['task_name'] ?? ''}', party: j['party_name'] as String?, zoho: j['zoho_project_number'] as String?);
+}
+
+/// A saved draft in the list.
+class DraftSummary {
+  DraftSummary({required this.id, required this.name, required this.vertical, required this.inHouse, this.party, this.updatedAt});
+
+  final int id;
+  final String name;
+  final String? vertical;
+  final bool inHouse;
+  final String? party;
+  final DateTime? updatedAt;
+
+  factory DraftSummary.fromJson(Map<String, dynamic> j) => DraftSummary(
+        id: j['id'] as int,
+        name: '${j['task_name'] ?? ''}',
+        vertical: j['vertical'] as String?,
+        inHouse: j['in_house'] == true,
+        party: j['party_name'] as String?,
+        updatedAt: j['updated_at'] == null ? null : DateTime.tryParse('${j['updated_at']}')?.toLocal(),
+      );
+}
+
+/// Everything needed to prefill the form from a draft (`draftId` set) or a cloned ticket (`sourceId` set).
+class FormPrefill {
+  FormPrefill({required this.task, required this.requirements, required this.attachments, this.draftId, this.sourceId, this.inHouse = false});
+
+  final Map<String, dynamic> task;
+  final Map<String, dynamic> requirements;
+  final Map<String, List<StoredFile>> attachments;
+  final int? draftId;
+  final int? sourceId;
+  final bool inHouse;
+
+  factory FormPrefill.fromJson(Map<String, dynamic> j) => FormPrefill(
+        task: ((j['task'] as Map?) ?? {}).cast<String, dynamic>(),
+        requirements: ((j['requirements'] as Map?) ?? {}).cast<String, dynamic>(),
+        attachments: ((j['attachments'] as Map?) ?? {}).map((k, v) => MapEntry('$k', ((v as List?) ?? []).map((f) => StoredFile.fromJson(f as Map<String, dynamic>)).toList())),
+        draftId: j['id'] as int?,
+        sourceId: j['source_task_id'] as int?,
+        inHouse: j['in_house'] == true,
       );
 }

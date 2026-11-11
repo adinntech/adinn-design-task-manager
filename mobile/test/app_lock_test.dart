@@ -87,7 +87,7 @@ void main() {
       expect(state().shouldOffer, isTrue);
     });
 
-    test('the MPIN is stored as a salted hash, never in the clear', () async {
+    test('the PIN is stored as a salted hash, never in the clear', () async {
       await lock().load();
       await lock().enable('4321', biometric: true);
 
@@ -108,7 +108,7 @@ void main() {
       expect(state().shouldOffer, isFalse);
     });
 
-    test('the right MPIN unlocks and clears earlier mistakes; wrong ones count down to a lockout', () async {
+    test('the right PIN unlocks and clears earlier mistakes; wrong ones count down to a lockout', () async {
       store.config = savedLock(failed: 2);
       await lock().load();
 
@@ -157,7 +157,7 @@ void main() {
       expect(state().locked, isTrue);
     });
 
-    test('reset forgets the MPIN', () async {
+    test('reset forgets the PIN', () async {
       store.config = savedLock();
       await lock().load();
       await lock().reset();
@@ -199,7 +199,7 @@ void main() {
     }
 
     Future<void> typePin(WidgetTester tester, String digits) async {
-      // The MPIN is typed on the phone's own keyboard, into the field behind the dots.
+      // The PIN is typed on the phone's own keyboard, into the field behind the dots.
       await tester.enterText(find.byKey(const Key('pin-input')), digits);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
@@ -218,15 +218,15 @@ void main() {
       expect(store.config, isNull);
     });
 
-    testWidgets('yes → new MPIN → confirm MPIN → fingerprint check → the lock is on', (tester) async {
+    testWidgets('yes → new PIN → confirm PIN → fingerprint check → the lock is on', (tester) async {
       await boot(tester);
 
       await tester.tap(find.byKey(const Key('lock-offer-yes')));
       await tester.pumpAndSettle();
-      expect(find.text('Create a 4-digit MPIN'), findsOneWidget);
+      expect(find.text('Create a 4-digit PIN'), findsOneWidget);
 
       await typePin(tester, '2580');
-      expect(find.text('Confirm your MPIN'), findsOneWidget);
+      expect(find.text('Confirm your PIN'), findsOneWidget);
 
       await typePin(tester, '2580');
       expect(bio.prompts, 1); // the fingerprint was proved before being relied on
@@ -242,7 +242,7 @@ void main() {
       expect(store.config!.matches('2580'), isTrue);
     });
 
-    testWidgets('a confirm that does not match starts the MPIN over', (tester) async {
+    testWidgets('a confirm that does not match starts the PIN over', (tester) async {
       await boot(tester);
       await tester.tap(find.byKey(const Key('lock-offer-yes')));
       await tester.pumpAndSettle();
@@ -250,12 +250,12 @@ void main() {
       await typePin(tester, '1111');
       await typePin(tester, '2222');
 
-      expect(find.text('The MPINs did not match. Try again.'), findsOneWidget);
-      expect(find.text('Create a 4-digit MPIN'), findsOneWidget);
+      expect(find.text('The PINs did not match. Try again.'), findsOneWidget);
+      expect(find.text('Create a 4-digit PIN'), findsOneWidget);
       expect(store.config, isNull);
     });
 
-    testWidgets('a cancelled fingerprint check still turns the MPIN lock on, without fingerprint', (tester) async {
+    testWidgets('a cancelled fingerprint check still turns the PIN lock on, without fingerprint', (tester) async {
       await boot(tester, biometrics: FakeBiometrics(matches: false));
       await tester.tap(find.byKey(const Key('lock-offer-yes')));
       await tester.pumpAndSettle();
@@ -263,10 +263,10 @@ void main() {
       await typePin(tester, '1357');
 
       expect(store.config!.biometric, isFalse);
-      expect(find.textContaining('now asks for your MPIN'), findsOneWidget);
+      expect(find.textContaining('now asks for your PIN'), findsOneWidget);
     });
 
-    testWidgets('no fingerprint enrolled yet: MPIN lock now, and the user is told how to add one', (tester) async {
+    testWidgets('no fingerprint enrolled yet: PIN lock now, and the user is told how to add one', (tester) async {
       await boot(tester, biometrics: FakeBiometrics(enrolled: false));
       await tester.tap(find.byKey(const Key('lock-offer-yes')));
       await tester.pumpAndSettle();
@@ -288,20 +288,20 @@ void main() {
       await boot(tester, saved: savedLock());
 
       expect(bio.prompts, 1);
-      expect(find.text('Enter your MPIN'), findsNothing); // unlocked by the fingerprint
+      expect(find.text('Enter your PIN'), findsNothing); // unlocked by the fingerprint
     });
 
-    testWidgets('fingerprint refused: the MPIN pad stays, the right MPIN opens the app', (tester) async {
+    testWidgets('fingerprint refused: the PIN pad stays, the right PIN opens the app', (tester) async {
       await boot(tester, saved: savedLock(), biometrics: FakeBiometrics(matches: false));
 
-      expect(find.text('Enter your MPIN'), findsOneWidget);
+      expect(find.text('Enter your PIN'), findsOneWidget);
       expect(find.byKey(const Key('lock-biometric')), findsOneWidget);
 
       await typePin(tester, '1234');
-      expect(find.text('Enter your MPIN'), findsNothing);
+      expect(find.text('Enter your PIN'), findsNothing);
     });
 
-    testWidgets('with the keyboard up the dots and the message stay above it, on the lock screen and when creating an MPIN', (tester) async {
+    testWidgets('with the keyboard up the dots and the message stay above it, on the lock screen and when creating a PIN', (tester) async {
       await boot(tester, saved: savedLock(), biometrics: FakeBiometrics(matches: false));
 
       const keyboard = 700.0; // a tall phone keyboard, in logical pixels (the test view is 1800 tall)
@@ -327,31 +327,31 @@ void main() {
       expect(tester.widget<Opacity>(find.descendant(of: find.byKey(const Key('pin-dot-2')), matching: find.byType(Opacity))).opacity, 0); // nothing in the third yet
     });
 
-    testWidgets('a wrong MPIN says how many tries are left', (tester) async {
+    testWidgets('a wrong PIN says how many tries are left', (tester) async {
       await boot(tester, saved: savedLock(biometric: false));
 
       await typePin(tester, '9999');
-      expect(find.text('Wrong MPIN. 4 tries left'), findsOneWidget);
-      expect(find.text('Enter your MPIN'), findsOneWidget);
+      expect(find.text('Wrong PIN. 4 tries left'), findsOneWidget);
+      expect(find.text('Enter your PIN'), findsOneWidget);
     });
 
-    testWidgets('five wrong MPINs sign the user out and forget the lock', (tester) async {
+    testWidgets('five wrong PINs sign the user out and forget the lock', (tester) async {
       await boot(tester, saved: savedLock(biometric: false));
 
       for (var i = 0; i < maxPinAttempts; i++) {
         await typePin(tester, '0000');
       }
-      expect(find.text('Too many wrong MPINs. Signing you out…'), findsOneWidget);
+      expect(find.text('Too many wrong PINs. Signing you out…'), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();
 
-      expect(find.text('Enter your MPIN'), findsNothing);
+      expect(find.text('Enter your PIN'), findsNothing);
       expect(store.config, isNull);
       expect(find.byType(TextField), findsWidgets); // the login form
     });
 
-    testWidgets('Forgot MPIN asks twice, then signs out to the password login', (tester) async {
+    testWidgets('Forgot PIN asks twice, then signs out to the password login', (tester) async {
       await boot(tester, saved: savedLock(biometric: false));
 
       await tester.tap(find.byKey(const Key('lock-forgot')));
@@ -361,7 +361,7 @@ void main() {
       await tester.tap(find.byKey(const Key('lock-forgot')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Enter your MPIN'), findsNothing);
+      expect(find.text('Enter your PIN'), findsNothing);
       expect(store.config, isNull);
     });
   });

@@ -308,6 +308,28 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Approvals'), findsWidgets);
+      await tester.pumpAndSettle(const Duration(seconds: 1)); // the approvals badge is fetched as the tab appears
+    });
+
+    testWidgets('a comment refreshes only that ticket chat and the alerts, a status change also reloads the board', (tester) async {
+      await boot(tester);
+      socket.established();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('My Tasks').last); // the board is built (and loaded) the first time the tab is opened
+      await tester.pumpAndSettle();
+
+      int boardFetches() => api.requests.where((r) => r.path == '/designer/tasks').length;
+      final board = boardFetches();
+      final alerts = notificationFetches();
+
+      socket.notification({'task_id': 1, 'category': 'comment'});
+      await tester.pumpAndSettle();
+      expect(notificationFetches(), greaterThan(alerts)); // the bell is always refreshed
+      expect(boardFetches(), board); // but a chat message does not reload every board
+
+      socket.notification({'task_id': 1, 'category': 'status'});
+      await tester.pumpAndSettle();
+      expect(boardFetches(), greaterThan(board)); // a status change does
     });
 
     testWidgets('no socket while signed out; one opens on login and closes on sign-out', (tester) async {

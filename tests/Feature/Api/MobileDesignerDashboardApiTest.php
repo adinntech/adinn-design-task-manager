@@ -182,7 +182,7 @@ class MobileDesignerDashboardApiTest extends TestCase
         $this->assertSame($this->bd->name, $rows[$overdue->id]['assigned_by']);
     }
 
-    public function test_recent_tasks_are_capped_at_twelve_but_search_covers_all(): void
+    public function test_recent_tasks_are_capped_at_twelve_and_search_follows_the_period(): void
     {
         for ($i = 0; $i < 14; $i++) {
             $this->task('assigned_tasks', ['assigned_at' => now()->subMinutes($i)]);
@@ -191,10 +191,16 @@ class MobileDesignerDashboardApiTest extends TestCase
 
         $this->assertCount(12, $this->dashboard()->json('recent_tasks'));
 
-        $hits = $this->actingAs($this->designer, 'sanctum')->getJson('/api/v1/designer/dashboard/tasks?search=needle')->assertOk()->json('data');
+        // Search works inside the selected period (this month by default, since the period filter was added), so a ticket
+        // assigned a year ago is found by choosing "overall", not by the default view.
+        $thisMonth = $this->actingAs($this->designer, 'sanctum')->getJson('/api/v1/designer/dashboard/tasks?search=needle')->assertOk()->json('data');
+        $this->assertSame([], array_column($thisMonth, 'id'));
+
+        $hits = $this->actingAs($this->designer, 'sanctum')->getJson('/api/v1/designer/dashboard/tasks?search=needle&month=overall')->assertOk()->json('data');
         $this->assertSame([$needle->id], array_column($hits, 'id'));
 
-        $this->assertCount(15, $this->actingAs($this->designer, 'sanctum')->getJson('/api/v1/designer/dashboard/tasks')->json('data'));
+        $this->assertCount(14, $this->actingAs($this->designer, 'sanctum')->getJson('/api/v1/designer/dashboard/tasks')->json('data'));
+        $this->assertCount(15, $this->actingAs($this->designer, 'sanctum')->getJson('/api/v1/designer/dashboard/tasks?month=overall')->json('data'));
     }
 
     public function test_my_requests_show_status_responder_and_current_handler(): void

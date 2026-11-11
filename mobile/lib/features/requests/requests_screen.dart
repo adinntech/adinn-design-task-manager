@@ -8,8 +8,10 @@ import '../../core/models.dart';
 import '../tasks/providers.dart';
 import '../widgets/form_sheet.dart';
 
+// No silent back-off retry: the screen has pull-to-refresh and the badge simply stays as it was.
 final pendingRequestsProvider = FutureProvider.autoDispose<({List<RequestItem> items, List<Designer> designers})>(
   (ref) => ref.watch(roleApiProvider).pendingRequests(),
+  retry: (_, _) => null,
 );
 
 /// Designer Head / Admin: pending requests with approve / reject.
@@ -176,7 +178,7 @@ class _RequestCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: tone.withValues(alpha: 0.10), blurRadius: 16, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: tone.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 6))],
         border: Border.all(color: const Color(0xFFEAECF0)),
       ),
       child: ClipRRect(

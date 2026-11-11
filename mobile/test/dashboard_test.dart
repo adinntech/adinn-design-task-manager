@@ -408,10 +408,11 @@ void main() {
       await tester.tap(find.byKey(const Key('row-1')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('drawer-board')));
-      for (var i = 0; i < 6; i++) {
-        await tester.pump(const Duration(milliseconds: 120)); // sheet closes, tab switches, stage opens (500 ms)
+      // sheet closes, the Tasks tab is built for the first time, the board loads, the stage opens
+      for (var i = 0; i < 60 && find.byKey(const Key('card-1')).evaluate().isEmpty; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
       }
-      await tester.pump(const Duration(milliseconds: 300)); // the stage has opened; the ring is still showing
+      await tester.pump(const Duration(milliseconds: 100)); // the stage has opened; the ring is still showing
 
       expect(find.byType(StageTicketsScreen), findsOneWidget);
       expect(tester.widget<Text>(find.byKey(const Key('stage-title'))).data, 'In Progress');
@@ -471,6 +472,34 @@ void main() {
       await pick('vertical', 'Signage');
       expect(find.byKey(const Key('row-1')), findsNothing);
       expect(find.text('No matching tasks found.'), findsOneWidget);
+    });
+
+    testWidgets("a filter can be changed again, and set back to All from its own menu", (tester) async {
+      await boot(tester);
+
+      Future<void> pick(String filter, String option) async {
+        await tester.tap(find.byKey(Key('filter-$filter')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(option).last);
+        await tester.pumpAndSettle();
+      }
+
+      await pick('status', 'Overdue');
+      expect(find.byKey(const Key('row-1')), findsNothing);
+
+      // Another filter on top, then each one reverted with "All" (not only with the clear-all button).
+      await pick('priority', 'High');
+      await pick('priority', 'Priority: All');
+      await pick('status', 'Status: All');
+      expect(find.byKey(const Key('row-1')), findsOneWidget);
+      expect(find.byKey(const Key('row-2')), findsOneWidget);
+      expect(find.byKey(const Key('row-3')), findsOneWidget);
+      expect(find.byKey(const Key('clear-filters')), findsNothing); // nothing is set any more
+
+      // And a different option can replace a chosen one.
+      await pick('status', 'Overdue');
+      await pick('status', 'In Progress');
+      expect(find.byKey(const Key('row-2')), findsNothing);
     });
 
     testWidgets('typing searches every task on the server, and clearing the box returns to the recent list', (tester) async {

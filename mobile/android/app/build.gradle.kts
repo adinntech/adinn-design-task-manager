@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // Needed because android.builtInKotlin=false (gradle.properties): without it MainActivity.kt is never compiled
@@ -9,8 +11,18 @@ plugins {
 
 // Firebase config is per-project and supplied by the team (Firebase console → Project settings → google-services.json).
 // Without it the app still builds and runs; push notifications are simply off.
-if (file("google-services.json").exists()) {
+// A TEST build (ADINN_TEST_BUILD=1, see tool/build_release.ps1 -Test) installs next to the real app under another id, so it
+// skips Firebase (the project file is for the real id): push is off in it.
+val testBuild = System.getenv("ADINN_TEST_BUILD") == "1"
+if (!testBuild && file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
+}
+
+// Release signing: key.properties (next to this project's settings.gradle.kts, git-ignored) points at the release keystore.
+// See ../RELEASING.md. A release build without it is refused rather than quietly signed with the debug key.
+val keyProps = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
@@ -36,14 +48,32 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appLabel"] = if (testBuild) "Adinn Tasks (TEST)" else "Adinn Design Tasks"
+        if (testBuild) applicationIdSuffix = ".test"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keyProps.isNotEmpty()) {
+                keyAlias = keyProps.getProperty("keyAlias")
+                keyPassword = keyProps.getProperty("keyPassword")
+                storeFile = rootProject.file(keyProps.getProperty("storeFile"))
+                storePassword = keyProps.getProperty("storePassword")
+            }
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val releasing = allTasks.any { t -> (t.name.startsWith("assemble") || t.name.startsWith("bundle") || t.name.startsWith("package")) && t.name.contains("Release") }
+    if (releasing && keyProps.isEmpty) {
+        throw GradleException("Release builds must be signed with the release key: create android/key.properties (see RELEASING.md). Refusing to sign with the debug key.")
     }
 }
 

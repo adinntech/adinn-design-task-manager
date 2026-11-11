@@ -215,6 +215,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(store.url, isNull);
 
+      await tester.ensureVisible(find.text('Sign in')); // the error line above pushed the button down the scrolling page
       await tester.tap(find.text('Sign in'));
       await tester.pumpAndSettle();
       expect(baseUrls.last, AppConfig.apiBaseUrl);

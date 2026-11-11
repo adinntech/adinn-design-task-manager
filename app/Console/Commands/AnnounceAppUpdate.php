@@ -49,7 +49,7 @@ class AnnounceAppUpdate extends Command
             $delivered += $fcm->send(
                 $user,
                 'Update available',
-                "A new version of Adinn Tasks{$version} is ready. Tap to update.",
+                "A new version of Adinn Design Tasks{$version} is ready. Tap to update.",
                 null,
                 'app-update',
                 ['type' => 'app_update', 'build' => $build],

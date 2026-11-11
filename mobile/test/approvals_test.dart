@@ -156,6 +156,7 @@ void main() {
 
     expect(container.read(authProvider).user?.isRequestApprover, isTrue);
     expect(find.text('Approvals'), findsWidgets);
+    await tester.pumpAndSettle(const Duration(seconds: 1)); // the approvals badge is fetched as the tab appears
   });
 
   testWidgets('refreshUser is silent when offline and keeps the cached user', (tester) async {

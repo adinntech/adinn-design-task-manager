@@ -125,7 +125,7 @@ class _UpdateRequired extends ConsumerWidget {
               Text('Update required', textAlign: TextAlign.center, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 10),
               Text(
-                'A new version of Adinn Tasks${info.latestVersion == null ? '' : ' (v${info.latestVersion})'} is available. Please update to keep using the app.',
+                'A new version of Adinn Design Tasks${info.latestVersion == null ? '' : ' (v${info.latestVersion})'} is available. Please update to keep using the app.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium,
               ),

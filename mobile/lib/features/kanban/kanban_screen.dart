@@ -72,6 +72,9 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
     _searchOpen = ref.read(kanbanFiltersProvider).search.isNotEmpty;
     _pendingFocus = ref.read(boardFocusProvider);
     if (_pendingFocus != null) Future.microtask(() => ref.read(boardFocusProvider.notifier).focus(null));
+    // The Tasks tab is built the first time it is opened, which may be by the very request that asked for a ticket.
+    _pendingTask = ref.read(boardTaskFocusProvider);
+    if (_pendingTask != null) Future.microtask(() => ref.read(boardTaskFocusProvider.notifier).focus(null));
   }
 
   @override
@@ -437,7 +440,8 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
                       ),
                     );
                   },
-                  child: _hero(u: u, w: w, side: side, cardTop: cardTop, charLeft: charLeft, pages: pages, current: current < 0 ? 0 : current, next: next),
+                  // its own layer: when the stage is scaled or lifted (the tiles panel) the whole picture is moved, not repainted
+                  child: RepaintBoundary(child: _hero(u: u, w: w, side: side, cardTop: cardTop, charLeft: charLeft, pages: pages, current: current < 0 ? 0 : current, next: next)),
                 ),
               ),
               // "Swipe up" hint; it goes as the tiles arrive.
@@ -521,7 +525,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> with TickerProvider
               top: 0,
               child: Opacity(
                 opacity: _character.value,
-                child: Transform.scale(scale: 0.92 + 0.08 * _character.value, alignment: Alignment.bottomCenter, child: DesignerCharacterWidget(height: u)),
+                child: Transform.scale(scale: 0.92 + 0.08 * _character.value, alignment: Alignment.bottomCenter, child: RepaintBoundary(child: DesignerCharacterWidget(height: u))),
               ),
             ),
             // The rest of the stack, peeking out behind the card.

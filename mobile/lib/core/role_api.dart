@@ -143,6 +143,21 @@ class RoleApi {
     return json.map((c) => ClientSuggestion.fromJson(c as Map<String, dynamic>)).toList();
   }
 
+  /// "Clone existing ticket": the BD's own previous tickets matching the search.
+  Future<List<CloneHit>> cloneSearch(String q, {bool inhouse = false}) async {
+    final json = await _api.getList('/bd/tasks/clone-search', query: {'q': q, if (inhouse) 'category': 'in_house'});
+    return json.map((c) => CloneHit.fromJson(c as Map<String, dynamic>)).toList();
+  }
+
+  Future<FormPrefill> cloneData(int taskId) async => FormPrefill.fromJson(await _api.get('/bd/tasks/$taskId/clone-data'));
+
+  Future<List<DraftSummary>> drafts() async {
+    final json = await _api.get('/bd/drafts');
+    return ((json['data'] as List?) ?? []).map((d) => DraftSummary.fromJson(d as Map<String, dynamic>)).toList();
+  }
+
+  Future<FormPrefill> draft(int id) async => FormPrefill.fromJson(await _api.get('/bd/drafts/$id'));
+
   Future<Availability> availability(int designerId) async => Availability.fromJson(await _api.get('${role == 'admin' ? '/bd' : _prefix}/designers/$designerId/availability'));
 
   /// Creates a task (`inhouse` for the In-house tab) or saves a draft. Sends JSON, or multipart when files are attached.

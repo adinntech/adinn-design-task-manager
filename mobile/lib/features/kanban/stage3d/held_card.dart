@@ -13,7 +13,7 @@ Color _accentFor(String key) => key == allStageKey ? adinnRed : stageAccent(key)
 /// The square card the representative holds: the current stage's icon, name and ticket count, in that stage's colour.
 /// All Tickets (red) is the first card; swiping the card turns to the next stage.
 class HeldStageCard extends StatelessWidget {
-  const HeldStageCard({super.key, required this.stage, required this.side, this.count = const AlwaysStoppedAnimation(1), this.onTap});
+  const HeldStageCard({super.key, required this.stage, required this.side, this.count = const AlwaysStoppedAnimation(1), this.onTap, this.hero = true});
 
   final StageInfo stage;
 
@@ -25,19 +25,15 @@ class HeldStageCard extends StatelessWidget {
 
   final VoidCallback? onTap;
 
+  /// Wrap the card in a Hero for the move to the stage's own screen (off where there is no route to fly between).
+  final bool hero;
+
   @override
   Widget build(BuildContext context) {
     final accent = _accentFor(stage.key);
     final isAll = stage.key == allStageKey;
 
-    return GestureDetector(
-      key: Key('held-card-${stage.key}'),
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Hero(
-        tag: 'stage-card-${stage.key}',
-        flightShuttleBuilder: stageHeroShuttle(stage),
-        child: Container(
+    final card = Container(
           width: side,
           height: side,
           decoration: BoxDecoration(
@@ -71,8 +67,13 @@ class HeldStageCard extends StatelessWidget {
               ]),
             ),
           ),
-        ),
-      ),
+        );
+
+    return GestureDetector(
+      key: Key('held-card-${stage.key}'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: hero ? Hero(tag: 'stage-card-${stage.key}', flightShuttleBuilder: stageHeroShuttle(stage), child: card) : card,
     );
   }
 }

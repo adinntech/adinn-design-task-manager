@@ -11,6 +11,7 @@ import 'core/realtime.dart';
 import 'core/theme.dart';
 import 'features/lock/lock_gate.dart';
 import 'features/requests/requests_screen.dart';
+import 'features/splash/launch_flow.dart';
 import 'features/tasks/providers.dart';
 import 'features/update/update_gate.dart';
 import 'router.dart';
@@ -39,6 +40,27 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     ref.invalidate(pendingRequestsProvider);
   }
 
+  /// A live event: refresh only what it is about, not everything. A comment touches that ticket's chat and history; any other
+  /// change (status, assignment, rework, a request) also touches the boards and the request lists. (An Approvals right
+  /// is handled by [_refreshAccess].)
+  void _refreshFor(RealtimeEvent e) {
+    ref.invalidate(notificationsProvider);
+    if (e.category == 'approval_access') return;
+
+    final id = e.taskId;
+    if (id == null) {
+      _refreshLiveData();
+      return;
+    }
+    ref.invalidate(taskDetailProvider(id));
+    ref.invalidate(commentsProvider(id));
+    if (e.category != 'comment') {
+      ref.invalidate(boardProvider);
+      ref.invalidate(kanbanBoardProvider);
+      ref.invalidate(pendingRequestsProvider);
+    }
+  }
+
   /// Everything a server-side change can make stale: alerts, boards, request lists, open tasks and chats.
   void _refreshLiveData() {
     ref.invalidate(notificationsProvider);
@@ -55,7 +77,7 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _live = ref.read(realtimeProvider).events.listen((e) {
-      _refreshLiveData();
+      _refreshFor(e);
       if (e.category == 'approval_access') _refreshAccess();
     });
     // Restore a saved session; the router shows a splash until this resolves. The app lock is read alongside it: a saved
@@ -128,7 +150,7 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
     }
 
     return MaterialApp.router(
-      title: 'Adinn Tasks',
+      title: 'Adinn Design Tasks',
       debugShowCheckedModeBanner: false,
       theme: _theme,
       scrollBehavior: const SmoothScrollBehavior(),
@@ -136,7 +158,7 @@ class _AdinnAppState extends ConsumerState<AdinnApp> with WidgetsBindingObserver
       // Freezes the app behind an Update screen when the server says this build is too old.
       // The lock goes outermost so it covers everything, the Update screen included.
       // The lock goes outermost so it covers everything, the Update screen included.
-      builder: (context, child) => LockGate(child: UpdateGate(child: child ?? const SizedBox.shrink())),
+      builder: (context, child) => LaunchFlow(child: LockGate(child: UpdateGate(child: child ?? const SizedBox.shrink()))),
     );
   }
 }

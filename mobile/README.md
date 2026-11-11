@@ -1,4 +1,4 @@
-# Adinn Tasks (Flutter)
+# Adinn Design Tasks (Flutter)
 
 Mobile client for the Adinn Design Task Manager. Talks to the Laravel `/api/v1` API (Sanctum bearer tokens).
 

@@ -708,14 +708,19 @@ class DashFilterMenu extends StatelessWidget {
   final Map<String, String> options;
   final ValueChanged<String?> onChanged;
 
+  /// What "All" returns: a menu item whose value is null counts as dismissing the menu and never reaches [onSelected], so
+  /// the option to clear a filter (and so to change your mind) did nothing.
+  static const _all = '\u0000all';
+
   @override
-  Widget build(BuildContext context) => PopupMenuButton<String?>(
+  Widget build(BuildContext context) => PopupMenuButton<String>(
         key: Key('filter-$keyName'),
         tooltip: label,
-        onSelected: onChanged,
+        initialValue: value ?? _all,
+        onSelected: (v) => onChanged(v == _all ? null : v),
         itemBuilder: (_) => [
-          PopupMenuItem<String?>(value: null, child: Text('$label: All')),
-          for (final o in options.entries) PopupMenuItem<String?>(value: o.key, child: Text(o.value)),
+          PopupMenuItem<String>(value: _all, child: Text('$label: All', style: TextStyle(fontWeight: value == null ? FontWeight.w800 : FontWeight.w500))),
+          for (final o in options.entries) PopupMenuItem<String>(value: o.key, child: Text(o.value, style: TextStyle(fontWeight: value == o.key ? FontWeight.w800 : FontWeight.w500))),
         ],
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 7, 4, 7),
@@ -762,7 +767,7 @@ class OverviewRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 14, offset: const Offset(0, 5))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 5))],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -776,11 +781,10 @@ class OverviewRow extends StatelessWidget {
                   showDragHandle: true,
                   builder: (_) => TaskDrawer(row: r),
                 ),
-                child: IntrinsicHeight(
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Container(width: 5, color: bar),
-                    Expanded(
-                      child: Padding(
+                // the coloured bar is the left border (the card clips it round), so no height measuring is needed
+                child: DecoratedBox(
+                  decoration: BoxDecoration(border: Border(left: BorderSide(color: bar, width: 5))),
+                  child: Padding(
                         padding: const EdgeInsets.fromLTRB(12, 9, 10, 9),
                         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                           Expanded(
@@ -817,9 +821,7 @@ class OverviewRow extends StatelessWidget {
                             child: const Icon(Icons.chevron_right_rounded, size: 22, color: Color(0xFF344054)),
                           ),
                         ]),
-                      ),
-                    ),
-                  ]),
+                  ),
                 ),
               ),
             ),

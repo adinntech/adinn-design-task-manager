@@ -112,7 +112,7 @@ class StatTile extends StatelessWidget {
         borderRadius: radius,
         color: Colors.white,
         border: Border.all(color: const Color(0xFFEAECF0)),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 14, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 6))],
       ),
       child: Material(
         color: Colors.transparent,

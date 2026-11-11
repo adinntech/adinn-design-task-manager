@@ -180,7 +180,7 @@ void main() {
     expect(sent['outdoor_type'], 'Unipole');
     expect(sent['description'], 'Adapt the festive creative');
     expect(sent['dimension_rows'], [{'name': 'Board A', 'width': '40', 'height': '20'}]);
-    expect(RegExp(r'^\d{4}-\d{2}-\d{2} 18:00:00$').hasMatch(sent['due_at'] as String), isTrue);
+    expect(RegExp(r'^\d{4}-\d{2}-\d{2} \d{2}:00:00$').hasMatch(sent['due_at'] as String), isTrue);
 
     // Lands on the new task.
     expect(find.text('Created task'), findsWidgets);

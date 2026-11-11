@@ -442,7 +442,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _section(
               icon: Icons.fingerprint_rounded,
               title: 'App lock',
-              subtitle: 'Ask for your fingerprint, face or a 4-digit MPIN whenever the app is opened.',
+              subtitle: 'Ask for your fingerprint, face or a 4-digit PIN whenever the app is opened.',
               children: [
                 Consumer(
                   builder: (context, ref, _) {
@@ -455,7 +455,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         key: const Key('app-lock-switch'),
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Lock the app', style: TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text(lock.enabled ? (lock.biometric ? 'MPIN and fingerprint / face' : 'MPIN only') : 'Off'),
+                        subtitle: Text(lock.enabled ? (lock.biometric ? 'PIN and fingerprint / face' : 'PIN only') : 'Off'),
                         value: lock.enabled,
                         onChanged: (on) => on ? _turnLockOn() : _turnLockOff(),
                       ),
@@ -475,10 +475,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  /// Same MPIN setup as the first-time offer, opened as a page.
+  /// Same PIN setup as the first-time offer, opened as a page.
   void _turnLockOn() => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LockSetupScreen(fromProfile: true)));
 
-  /// Turning the lock off needs the current MPIN, so a borrowed, unlocked phone cannot quietly remove it.
+  /// Turning the lock off needs the current PIN, so a borrowed, unlocked phone cannot quietly remove it.
   Future<void> _turnLockOff() async {
     final pin = TextEditingController();
     String? error;
@@ -496,7 +496,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             keyboardType: TextInputType.number,
             maxLength: 4,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(labelText: 'Enter your MPIN', errorText: error, counterText: ''),
+            decoration: InputDecoration(labelText: 'Enter your PIN', errorText: error, counterText: ''),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
@@ -506,7 +506,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 if (ref.read(appLockProvider.notifier).verifyPin(pin.text)) {
                   Navigator.of(dialogContext).pop(true);
                 } else {
-                  setDialog(() => error = 'That is not your MPIN.');
+                  setDialog(() => error = 'That is not your PIN.');
                 }
               },
               child: const Text('Turn off'),

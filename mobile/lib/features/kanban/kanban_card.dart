@@ -98,7 +98,7 @@ class KanbanTaskCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.10), blurRadius: 16, offset: const Offset(0, 6))],
+        boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 6))],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
