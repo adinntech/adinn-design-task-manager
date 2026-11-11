@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivityFlagController;
+use App\Http\Controllers\AppDownloadController;
 use App\Http\Controllers\Bd\AssignedTaskController;
 use App\Http\Controllers\Bd\TaskController;
 use App\Http\Controllers\Bd\TaskExportController;
@@ -13,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth')->group(function () {
     Route::post('/activity/{scope}/ack', [ActivityFlagController::class, 'ack'])->name('activity.ack');
 });
+
+// "Get the app" in the top bar: BD and Designers download the Android APK.
+Route::middleware(['auth', 'role:bd,designer'])->get('/app/download', [AppDownloadController::class, 'android'])->name('app.download');
 
 Route::middleware(['auth', 'role:bd'])
     ->prefix('bd')

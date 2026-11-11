@@ -107,6 +107,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/drafts/in-house', [CreateTaskController::class, 'storeInhouseDraft']);
         Route::get('/designers/{designer}/availability', [WebBdTaskController::class, 'availability']);
         Route::get('/clients/search', [WebBdTaskController::class, 'searchClients']);
+        Route::get('/drafts', [CreateTaskController::class, 'drafts']);
+        Route::get('/drafts/{task}', [CreateTaskController::class, 'draft']);
+        // Before '/tasks/{task}' so "clone-search" is not read as a task id.
+        Route::get('/tasks/clone-search', [CreateTaskController::class, 'cloneSearch']);
+        Route::get('/tasks/{task}/clone-data', [CreateTaskController::class, 'cloneData']);
 
         Route::get('/dashboard', [BdDashboardController::class, 'index']);
         Route::get('/dashboard/tasks', [BdDashboardController::class, 'tasks']);

@@ -1,0 +1,3129 @@
+{
+ "outdoor": {
+  "label": "Outdoor",
+  "natures": {
+   "mockup_requirements": {
+    "label": "Mockup",
+    "fields": [
+     [
+      "__section_details",
+      "Outdoor / Board Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "outdoor_type",
+      "Outdoor Type",
+      "select",
+      true,
+      [
+       "Bus Shelter",
+       "Unipole",
+       "Standard",
+       "Auto Branding",
+       "Pole Kiosk",
+       "Digital",
+       "Signal Post"
+      ]
+     ],
+     [
+      "board_type",
+      "Display Type",
+      "select",
+      true,
+      [
+       "Static",
+       "Digital"
+      ]
+     ],
+     [
+      "board_details",
+      "Board / Display Size Details",
+      "dimensions",
+      true,
+      []
+     ],
+     [
+      "mockup_type",
+      "Mockup Type",
+      "select",
+      true,
+      [
+       "Mock-up",
+       "Innovative Mock-up"
+      ]
+     ],
+     [
+      "site_photo",
+      "Site Photo",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "website_link",
+      "Website Link",
+      "url",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "creative_adaptation": {
+    "label": "Creative Adaptation",
+    "fields": [
+     [
+      "__section_details",
+      "Outdoor / Board Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "outdoor_type",
+      "Outdoor Type",
+      "select",
+      true,
+      [
+       "Bus Shelter",
+       "Unipole",
+       "Standard",
+       "Auto Branding",
+       "Pole Kiosk",
+       "Digital",
+       "Signal Post"
+      ]
+     ],
+     [
+      "board_type",
+      "Display Type",
+      "select",
+      true,
+      [
+       "Static",
+       "Digital"
+      ]
+     ],
+     [
+      "board_details",
+      "Board / Display Size Details",
+      "dimensions",
+      true,
+      []
+     ],
+     [
+      "site_photo",
+      "Site Photo",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "new_creative_design": {
+    "label": "Own Creative",
+    "fields": [
+     [
+      "__section_details",
+      "Outdoor / Board Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "outdoor_type",
+      "Outdoor Type",
+      "select",
+      true,
+      [
+       "Bus Shelter",
+       "Unipole",
+       "Standard",
+       "Auto Branding",
+       "Pole Kiosk",
+       "Digital",
+       "Signal Post"
+      ]
+     ],
+     [
+      "board_type",
+      "Display Type",
+      "select",
+      true,
+      [
+       "Static",
+       "Digital"
+      ]
+     ],
+     [
+      "board_details",
+      "Board / Display Size Details",
+      "dimensions",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "brand_name",
+      "Brand Name",
+      "text",
+      true,
+      []
+     ],
+     [
+      "creative_contact_person",
+      "Contact Person",
+      "text",
+      false,
+      []
+     ],
+     [
+      "creative_mobile_number",
+      "Mobile Number",
+      "text",
+      false,
+      []
+     ],
+     [
+      "address",
+      "Address",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_document",
+      "Company Details Document",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "content_images",
+      "Creative Content / Assets",
+      "mediafiles",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "cutout_size_calculation": {
+    "label": "3D Cutout Size Calculation",
+    "fields": [
+     [
+      "__section_details",
+      "Outdoor / Board Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "outdoor_type",
+      "Outdoor Type",
+      "select",
+      true,
+      [
+       "Bus Shelter",
+       "Unipole",
+       "Standard",
+       "Auto Branding",
+       "Pole Kiosk",
+       "Digital",
+       "Signal Post"
+      ]
+     ],
+     [
+      "board_details",
+      "Board / Display Size Details",
+      "dimensions",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "hoarding_artwork",
+      "Creative / Artwork",
+      "file",
+      true,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   }
+  }
+ },
+ "roadshow": {
+  "label": "Road Show",
+  "natures": {
+   "creative_adaptation_requirements": {
+    "label": "Creative Adaptation",
+    "fields": [
+     [
+      "__section_details",
+      "Vehicle / Campaign Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "roadshow_subtype",
+      "Road Show Type",
+      "select",
+      true,
+      [
+       "Creative Adaptation",
+       "3D Mockup Creative Adaptation"
+      ]
+     ],
+     [
+      "vehicle_type",
+      "Vehicle Type",
+      "vehicle_select",
+      true,
+      [
+       "3 Side LED 14 feet",
+       "3 Side LED 18 feet",
+       "7x5 LED Hybrid 8 feet",
+       "Box Model Triangle Roof",
+       "Center Portion Triangle Roof",
+       "Center Portion Without Roof",
+       "L-Model Box Roof with Utility Room",
+       "L-Model Box Roof",
+       "L-Model Without Roof",
+       "L-Shape LED",
+       "Single Side LED 17 feet",
+       "Static Model"
+      ]
+     ],
+     [
+      "vehicle_quantity",
+      "Vehicle Quantity",
+      "number",
+      false,
+      []
+     ],
+     [
+      "location",
+      "Campaign Location",
+      "location",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "new_creative_design": {
+    "label": "Own Creative",
+    "fields": [
+     [
+      "__section_details",
+      "Vehicle / Campaign Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "roadshow_subtype",
+      "Road Show Type",
+      "select",
+      true,
+      [
+       "New Creative Design",
+       "3D Mockup New Creative Design"
+      ]
+     ],
+     [
+      "vehicle_type",
+      "Vehicle Type",
+      "vehicle_select",
+      true,
+      [
+       "3 Side LED 14 feet",
+       "3 Side LED 18 feet",
+       "7x5 LED Hybrid 8 feet",
+       "Box Model Triangle Roof",
+       "Center Portion Triangle Roof",
+       "Center Portion Without Roof",
+       "L-Model Box Roof with Utility Room",
+       "L-Model Box Roof",
+       "L-Model Without Roof",
+       "L-Shape LED",
+       "Single Side LED 17 feet",
+       "Static Model"
+      ]
+     ],
+     [
+      "vehicle_details",
+      "Vehicle Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "brand_details",
+      "Brand Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "brand_details_upload",
+      "Brand Details Upload",
+      "file",
+      false,
+      []
+     ],
+     [
+      "brand_name",
+      "Brand Name",
+      "text",
+      false,
+      []
+     ],
+     [
+      "creative_contact_person",
+      "Contact Person",
+      "text",
+      false,
+      []
+     ],
+     [
+      "creative_mobile_number",
+      "Mobile Number",
+      "text",
+      false,
+      []
+     ],
+     [
+      "address",
+      "Address",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "content_images",
+      "Creative Content / Assets",
+      "mediafiles",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   }
+  }
+ },
+ "fixtures": {
+  "label": "Fixtures",
+  "natures": {
+   "design_with_creative": {
+    "label": "Creative Adaptation",
+    "fields": [
+     [
+      "__section_details",
+      "Fixture Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Site Recce / Measurement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "client_format_manual",
+      "Client Brand / Format Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "fixture_details",
+      "Fixture Specifications / Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "design_without_creative": {
+    "label": "Own Creative",
+    "fields": [
+     [
+      "__section_details",
+      "Fixture Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Site Recce / Measurement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "client_format_manual",
+      "Client Brand / Format Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "fixture_details",
+      "Fixture Specifications / Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "website_link",
+      "Client Website",
+      "url",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   }
+  }
+ },
+ "signage": {
+  "label": "Signage",
+  "natures": {
+   "mockup": {
+    "label": "Mockup",
+    "fields": [
+     [
+      "__section_details",
+      "Signage / Site Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Site Recce / Measurement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "material_specifications",
+      "Material Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "client_format_manual",
+      "Client Brand / Format Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "creative_adaptation": {
+    "label": "Creative Adaptation",
+    "fields": [
+     [
+      "__section_details",
+      "Signage / Site Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Site Recce / Measurement Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "material_specifications",
+      "Material Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "client_format_manual",
+      "Client Brand / Format Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "dealer_details",
+      "Dealer / Location Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      true,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "new_creative": {
+    "label": "Own Creative",
+    "fields": [
+     [
+      "__section_details",
+      "Signage / Site Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Site Recce / Measurement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "material_specifications",
+      "Material Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "client_format_manual",
+      "Client Brand / Format Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "dealer_details",
+      "Dealer / Location Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "technical_drawing": {
+    "label": "Technical Drawing",
+    "fields": [
+     [
+      "__section_details",
+      "Signage / Site Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Site Recce / Measurement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "client_format_manual",
+      "Client Brand / Format Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "three_d_design": {
+    "label": "3D Design",
+    "fields": [
+     [
+      "__section_details",
+      "Signage / Site Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Site Recce / Measurement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "technical_drawing",
+      "Technical Drawing",
+      "file",
+      false,
+      []
+     ],
+     [
+      "client_format_manual",
+      "Client Brand / Format Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "technical_and_three_d": {
+    "label": "Technical Drawing + 3D Design",
+    "fields": [
+     [
+      "__section_details",
+      "Signage / Site Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Site Recce / Measurement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "client_format_manual",
+      "Client Brand / Format Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   }
+  }
+ },
+ "pop_offsets": {
+  "label": "Print / POP",
+  "natures": {
+   "mockup_design": {
+    "label": "Mockup",
+    "fields": [
+     [
+      "__section_details",
+      "Print / Product Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "product_type",
+      "Print / Product Type",
+      "select",
+      true,
+      [
+       "Leaflets",
+       "Poster",
+       "Brochure",
+       "Visiting Card",
+       "Pocket Card",
+       "Dangler",
+       "Roll Up Standee",
+       "Sunpack Sheet",
+       "Calendar",
+       "ID Card",
+       "Other"
+      ]
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "design_adaptation": {
+    "label": "Creative Adaptation",
+    "fields": [
+     [
+      "__section_details",
+      "Print / Product Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "product_type",
+      "Print / Product Type",
+      "select",
+      true,
+      [
+       "Leaflets",
+       "Poster",
+       "Brochure",
+       "Visiting Card",
+       "Pocket Card",
+       "Dangler",
+       "Roll Up Standee",
+       "Sunpack Sheet",
+       "Calendar",
+       "ID Card",
+       "Other"
+      ]
+     ],
+     [
+      "size_details",
+      "Print Size Details",
+      "sizes",
+      true,
+      []
+     ],
+     [
+      "element_list",
+      "Print / Element Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "creative_design": {
+    "label": "Own Creative",
+    "fields": [
+     [
+      "__section_details",
+      "Print / Product Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "product_type",
+      "Print / Product Type",
+      "select",
+      true,
+      [
+       "Leaflets",
+       "Poster",
+       "Brochure",
+       "Visiting Card",
+       "Pocket Card",
+       "Dangler",
+       "Roll Up Standee",
+       "Sunpack Sheet",
+       "Calendar",
+       "ID Card",
+       "Other"
+      ]
+     ],
+     [
+      "size_details",
+      "Print Size Details",
+      "sizes",
+      true,
+      []
+     ],
+     [
+      "element_list",
+      "Print / Element Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   }
+  }
+ },
+ "events_activations": {
+  "label": "Events & Activations",
+  "natures": {
+   "proposal_designs": {
+    "label": "Proposal Design",
+    "fields": [
+     [
+      "__section_details",
+      "Event / Activation Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "location",
+      "Event / Activation Location",
+      "location",
+      false,
+      []
+     ],
+     [
+      "requirement_list",
+      "Event / Activation Requirement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "element_design_with_creative": {
+    "label": "Creative Adaptation",
+    "fields": [
+     [
+      "__section_details",
+      "Event / Activation Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "location",
+      "Event / Activation Location",
+      "location",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Venue / Site Recce Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "brand_guidelines",
+      "Brand Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "requirement_list",
+      "Event / Activation Requirement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "file",
+      true,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "element_design_without_creative": {
+    "label": "Own Creative",
+    "fields": [
+     [
+      "__section_details",
+      "Event / Activation Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "location",
+      "Event / Activation Location",
+      "location",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Venue / Site Recce Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "brand_guidelines",
+      "Brand Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "requirement_list",
+      "Event / Activation Requirement Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "logo_images",
+      "Logo / Brand Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "three_d_layout": {
+    "label": "3D Layout",
+    "fields": [
+     [
+      "__section_details",
+      "Event / Activation Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "location",
+      "Event / Activation Location",
+      "location",
+      false,
+      []
+     ],
+     [
+      "recce_report",
+      "Venue / Site Recce Details",
+      "file",
+      false,
+      []
+     ],
+     [
+      "brand_guidelines",
+      "Brand Guidelines",
+      "file",
+      false,
+      []
+     ],
+     [
+      "requirement_list",
+      "Event / Activation Requirement Details",
+      "file",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   }
+  }
+ },
+ "media": {
+  "label": "Media",
+  "natures": {
+   "creative_adaptation": {
+    "label": "Creative Adaptation",
+    "fields": [
+     [
+      "__section_details",
+      "Media Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "media_type",
+      "Media Type",
+      "select",
+      true,
+      [
+       "Theatre Ads",
+       "Newspaper Ads",
+       "TV Ads"
+      ]
+     ],
+     [
+      "creative_size_details",
+      "Creative Size Details",
+      "media_sizes",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative",
+      "files",
+      true,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "own_creative": {
+    "label": "Own Creative",
+    "fields": [
+     [
+      "__section_details",
+      "Media Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "media_type",
+      "Media Type",
+      "select",
+      true,
+      [
+       "Theatre Ads",
+       "Newspaper Ads",
+       "TV Ads"
+      ]
+     ],
+     [
+      "creative_size_details",
+      "Creative Size Details",
+      "media_sizes",
+      true,
+      []
+     ],
+     [
+      "__section_description",
+      "Description",
+      "section",
+      false,
+      []
+     ],
+     [
+      "description",
+      "Description",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "__section_company",
+      "Company Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "company_details",
+      "Company Details",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "company_details_upload",
+      "Company Details Upload",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_creative",
+      "Creative",
+      "section",
+      false,
+      []
+     ],
+     [
+      "creative",
+      "Creative / Sample Assets",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_references",
+      "References",
+      "section",
+      false,
+      []
+     ],
+     [
+      "reference_notes",
+      "References",
+      "textarea",
+      false,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "files",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   }
+  }
+ },
+ "digital_inhouse": {
+  "label": "Digital / Inhouse",
+  "natures": {
+   "digital": {
+    "label": "Digital",
+    "fields": [
+     [
+      "__section_details",
+      "Task Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "brief",
+      "Brief",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "zipfiles",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   },
+   "inhouse": {
+    "label": "Inhouse",
+    "fields": [
+     [
+      "__section_details",
+      "Task Details",
+      "section",
+      false,
+      []
+     ],
+     [
+      "brief",
+      "Brief",
+      "textarea",
+      true,
+      []
+     ],
+     [
+      "attachments",
+      "Attachments",
+      "zipfiles",
+      false,
+      []
+     ],
+     [
+      "__section_audio",
+      "Audio Reference",
+      "section",
+      false,
+      []
+     ],
+     [
+      "client_audio",
+      "Audio Reference",
+      "audio",
+      false,
+      []
+     ]
+    ]
+   }
+  }
+ }
+}

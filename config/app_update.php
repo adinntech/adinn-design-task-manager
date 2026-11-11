@@ -17,5 +17,8 @@ return [
         'latest_version' => env('APP_LATEST_VERSION'),
         'url' => env('APP_APK_URL'),
         'notes' => env('APP_UPDATE_NOTES'),
+        // The "Get the app" button and /app/download for BD and Designers. Off until you switch it on, so deploying the code
+        // does not show the app to anyone while it is still being tested.
+        'download_enabled' => (bool) env('APP_DOWNLOAD_ENABLED', false),
     ],
 ];

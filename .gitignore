@@ -19,3 +19,6 @@ yarn-error.log
 /.vscode
 *.sql
 storage/framework/testing/
+
+# APK published for the in-app update / "Get the app" (uploaded on the server, never committed)
+/public/downloads/
