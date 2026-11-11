@@ -187,7 +187,7 @@ class CreateTaskController extends Controller
     }
 
     /** Runs the web action and turns its redirect into `{id, message}` — or a 422 if it redirected back with an error. */
-    private function delegate(Request $request, Closure $action, string $kind): JsonResponse
+    protected function delegate(Request $request, Closure $action, string $kind, ?string $taskMessage = null): JsonResponse
     {
         $response = $action(new WebTaskController);
 
@@ -199,13 +199,13 @@ class CreateTaskController extends Controller
             $target = $response->getTargetUrl();
 
             $id = $kind === 'task'
-                ? (preg_match('#/bd/tasks/(\d+)(?:\?|$)#', $target, $m) ? (int) $m[1] : null)
+                ? (preg_match('#/(?:bd|designer)/tasks/(\d+)(?:\?|$)#', $target, $m) ? (int) $m[1] : null)
                 : (preg_match('#[?&]draft=(\d+)#', $target, $m) ? (int) $m[1] : null);
 
             if ($id !== null) {
                 return response()->json([
                     'id' => $id,
-                    'message' => $kind === 'task' ? 'Task created.' : 'Saved as draft.',
+                    'message' => $kind === 'task' ? ($taskMessage ?? 'Task created.') : 'Saved as draft.',
                 ], 201);
             }
 

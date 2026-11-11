@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api_client.dart';
+import '../../core/auth.dart';
 import '../../core/models.dart';
 import '../../core/server_settings.dart';
 import '../../core/theme.dart';
@@ -68,6 +69,7 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
   String _partyType = 'client';
   String _priority = 'medium';
   int? _designerId;
+  int? _bdId; // a Designer's task: the BD who approves it
   DateTime? _due; // the day
   TimeOfDay _dueTime = const TimeOfDay(hour: 18, minute: 0);
   String? _creativeType;
@@ -102,6 +104,9 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
   bool _busy = false;
 
   TaskFormDef get def => widget.def;
+
+  /// A Designer creates tasks for themself and sends them to a BD for approval (no drafts, no clone, as on the web).
+  bool get _isDesigner => ref.read(authProvider).user?.role == 'designer';
 
   TextEditingController _c(String key) => _text.putIfAbsent(key, TextEditingController.new);
 
@@ -186,7 +191,11 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
     if (draft) return errors;
 
     if (_inhouse && _nature == 'others' && v('task_nature_other').isEmpty) errors['task_nature_other'] = 'Describe the nature';
-    if (_designerId == null) errors['designer_id'] = 'Choose a designer';
+    if (_isDesigner) {
+      if (_bdId == null) errors['bd_id'] = 'Choose the BD who will approve it';
+    } else if (_designerId == null) {
+      errors['designer_id'] = 'Choose a designer';
+    }
     if (!_inhouse && _digital && (_creativeType ?? '').isEmpty) errors['creative_type'] = 'Choose a creative type';
     if (_showCreatives) {
       final n = int.tryParse(v('total_creatives')) ?? 0;
@@ -268,7 +277,8 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
       'task_name': v('task_name'),
       'vertical': _vertical,
       'task_nature': _nature,
-      if (_designerId != null) 'designer_id': _designerId,
+      if (_isDesigner && _bdId != null) 'bd_id': _bdId,
+      if (!_isDesigner && _designerId != null) 'designer_id': _designerId,
       if (_showCreatives && v('total_creatives').isNotEmpty) 'total_creatives': int.tryParse(v('total_creatives')),
     };
 
@@ -340,7 +350,7 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
       ref.invalidate(boardProvider);
       ref.invalidate(kanbanBoardProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(draft ? 'Saved as draft.' : 'Task created.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(draft ? 'Saved as draft.' : (_isDesigner ? 'Task submitted. Waiting for BD confirmation.' : 'Task created.'))));
       draft ? context.pop() : context.pushReplacement('/task/$id');
     } on ApiException catch (e) {
       if (mounted) {
@@ -513,9 +523,11 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
             children: [
               _kindToggle(),
-              const SizedBox(height: 12),
-              _helpers(),
-              if (_cloneOpen) _clonePanel(),
+              if (!_isDesigner) ...[
+                const SizedBox(height: 12),
+                _helpers(),
+              ],
+              if (_cloneOpen && !_isDesigner) _clonePanel(),
               if (_prefillLabel != null) _prefillBanner(),
               if (_banner != null)
                 Container(
@@ -687,7 +699,7 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
           _text_('zoho_project_number', 'Zoho project number (optional)', maxLength: 60),
           if (_digital) _dropdown('creative_type', 'Creative type', {for (final t in (def.creativeTypes.isEmpty ? const ['Image Creative', 'Video Creative'] : def.creativeTypes)) t: t}, _creativeType, (v) => setState(() => _creativeType = v)),
         ],
-        _designerField(),
+        _isDesigner ? _bdField() : _designerField(),
         if (_showCreatives) _text_('total_creatives', 'Total number of creatives', keyboard: TextInputType.number, maxLength: 4, digitsOnly: true),
       ]);
 
@@ -753,6 +765,46 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
           ]),
         ),
       if (_availability != null) AvailabilityMeter(availability: _availability!),
+    ]));
+  }
+
+  /// A Designer's task: it is assigned to them, and the BD chosen here must approve it before work starts.
+  Widget _bdField() {
+    String verticalsOf(Designer d) => d.verticals.map((v) => def.verticals.where((o) => o.key == v).map((o) => o.label).firstOrNull ?? v).join(', ');
+    final chosen = def.bds.where((d) => d.id == _bdId).firstOrNull;
+
+    return _pad(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      DropdownButtonFormField<int>(
+        key: const Key('f-bd_id'),
+        initialValue: _bdId,
+        isExpanded: true,
+        decoration: formDecoration('Assigned BD *', error: _errors['bd_id']),
+        selectedItemBuilder: (context) => [for (final d in def.bds) Align(alignment: Alignment.centerLeft, child: Text(d.name, overflow: TextOverflow.ellipsis))],
+        items: [
+          for (final d in def.bds)
+            DropdownMenuItem(
+              value: d.id,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(d.name, overflow: TextOverflow.ellipsis),
+                  if (d.verticals.isNotEmpty) Text(verticalsOf(d), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF8A8F9C))),
+                ],
+              ),
+            ),
+        ],
+        onChanged: (v) => setState(() {
+          _bdId = v;
+          _errors.remove('bd_id');
+        }),
+      ),
+      if (chosen != null && chosen.verticals.isNotEmpty)
+        Padding(padding: const EdgeInsets.only(top: 10), child: Wrap(spacing: 6, runSpacing: 6, children: [for (final v in chosen.verticals) _chip(def.verticals.where((o) => o.key == v).map((o) => o.label).firstOrNull ?? v, const Color(0xFFFFE8EA), adinnRed)])),
+      const Padding(
+        padding: EdgeInsets.only(top: 8),
+        child: Text('This task is assigned to you. It waits for the BD you choose to approve it before work starts.', key: Key('bd-approval-note'), style: TextStyle(fontSize: 12, color: Color(0xFF8A8F9C))),
+      ),
     ]));
   }
 
@@ -838,6 +890,7 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
         padding: EdgeInsets.fromLTRB(14, 10, 14, 10 + bottom),
         decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Color(0x14101828), blurRadius: 14, offset: Offset(0, -4))]),
         child: Row(children: [
+          if (!_isDesigner) ...[
           Expanded(
             child: OutlinedButton(
               key: const Key('save-draft'),
@@ -853,6 +906,7 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
             ),
           ),
           const SizedBox(width: 12),
+          ],
           Expanded(
             flex: 2,
             child: FilledButton(
@@ -864,7 +918,7 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
                 textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
               ),
               onPressed: _busy ? null : () => _submit(draft: false),
-              child: _busy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Create task'),
+              child: _busy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(_isDesigner ? 'Submit for approval' : 'Create task'),
             ),
           ),
         ]),

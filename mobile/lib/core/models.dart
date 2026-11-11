@@ -368,6 +368,7 @@ class TaskFormDef {
     this.locations = const [],
     this.creativeTypes = const [],
     this.inhouseClientName = 'Adinn Advertising Services Ltd',
+    this.bds = const [],
   });
 
   final List<Option> verticals;
@@ -387,6 +388,9 @@ class TaskFormDef {
   final List<String> locations;
   final List<String> creativeTypes;
   final String inhouseClientName;
+
+  /// For a Designer creating a task: the BDs who can approve it (instead of [designers]).
+  final List<Designer> bds;
 
   List<FormFieldDef> fieldsFor(String vertical, String nature) => webForms[vertical]?[nature] ?? fields[vertical]?[nature] ?? const [];
 
@@ -420,6 +424,7 @@ class TaskFormDef {
       locations: ((j['locations'] as List?) ?? []).map((l) => '$l').toList(),
       creativeTypes: ((j['creative_types'] as List?) ?? []).map((l) => '$l').toList(),
       inhouseClientName: (j['inhouse_client_name'] ?? 'Adinn Advertising Services Ltd') as String,
+      bds: ((j['bds'] as List?) ?? []).map((d) => Designer.fromJson(d as Map<String, dynamic>)).toList(),
     );
   }
 }

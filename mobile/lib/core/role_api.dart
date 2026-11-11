@@ -136,7 +136,7 @@ class RoleApi {
   }
 
   // ---- BD: create ----
-  Future<TaskFormDef> taskForm() async => TaskFormDef.fromJson(await _api.get('/bd/task-form'));
+  Future<TaskFormDef> taskForm() async => TaskFormDef.fromJson(await _api.get(role == 'designer' ? '/designer/task-form' : '/bd/task-form'));
 
   Future<List<ClientSuggestion>> searchClients(String q) async {
     final json = await _api.getList('/bd/clients/search', query: {'q': q});
@@ -168,7 +168,12 @@ class RoleApi {
     bool inhouse = false,
     bool draft = false,
   }) async {
+    // A Designer's task is assigned to themself and waits for the BD they pick; there are no drafts for it (as on the web).
+    if (role == 'designer' && draft) throw ApiException('Designers cannot save drafts.');
+
     final path = switch ((inhouse, draft)) {
+      (false, false) when role == 'designer' => '/designer/tasks',
+      (true, false) when role == 'designer' => '/designer/tasks/in-house',
       (false, false) => '/bd/tasks',
       (true, false) => '/bd/tasks/in-house',
       (false, true) => '/bd/drafts',

@@ -144,9 +144,9 @@ void main() {
 
   Map<String, dynamic> body(String path) => Map<String, dynamic>.from(api.requests.lastWhere((r) => r.method == 'POST' && r.path == path).data as Map);
 
-  testWidgets('only BD gets the New task button', (tester) async {
+  testWidgets('a Designer gets the New task button too (it opens the Designer form)', (tester) async {
     await boot(tester, role: 'designer', routes: {'GET /designer/tasks': (_) => (status: 200, body: {'statuses': [], 'tasks': []})});
-    expect(find.byKey(const Key('new-task')), findsNothing);
+    expect(find.byKey(const Key('new-task')), findsOneWidget);
   });
 
   testWidgets('creates a client task: server-defined fields, rows, and a JSON body', (tester) async {

@@ -53,6 +53,12 @@ class DesignerDashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Designer Dashboard')),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('new-task'),
+        onPressed: () => context.push('/create'),
+        icon: const Icon(Icons.add),
+        label: const Text('New task'),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
