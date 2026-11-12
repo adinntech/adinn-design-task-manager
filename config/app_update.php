@@ -21,4 +21,10 @@ return [
         // does not show the app to anyone while it is still being tested.
         'download_enabled' => (bool) env('APP_DOWNLOAD_ENABLED', false),
     ],
+
+    // Secret the release pipeline (GitHub Actions) sends to publish a new APK: POST /api/v1/internal/app-release.
+    // Unset = that endpoint does not exist (404).
+    'release_token' => env('RELEASE_UPLOAD_TOKEN'),
+    // How many published APK files to keep in public/downloads (the newest stay; older ones are deleted).
+    'keep_apks' => 3,
 ];

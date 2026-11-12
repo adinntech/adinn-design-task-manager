@@ -33,6 +33,10 @@ Route::post('/password/reset', [PasswordResetController::class, 'reset'])->middl
 // In-app update gate: public so it also works before sign-in. Values come from config/app_update.php.
 Route::get('/app-update', [AppUpdateController::class, 'show'])->middleware('throttle:60,1');
 
+// Release pipeline (GitHub Actions) publishes a freshly built APK here. Bearer RELEASE_UPLOAD_TOKEN; 404 when that key is unset.
+Route::post('/internal/app-release', [\App\Http\Controllers\Api\AppReleaseController::class, 'store'])
+    ->middleware(['throttle:20,1', \App\Http\Middleware\EnsureReleaseToken::class]);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);

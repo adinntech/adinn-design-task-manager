@@ -1,0 +1,4 @@
+storePassword=<keystore password>
+keyPassword=<key password>
+keyAlias=adinn
+storeFile=app/adinn-release.jks

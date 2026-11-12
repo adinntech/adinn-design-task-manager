@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\AppRelease;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -21,7 +22,7 @@ class AppDownloadController extends Controller
     public static function available(): bool
     {
         return (bool) config('app_update.android.download_enabled')
-            && (Storage::disk('local')->exists(self::DISK_PATH) || filled(config('app_update.android.url')));
+            && (Storage::disk('local')->exists(self::DISK_PATH) || filled(AppRelease::current()['url'] ?? null));
     }
 
     public function android(): BinaryFileResponse|RedirectResponse
@@ -31,7 +32,7 @@ class AppDownloadController extends Controller
         $disk = Storage::disk('local');
 
         if ($disk->exists(self::DISK_PATH)) {
-            $version = (string) config('app_update.android.latest_version');
+            $version = (string) (AppRelease::current()['latest_version'] ?? '');
             $name = 'adinn-design-tasks'.($version !== '' ? '-'.preg_replace('/[^0-9A-Za-z.\-]/', '', $version) : '').'.apk';
 
             return response()->download($disk->path(self::DISK_PATH), $name, [
@@ -40,7 +41,7 @@ class AppDownloadController extends Controller
             ]);
         }
 
-        $url = config('app_update.android.url');
+        $url = AppRelease::current()['url'] ?? null;
         abort_unless(filled($url), 404, 'The app has not been published yet.');
 
         return redirect()->away($url);

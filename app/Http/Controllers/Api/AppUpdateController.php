@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\AppRelease;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +16,7 @@ class AppUpdateController extends Controller
     public function show(Request $request): JsonResponse
     {
         $platform = $request->query('platform') === 'android' || ! $request->filled('platform') ? 'android' : null;
-        $cfg = $platform ? config("app_update.{$platform}") : null;
+        $cfg = $platform ? AppRelease::current() : null;
 
         if (! $cfg) {
             return response()->json(['platform' => $request->query('platform'), 'min_build' => 0, 'latest_build' => 0, 'url' => null, 'notes' => null, 'latest_version' => null]);
