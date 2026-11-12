@@ -1,3 +1,4 @@
+import 'package:adinn_tasks/core/app_update.dart';
 import 'package:adinn_tasks/core/auth.dart';
 import 'package:adinn_tasks/core/models.dart';
 import 'package:adinn_tasks/main.dart';
@@ -30,7 +31,7 @@ Map<String, dynamic> profileJson({String role = 'designer', List<String> vertica
 void main() {
   late FakeAdapter adapter;
 
-  Future<void> boot(WidgetTester tester, {String role = 'designer', Map<String, Handler> routes = const {}}) async {
+  Future<void> boot(WidgetTester tester, {String role = 'designer', Map<String, Handler> routes = const {}, int build = 3, String version = '1.0.2'}) async {
     tester.view.physicalSize = const Size(800, 3000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -40,12 +41,15 @@ void main() {
       'GET /notifications': (_) => (status: 200, body: {'unread_count': 0, 'data': []}),
       'GET /designer/tasks': (_) => (status: 200, body: {'statuses': [], 'columns': [], 'tasks': []}),
       'GET /profile': (_) => (status: 200, body: profileJson(role: role)),
+      'GET /app-update': (_) => (status: 200, body: {'min_build': 0, 'latest_build': 3, 'latest_version': '1.0.2', 'url': null, 'notes': null}),
       ...routes,
     });
 
     final container = ProviderContainer(overrides: [
       sessionStoreProvider.overrideWithValue(MemoryStore(token: 'tok', user: AppUser.fromJson(userJson(role: role)))),
       apiClientProvider.overrideWith((ref) => fakeClient(adapter, token: () => ref.read(authProvider).token)),
+      appBuildProvider.overrideWith((ref) async => build),
+      appVersionProvider.overrideWith((ref) async => version),
     ]);
     addTearDown(container.dispose);
 
@@ -183,5 +187,48 @@ void main() {
     expect(find.byKey(const Key('profile-retry')), findsOneWidget);
     expect(text(tester, 'profile-email'), 't@example.test');
     expect(find.byKey(const Key('sign-out')), findsOneWidget);
+  });
+
+  testWidgets('the header shows who you are, with the employee ID and last login once the profile has loaded', (tester) async {
+    await boot(tester);
+
+    expect(find.text('ID 123'), findsOneWidget);
+    expect(find.textContaining('Last login'), findsOneWidget);
+    expect(find.byKey(const Key('sign-out')), findsOneWidget);
+  });
+
+  testWidgets('About shows the installed version and build, and that the app is up to date', (tester) async {
+    await boot(tester, build: 3, version: '1.0.2');
+
+    await tester.ensureVisible(find.byKey(const Key('about-version')));
+    expect(tester.widget<Text>(find.byKey(const Key('about-version'))).data, '1.0.2 (build 3)');
+    expect(tester.widget<Text>(find.byKey(const Key('about-update'))).data, 'Up to date');
+  });
+
+  testWidgets('About says when a newer release is waiting, and Check looks again', (tester) async {
+    var latest = 3;
+    await boot(tester, build: 3, routes: {
+      'GET /app-update': (_) => (status: 200, body: {'min_build': 0, 'latest_build': latest, 'latest_version': latest == 3 ? '1.0.2' : '1.0.3', 'url': null, 'notes': null}),
+    });
+    await tester.ensureVisible(find.byKey(const Key('about-update')));
+    expect(tester.widget<Text>(find.byKey(const Key('about-update'))).data, 'Up to date');
+
+    latest = 107; // a release has gone out since
+    await tester.tap(find.byKey(const Key('about-check')));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(find.byKey(const Key('about-update'))).data, 'Update available · v1.0.3');
+  });
+
+  testWidgets('the form lays out cleanly on a narrow phone (two short fields share a row)', (tester) async {
+    await boot(tester);
+    tester.view.physicalSize = const Size(340, 3400); // a small phone
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('profile-username')), findsOneWidget);
+    expect(find.byKey(const Key('profile-employee_code')), findsOneWidget);
+    // side by side: same height on the page
+    expect(tester.getTopLeft(find.byKey(const Key('profile-username'))).dy, tester.getTopLeft(find.byKey(const Key('profile-employee_code'))).dy);
   });
 }

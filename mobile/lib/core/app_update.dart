@@ -35,6 +35,9 @@ final appBuildProvider = FutureProvider<int>((ref) async {
   return int.tryParse(info.buildNumber) ?? 0;
 });
 
+/// This install's version name (the part before the "+" in pubspec.yaml, e.g. 1.0.3). Overridden in tests.
+final appVersionProvider = FutureProvider<String>((ref) async => (await PackageInfo.fromPlatform()).version, retry: (_, _) => null);
+
 /// Remembers the last build this phone ran, so the first launch after an update can say what changed.
 abstract class SeenBuildStore {
   Future<int?> read();

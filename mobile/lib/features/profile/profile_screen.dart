@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_update.dart';
 import '../../core/app_lock.dart';
 import '../../core/auth.dart';
 import '../../core/models.dart';
@@ -308,7 +309,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 28),
           children: [
-            _header(user, primary),
+            _header(user, primary, data),
             if (profile.hasError)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
@@ -352,17 +353,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               subtitle: 'Your e-mail is fixed and cannot be changed here.',
               children: [
                 _field('name', 'Full Name', _name, Icons.person_rounded),
-                _field(
-                  'username',
-                  'Username',
-                  _username,
-                  Icons.alternate_email_rounded,
-                ),
-                _field(
-                  'employee_code',
-                  'Employee Code',
-                  _code,
-                  Icons.tag_rounded,
+                _pair(
+                  _field(
+                    'username',
+                    'Username',
+                    _username,
+                    Icons.alternate_email_rounded,
+                  ),
+                  _field(
+                    'employee_code',
+                    'Employee Code',
+                    _code,
+                    Icons.tag_rounded,
+                  ),
                 ),
                 _field('role_name', 'Role Name', _role, Icons.work_rounded),
                 _field(
@@ -469,6 +472,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: 12),
               _verticalsSection(data),
             ],
+            const SizedBox(height: 12),
+            _about(),
           ],
         ),
       ),
@@ -520,91 +525,98 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (ok == true) await ref.read(appLockProvider.notifier).reset();
   }
 
-  Widget _header(AppUser? user, Color primary) {
+  Widget _header(AppUser? user, Color primary, ProfileData? data) {
     final name = user?.name ?? '';
+    // Small facts under the name, once the full profile has loaded.
+    final facts = <(IconData, String)>[
+      if (data != null && data.employeeCode.isNotEmpty) (Icons.badge_outlined, 'ID ${data.employeeCode}'),
+      if (data?.lastLogin != null) (Icons.history_rounded, 'Last login ${DateFormat('d MMM, h:mm a').format(data!.lastLogin!)}'),
+    ];
+
+    Widget circle(double size, double alpha) => Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: alpha)));
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: [primary, const Color(0xFF9E030D)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: primary.withValues(alpha: 0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 7),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(colors: [primary, const Color(0xFF9E030D)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        boxShadow: [BoxShadow(color: primary.withValues(alpha: 0.25), blurRadius: 14, offset: const Offset(0, 7))],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : '?',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
+          Positioned(top: -42, right: -28, child: circle(140, 0.08)),
+          Positioned(bottom: -54, left: -26, child: circle(120, 0.06)),
+          Padding(
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    user?.roleLabel ?? '',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                Row(
+                  children: [
+                    // the avatar sits in a soft ring
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.28)),
+                      child: CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.white,
+                        child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: primary)),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: Colors.white)),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                            child: Text(user?.roleLabel ?? '', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Sign out lives up here, where it is always in reach, instead of at the end of a long page.
+                    TextButton.icon(
+                      key: const Key('sign-out'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.white.withValues(alpha: 0.16),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        minimumSize: const Size(0, 36),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => ref.read(authProvider.notifier).logout(),
+                      icon: const Icon(Icons.logout_rounded, size: 17),
+                      label: const Text('Sign out', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+                    ),
+                  ],
                 ),
+                if (facts.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final (icon, text) in facts)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(12)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, size: 14, color: Colors.white70),
+                              const SizedBox(width: 6),
+                              Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white))),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ],
-            ),
-          ),
-          // Sign out lives up here, where it is always in reach, instead of at the end of a long page.
-          TextButton.icon(
-            key: const Key('sign-out'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
-              backgroundColor: Colors.white.withValues(alpha: 0.16),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              minimumSize: const Size(0, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: () => ref.read(authProvider.notifier).logout(),
-            icon: const Icon(Icons.logout_rounded, size: 17),
-            label: const Text(
-              'Sign out',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
             ),
           ),
         ],
@@ -612,68 +624,144 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  /// Which version of the app this is, and whether a newer one has been released.
+  Widget _about() => Consumer(
+        builder: (context, ref, _) {
+          final version = ref.watch(appVersionProvider).asData?.value;
+          final build = ref.watch(appBuildProvider).asData?.value;
+          final info = ref.watch(appUpdateProvider).asData?.value;
+          final newer = build != null && info != null && info.canUpdate(build);
+          final status = newer ? const Color(0xFFB54708) : const Color(0xFF067647);
+
+          return _section(
+            icon: Icons.info_outline_rounded,
+            title: 'About',
+            subtitle: 'Adinn Design Tasks',
+            children: [
+              Row(
+                children: [
+                  const Expanded(child: Text('Version', style: TextStyle(fontSize: 13, color: Color(0xFF667085), fontWeight: FontWeight.w600))),
+                  Text(
+                    version == null ? '—' : (build == null ? version : '$version (build $build)'),
+                    key: const Key('about-version'),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(child: Text('Updates', style: TextStyle(fontSize: 13, color: Color(0xFF667085), fontWeight: FontWeight.w600))),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: status.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                    child: Text(
+                      newer ? 'Update available${info.latestVersion == null ? '' : ' · v${info.latestVersion}'}' : 'Up to date',
+                      key: const Key('about-update'),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: status),
+                    ),
+                  ),
+                  TextButton(
+                    key: const Key('about-check'),
+                    onPressed: () => ref.invalidate(appUpdateProvider),
+                    child: const Text('Check', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      );
+
+  /// A card for one group of settings: a small icon badge, the title, then a hairline before the fields.
   Widget _section({
     required IconData icon,
     required String title,
     String? subtitle,
     required List<Widget> children,
-  }) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: const Color(0xFFEAECF0)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary
-                    .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+  }) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFEAECF0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(color: primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                child: Icon(icon, size: 18, color: primary),
               ),
-              child: Icon(
-                icon,
-                size: 19,
-                color: Theme.of(context).colorScheme.primary,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, letterSpacing: -0.2, color: Color(0xFF101828))),
+                    if (subtitle != null) Padding(padding: const EdgeInsets.only(top: 1), child: Text(subtitle, style: const TextStyle(fontSize: 11.5, height: 1.3, color: Color(0xFF667085)))),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: Color(0xFF667085),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        ...children,
-      ],
-    ),
-  );
+            ],
+          ),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: Divider(height: 1, color: Color(0xFFF2F4F7))),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  /// The one look every input shares: a soft grey fill, a hairline border that turns red on focus, no icons inside.
+  InputDecoration _deco({String? hint, String? error, bool readOnly = false, Widget? suffix}) {
+    final primary = Theme.of(context).colorScheme.primary;
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: c, width: w));
+
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, color: Color(0xFF98A2B3)),
+      errorText: error,
+      isDense: true,
+      filled: true,
+      fillColor: readOnly ? const Color(0xFFF2F4F7) : const Color(0xFFF9FAFB),
+      suffixIcon: suffix,
+      contentPadding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
+      border: border(const Color(0xFFEAECF0)),
+      enabledBorder: border(const Color(0xFFEAECF0)),
+      focusedBorder: border(primary, 1.4),
+      errorBorder: border(const Color(0xFFFDA29B)),
+      focusedErrorBorder: border(const Color(0xFFD92D20), 1.4),
+    );
+  }
+
+  /// A small caption above an input, with a quiet icon: "label above, value below", as in a form on paper.
+  Widget _labeled(String label, IconData icon, Widget input) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: const Color(0xFF98A2B3)),
+              const SizedBox(width: 6),
+              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF475467)))),
+            ],
+          ),
+          const SizedBox(height: 6),
+          input,
+        ],
+      );
+
+  /// Two short fields side by side.
+  Widget _pair(Widget left, Widget right) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [Expanded(child: left), const SizedBox(width: 12), Expanded(child: right)],
+      );
 
   Widget _field(
     String id,
@@ -686,82 +774,59 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     bool showing = false,
     TextInputType? keyboard,
   }) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: TextField(
-      key: Key('profile-$id'),
-      controller: controller,
-      readOnly: readOnly,
-      obscureText: obscure,
-      keyboardType: keyboard,
-      style: TextStyle(
-        fontSize: 15,
-        color: readOnly ? const Color(0xFF667085) : null,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        errorText: _errors[id],
-        isDense: true,
-        filled: true,
-        fillColor: readOnly ? const Color(0xFFF2F4F7) : Colors.white,
-        prefixIcon: Icon(icon, size: 20),
-        suffixIcon: readOnly
-            ? const Icon(Icons.lock_outline_rounded, size: 18)
-            : onToggle == null
-            ? null
-            : TextButton(
-                onPressed: onToggle,
-                child: Text(
-                  showing ? 'Hide' : 'Show',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 14,
-          horizontal: 12,
+    padding: const EdgeInsets.only(bottom: 14),
+    child: _labeled(
+      label,
+      icon,
+      TextField(
+        key: Key('profile-$id'),
+        controller: controller,
+        readOnly: readOnly,
+        obscureText: obscure,
+        keyboardType: keyboard,
+        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: readOnly ? const Color(0xFF667085) : const Color(0xFF101828)),
+        decoration: _deco(
+          hint: readOnly ? null : 'Not set',
+          error: _errors[id],
+          readOnly: readOnly,
+          suffix: readOnly
+              ? const Icon(Icons.lock_outline_rounded, size: 17, color: Color(0xFF98A2B3))
+              : onToggle == null
+                  ? null
+                  : TextButton(
+                      onPressed: onToggle,
+                      child: Text(showing ? 'Hide' : 'Show', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                    ),
         ),
       ),
     ),
   );
 
-  Widget _readOnlyRow(String label, String value, IconData icon) =>
-      InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          isDense: true,
-          filled: true,
-          fillColor: const Color(0xFFF2F4F7),
-          prefixIcon: Icon(icon, size: 20),
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 14,
-            horizontal: 12,
-          ),
-        ),
-        child: Text(
-          value,
-          key: const Key('profile-last-login'),
-          style: const TextStyle(fontSize: 15, color: Color(0xFF667085)),
+  Widget _readOnlyRow(String label, String value, IconData icon) => _labeled(
+        label,
+        icon,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
+          decoration: BoxDecoration(color: const Color(0xFFF2F4F7), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFEAECF0))),
+          child: Text(value, key: const Key('profile-last-login'), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: Color(0xFF667085))),
         ),
       );
 
   Widget _save(String key, String label, String id, VoidCallback onPressed) =>
       FilledButton(
         key: Key(key),
-        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
         onPressed: _busy.contains(id) ? null : onPressed,
         child: _busy.contains(id)
             ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: Colors.white,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
               )
             : Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
       );
+
 
   Widget _verticalsSection(ProfileData data) {
     final addable = {
@@ -792,27 +857,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ? 'Keep this up to date so BD can see your capability before assigning a task.'
           : 'The verticals you work on.',
       children: [
-        KeyedSubtree(
+        _labeled(
+          data.hasSkills ? 'Experienced Verticals' : 'Working Verticals',
+          Icons.category_rounded,
+          KeyedSubtree(
           key: const Key('vertical-add'),
           // a new key per pick, so the field starts empty again instead of holding a value its list no longer offers
           child: DropdownButtonFormField<String>(
             key: ValueKey(_verticals.length),
             initialValue: _pickedVertical,
             isExpanded: true,
-            decoration: InputDecoration(
-              labelText: data.hasSkills
-                  ? 'Experienced Verticals'
-                  : 'Working Verticals',
-              hintText: 'Add a vertical…',
-              isDense: true,
-              filled: true,
-              fillColor: Colors.white,
-              prefixIcon: const Icon(Icons.category_rounded, size: 20),
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 14,
-                horizontal: 12,
-              ),
-            ),
+            decoration: _deco(hint: 'Add a vertical…'),
             items: [
               for (final e in addable.entries)
                 DropdownMenuItem(value: e.key, child: Text(e.value)),
@@ -825,6 +880,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               });
             },
           ),
+        ),
         ),
         if (_verticals.isNotEmpty)
           Padding(
@@ -844,26 +900,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         if (data.hasSkills) ...[
           const SizedBox(height: 14),
-          TextField(
-            key: const Key('skill-input'),
-            controller: _skill,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _addSkill(),
-            decoration: InputDecoration(
-              labelText: 'Skills',
-              hintText: 'Type a skill and press Enter',
-              isDense: true,
-              filled: true,
-              fillColor: Colors.white,
-              prefixIcon: const Icon(Icons.bolt_rounded, size: 20),
-              suffixIcon: IconButton(
-                key: const Key('skill-add'),
-                icon: const Icon(Icons.add_circle_rounded),
-                onPressed: _addSkill,
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 14,
-                horizontal: 12,
+          _labeled(
+            'Skills',
+            Icons.bolt_rounded,
+            TextField(
+              key: const Key('skill-input'),
+              controller: _skill,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _addSkill(),
+              style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+              decoration: _deco(
+                hint: 'Type a skill and press Enter',
+                suffix: IconButton(
+                  key: const Key('skill-add'),
+                  icon: Icon(Icons.add_circle_rounded, color: Theme.of(context).colorScheme.primary),
+                  onPressed: _addSkill,
+                ),
               ),
             ),
           ),
