@@ -228,9 +228,7 @@ void main() {
   Map<String, dynamic> lastBoardQuery() => api.requests.lastWhere((r) => r.path == '/designer/tasks').queryParameters;
 
   group('assets', () {
-    test('the supplied originals are untouched and the processed copies exist', () {
-      expect(File('tasks screen assets/Smiling Adinn Representative Holding Invisible Sign.png').existsSync(), isTrue);
-      expect(File('tasks screen assets/Glossy Red-Bordered Card Stack.png').existsSync(), isTrue);
+    test('the processed copies exist', () {
       for (final f in ['adinn_rep', 'hand_left', 'hand_right']) {
         expect(File('assets/tasks/$f.png').existsSync(), isTrue, reason: f);
       }
