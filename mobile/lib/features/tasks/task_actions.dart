@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/auth.dart';
 import '../../core/models.dart';
+import '../dashboard/dashboard_widgets.dart';
 import '../requests/requests_screen.dart';
 import '../widgets/form_sheet.dart';
 import '../../core/uploads.dart';
@@ -235,7 +236,6 @@ class _RatingSheetState extends State<RatingSheet> {
 
   final _values = {for (final k in _criteria.keys) k: 5.0};
   final _comment = TextEditingController();
-  bool _printing = false;
   String? _error;
 
   /// Mirrors the server: average snapped to the nearest half star.
@@ -247,16 +247,23 @@ class _RatingSheetState extends State<RatingSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  /// One of the two finishing buttons: [printing] true sends the task on to Prepare Printing File, false marks it completed.
+  void _submit({required bool printing}) {
     if (_overall < 3 && _comment.text.trim().isEmpty) {
       setState(() => _error = 'Add a comment — it is required when the overall rating is below 3 stars.');
       return;
     }
-    Navigator.pop(context, RatingResult(Map.of(_values), _comment.text.trim(), _printing));
+    Navigator.pop(context, RatingResult(Map.of(_values), _comment.text.trim(), printing));
   }
+
+  Color _tone(double v) => v >= 4 ? const Color(0xFF12B76A) : v >= 3 ? const Color(0xFFF79009) : const Color(0xFFD92D20);
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final overall = _overall;
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: c, width: w));
+
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 0, 16, math.max(MediaQuery.viewInsetsOf(context).bottom, MediaQuery.viewPaddingOf(context).bottom) + 22),
       child: SingleChildScrollView(
@@ -264,36 +271,102 @@ class _RatingSheetState extends State<RatingSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Rate the designer', style: Theme.of(context).textTheme.titleLarge),
-            Text('Overall: $_overall / 5', key: const Key('overall'), style: Theme.of(context).textTheme.titleMedium),
-            for (final e in _criteria.entries) ...[
-              const SizedBox(height: 8),
-              Text('${e.value} — ${_values[e.key]}'),
-              Slider(
-                key: Key('rate-${e.key}'),
-                value: _values[e.key]!,
-                min: 0.5,
-                max: 5,
-                divisions: 9,
-                label: '${_values[e.key]}',
-                onChanged: (v) => setState(() => _values[e.key] = v),
+            Row(children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.star_rate_rounded, color: primary, size: 24),
               ),
-            ],
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Rate the designer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: Color(0xFF101828))),
+                  Text('Slide each point, then finish the task', style: TextStyle(fontSize: 12, color: Color(0xFF667085))),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(color: _tone(overall).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: _tone(overall).withValues(alpha: 0.25))),
+              child: Row(children: [
+                Text('$overall', style: TextStyle(fontSize: 34, height: 1, fontWeight: FontWeight.w900, color: _tone(overall))),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    HalfStars(overall, size: 20),
+                    const SizedBox(height: 4),
+                    Text('Overall: $overall / 5', key: const Key('overall'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF475467))),
+                  ]),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 10),
+            for (final e in _criteria.entries)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Column(children: [
+                  Row(children: [
+                    Expanded(child: Text(e.value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF344054)))),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                      decoration: BoxDecoration(color: _tone(_values[e.key]!).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
+                      child: Text('${_values[e.key]}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _tone(_values[e.key]!))),
+                    ),
+                  ]),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(trackHeight: 5, activeTrackColor: _tone(_values[e.key]!), inactiveTrackColor: const Color(0xFFEAECF0), thumbColor: _tone(_values[e.key]!), overlayShape: const RoundSliderOverlayShape(overlayRadius: 16)),
+                    child: Slider(
+                      key: Key('rate-${e.key}'),
+                      value: _values[e.key]!,
+                      min: 0.5,
+                      max: 5,
+                      divisions: 9,
+                      label: '${_values[e.key]}',
+                      onChanged: (v) => setState(() => _values[e.key] = v),
+                    ),
+                  ),
+                ]),
+              ),
+            const SizedBox(height: 6),
             TextField(
               key: const Key('rating-comment'),
               controller: _comment,
               minLines: 2,
               maxLines: 4,
-              decoration: InputDecoration(labelText: 'Comment', errorText: _error),
+              style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+              decoration: InputDecoration(
+                hintText: 'Add a comment (required below 3 stars)',
+                hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF98A2B3)),
+                errorText: _error,
+                filled: true,
+                fillColor: const Color(0xFFF9FAFB),
+                contentPadding: const EdgeInsets.all(14),
+                border: border(const Color(0xFFEAECF0)),
+                enabledBorder: border(const Color(0xFFEAECF0)),
+                focusedBorder: border(primary, 1.4),
+                errorBorder: border(const Color(0xFFFDA29B)),
+                focusedErrorBorder: border(const Color(0xFFD92D20), 1.4),
+              ),
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Send on to Prepare Printing File'),
-              subtitle: const Text('Instead of marking the task completed'),
-              value: _printing,
-              onChanged: (v) => setState(() => _printing = v),
+            const SizedBox(height: 16),
+            // Two clear choices instead of a switch: finish the task, or send it on for the printing file.
+            FilledButton.icon(
+              key: const Key('rating-submit'),
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: () => _submit(printing: false),
+              icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+              label: const Text('Submit & complete', style: TextStyle(fontWeight: FontWeight.w800)),
             ),
-            FilledButton(key: const Key('rating-submit'), onPressed: _submit, child: Text(_printing ? 'Submit & prepare printing file' : 'Submit & complete')),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              key: const Key('rating-submit-printing'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: () => _submit(printing: true),
+              icon: const Icon(Icons.print_outlined, size: 20),
+              label: const Text('Submit & prepare printing file', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
           ],
         ),
       ),

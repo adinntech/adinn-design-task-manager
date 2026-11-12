@@ -165,6 +165,55 @@ void main() {
       expect(body['completion_type'], 'completed');
     });
 
+    testWidgets('the two finishing buttons: complete posts "completed", the printing button posts "prepare_printing_file"', (tester) async {
+      await boot(tester, 'bd', bdRoutes());
+      await tester.tap(find.text('Banner'));
+      await tester.pumpAndSettle();
+
+      Future<void> open() async {
+        await tester.tap(find.byKey(const Key('bd-complete')));
+        await tester.pumpAndSettle();
+      }
+
+      await open();
+      expect(find.byType(Switch), findsNothing); // no toggle any more
+      expect(find.byKey(const Key('rating-submit')), findsOneWidget);
+      expect(find.byKey(const Key('rating-submit-printing')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('rating-submit')));
+      await tester.pumpAndSettle();
+      expect(lastBody('POST', '/bd/tasks/1/complete')['completion_type'], 'completed');
+      expect(find.text('Task completed.'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5)); // let the confirmation go
+      await open();
+      await tester.tap(find.byKey(const Key('rating-submit-printing')));
+      await tester.pumpAndSettle();
+      expect(lastBody('POST', '/bd/tasks/1/complete')['completion_type'], 'prepare_printing_file');
+      expect(find.text('Moved to Prepare Printing File.'), findsOneWidget);
+    });
+
+    testWidgets('the comment rule for a low rating applies to the printing button too', (tester) async {
+      await boot(tester, 'bd', bdRoutes());
+      await tester.tap(find.text('Banner'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('bd-complete')));
+      await tester.pumpAndSettle();
+      for (final k in ['designer_attitude', 'design_satisfaction', 'rework_iteration', 'meeting_deadline', 'client_satisfaction']) {
+        await tester.drag(find.byKey(Key('rate-$k')), const Offset(-2000, 0));
+        await tester.pump();
+      }
+
+      await tester.tap(find.byKey(const Key('rating-submit-printing')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('required when the overall rating is below 3'), findsOneWidget);
+      expect(adapter.requests.where((r) => r.path.endsWith('/complete')), isEmpty);
+
+      await tester.enterText(find.byKey(const Key('rating-comment')), 'Needs a redo of the print file');
+      await tester.tap(find.byKey(const Key('rating-submit-printing')));
+      await tester.pumpAndSettle();
+      expect(lastBody('POST', '/bd/tasks/1/complete')['completion_type'], 'prepare_printing_file');
+    });
+
     testWidgets('rework posts the creative count and comment', (tester) async {
       await boot(tester, 'bd', bdRoutes());
       await tester.tap(find.text('Banner'));
