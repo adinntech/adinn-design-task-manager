@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/app_installer.dart';
 import '../../core/app_update.dart';
 
 /// Wraps the whole app. When the installed build is older than the server's minimum, the app is frozen
@@ -18,6 +19,7 @@ class UpdateGate extends ConsumerStatefulWidget {
 
 class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObserver {
   bool _dismissed = false;
+  InstallState _install = const InstallState();
   WhatsNew? _whatsNew; // held here so a refresh can't remove it before the user taps "Got it"
 
   @override
@@ -38,6 +40,28 @@ class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObse
     if (state == AppLifecycleState.resumed) ref.invalidate(appUpdateProvider);
   }
 
+  /// Downloads the new APK inside the app and opens Android's installer (no browser).
+  Future<void> _startInstall(AppUpdateInfo info) async {
+    final url = info.url;
+    if (url == null || _install.busy) return;
+
+    setState(() => _install = const InstallState(busy: true, progress: 0));
+    try {
+      await ref.read(appInstallerProvider).downloadAndInstall(
+            url,
+            build: info.latestBuild,
+            onProgress: (p) {
+              if (mounted) setState(() => _install = InstallState(busy: true, progress: p));
+            },
+          );
+      if (mounted) setState(() => _install = const InstallState(opened: true));
+    } on InstallException catch (e) {
+      if (mounted) setState(() => _install = InstallState(error: e.message, needsPermission: e.needsPermission));
+    } catch (_) {
+      if (mounted) setState(() => _install = const InstallState(error: 'Could not install the update. Please try again.'));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final info = ref.watch(appUpdateProvider).asData?.value;
@@ -52,7 +76,7 @@ class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObse
 
     if (info == null || build == null) return widget.child;
 
-    if (info.mustUpdate(build)) return _UpdateRequired(info: info);
+    if (info.mustUpdate(build)) return _UpdateRequired(info: info, install: _install, onUpdate: () => _startInstall(info));
 
     final Widget app = _withBar(info, build);
 
@@ -66,6 +90,8 @@ class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObse
 
   Widget _withBar(AppUpdateInfo info, int build) {
     if (info.canUpdate(build) && !_dismissed) {
+      final busy = _install.busy;
+
       return Column(children: [
         Material(
           color: const Color(0xFFFFF4E5),
@@ -73,18 +99,30 @@ class _UpdateGateState extends ConsumerState<UpdateGate> with WidgetsBindingObse
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Row(children: [
-                const Icon(Icons.system_update, size: 18, color: Color(0xFF9A6700)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Update available${info.latestVersion == null ? '' : ' (v${info.latestVersion})'}',
-                    key: const Key('update-available'),
-                    style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w600),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Row(children: [
+                  const Icon(Icons.system_update, size: 18, color: Color(0xFF9A6700)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      busy
+                          ? 'Downloading update… ${(_install.progress * 100).round()}%'
+                          : _install.opened
+                              ? 'Tap Install on the next screen'
+                              : 'Update available${info.latestVersion == null ? '' : ' (v${info.latestVersion})'}',
+                      key: const Key('update-available'),
+                      style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
-                TextButton(key: const Key('update-soft'), onPressed: info.url == null ? null : () => _open(info.url!), child: const Text('Update')),
-                IconButton(key: const Key('update-dismiss'), icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() => _dismissed = true)),
+                  TextButton(key: const Key('update-soft'), onPressed: info.url == null || busy ? null : () => _startInstall(info), child: Text(_install.error != null ? 'Try again' : 'Update')),
+                  if (!busy) IconButton(key: const Key('update-dismiss'), icon: const Icon(Icons.close, size: 18), onPressed: () => setState(() => _dismissed = true)),
+                ]),
+                if (busy) Padding(padding: const EdgeInsets.only(bottom: 6), child: LinearProgressIndicator(key: const Key('update-progress'), value: _install.progress)),
+                if (_install.error != null)
+                  Row(children: [
+                    Expanded(child: Text(_install.error!, key: const Key('update-error'), style: const TextStyle(fontSize: 12, color: Color(0xFFB42318)))),
+                    if (!_install.needsPermission) TextButton(key: const Key('update-browser'), onPressed: info.url == null ? null : () => _open(info.url!), child: const Text('Open in browser')),
+                  ]),
               ]),
             ),
           ),
@@ -104,9 +142,11 @@ Future<void> _open(String url) async {
 
 /// The frozen screen: nothing behind it can be reached (back is disabled too).
 class _UpdateRequired extends ConsumerWidget {
-  const _UpdateRequired({required this.info});
+  const _UpdateRequired({required this.info, required this.install, required this.onUpdate});
 
   final AppUpdateInfo info;
+  final InstallState install;
+  final VoidCallback onUpdate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -134,12 +174,28 @@ class _UpdateRequired extends ConsumerWidget {
                 Text(info.notes!, key: const Key('update-notes'), textAlign: TextAlign.center, style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
               ],
               const SizedBox(height: 28),
+              if (install.busy) ...[
+                LinearProgressIndicator(key: const Key('update-progress'), value: install.progress, minHeight: 6, borderRadius: BorderRadius.circular(6)),
+                const SizedBox(height: 8),
+                Text('Downloading update… ${(install.progress * 100).round()}%', textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
+                const SizedBox(height: 12),
+              ],
               FilledButton.icon(
                 key: const Key('update-now'),
-                onPressed: info.url == null ? null : () => _open(info.url!),
+                onPressed: info.url == null || install.busy ? null : onUpdate,
                 icon: const Icon(Icons.download),
-                label: const Text('Update now'),
+                label: Text(install.busy ? 'Downloading…' : install.opened ? 'Install the update' : install.error != null ? 'Try again' : 'Update now'),
               ),
+              if (install.opened) ...[
+                const SizedBox(height: 10),
+                Text('Tap Install on the next screen. The app will restart on the new version.', key: const Key('update-opened'), textAlign: TextAlign.center, style: theme.textTheme.bodySmall?.copyWith(color: Colors.black54)),
+              ],
+              if (install.error != null) ...[
+                const SizedBox(height: 10),
+                Text(install.error!, key: const Key('update-error'), textAlign: TextAlign.center, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+                if (!install.needsPermission && info.url != null)
+                  TextButton(key: const Key('update-browser'), onPressed: () => _open(info.url!), child: const Text('Open in browser instead')),
+              ],
               if (info.url == null) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -196,4 +252,17 @@ class _WhatsNewOverlay extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Where the in-app download stands.
+class InstallState {
+  const InstallState({this.busy = false, this.progress = 0, this.opened = false, this.error, this.needsPermission = false});
+
+  final bool busy;
+  final double progress;
+
+  /// The Android installer screen has been opened.
+  final bool opened;
+  final String? error;
+  final bool needsPermission;
 }

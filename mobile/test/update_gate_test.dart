@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:adinn_tasks/core/app_installer.dart';
 import 'package:adinn_tasks/core/app_update.dart';
 import 'package:adinn_tasks/core/auth.dart';
 import 'package:adinn_tasks/core/models.dart';
@@ -22,17 +25,34 @@ class MemorySeen implements SeenBuildStore {
   Future<void> write(int build) async => value = build;
 }
 
+class FakeInstaller implements AppInstaller {
+  final calls = <(String, int)>[];
+  Completer<void>? hold;
+  Object? fail;
+  void Function(double)? report;
+
+  @override
+  Future<void> downloadAndInstall(String url, {required int build, void Function(double progress)? onProgress}) async {
+    calls.add((url, build));
+    report = onProgress;
+    if (hold != null) await hold!.future;
+    if (fail != null) throw fail!;
+  }
+}
+
 /// The in-app update gate: a too-old build is frozen behind the Update screen; everything else passes.
 void main() {
   late FakeAdapter adapter;
   late ProviderContainer container;
   late MemorySeen seen;
+  late FakeInstaller installer;
 
   Map<String, dynamic> release({int min = 0, int latest = 0, String? url = 'https://example.test/adinn.apk'}) =>
       {'platform': 'android', 'min_build': min, 'latest_build': latest, 'latest_version': '2.0.0', 'url': url, 'notes': 'Faster boards'};
 
   Future<void> boot(WidgetTester tester, {required int build, Handler? update, bool signedIn = true, int? lastSeen}) async {
     seen = MemorySeen(lastSeen);
+    installer = FakeInstaller();
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -48,6 +68,7 @@ void main() {
     container = ProviderContainer(overrides: [
       appBuildProvider.overrideWith((ref) async => build),
       seenBuildStoreProvider.overrideWithValue(seen),
+      appInstallerProvider.overrideWithValue(installer),
       sessionStoreProvider.overrideWithValue(MemoryStore(token: signedIn ? 'tok' : null, user: signedIn ? AppUser.fromJson(userJson(role: 'bd')) : null)),
       apiClientProvider.overrideWith((ref) => fakeClient(adapter, token: () => ref.read(authProvider).token)),
     ]);
@@ -191,6 +212,71 @@ void main() {
 
       expect(find.byKey(const Key('whats-new')), findsNothing);
       expect(seen.value, 3); // it will show on a later launch when the server answers
+    });
+  });
+
+  group('installing inside the app', () {
+    testWidgets('Update now downloads in the app with progress, then reports the installer is open', (tester) async {
+      await boot(tester, build: 2, update: (_) => (status: 200, body: release(min: 5, latest: 7)));
+      installer.hold = Completer();
+
+      await tester.tap(find.byKey(const Key('update-now')));
+      await tester.pump();
+      installer.report!(0.42);
+      await tester.pump();
+
+      expect(installer.calls, [('https://example.test/adinn.apk', 7)]);
+      expect(find.byKey(const Key('update-progress')), findsOneWidget);
+      expect(find.text('Downloading update… 42%'), findsOneWidget);
+      expect(tester.widget<FilledButton>(find.byKey(const Key('update-now'))).onPressed, isNull); // no double taps
+
+      installer.hold!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('update-opened')), findsOneWidget);
+      expect(find.byKey(const Key('update-progress')), findsNothing);      await drain(tester);
+    });
+
+    testWidgets('a failed download shows the reason, Try again, and the browser as a fallback', (tester) async {
+      await boot(tester, build: 2, update: (_) => (status: 200, body: release(min: 5, latest: 7)));
+      installer.fail = InstallException('Could not download the update. Check your connection and try again.');
+
+      await tester.tap(find.byKey(const Key('update-now')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('update-error')), findsOneWidget);
+      expect(find.byKey(const Key('update-browser')), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+
+      installer.fail = null;
+      await tester.tap(find.byKey(const Key('update-now')));
+      await tester.pumpAndSettle();
+      expect(installer.calls.length, 2);
+      expect(find.byKey(const Key('update-error')), findsNothing);      await drain(tester);
+    });
+
+    testWidgets('when Android needs the install permission there is no browser fallback, just the instruction', (tester) async {
+      await boot(tester, build: 2, update: (_) => (status: 200, body: release(min: 5, latest: 7)));
+      installer.fail = InstallException('Allow installs from this app in the screen that opened, then tap Update again.', needsPermission: true);
+
+      await tester.tap(find.byKey(const Key('update-now')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Allow installs'), findsOneWidget);
+      expect(find.byKey(const Key('update-browser')), findsNothing);      await drain(tester);
+    });
+
+    testWidgets('the soft Update bar installs in the app too', (tester) async {
+      await boot(tester, build: 4, update: (_) => (status: 200, body: release(min: 0, latest: 6)));
+      installer.hold = Completer();
+
+      await tester.tap(find.byKey(const Key('update-soft')));
+      await tester.pump();
+
+      expect(installer.calls, [('https://example.test/adinn.apk', 6)]);
+      expect(find.byKey(const Key('update-progress')), findsOneWidget);
+      installer.hold!.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Tap Install on the next screen'), findsOneWidget);
     });
   });
 
