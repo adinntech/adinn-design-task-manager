@@ -438,8 +438,15 @@ function bindAttachedFiles(root){
   btn.dataset.attachedBound='1';
   btn.addEventListener('click',()=>{
    const field=btn.dataset.field,path=btn.dataset.path;
-   (removedDraftFiles[field]=removedDraftFiles[field]||[]).push(path);
-   btn.closest('[data-attached-file]')?.remove();
+   const removedList=(removedDraftFiles[field]=removedDraftFiles[field]||[]);
+   if(!removedList.includes(path))removedList.push(path);
+   // The row is the .draft-attached-file element (it carries data-attached-path);
+   // the old selector looked for a data-attached-file attribute that no element has,
+   // so the file was queued for removal but the row stayed on screen.
+   const row=btn.closest('.draft-attached-file');
+   const list=row?.closest('.draft-attached-files');
+   row?.remove();
+   if(list&&!list.querySelector('.draft-attached-file'))list.remove();
   });
  });
 }
