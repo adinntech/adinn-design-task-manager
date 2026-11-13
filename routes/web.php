@@ -3,6 +3,7 @@
 use App\Http\Controllers\ActivityFlagController;
 use App\Http\Controllers\AppDownloadController;
 use App\Http\Controllers\Bd\AssignedTaskController;
+use App\Http\Controllers\Bd\HowToController;
 use App\Http\Controllers\Bd\TaskController;
 use App\Http\Controllers\Bd\TaskExportController;
 use App\Http\Controllers\FileUploadController;
@@ -22,6 +23,9 @@ Route::middleware(['auth', 'role:bd'])
     ->prefix('bd')
     ->name('bd.')
     ->group(function () {
+        // "How To Do ?" — tutorial videos played from the Spaces bucket.
+        Route::get('/how-to', [HowToController::class, 'index'])->name('how-to');
+
         Route::get('/tasks/create', [TaskController::class, 'create'])->name('tasks.create');
         Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
         Route::post('/tasks/in-house', [TaskController::class, 'storeInhouse'])->name('tasks.storeInhouse');

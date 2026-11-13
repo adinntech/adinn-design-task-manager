@@ -22,3 +22,6 @@ storage/framework/testing/
 
 # APK published for the in-app update / "Get the app" (uploaded on the server, never committed)
 /public/downloads/
+
+# Tutorial videos for the "How To Do ?" pages live in the Spaces bucket, never in git
+/Tutorial/

@@ -138,6 +138,7 @@
                 <a href="{{ route('bd.tasks.index') }}" class="{{ request()->routeIs('bd.tasks.index','bd.tasks.show','bd.tasks.edit') ? 'active' : '' }}"><span>▤</span>Assigned Tasks</a>
                 <a href="{{ route('profile.show') }}" class="{{ request()->routeIs('profile.show') ? 'active' : '' }}"><span>◉</span>My Profile</a>
                 <a href="{{ route('bd.tasks.create') }}" class="{{ request()->routeIs('bd.tasks.create') ? 'active' : '' }}"><span>＋</span>Create Task</a>
+                <a href="{{ route('bd.how-to') }}" class="{{ request()->routeIs('bd.how-to') ? 'active' : '' }}"><span>▶</span>How To Do ?</a>
             @elseif($role === 'designer')
                 <a href="{{ route('designer.dashboard') }}" class="{{ request()->routeIs('designer.dashboard') ? 'active' : '' }}"><span>▦</span>Dashboard</a>
                 <a href="{{ route('designer.tasks.index') }}" class="{{ request()->routeIs('designer.tasks.index','designer.tasks.show') ? 'active' : '' }}"><span>▤</span>My Tasks</a>
