@@ -110,6 +110,10 @@ double _seg(double t, double a, double b, [Curve curve = Curves.linear]) => curv
 
 const _pop = Cubic(0.2, 1.0, 0.3, 1.25);
 
+/// The line the printed Adinn logo carries under its red rule. It is part of the logo; the product name ("DESIGN TASKS")
+/// stays below the logo as before.
+const kLogoTagline = 'Advertising Services Ltd.';
+
 /// The lockup in "logo units": the same coordinates the sign-in intro uses (A at [kARect], letters at their stroke rects).
 ///
 /// [t] is seconds into the 3.6 s reveal: the A grows in beside its pencil, the red dot pops, the pencil steps out, writes
@@ -242,6 +246,8 @@ class AdinnWordmark extends StatelessWidget {
                         ),
                       ),
                     ),
+                  // "Advertising Services Ltd." under the rule, where the printed logo has it.
+                  if (rule > 0.6) _printedLine(pad, _seg(t, 2.1, 2.6, Curves.easeOutCubic)),
                   // The registered mark at the end of the word.
                   if (reg > 0)
                     Positioned(
@@ -291,12 +297,37 @@ class AdinnWordmark extends StatelessWidget {
                 tagline,
                 maxLines: 1,
                 softWrap: false,
-                style: TextStyle(fontSize: 15, letterSpacing: 7 * (0.6 + 0.4 * tag), fontWeight: FontWeight.w600, color: onColour ? Colors.white : const Color(0xFF1B1B1F), decoration: TextDecoration.none),
+                style: TextStyle(fontSize: 15, letterSpacing: (tagline == tagline.toUpperCase() ? 7 : 2.4) * (0.6 + 0.4 * tag), fontWeight: FontWeight.w600, color: onColour ? Colors.white : const Color(0xFF1B1B1F), decoration: TextDecoration.none),
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// The printed logo's own line, in the slot under the red rule: same left and right edges as the print, spaced to fill it.
+  Widget _printedLine(double pad, double k) {
+    final fontSize = kTaglineCap / 0.711; // Roboto cap height is about 0.711 em
+    final width = kTaglineRight - kTaglineLeft;
+    final colour = onColour ? Colors.white : const Color(0xFF1B1B1F);
+    final base = TextStyle(color: colour, fontSize: fontSize, fontWeight: FontWeight.w500, height: 1, letterSpacing: 0, decoration: TextDecoration.none);
+    final tp = TextPainter(text: TextSpan(text: kLogoTagline, style: base), textDirection: TextDirection.ltr)..layout();
+    final spacing = math.max(0.0, (width - tp.width) / (kLogoTagline.length - 1));
+
+    return Positioned(
+      left: pad + kTaglineLeft,
+      top: kTaglineCentreY - fontSize * 0.445,
+      width: width,
+      child: Opacity(
+        opacity: k,
+        // The print's own font is narrower than Roboto: if a line comes out wider than its slot it shrinks to fit.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(kLogoTagline, maxLines: 1, softWrap: false, style: base.copyWith(letterSpacing: spacing * (0.5 + 0.5 * k))),
+        ),
+      ),
     );
   }
 
