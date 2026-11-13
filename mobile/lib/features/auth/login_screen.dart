@@ -159,6 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
             ),
+            if (AppConfig.showServerSettings)
             Positioned(
               top: pad.top + 4,
               right: 8,
