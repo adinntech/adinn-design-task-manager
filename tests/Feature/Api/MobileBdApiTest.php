@@ -150,6 +150,9 @@ class MobileBdApiTest extends TestCase
 
     public function test_detail_lists_requirement_files_and_submitted_work_for_every_role(): void
     {
+        // The Admin / Designer Head API code is kept (the app just refuses those roles); open it for this check.
+        config(['mobile.allowed_roles' => ['bd', 'designer', 'designer_head', 'admin']]);
+
         $task = $this->task(['requirements' => [
             'reference_images' => ['dtm/2026/roadshow/DT-1/reference_images/look-a.jpg', 'dtm/2026/roadshow/DT-1/reference_images/look-b.PNG'],
             'client_audio' => 'dtm/2026/roadshow/DT-1/client_audio/call.m4a',

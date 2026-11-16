@@ -112,7 +112,7 @@ class MobileDesignerApprovalsApiTest extends TestCase
     {
         $this->actingAs($this->plain, 'sanctum')->getJson('/api/v1/designer/approvals')->assertForbidden();
         $this->actingAs($this->approver, 'sanctum')->getJson('/api/v1/designer/approvals')->assertOk();
-        $this->actingAs($this->head, 'sanctum')->getJson('/api/v1/designer/approvals')->assertForbidden(); // role middleware
+        $this->actingAs($this->head, 'sanctum')->getJson('/api/v1/designer/approvals')->assertUnauthorized(); // Designer Head is not allowed in the app at all
     }
 
     public function test_list_shows_teammates_swap_and_split_only_never_own_or_other_teams_or_decline(): void

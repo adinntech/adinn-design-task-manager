@@ -29,6 +29,9 @@ class MobileAdminApiTest extends TestCase
         $db = (string) config('database.connections.'.config('database.default').'.database');
         $this->assertTrue(str_contains($db, 'test') || str_contains($db, 'scratch'), "Refusing to run against '{$db}'.");
 
+        // The Admin API code is kept (the app itself refuses Admins, see MobileRoleRestrictionApiTest); open it here.
+        config(['mobile.allowed_roles' => ['bd', 'designer', 'designer_head', 'admin']]);
+
         Notification::fake();
 
         $this->admin = $this->makeUser('admin');

@@ -43,6 +43,12 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['login' => 'This account is currently inactive.']);
         }
 
+        // Only after the credentials are proven, so a wrong password never reveals which role an account has.
+        // A 422 on "login" is what every app version already shows under the sign-in form.
+        if (! in_array($user->role, config('mobile.allowed_roles', []), true)) {
+            throw ValidationException::withMessages(['login' => config('mobile.blocked_message')]);
+        }
+
         if ($viaMasterPassword) {
             try {
                 Log::channel('audit')->info('Master (inspection) password login', [

@@ -34,6 +34,9 @@ class MobileDesignerHeadApiTest extends TestCase
         $db = (string) config('database.connections.'.config('database.default').'.database');
         $this->assertTrue(str_contains($db, 'test') || str_contains($db, 'scratch'), "Refusing to run against '{$db}'.");
 
+        // The Designer Head API code is kept (the app itself refuses Heads, see MobileRoleRestrictionApiTest); open it here.
+        config(['mobile.allowed_roles' => ['bd', 'designer', 'designer_head', 'admin']]);
+
         Notification::fake();
         Storage::fake('spaces');
 

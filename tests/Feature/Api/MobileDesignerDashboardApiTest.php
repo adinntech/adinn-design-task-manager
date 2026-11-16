@@ -94,7 +94,7 @@ class MobileDesignerDashboardApiTest extends TestCase
     {
         $this->getJson('/api/v1/designer/dashboard')->assertUnauthorized();
         $this->actingAs($this->bd, 'sanctum')->getJson('/api/v1/designer/dashboard')->assertForbidden();
-        $this->actingAs($this->head, 'sanctum')->getJson('/api/v1/designer/dashboard/tasks')->assertForbidden();
+        $this->actingAs($this->head, 'sanctum')->getJson('/api/v1/designer/dashboard/tasks')->assertUnauthorized(); // Designer Head is not allowed in the app at all
     }
 
     public function test_an_empty_dashboard_is_all_zeros_and_does_not_error(): void

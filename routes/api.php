@@ -37,7 +37,9 @@ Route::get('/app-update', [AppUpdateController::class, 'show'])->middleware('thr
 Route::post('/internal/app-release', [\App\Http\Controllers\Api\AppReleaseController::class, 'store'])
     ->middleware(['throttle:20,1', \App\Http\Middleware\EnsureReleaseToken::class]);
 
-Route::middleware('auth:sanctum')->group(function () {
+// EnsureMobileAppRole: only the roles in config/mobile.php (BD and Designer) may use the app; a token
+// from before that restriction is revoked on its next request.
+Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsureMobileAppRole::class])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
