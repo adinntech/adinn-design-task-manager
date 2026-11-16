@@ -11,7 +11,6 @@
     .howto-card video{display:block;width:100%;aspect-ratio:16/9;background:#101828}
     .howto-meta{padding:12px 14px 14px}
     .howto-title{font-size:13px;font-weight:900;color:#101828;line-height:1.35}
-    .howto-sub{margin-top:4px;font-size:10px;color:#667085}
     .howto-empty{background:#fff;border:1px dashed #d0d5dd;border-radius:14px;padding:34px 18px;text-align:center;color:#667085;font-size:12px}
     .howto-empty strong{display:block;color:#344054;font-size:14px;margin-bottom:4px}
 </style>
@@ -37,7 +36,6 @@
                 </video>
                 <div class="howto-meta">
                     <div class="howto-title">{{ $video['title'] }}</div>
-                    <div class="howto-sub">{{ number_format($video['size_bytes'] / 1048576, 1) }} MB</div>
                 </div>
             </article>
         @endforeach

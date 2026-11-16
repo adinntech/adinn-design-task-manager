@@ -23,7 +23,7 @@ class TutorialVideoService
     private const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'm4v'];
 
     /**
-     * @return array{videos: array<int, array{title: string, file: string, url: string, size_bytes: int}>, error: bool}
+     * @return array{videos: array<int, array{title: string, file: string, url: string}>, error: bool}
      */
     public function forRole(string $role): array
     {
@@ -52,7 +52,6 @@ class TutorialVideoService
                     'file' => basename($path),
                     // Encode each segment: the folder name has a space in it.
                     'url' => $base.'/'.implode('/', array_map('rawurlencode', explode('/', $path))),
-                    'size_bytes' => (int) $disk->size($path),
                 ])
                 ->sortBy('title', SORT_NATURAL | SORT_FLAG_CASE)
                 ->values()
