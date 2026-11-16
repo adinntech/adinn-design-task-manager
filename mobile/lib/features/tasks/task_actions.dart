@@ -12,6 +12,7 @@ import '../widgets/form_sheet.dart';
 import '../../core/uploads.dart';
 import '../uploads/progress_sheet.dart';
 import 'providers.dart';
+import 'star_rating_input.dart';
 
 /// Role-specific action buttons on the task overview. The server remains the authority: these are
 /// only shown when the detail payload says the action is available, and every call can still be refused.
@@ -55,6 +56,8 @@ class TaskActions extends ConsumerWidget {
             final result = await showModalBottomSheet<RatingResult>(
               context: context,
               isScrollControlled: true,
+              // Keep the sheet below the status bar; it sizes to its content and a swipe down dismisses it.
+              useSafeArea: true,
               showDragHandle: true,
               builder: (_) => const RatingSheet(),
             );
@@ -263,9 +266,12 @@ class _RatingSheetState extends State<RatingSheet> {
     final primary = Theme.of(context).colorScheme.primary;
     final overall = _overall;
     OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: c, width: w));
+    // Everything fits one screen on a normal phone, so the sheet is not scrollable and a swipe down dismisses it;
+    // short screens get slightly smaller stars (the scroll view stays as a fallback, e.g. with the keyboard open).
+    final compact = MediaQuery.sizeOf(context).height < 740;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, math.max(MediaQuery.viewInsetsOf(context).bottom, MediaQuery.viewPaddingOf(context).bottom) + 22),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, math.max(MediaQuery.viewInsetsOf(context).bottom, MediaQuery.viewPaddingOf(context).bottom) + 10),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -273,76 +279,71 @@ class _RatingSheetState extends State<RatingSheet> {
           children: [
             Row(children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(color: primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                child: Icon(Icons.star_rate_rounded, color: primary, size: 24),
+                child: Icon(Icons.star_rate_rounded, color: primary, size: 22),
               ),
               const SizedBox(width: 12),
               const Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Rate the designer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: Color(0xFF101828))),
-                  Text('Slide each point, then finish the task', style: TextStyle(fontSize: 12, color: Color(0xFF667085))),
+                  Text('Rate the designer', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: Color(0xFF101828))),
+                  Text('Tap or drag across the stars, then finish the task', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Color(0xFF667085))),
                 ]),
               ),
             ]),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(color: _tone(overall).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: _tone(overall).withValues(alpha: 0.25))),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(color: _tone(overall).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: _tone(overall).withValues(alpha: 0.25))),
               child: Row(children: [
-                Text('$overall', style: TextStyle(fontSize: 34, height: 1, fontWeight: FontWeight.w900, color: _tone(overall))),
-                const SizedBox(width: 12),
+                Text('$overall', style: TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w900, color: _tone(overall))),
+                const SizedBox(width: 10),
+                HalfStars(overall, size: 16),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    HalfStars(overall, size: 20),
-                    const SizedBox(height: 4),
-                    Text('Overall: $overall / 5', key: const Key('overall'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF475467))),
-                  ]),
+                  child: Text('Overall: $overall / 5', key: const Key('overall'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF475467))),
                 ),
               ]),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 2),
             for (final e in _criteria.entries)
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: 2),
                 child: Column(children: [
                   Row(children: [
-                    Expanded(child: Text(e.value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF344054)))),
+                    Expanded(child: Text(e.value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF344054)))),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
                       decoration: BoxDecoration(color: _tone(_values[e.key]!).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
                       child: Text('${_values[e.key]}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _tone(_values[e.key]!))),
                     ),
                   ]),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(trackHeight: 5, activeTrackColor: _tone(_values[e.key]!), inactiveTrackColor: const Color(0xFFEAECF0), thumbColor: _tone(_values[e.key]!), overlayShape: const RoundSliderOverlayShape(overlayRadius: 16)),
-                    child: Slider(
-                      key: Key('rate-${e.key}'),
-                      value: _values[e.key]!,
-                      min: 0.5,
-                      max: 5,
-                      divisions: 9,
-                      label: '${_values[e.key]}',
-                      onChanged: (v) => setState(() => _values[e.key] = v),
-                    ),
+                  StarRatingInput(
+                    key: Key('rate-${e.key}'),
+                    value: _values[e.key]!,
+                    maxStarSize: compact ? 28 : 34,
+                    verticalRoom: 6,
+                    onChanged: (v) => setState(() => _values[e.key] = v),
                   ),
                 ]),
               ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             TextField(
               key: const Key('rating-comment'),
               controller: _comment,
-              minLines: 2,
-              maxLines: 4,
+              minLines: 1,
+              maxLines: 3,
               style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 hintText: 'Add a comment (required below 3 stars)',
                 hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF98A2B3)),
+                hintMaxLines: 1,
                 errorText: _error,
                 filled: true,
                 fillColor: const Color(0xFFF9FAFB),
-                contentPadding: const EdgeInsets.all(14),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                isDense: true,
                 border: border(const Color(0xFFEAECF0)),
                 enabledBorder: border(const Color(0xFFEAECF0)),
                 focusedBorder: border(primary, 1.4),
@@ -350,19 +351,19 @@ class _RatingSheetState extends State<RatingSheet> {
                 focusedErrorBorder: border(const Color(0xFFD92D20), 1.4),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             // Two clear choices instead of a switch: finish the task, or send it on for the printing file.
             FilledButton.icon(
               key: const Key('rating-submit'),
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
               onPressed: () => _submit(printing: false),
               icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
               label: const Text('Submit & complete', style: TextStyle(fontWeight: FontWeight.w800)),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             OutlinedButton.icon(
               key: const Key('rating-submit-printing'),
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
               onPressed: () => _submit(printing: true),
               icon: const Icon(Icons.print_outlined, size: 20),
               label: const Text('Submit & prepare printing file', style: TextStyle(fontWeight: FontWeight.w800)),
